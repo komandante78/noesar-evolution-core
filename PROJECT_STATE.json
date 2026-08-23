@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0661 — Tested rust/crates/noesar-data-plane's production-readiness gates (0 -> 9 tests), with full mutation coverage on the 13-condition RepositoryHealth::production_ready() AND-gate: each condition flipped alone, gate confirmed to still refuse. F-RUST-001: 4/8 originally-untested crates now tested, 1 N/A, 3 remain.",
-  "phase_status": "Verified this session: cargo test -p noesar-data-plane --offline (disposable rust:1-bookworm, --network none, vendored) -> 9/9. cargo test --workspace --offline -> 184 tests, 184 pass, 0 fail (was 175 at D-0660, +9), 0 new warnings.",
-  "next_phase": "F-RUST-001: 3 crates with real logic remain untested (noesar-authority-protocol, noesar-authority-transport, noesar-control-plane) -- candidates for further bounded phases in the same shape. FUNDING work-plan items remain blocked/not-due (see D-0657).",
+  "current_phase": "D-0662 — F-RUST-001 CLOSED. Tested the last 3 originally zero-test Rust crates: noesar-authority-protocol (0->19, HMAC envelope signing/replay/clock-skew/bindings), noesar-authority-transport (0->14, length-prefixed IPC frame codec), noesar-control-plane (0->1, release gate). Split the packaging observation out as new finding F-RUST-002.",
+  "phase_status": "Verified this session: cargo test -p noesar-authority-protocol --offline = 19/19, -p noesar-authority-transport = 14/14, -p noesar-control-plane = 1/1 (disposable rust:1-bookworm, --network none, vendored). cargo test --workspace --offline -> 218 tests, 218 pass, 0 fail (was 184 at D-0661, +34), 0 new warnings.",
+  "next_phase": "F-RUST-001 fully closed. F-RUST-002 (packaging: 3 crates never reach an oci/*.Dockerfile) opened, not yet investigated. FUNDING work-plan items remain blocked/not-due (see D-0657): Phase F needs a second host class, Phase G needs an external tester, CodeSupply's form is unpublished until ~3 Sep 2026.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "d0341aafb20c1a5cb37b2349ca5085bef8708bbc",
-  "last_updated_utc": "2026-08-23T15:00:00Z",
+  "last_commit": "54e835e5a20bff0e34188690256dce9ba08348ae",
+  "last_updated_utc": "2026-08-23T15:30:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -450,7 +450,7 @@
     {
       "id": "F-RUST-001",
       "severity": "medium",
-      "status": "PARTIALLY_FIXED 2026-08-23: D-0658 noesar-auth 13/13, D-0659 noesar-audit-ledger 6/6 (+fixed a real delimiter-collision hash-chain weakness), D-0660 noesar-hardware-orchestrator 7/7, D-0661 noesar-data-plane 9/9 (mutation-coverage on a 13-condition production-readiness gate). noesar-contracts reclassified NOT_APPLICABLE (pure data shapes, no logic to test). Correction (D-0658): noesar-auth has zero dependents in the workspace, not one -- this entry's original 'declared as a Cargo dependency of noesar-authority-daemon' claim was false when re-checked. Remaining open: 3/20 crates still carry zero tests with real logic (noesar-authority-protocol, noesar-authority-transport, noesar-control-plane); the packaging gap (3 crates never reach an oci/*.Dockerfile) is untouched.",
+      "status": "CLOSED 2026-08-23 (D-0658/D-0659/D-0660/D-0661/D-0662): of the original 8 zero-test crates, 7 tested (noesar-auth 13, noesar-audit-ledger 6 +1 real defect fixed, noesar-hardware-orchestrator 7, noesar-data-plane 9 with 13-way mutation coverage, noesar-authority-protocol 19, noesar-authority-transport 14, noesar-control-plane 1) and 1 reclassified NOT_APPLICABLE (noesar-contracts, pure data shapes). Correction (D-0658): noesar-auth has zero dependents in the workspace, not one -- this entry's original 'declared as a Cargo dependency of noesar-authority-daemon' claim was false when re-checked. Full workspace cargo test --workspace --offline: 144 -> 218 (+74). The separate packaging observation (3 crates compiled but reaching no oci/*.Dockerfile) is NOT closed by this -- tracked as its own open question below, not lost inside a finding that is otherwise done.",
       "summary": "8 of 20 Rust crates carry zero tests; noesar-auth holds real untested Argon2/TOTP logic that nothing in the workspace actually calls; 3 crates compile but are never packaged into any deliverable."
     },
     {
@@ -489,6 +489,12 @@
       "opened": "2026-08-18 (s338, D-0523)",
       "summary": "CLOSED by D-0536: authenticity now reaches the surfaces that start a model and gates the start (403 for an unattested descriptor, and for a caller that did not check at all). The blocker was the missing distinction between NO_SIGNATURE (a publisher placed a document and did not sign it) and SYNTHESISED (the product wrote the record from its own runtime, so there is nothing to verify) — the second is reported and NOT refused, which is what made the gate installable. Descriptor authenticity is shown on #/models in every lane, and it gates ACQUIRING. It does not gate STARTING an already-present model, and neither the CodeN model chooser (#/coden) nor /model in the terminal displays it — so a model whose publisher key was revoked after download can still be started, and the two shells show less than the catalogue page does. Not repaired here on purpose: the currently-running model is synthesised with no publisher and is therefore unsigned by construction, so gating activation on a verified descriptor would refuse to re-activate what the installation is already running. The fix is to distinguish >>unsigned because nobody signed it<< from >>unsigned because we synthesised it from the runtime<<, which is its own phase.",
       "status": "CLOSED 2026-08-18 by D-0536"
+    },
+    {
+      "id": "F-RUST-002",
+      "severity": "low",
+      "status": "OPEN - split out of F-RUST-001 at its closure, 2026-08-23 (D-0662), so the observation is not lost inside a finding that is otherwise done. Not investigated further this session.",
+      "summary": "3 of 20 Rust crates (noesar-control-plane, noesar-hardware-orchestrator, noesar-audit-ledger) compile under cargo build --workspace but appear in no oci/*.Dockerfile, so nothing installed by this project actually runs them."
     }
   ],
   "resolved_findings": [
@@ -740,7 +746,8 @@
     "d0658_noesar_auth_tests_2026-08-23": "VERIFIED this session: rust/crates/noesar-auth/src/lib.rs +13 tests (was 0) -> cargo test -p noesar-auth --offline = 13/13. cargo test --workspace --offline = 162 tests, 162 pass, 0 fail (+13 over D-0656).",
     "d0659_noesar_audit_ledger_2026-08-23": "VERIFIED this session: rust/crates/noesar-audit-ledger +6 tests (was 0), hash-chain formula hardened (length-delimited feed, fixes a real delimiter-injection collision) -> cargo test -p noesar-audit-ledger --offline = 6/6. cargo test --workspace --offline = 168 tests, 168 pass, 0 fail (+6 over D-0658).",
     "d0660_noesar_hardware_orchestrator_2026-08-23": "VERIFIED this session: rust/crates/noesar-hardware-orchestrator +7 tests (was 0) -> cargo test -p noesar-hardware-orchestrator --offline = 7/7. cargo test --workspace --offline = 175 tests, 175 pass, 0 fail (+7 over D-0659).",
-    "d0661_noesar_data_plane_2026-08-23": "VERIFIED this session: rust/crates/noesar-data-plane +9 tests (was 0), incl. 13-way mutation coverage on RepositoryHealth::production_ready() -> cargo test -p noesar-data-plane --offline = 9/9. cargo test --workspace --offline = 184 tests, 184 pass, 0 fail (+9 over D-0660)."
+    "d0661_noesar_data_plane_2026-08-23": "VERIFIED this session: rust/crates/noesar-data-plane +9 tests (was 0), incl. 13-way mutation coverage on RepositoryHealth::production_ready() -> cargo test -p noesar-data-plane --offline = 9/9. cargo test --workspace --offline = 184 tests, 184 pass, 0 fail (+9 over D-0660).",
+    "d0662_frust001_closed_2026-08-23": "VERIFIED this session: noesar-authority-protocol +19 tests, noesar-authority-transport +14 tests, noesar-control-plane +1 test (all were 0). cargo test --workspace --offline = 218 tests, 218 pass, 0 fail (+34 over D-0661). F-RUST-001 CLOSED, F-RUST-002 opened for the packaging observation."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1145,7 +1152,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0661 closed: noesar-data-plane tested, committed. Checkpointing to the Owner after this phase given the volume of chained work this turn (D-0656..D-0661, 6 phases). No open blocker beyond B-013 (push, no GitHub credential).",
+  "next_action": "D-0662 closed: F-RUST-001 fully resolved (7 crates tested, 1 N/A), committed. Session's Rust-hardening thread (D-0656..D-0662, 7 phases) is at a natural stop -- no further unblocked, well-scoped item identified without the Owner naming one.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

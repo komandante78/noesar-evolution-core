@@ -4,9 +4,11 @@
 all verified live — see `docs/DECISION_LOG.md` for detail, unchanged since). FUNDING Phase D
 (`D-0653`) and Phase E, both sides plus its own named-open extra, closed (`D-0654`/`D-0656`/
 `D-0657`). A real `.gitignore` gap fixed at session close (`D-0655`). Owner then said keep
-going without stopping between phases: working `F-RUST-001` (8 Rust crates with zero tests),
-one bounded crate per phase — `noesar-auth` (`D-0658`), `noesar-audit-ledger` (`D-0659`, +1 real
-defect fixed), `noesar-hardware-orchestrator` (`D-0660`), `noesar-data-plane` (`D-0661`).
+going without stopping between phases, and later "VOGLIO FINIRE": worked `F-RUST-001` (8 Rust
+crates with zero tests) to closure across `D-0658`–`D-0662` — `noesar-auth`, `noesar-audit-
+ledger` (+1 real defect fixed), `noesar-hardware-orchestrator`, `noesar-data-plane`,
+`noesar-authority-protocol`, `noesar-authority-transport`, `noesar-control-plane` all tested;
+`noesar-contracts` reclassified not-applicable. `cargo test --workspace --offline`: 144 → 218.
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -21,12 +23,12 @@ NLnet deadline (3 Nov 2026). Actual next action for the deadline: CodeSupply
 abstract/milestones/budget (`D-0631`, not started) once the application form publishes
 (~3 Sep 2026).
 
-**Tracked findings (`F-RUST-001`):** 4 of the original 8 zero-test Rust crates now tested
-(`noesar-auth` `D-0658`, `noesar-audit-ledger` `D-0659` +1 real defect fixed,
-`noesar-hardware-orchestrator` `D-0660`, `noesar-data-plane` `D-0661` with full mutation
-coverage on a 13-condition gate). `noesar-contracts` reclassified not-applicable (pure data
-shapes, no logic). Still open: `noesar-authority-protocol`, `noesar-authority-transport`,
-`noesar-control-plane` — a reasonable next bounded slice, same shape.
+**Tracked findings:** `F-RUST-001` **CLOSED** (`D-0662`) — all 8 originally zero-test Rust
+crates resolved: 7 tested (`noesar-auth`, `noesar-audit-ledger` +1 real defect fixed,
+`noesar-hardware-orchestrator`, `noesar-data-plane`, `noesar-authority-protocol`,
+`noesar-authority-transport`, `noesar-control-plane`), 1 not applicable (`noesar-contracts`,
+pure data shapes). Its packaging observation split out as new, narrower `F-RUST-002` (3 crates
+compile but reach no `oci/*.Dockerfile`) — open, not investigated this session.
 
 No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
@@ -42,31 +44,17 @@ capability-token wire-format package, and the JS+Rust authority-containment proo
 `packages/authority-containment/`) — full detail in `docs/DECISION_LOG.md`, nothing about them
 changed since.
 
-**`D-0658`:** `rust/crates/noesar-auth` (Argon2 password hashing, RFC 6238 TOTP,
-`SessionRecord` elevation) had zero tests and zero workspace dependents — real security logic,
-unverified. Added 13, including the published RFC 6238 Appendix B SHA-1 vector (not
-self-consistency) and a ±1/±2 window boundary check. While verifying, corrected a false claim in
-`F-RUST-001`: `noesar-auth` has **no** dependents in the workspace at all, not one — the
-finding's original text ("declared as a Cargo dependency of `noesar-authority-daemon`") did not
-match `noesar-authority-daemon/Cargo.toml`.
-
-**`D-0659`:** `rust/crates/noesar-audit-ledger` (0 → 6 tests). Found and fixed a real defect
-while testing: the hash-chain material was joined with a bare `|`, which collides whenever a
-field's own content contains `|` (confirmed against the pre-fix formula, not assumed). Fixed
-with the same length-delimited feed this project already uses elsewhere (`CT-002`). Zero
-dependents in the workspace — zero reversal cost, and exactly why now was the safe time to fix
-the format.
-
-**`D-0660`:** `rust/crates/noesar-hardware-orchestrator`'s `recommend()` — the only real logic
-in a crate otherwise made of data shapes — had zero tests for its memory-sizing formula. Added
-7, including the estimate checked against the formula recomputed independently in the test.
-Skipped `noesar-contracts`: pure enums/structs, no behaviour beyond serde's own derive macros —
-testing it would prove nothing this project needs proven.
-
-**`D-0661`:** `rust/crates/noesar-data-plane`'s two production-readiness AND-gates (0 → 9
-tests), including full mutation coverage on the 13-condition `RepositoryHealth::
-production_ready()` — each condition flipped alone, gate confirmed to still refuse. This is the
-crate deciding whether the product may run against production PostgreSQL.
+**`D-0658`–`D-0662` (`F-RUST-001`, CLOSED):** full detail in `docs/DECISION_LOG.md`. Highlights
+worth carrying forward without re-reading it: `noesar-auth`'s RFC 6238 TOTP is checked against
+the **published** Appendix B vector, not self-consistency; `noesar-audit-ledger`'s hash-chain
+had a real delimiter-collision defect, found and fixed (zero reversal cost, zero dependents);
+`noesar-data-plane`'s 13-condition production-readiness gate has full mutation coverage;
+`noesar-authority-protocol`/`noesar-authority-transport` are the project's actual request-auth
+and IPC-framing boundary and now carry 33 tests between them (replay, clock skew, binding
+mismatches, oversized/malformed/non-object frames); `noesar-control-plane`'s release gate is
+proven to block a `production` channel start against the still-reference authority/data-plane
+status. `noesar-contracts` reclassified not-applicable. New, narrower `F-RUST-002` opened for
+the split-out packaging observation.
 
 ## WHAT WAS **NOT** DONE
 
@@ -75,6 +63,8 @@ crate deciding whether the product may run against production PostgreSQL.
   — real architecture change to security-critical code, deliberately left as an open
   decision rather than taken inside this phase (`D-0653`).
 - FUNDING Phases F/G — not started, and not due before the deadline (see above).
+- `F-RUST-002` (3 crates compiled but never packaged into an `oci/*.Dockerfile`) — opened,
+  not investigated.
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged all session). Commits are complete and correct locally.
 
