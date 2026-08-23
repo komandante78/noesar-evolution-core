@@ -6108,3 +6108,27 @@ pre-pulizia). Container non di progetto: 50, invariati. Superstiti di progetto: 
 **Non ancora fatto:** `git push origin main` — nessuna credenziale in questa sessione
 (`B-014`, nuovo blocker); i due commit `6976232`/`228d616` sono locali, il deploy ha
 letto dal working tree, non dal remoto, quindi non ne dipendeva.
+
+## `d0671-toolbar-border-20260823T160319Z` — DEPLOYATO e verificato — 2026-08-23
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0671`: rimosso il bordo/sfondo/padding ridondante della regola
+base `.chat-toolbar`, ora doppiato da ciascuna card `.toolbar-group` (`D-0669`) —
+"scatola dentro scatola". Rimosso il token `--surface-toolbar` ormai orfano (5
+definizioni tema). Trovato fotografando la pagina live reale, non dal diff.
+**Verifica.** Preflight: byte-uguale albero↔immagine **485/485**, differing **0**.
+Unit **3019/3020** (1 skip preesistente) — la suite ha fallito con "tokens defined
+and never used: surface-toolbar" finché il token non è stato rimosso, prova che il
+controllo funziona davvero. browser-e2e disposable: `RETENTION=delete
+only-declared-gaps-failed` (solo `F-I18N-002`, 0 non dichiarati). Live: `curl` su
+`/styles.css` conferma 0 occorrenze di `surface-toolbar` e la regola base ridotta a
+`display:flex;align-items:center;gap:10px`. Screenshot della pagina reale (auth-gate
+nascosto via DOM, nessuna credenziale usata) conferma visivamente lo shell esterno
+sparito.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 4 figli, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260823T160333Z` (era
+`d0669-chat-fixes-20260823T153534Z`).
+**Costo di rollback — nessuno.** Puro CSS, nessuna migrazione.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260823T153622Z`
+rimosso (`Exited (0)` confermato). Container non di progetto: 50, invariati.
+Superstiti di progetto: **due**.

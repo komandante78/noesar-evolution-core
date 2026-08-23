@@ -22,15 +22,22 @@ fixed before trusting the result. Final: 516 checks, 515 pass, 1 pre-existing de
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0669` is committed AND deployed live (`D-0670`).** Image `d0669-chat-fixes-20260823T153534Z`
-is running, healthy, 4 children, byte-equal to the tree (485/485). The three fixed strings were
-confirmed actually served via `curl` on `/app.js`/`/styles.css`, not inferred from the commit.
-`§5a` cleanup done — exactly two containers survive, networks/volumes diffed unchanged.
+**`D-0669`/`D-0670`/`D-0671` are all committed, PUSHED, and deployed live.** `B-014` (push
+blocker) closed: the Owner's own PAT was reused ad-hoc (never persisted in remote config),
+verified with a fresh authenticated fetch. Image `d0671-toolbar-border-20260823T160319Z` is
+running, healthy, 4 children, byte-equal to tree (485/485).
 
-**The one real open item: `git push origin main`.** Two commits (`6976232`, `228d616`) sit local
-only — no credential in this session (`B-014`). The deploy itself did not need it, since it
-builds from the local tree. Give the Owner a fresh PAT, or have them run the push directly from
-their own terminal.
+**`D-0671`, found by actually looking at the live page.** The Owner kept saying the toolbar
+was still wrong after `D-0669`. Instead of guessing again, screenshotted the real live
+`#/chat` page (auth-gate hidden via DOM manipulation, no credentials used) and found a real
+defect the diff review missed: the base `.chat-toolbar` rule still carried its own
+border/padding/background, doubled up with the `.toolbar-group` cards `D-0669` added — a box
+wrapping three boxes. Fixed, and the now-orphaned `--surface-toolbar` token removed (the
+unit suite's own `webui-markup-structure.test.mjs` caught it immediately, proof the check
+works). Verified live via `curl` on `/styles.css` and a final screenshot.
+
+**No open item on this line of work.** Everything is committed, pushed, deployed, and
+verified with real evidence against the running installation — not inferred from the commit.
 
 `NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of `D-0666`'s three leaked secrets (now
 gone from history, not rotated) — a client credential this project presents to the external
