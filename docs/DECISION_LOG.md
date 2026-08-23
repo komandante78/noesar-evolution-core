@@ -15119,3 +15119,25 @@ after: `node --test services/reference-control-plane/test/*.test.mjs packages/*/
 **Status.** applied. **Improvement proposal, funding fit: Restack · trait 5, measurable
 reliability** — the "framework-agnostic" claim in `MASTER_PROJECT/02_ATOM.md` is now backed by
 a fixture proving it against a real second implementation, not only asserted in prose.
+
+## D-0655 · `.gitignore` did not cover the §5a evidence split — found during session closure — 2026-08-23
+**Decision.** `.gitignore` line 135 covered only `EVIDENCE/docker_inventory_*.txt`. The later
+split of the §5a capture into three files (`docker_{ps,network,volume}_post_cleanup_*.txt`) is
+the identical host-wide leak — verified: `docker_ps_post_cleanup_20260823T042836Z.txt` lists
+`qbittorrent`, `sonarr` and this host's own LAN IP alongside `noesar-evolution` — and was never
+added. Extended the pattern to all three prefixes; added 5 cases to
+`tools/test-packaging-filters.mjs` (the 3 leaking prefixes EXCLUDED, plus the already-committed
+`docker_images_pre_hygiene_*` format re-confirmed PRESERVED, so the fix cannot later be widened
+into swallowing a legitimate evidence file).
+**Why.** Found while verifying session closure — `docs/SESSION_HANDOFF.md` claimed these files
+were "the same reason `EVIDENCE/docker_inventory_*.txt` is gitignored", which `git check-ignore`
+showed was false. A documentation claim that does not match the repository is the same class of
+defect as a code bug (`CLAUDE10.md` rule 43).
+**Rejected.** Leaving the files untracked-but-unignored as "safe enough since they were never
+committed" — six had already accumulated across two sessions, and the next `git add -A` a
+future session ran would have staged host details of every other project on this machine.
+**Evidence.** `git check-ignore -v` on the 6 pre-existing files: unmatched before, matched
+against the new pattern after. `node tools/test-packaging-filters.mjs` → 29/29 (was 24/24).
+`git status --short`: the 6 files no longer listed as untracked.
+**Reversal cost.** None — a stricter ignore pattern, no tracked file touched.
+**Status.** applied.

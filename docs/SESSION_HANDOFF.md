@@ -7,7 +7,9 @@ three phases (`D-0649`), closed the audio item (`D-0650`), and closed the images
 (`D-0651`) — both `§4#10` gaps D-0649 found are now built. Six deploys this session, all
 verified live. Reclassified Kokoro→GPU out of scope (`D-0652`). Built and tested
 `packages/capability-token/` — Phase D of the funding work plan (`D-0653`). Built the
-authority-conformance fixture and closed Phase E's JS half (`D-0654`).
+authority-conformance fixture and closed Phase E's JS half (`D-0654`). Closing this session
+found and fixed a real `.gitignore` gap that had let host-wide evidence files sit untracked
+(`D-0655`).
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -83,11 +85,14 @@ re-verified.
 ## LOCAL, UNTRACKED, BY DESIGN
 
 - `EVIDENCE/docker_{ps,network,volume}_post_cleanup_*.txt` — the §5a cleanup inventories
-  from the `D-0650`/`D-0651` deploys. Not staged, not committed: they list every container
-  on this host, other projects included — the same reason `EVIDENCE/docker_inventory_*.txt`
-  is gitignored (`.gitignore` line 135). Their content is already summarised, host-detail
-  stripped, in each deploy's `docs/INSTALLATION_LEDGER.md` entry. Safe to leave or delete;
-  never to commit.
+  from the `D-0650`/`D-0651` deploys. They list every container on this host, other projects
+  included — the same reason `EVIDENCE/docker_inventory_*.txt` is gitignored. **This claim
+  used to be false** (`D-0655`, found during this closure): `.gitignore` covered only the
+  `docker_inventory_*` prefix, not this three-way split, so these 6 files had been sitting
+  untracked-but-unignored, one `git add -A` away from leaking. Fixed at the pattern, with a
+  regression test (`tools/test-packaging-filters.mjs`, 29/29). Now genuinely gitignored,
+  verified with `git check-ignore`. Their content is already summarised, host-detail
+  stripped, in each deploy's `docs/INSTALLATION_LEDGER.md` entry. Safe to leave or delete.
 
 ## OPEN BLOCKERS
 

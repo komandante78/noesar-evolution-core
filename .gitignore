@@ -132,7 +132,17 @@ logs/
 # images of every other project on the developing machine. Keeping the evidence on disk is the
 # duty; committing it is publishing somebody else's infrastructure detail into a repository
 # meant to go public (§29). The file stays where the procedure put it and out of git.
+#
+# D-0655: this pattern named only the older combined `docker_inventory_*` file. The later
+# split into three separate captures (`docker_{ps,network,volume}_post_cleanup_*`) is the exact
+# same host-wide leak — confirmed: docker_ps_post_cleanup_20260823T042836Z.txt lists
+# qbittorrent, sonarr and this host's own LAN IP alongside noesar-evolution — and had never
+# been added here, so six such files had been accumulating as untracked-but-not-ignored across
+# two sessions before this was noticed.
 EVIDENCE/docker_inventory_*.txt
+EVIDENCE/docker_ps_post_cleanup_*.txt
+EVIDENCE/docker_network_post_cleanup_*.txt
+EVIDENCE/docker_volume_post_cleanup_*.txt
 
 # Editor / OS noise
 .DS_Store

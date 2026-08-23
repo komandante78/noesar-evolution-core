@@ -54,6 +54,18 @@ const CASES = [
   // Anchored, so a real source directory somebody later names .workspace deeper in the
   // tree is NOT swallowed — the exact mistake the target/ rules above were written for.
   ['services/example/.workspace/src/real-source.mjs', 'PRESERVED'],
+  // --- D-0655: the §5a host-wide docker evidence, and the three-way split B-003's own
+  // pattern never anticipated. `docker_inventory_*` was covered; the later split into three
+  // separate captures (ps/network/volume) was not, and six such files had been accumulating
+  // as untracked-but-not-ignored across two sessions before this was noticed. ---
+  ['EVIDENCE/docker_inventory_pre_cleanup_D0655.txt', 'EXCLUDED'],
+  ['EVIDENCE/docker_ps_post_cleanup_20260823T042836Z.txt', 'EXCLUDED'],
+  ['EVIDENCE/docker_network_post_cleanup_20260823T042836Z.txt', 'EXCLUDED'],
+  ['EVIDENCE/docker_volume_post_cleanup_20260823T042836Z.txt', 'EXCLUDED'],
+  // The boundary the other direction: a docker-images capture pre-filtered to this project's
+  // own tag is a real, already-committed evidence format (D-0442) and must not be swallowed
+  // by broadening the pattern past the three leaking prefixes above.
+  ['EVIDENCE/docker_images_pre_hygiene_20260814T092746Z.txt', 'PRESERVED'],
 ];
 
 function run() {
