@@ -9,7 +9,8 @@ verified live. Reclassified Kokoro→GPU out of scope (`D-0652`). Built and test
 `packages/capability-token/` — Phase D of the funding work plan (`D-0653`). Built the
 authority-conformance fixture and closed Phase E's JS half (`D-0654`). Closing this session
 found and fixed a real `.gitignore` gap that had let host-wide evidence files sit untracked
-(`D-0655`).
+(`D-0655`). Built the Rust-side equivalent of `D-0654` and closed Phase E's remaining half
+(`D-0656`).
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -19,10 +20,12 @@ No deploy-blocking item is open. Two independent threads are both at a clean sto
 
 **Funding (`FUNDING/19_WORK_PLAN_TO_BETA.md`):** Phase D done (`D-0653`,
 `packages/capability-token/`, 32/32 JS + 17/17 Python conformance, byte-identical against the
-live `TokenMinter`). Phase E's JS half done (`D-0654`): Proof-of-Session was already
-`RECORDED_MET` (`SESS-001/002/003`), and the genuinely missing authority-conformance suite now
-proves the real `TokenMinter` contains an adversarial, never-filtering `ReasoningProvider` — 5/5
-cases. **Not built**: the same proof for the Rust authority daemon (named open in `D-0654`).
+live `TokenMinter`). **Phase E now fully done, both sides.** JS half (`D-0654`):
+Proof-of-Session was already `RECORDED_MET` (`SESS-001/002/003`); the authority-conformance
+suite proves the real `TokenMinter` contains an adversarial, never-filtering `ReasoningProvider`
+— 5/5 cases. Rust half (`D-0656`): the same claim against `rust/crates/noesar-capability`'s real
+`TokenMinter`/`AuthorizedPlan`, via a test-local `AdversarialReasoningProvider` — 5/5 new cases,
+full workspace `cargo test --workspace --offline` 149/149 (was 144 at `D-0497`).
 Remaining: Phase F (cross-platform evidence on ≥2 real host classes) and Phase G (independent
 pentest — external party only, cannot be scheduled by this project alone). Neither is due before
 the NLnet deadline (3 Nov 2026) — they are the funded work itself, not a submission
@@ -70,14 +73,21 @@ step-membership containment hold regardless of whether the backend's own filteri
 case found genuinely red first during authoring (a test bug, not a product bug), fixed,
 re-verified.
 
+**`D-0656`:** the Rust-side twin of `D-0654`. `AdversarialReasoningProvider`, defined only
+inside `rust/crates/noesar-capability/tests/reasoning_authority_conformance.rs` (stronger
+isolation than the JS fixture's `src/fixtures/`: a Rust integration test file is already its
+own compilation unit), delegates every mandatory surface to `ReferenceReasoningProvider`
+except `constrain()`, which never filters. Same 4 cases as JS, plus a 5th that is a Rust-native
+form of "not a strawman": coercion to `&dyn ReasoningProvider` would fail to compile if a
+surface were missing. Verified in a disposable `rust:1-bookworm` container, offline, vendored
+deps — no new crate version pulled in.
+
 ## WHAT WAS **NOT** DONE
 
 - Kokoro→GPU — out of scope (`D-0652`), not built.
 - Production Rust/JS minters were **not** rewired to import `packages/capability-token/`
   — real architecture change to security-critical code, deliberately left as an open
   decision rather than taken inside this phase (`D-0653`).
-- The Rust-side equivalent of `D-0654`'s authority-conformance proof — not built, named
-  open in `D-0654`. The JS half is proven; the Rust authority daemon is not, yet.
 - FUNDING Phases F/G — not started, and not due before the deadline (see above).
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged all session). Commits are complete and correct locally.
