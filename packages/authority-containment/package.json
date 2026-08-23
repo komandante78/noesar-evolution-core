@@ -1,0 +1,28 @@
+{
+  "name": "@noesar/authority-containment",
+  "version": "1.0.0",
+  "description": "The capability-minting containment property: what any engine that turns an approved Plan into a capability token must never trust, regardless of which ReasoningProvider proposed the plan or whether it filtered anything. Promoted from D-0654/D-0656's adversarial-provider proof.",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./conformance/index.mjs",
+    "./conformance": "./conformance/index.mjs",
+    "./SPEC.md": "./SPEC.md"
+  },
+  "files": [
+    "conformance",
+    "src",
+    "SPEC.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

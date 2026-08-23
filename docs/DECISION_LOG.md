@@ -15171,3 +15171,41 @@ proposal, funding fit: Restack · trait 5, measurable reliability** — the same
 now holds against two independent implementations in two different languages, which is a
 stronger form of "the property does not depend on which `ReasoningProvider` you plug in" than
 either language alone could show.
+
+## D-0657 · Promoted the containment property to `packages/authority-containment/` — 2026-08-23
+**Decision.** Owner authorised executing the improvement proposal named at `D-0656`'s close.
+Built `packages/authority-containment/` (`SPEC.md` `AC-001`–`AC-006`, `README.md`,
+`conformance/index.mjs`, `src/reference-adapter.mjs`, `test/conformance.test.mjs`) — the Phase
+D pattern applied to Phase E's own named-open item ("promoting the JS suite to its own
+versioned, SPEC'd package… possible but not done"). The five properties (positive control,
+step-membership, honest-declared escape, lying-declared escape ×2) are exactly `CAP-001`,
+`CAP-002`, `CAP-005`, `CAP-011`, `CAP-012` from the existing, product-wide
+`conformance/capability-vectors.json` — **not re-invented**: `conformance/index.mjs` reads that
+one live file by relative path, filtered to those five ids, so there is no second copy of the
+data to drift out of sync with the file both minters already answer to. The reference adapter
+wraps the real `services/reference-control-plane/src/capability.mjs` (nothing mocked).
+**Why.** This is a real, bounded "next slice" the work-plan itself named as undone, not a
+newly-invented task — and turning an internal test fixture into a documented, adapter-driven
+spec is what makes the containment property something a third engine (or `ATOM_EVOLUTION`,
+should it ever propose plans) could hold itself to without reading this repository's source.
+**Rejected.** A bundled, hand-copied `vectors.json` inside the package (the `capability-token`
+pattern) — would have created exactly the two-copies-drift class `D-0615`'s manifest and
+`02_ATOM.md`'s `L0`–`L8` collision already taught this project to avoid; reading the canonical
+file directly removes the possibility rather than merely discouraging it. Also rejected: wiring
+`rust/crates/noesar-capability` to this package's vectors too — `D-0656`'s Rust suite already
+proves a stronger, end-to-end claim (through a real adversarial provider, not static vectors);
+duplicating a weaker check on top of it would be motion, not progress. Named open in the
+package's own `README.md`, not silently dropped.
+**Evidence.** `node --test packages/authority-containment/test/*.test.mjs` → 8/8, including 5
+adversarial cases proving the suite itself can fail (not-a-function, mints-everything,
+refuses-everything, wrong-`kind`, throws). Full product suite after:
+`node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs` →
+3090 tests, 3089 pass, 1 pre-existing skip, 0 fail (was 3082, +8). `tools/run-eslint.sh` → 491
+files/0 errors. `node tools/test-packaging-filters.mjs` → 29/29 (new package dir not caught by
+any exclusion filter). `MANIFEST.sha256` regenerated, 6753 files (+7), `manifest-integrity.
+test.mjs` 13/13.
+**Reversal cost.** None — additive only, no product import touches this package yet.
+**Status.** applied. **Improvement proposal, funding fit: Restack · trait 1+2, delimited and
+reusable component** — unlike most improvements recorded in this log, this one already *is* the
+proposal's own funding-fit trait: a standalone, documented, adapter-driven conformance kit any
+future `ReasoningProvider`/engine pairing (including a third party's) can run against itself.
