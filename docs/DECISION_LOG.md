@@ -15209,3 +15209,36 @@ test.mjs` 13/13.
 reusable component** — unlike most improvements recorded in this log, this one already *is* the
 proposal's own funding-fit trait: a standalone, documented, adapter-driven conformance kit any
 future `ReasoningProvider`/engine pairing (including a third party's) can run against itself.
+
+## D-0658 · `noesar-auth` gets a real test suite — F-RUST-001, partially fixed — 2026-08-23
+**Decision.** Owner instruction "vai avanti dai non fermarti" (continuation, no new contract) —
+picked the next well-scoped, unblocked, non-destructive item from tracked findings rather than
+waiting idle on FUNDING items that are genuinely blocked (Phase F needs a second host class,
+Phase G needs an external tester, CodeSupply's form is unpublished). Added 13 tests to
+`rust/crates/noesar-auth/src/lib.rs` (previously 0): Argon2 hash/verify round-trip, a wrong
+password refused, a malformed PHC string refused rather than panicked on, two hashes of the
+same password differing (salt is random), `token_digest` against the known SHA-256-of-empty-
+string vector, `verify_totp` against the **published RFC 6238 Appendix B** SHA-1 test vector
+(secret `"12345678901234567890"`, T=59 → `287082` truncated to this implementation's 6 digits —
+an independent oracle, not self-consistency), the ±1 30-second window accepted and ±2 refused,
+cross-secret rejection, and `SessionRecord` elevation (grants exactly 5 minutes, boundary
+exclusive). While verifying, found and corrected a **false claim already sitting in
+`PROJECT_STATE.json`**: `F-RUST-001` said `noesar-auth` "is declared as a Cargo dependency of
+`noesar-authority-daemon`" — re-checked, `noesar-authority-daemon/Cargo.toml` has no such
+dependency and grep of every crate's `Cargo.toml` finds zero dependents of `noesar-auth`
+anywhere in the workspace. It is compiled-but-unlinked, not linked-but-uncalled — a different,
+slightly worse fact (rule 43: a documentation claim that does not match the repository is a
+defect of the same class as a code bug).
+**Why.** Security-relevant logic (password hashing, MFA) with zero tests and zero callers is
+exactly the code most likely to be wrong the day something finally calls it, and nobody would
+know until then.
+**Rejected.** Fixing all 8 zero-test crates in one phase — real scope, one bounded slice per
+`noesar-evolution-budget` §1; the other 7 stay open, named, not silently expanded into.
+**Evidence.** Disposable `rust:1-bookworm`, `--network none`, vendored: `cargo test -p
+noesar-auth --offline` → 13/13. `cargo test --workspace --offline` → 162 tests, 162 pass, 0 fail
+(was 149 at `D-0656`, +13), 0 new warnings.
+**Reversal cost.** None — additive only, no production code path touched (crate still has zero
+callers).
+**Status.** applied. **Improvement proposal, funding fit: Restack · trait 5, measurable
+reliability** — the same "prove it before something depends on it" principle `D-0654`/`D-0656`
+applied to the authority layer, applied here to the auth primitives one layer below it.
