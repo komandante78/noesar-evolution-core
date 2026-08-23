@@ -1,0 +1,29 @@
+{
+  "name": "@noesar/capability-token",
+  "version": "1.0.0",
+  "description": "The capability token wire format: canonical field encoding, the HMAC-SHA256 pre-image, the canonical limits string, and constant-time verification. Extracted from NOESAR EVOLUTION's authorization engine — the authorization policy itself deliberately stays out.",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./conformance": "./conformance/index.mjs",
+    "./conformance/vectors.json": "./conformance/vectors.json",
+    "./SPEC.md": "./SPEC.md"
+  },
+  "files": [
+    "src",
+    "conformance",
+    "SPEC.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

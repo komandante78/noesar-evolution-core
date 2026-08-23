@@ -101,6 +101,14 @@ step sign-descriptor node tools/test-sign-model-descriptor.mjs
 # agreeing with itself. It runs through `pyrun` like the other Python steps, so a host with
 # neither python3 nor docker gets an honest UNAVAILABLE rather than a silent skip.
 step canon-python    pyrun packages/verified-acquisition/conformance/python/run_vectors.py
+# D-0653. `packages/capability-token/` — Phase D of FUNDING/19_WORK_PLAN_TO_BETA.md: the
+# capability token wire format as a versioned spec plus a dependency-free reference
+# encoder/decoder, extracted so a third-party implementer never has to read this repository's
+# Rust source. Named here for the same reason `package-va`/`canon-python` are: an extracted
+# package with its own test suite that nothing in the battery invokes is a package nobody is
+# actually running.
+step package-ct      node --test packages/capability-token/test/*.test.mjs
+step ct-python       pyrun packages/capability-token/conformance/python/run_vectors.py
 # D-0556. The 53 acceptance criteria of MASTER_PROJECT stop being prose: this fails when a
 # document and docs/acceptance-matrix.json disagree, when a criterion states no method of
 # verification, or when the number of criteria carrying NO verdict at all gets worse. It never

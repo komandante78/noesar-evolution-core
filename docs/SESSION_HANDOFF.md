@@ -5,18 +5,26 @@ WCAG regression (`D-0646`), gave `#/knowledge` and `#/memory` a real identity (`
 shipped direct agent-creation from chat (`D-0648`), decomposed `§4#10` multimodality into
 three phases (`D-0649`), closed the audio item (`D-0650`), and closed the images item
 (`D-0651`) — both `§4#10` gaps D-0649 found are now built. Six deploys this session, all
-verified live.
+verified live. Reclassified Kokoro→GPU out of scope (`D-0652`). Built and tested
+`packages/capability-token/` — Phase D of the funding work plan (`D-0653`).
 
 ## ➜ LA PROSSIMA AZIONE
 
-Both `§4#10` items from `D-0645`/`D-0649` are closed. The Kokoro TTS → GPU item is now
-**closed as out-of-scope**, not pending (`D-0652`, 2026-08-23): `noesar-voice-speak` is not
-a `noesar-evolution*` container, and CLAUDE10.md §1/§5/§16 forbid touching it regardless of
-confirmation — the open question was never "how", it was "whether", and the boundary rule
-already answers that. No further action on this item unless the Owner amends CLAUDE10.md
-with a named exception.
+No deploy-blocking item is open. Two independent threads are both at a clean stop:
 
-No open item from this session's work remains. Await the Owner's next instruction.
+**Product/§4#10:** closed — see `D-0645`/`D-0649`/`D-0650`/`D-0651`/`D-0652`.
+
+**Funding (`FUNDING/19_WORK_PLAN_TO_BETA.md`):** Phase D done (`D-0653`,
+`packages/capability-token/`, 32/32 JS + 17/17 Python conformance, byte-identical against the
+live `TokenMinter`). Remaining phases E (`ReasoningProvider` conformance suite +
+Proof-of-Session format), F (cross-platform evidence on ≥2 real host classes) and G
+(independent pentest — external party only, cannot be scheduled by this project alone) are
+**not started**, and none is due before the NLnet deadline (3 Nov 2026) — they are the funded
+work itself, not a submission prerequisite. The actual next action for the deadline is writing
+the CodeSupply abstract/milestones/budget (`D-0631`, not started) once the application form
+publishes (~3 Sep 2026).
+
+No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 
@@ -38,9 +46,23 @@ been exercised by this product and is refused rather than guessed. **Dormant on 
 installation** — no provider is yet marked `visionCapable` here; that is the Owner's own
 action, not a build gap.
 
+**`D-0653`:** `packages/capability-token/` specifies and ships the capability token's wire
+format only (`SPEC.md` `CT-001`–`CT-007`) — canonical encoding, MAC pre-image, canonical
+limits string, constant-time verify — explicitly excluding the minting/authorization
+policy, which stays in `rust/crates/noesar-capability`/`capability.mjs`. Every `mac`
+conformance vector was minted live by the real `TokenMinter` this session; the package's
+`sign()` reproduces it byte-for-byte (proven, `services/reference-control-plane/test/
+capability-token-package-extraction.test.mjs`). A from-spec Python implementation passes
+17/17 vectors in a disposable container. **Neither production minter imports this package
+yet** — named as an open decision in the package's own `README.md`, not done silently.
+
 ## WHAT WAS **NOT** DONE
 
-- Kokoro→GPU — scoped, not built (see above).
+- Kokoro→GPU — out of scope (`D-0652`), not built.
+- Production Rust/JS minters were **not** rewired to import `packages/capability-token/`
+  — real architecture change to security-critical code, deliberately left as an open
+  decision rather than taken inside this phase (`D-0653`).
+- FUNDING Phases E/F/G — not started, and not due before the deadline (see above).
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged all session). Commits are complete and correct locally.
 

@@ -1,0 +1,444 @@
+{
+  "schemaVersion": "1.0.0",
+  "note": "Conformance vectors for @noesar/capability-token. Every `mac` vector token was minted live, this session, by the production TokenMinter in services/reference-control-plane/src/capability.mjs -- not hand-crafted -- and this generator asserts @noesar/capability-token/sign() reproduces the identical mac before any vector is written. canonicalLimits vectors ground CT-003; mac vectors ground CT-002/CT-004/CT-005; tamper vectors ground CT-006.",
+  "canonicalLimits": [
+    {
+      "id": "CL-001",
+      "why": "no envelope signs as none",
+      "limits": null,
+      "expected": "none"
+    },
+    {
+      "id": "CL-002",
+      "why": "every dimension set, fixed order",
+      "limits": {
+        "memoryBytes": 67108864,
+        "cpuSeconds": 5,
+        "openFiles": 64,
+        "processes": 8,
+        "fileSizeBytes": 1048576,
+        "coreDumpBytes": 0
+      },
+      "expected": "memoryBytes=67108864;cpuSeconds=5;openFiles=64;processes=8;fileSizeBytes=1048576;coreDumpBytes=0"
+    },
+    {
+      "id": "CL-003",
+      "why": "partial envelope: unset dimensions are dash, not zero",
+      "limits": {
+        "memoryBytes": 2097152
+      },
+      "expected": "memoryBytes=2097152;cpuSeconds=-;openFiles=-;processes=-;fileSizeBytes=-;coreDumpBytes=-"
+    },
+    {
+      "id": "CL-004",
+      "why": "zero and unset do not collide",
+      "limits": {
+        "coreDumpBytes": 0
+      },
+      "expected": "memoryBytes=-;cpuSeconds=-;openFiles=-;processes=-;fileSizeBytes=-;coreDumpBytes=0"
+    }
+  ],
+  "mac": [
+    {
+      "id": "MAC-001",
+      "why": "ordinary single-path single-operation grant, no limits",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "token": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null
+      },
+      "expectedMacHex": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0",
+      "provenance": "minted live by services/reference-control-plane/src/capability.mjs TokenMinter, this session"
+    },
+    {
+      "id": "MAC-002",
+      "why": "multiple paths and multiple operations, order preserved",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "token": {
+        "id": "b90368f394df998fa52ba458d9c728de",
+        "planDigest": "7882860b9016b89eef03e72c7bb875af9488b6e43485f88ff827bc97708deddf",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs",
+          "src/b.rs"
+        ],
+        "operations": [
+          "READ",
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null
+      },
+      "expectedMacHex": "7523f6c760e9d8af3bdda62eacfd490e3af6f8608476511409aba7cdd40973be",
+      "provenance": "minted live by services/reference-control-plane/src/capability.mjs TokenMinter, this session"
+    },
+    {
+      "id": "MAC-003",
+      "why": "destructive operations, still lowercased in the pre-image",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "token": {
+        "id": "fdfcb7884cc332fd5f41097e570fbb6d",
+        "planDigest": "698a1753f6a5fed1196c6f6f48058d068710d01d7b78006e2c6ad25eefb79d6d",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "DELETE",
+          "EXECUTE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null
+      },
+      "expectedMacHex": "25101387f0d0299e727a31e38b37f6c601a773f9df80379737cde5414648c59b",
+      "provenance": "minted live by services/reference-control-plane/src/capability.mjs TokenMinter, this session"
+    },
+    {
+      "id": "MAC-004",
+      "why": "a full limits envelope is inside the MAC, not beside it",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "token": {
+        "id": "fdfcb7884cc332fd5f41097e570fbb6d",
+        "planDigest": "698a1753f6a5fed1196c6f6f48058d068710d01d7b78006e2c6ad25eefb79d6d",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "EXECUTE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": {
+          "memoryBytes": 67108864,
+          "cpuSeconds": 5,
+          "openFiles": 64,
+          "processes": 8,
+          "fileSizeBytes": 1048576,
+          "coreDumpBytes": 0
+        }
+      },
+      "expectedMacHex": "2cfbc816dd056ce39b48b9a0a67d658a41158f599987b39e6a26c352f1cabfb6",
+      "provenance": "minted live by services/reference-control-plane/src/capability.mjs TokenMinter, this session"
+    },
+    {
+      "id": "MAC-005",
+      "why": "a partial limits envelope: unset dimensions still feed as dash",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "token": {
+        "id": "fdfcb7884cc332fd5f41097e570fbb6d",
+        "planDigest": "698a1753f6a5fed1196c6f6f48058d068710d01d7b78006e2c6ad25eefb79d6d",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "EXECUTE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": {
+          "memoryBytes": 2097152,
+          "cpuSeconds": null,
+          "openFiles": null,
+          "processes": null,
+          "fileSizeBytes": null,
+          "coreDumpBytes": null
+        }
+      },
+      "expectedMacHex": "a11e7c4a6d9bfb41709bd9e6aa3e325863cbb4ffbc116f7b350fcada133d16de",
+      "provenance": "minted live by services/reference-control-plane/src/capability.mjs TokenMinter, this session"
+    },
+    {
+      "id": "MAC-006",
+      "why": "usesGranted and expiresAtUnix feed as decimal strings, not raw numbers",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "token": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "expiresAtUnix": 1800009999,
+        "usesGranted": 42,
+        "limits": null
+      },
+      "expectedMacHex": "57c26d64cbded717b4864d259710ee4f43de11ae97621f49ef7e2e17afa6cc23",
+      "provenance": "minted live by services/reference-control-plane/src/capability.mjs TokenMinter, this session"
+    }
+  ],
+  "tamper": [
+    {
+      "id": "TAMP-001",
+      "why": "widening the granted paths after signing",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "signedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "mutatedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs",
+          "src/secret.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "expectVerify": false
+    },
+    {
+      "id": "TAMP-002",
+      "why": "widening the granted operations after signing",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "signedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "mutatedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE",
+          "DELETE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "expectVerify": false
+    },
+    {
+      "id": "TAMP-003",
+      "why": "extending the expiry after signing",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "signedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "mutatedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800100600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "expectVerify": false
+    },
+    {
+      "id": "TAMP-004",
+      "why": "raising uses after signing",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "signedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "mutatedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 101,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "expectVerify": false
+    },
+    {
+      "id": "TAMP-005",
+      "why": "attaching limits after a no-limits sign",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "signedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "mutatedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": {
+          "memoryBytes": 2097152
+        },
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "expectVerify": false
+    },
+    {
+      "id": "TAMP-006",
+      "why": "a single flipped hex character in the mac itself",
+      "secretHex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "signedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "mutatedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299fa"
+      },
+      "expectVerify": false
+    },
+    {
+      "id": "TAMP-007",
+      "why": "a correct token verified against the wrong secret",
+      "secretHex": "0909090909090909090909090909090909090909090909090909090909090909",
+      "signedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "mutatedToken": {
+        "id": "fc5d8a0fbeabdb2b69db98b8bb15b9e9",
+        "planDigest": "3fea0c159fb899c0cf7060ea12183f7a062586cbcafc806908830f5a70a3baad",
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "expiresAtUnix": 1800000600,
+        "usesGranted": 1,
+        "limits": null,
+        "mac": "5127a49ad1699db042afd1444c69f4e3d3a16e7ca784b133fd5bb3b3037299f0"
+      },
+      "expectVerify": false
+    }
+  ]
+}

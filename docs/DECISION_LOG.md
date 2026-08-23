@@ -15068,3 +15068,29 @@ about *how* to do it was ever the missing piece.
 **Evidence.** `CLAUDE10.md` §1 rule 4, §5 rule 16, §16 rules 60-64; Owner message 2026-08-23.
 **Reversal cost.** none — no code or container was touched by this decision.
 **Status.** applied — closes the `D-0645`/`D-0649` remaining item as out-of-scope.
+
+## D-0653 · Phase D of `FUNDING/19_WORK_PLAN_TO_BETA.md` — capability token spec + reference package — 2026-08-23
+**Decision.** Built `packages/capability-token/`: `SPEC.md` v1.0.0 (7 requirements, `CT-001`–
+`CT-007`, each mapped to a conformance case family, drift-checked by a test), a zero-dependency
+JS reference `sign()`/`verify()`/`canonicalLimits()`, a Python second implementation written
+from the spec, and `conformance/vectors.json`. Every `mac` vector token was minted **live** by
+the real production `TokenMinter` this session, and the package's `sign()` was proven to
+reproduce the identical MAC before any vector was frozen — not hand-crafted, not asserted.
+**Why.** Owner authorized proceeding past the funding-application-only scope, explicitly wanting
+finished engineering work, not just a proposal. Matches `FUNDING/19` Phase D's own stop
+condition: a third party can encode/verify from `SPEC.md` alone, without reading Rust source.
+**Rejected.** Wiring the production Rust/JS minters to import this package — real architecture
+change to security-critical authority code, `CLAUDE10.md` rule 77 stop condition, named as open
+in `README.md` rather than done silently. Also rejected: including the minting/authorization
+policy in the portable surface (`mint`, `TokenMinter`, `authorizePlan`) — product-specific,
+checked absent by `CT-007`'s own conformance cases (`nongoals:*`).
+**Evidence.** `node --test packages/capability-token/test/*.test.mjs
+services/reference-control-plane/test/capability-token-package-extraction.test.mjs` → 32/32.
+Python conformance (disposable `python:3-slim` container, `--network none`): 17/17. ESLint
+486 files/0 errors. Full unit suite after manifest regen: see next commit's evidence line.
+**Reversal cost.** Low — additive only, new `packages/capability-token/` directory and 2 new
+`scripts/test.sh` steps (`package-ct`, `ct-python`); no production call site changed.
+**Status.** applied. **Improvement proposal, funding fit: Restack/CodeSupply · trait 1+2** —
+a delimited, reusable component (the wire format alone, policy excluded), directly strengthens
+the CodeSupply application's manifest/provenance narrative (`docs/PRESENTAZIONE_PROGETTO_E_
+FINANZIAMENTO_2026-08-21.md` §5.3's 4th-candidate table, now a 5th with code, not just a plan).
