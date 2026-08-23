@@ -15141,3 +15141,33 @@ against the new pattern after. `node tools/test-packaging-filters.mjs` → 29/29
 `git status --short`: the 6 files no longer listed as untracked.
 **Reversal cost.** None — a stricter ignore pattern, no tracked file touched.
 **Status.** applied.
+
+## D-0656 · Phase E's Rust half — authority-conformance proof against `noesar-capability` — 2026-08-23
+**Decision.** Built the Rust-side equivalent `D-0654` named open: a test-local
+`AdversarialReasoningProvider` (`rust/crates/noesar-capability/tests/
+reasoning_authority_conformance.rs`) wrapping `ReferenceReasoningProvider` and delegating every
+mandatory surface except `constrain()`, which never filters. Drives the real
+`TokenMinter::mint()`/`AuthorizedPlan::try_authorize()` — nothing mocked — through the same 4
+cases as the JS suite (AUTH-001 positive control, AUTH-002 honest escape unfiltered, AUTH-003 a
+lying `reaches_outside_workspace` flag, AUTH-004 a path the step never declared) plus a 5th check
+that is a Rust-native replacement for the JS "not a strawman" runtime check: coercing the fixture
+to `&dyn ReasoningProvider` fails to *compile* if a surface is missing, so the compiler enforces
+what JS could only assert with `typeof x[surface] === 'function'`.
+**Why.** `FUNDING/19_WORK_PLAN_TO_BETA.md` Phase E and `D-0654` both name this as the next slice
+of the JS-only authority-conformance claim, not attempted there.
+**Rejected.** Placing the fixture in `src/fixtures/` as a reusable crate item (the JS pattern) —
+unnecessary here: Rust integration tests are already their own compilation unit, so a test-local
+struct gives the identical "nothing outside its own test file imports it" guarantee with less
+surface. Also rejected: promoting this to a versioned package — the property proven is what the
+stop condition asked for, not a new deliverable.
+**Evidence.** Disposable `rust:1-bookworm` container, `--network none`, vendored deps (no crate
+version added — `tokio` and `noesar-reasoning-reference` were already workspace members, so
+`Cargo.lock` gained 2 lines, not new dependencies): `cargo test --workspace --offline` → 149
+tests, 149 pass, 0 fail (was 144 at `D-0497`, +5 here), 0 new warnings.
+**Reversal cost.** None — additive only: 1 new test file, 2 `Cargo.toml`/`Cargo.lock` lines, no
+product code touched.
+**Status.** applied. Phase E is now closed both sides (JS `D-0654`, Rust here). **Improvement
+proposal, funding fit: Restack · trait 5, measurable reliability** — the same containment claim
+now holds against two independent implementations in two different languages, which is a
+stronger form of "the property does not depend on which `ReasoningProvider` you plug in" than
+either language alone could show.

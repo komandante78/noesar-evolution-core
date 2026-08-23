@@ -574,10 +574,12 @@ dependencies = [
  "hex",
  "hmac",
  "noesar-reasoning",
+ "noesar-reasoning-reference",
  "serde",
  "serde_json",
  "sha2",
  "subtle",
+ "tokio",
 ]
 
 [[package]]
