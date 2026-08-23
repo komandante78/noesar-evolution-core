@@ -18,23 +18,21 @@ additive `ToolExecutor` constructor change to make the tool-path proof possible.
 other open finding for safe actionability — none left without Owner input. Owner then asked for
 a full audit of what should ever go public: found a **second** cleartext-secret-in-history leak
 (`B-011` round 2, `D-0666`) — one credential still live — and rewrote history again to remove
-it. Also rewrote `README.md` and added `FEATURES.md` per Owner request (`D-0667`).
+it. Owner pushed the rewritten history directly (force-push to `main` is blocked for the
+assistant by the harness's own safety classifier) — **verified this session** via a fresh
+authenticated fetch: `origin/main` = `4c947e6a4bb5609bc32cd980c0dcb7ae809a6842`, matches local
+exactly, zero occurrences of either leaked secret across the full remote history. Also rewrote
+`README.md` and added `FEATURES.md` per Owner request (`D-0667`) — both confirmed live on
+GitHub by reading them back from the fetch.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Urgent, blocking on the Owner, read this first:** `origin/main` on GitHub still carries the
-old history with a live secret in cleartext (`D-0666`). The local repo is fixed and verified
-(`git rev-list main | git grep` → 0 matches across 774 commits), backed up
-(`BACKUPS/pre_history_rewrite_20260823T134411Z.bundle`), but **the force-push to `main` is
-blocked by the harness's own safety classifier for me** — it must be run directly by the Owner:
-```
-cd /mnt/cachec/NOESAR_EVOLUTION
-git push --force https://<TOKEN>@github.com/komandante78/NOESAR-EVOLUTION.git main:main
-```
-Separately: `NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of the three leaked
-secrets. It is **not** rotated — it is a client credential this project presents to the
-external `DEBUG_EVOLUTION` project (out of this project's scope); rotating it here alone
-would break that integration without the Owner also updating the other side.
+No deploy-blocking item is open. `NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of
+the three leaked secrets (now gone from history, but not rotated) — it is a client credential
+this project presents to the external `DEBUG_EVOLUTION` project (out of this project's scope);
+rotating it here alone would break that integration without the Owner also updating the other
+side. `BACKUPS/pre_history_rewrite_20260823T134411Z.bundle` is the pre-rewrite recovery point,
+kept per rule 23 (never delete a backup within a phase).
 
 Three other independent threads are all at a clean stop:
 
@@ -118,8 +116,6 @@ grouped by the WebUI's 12 destinations, for both the repo and a future website.
   `noesar-authority-daemon` ever ships is an Owner architecture decision, not taken here.
 - `F-ROT-001` — not touched: the fix lives in `tools/deploy/redeploy.sh`, which warrants more
   care than this pass's remaining bounded scope (see findings-reviewed note above).
-- **Push of the rewritten history to `origin/main`** — blocked for me by the harness's safety
-  classifier (force-push to `main`). Owner must run it directly (`D-0666`, command above).
 - **`NOESAR_DEBUG_EVOLUTION_TOKEN` rotation** — not done; it authenticates this project to the
   external `DEBUG_EVOLUTION` project, so rotating it here alone breaks that integration without
   Owner coordination on the other side (`D-0666`).
@@ -140,11 +136,9 @@ grouped by the WebUI's 12 destinations, for both the repo and a future website.
 
 - `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; every
   diff this session was reviewed with a heuristic grep, clean, declared as heuristic.
-- `B-011` **round 2** (`D-0666`): a second cleartext-secret leak found and fixed locally;
-  push to `origin/main` still pending — see "LA PROSSIMA AZIONE" above, this is now the
-  single most important open item.
-- `B-013` **changed, not closed**: a GitHub token was supplied this session (used for local
-  fetch/rewrite verification only, never written to disk), so the blocker is no longer "no
-  credential" — it is that a `git push --force` to `main` is refused by the harness's own
-  safety classifier for me specifically. The Owner must run the push directly (command above).
+- `B-011` **CLOSED round 2** (`D-0666`): second cleartext-secret leak found, history rewritten,
+  Owner pushed directly, verified live via fresh fetch (0 matches remotely).
+- `B-013` **CLOSED**: Owner supplied a token and pushed the rewritten `main` directly (force-push
+  is refused for the assistant by the harness's own safety classifier — Owner ran it themselves).
+  Verified: `origin/main` matches local exactly.
 - No other new blocker.

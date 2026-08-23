@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0667 — README.md rewritten (was the unedited V4-era README from before D-0096, calling itself 'V4 Package 1', citing a 129/129 test count 20x stale, and naming the Owner's Unraid server directly -- a CLAUDE10 SS16 violation). FEATURES.md added: name+description per real, tested capability, grouped by the WebUI's own 12 destinations.",
-  "phase_status": "Verified this session: node tools/verify-source.mjs -> PASS. Every markdown link in the new README checked to resolve to a real tracked file.",
+  "current_phase": "D-0666/D-0667 pushed and VERIFIED live: origin/main = 4c947e6a4bb5609bc32cd980c0dcb7ae809a6842 (fresh authenticated fetch), zero occurrences of either leaked secret across the full remote history, README.md and FEATURES.md confirmed present on GitHub by reading them from the fetched remote.",
+  "phase_status": "Verified this session: git fetch (authenticated) + git rev-parse FETCH_HEAD matches local main exactly. git rev-list FETCH_HEAD | git grep for both raw secret strings -> 0 matches. git show FETCH_HEAD:README.md and :FEATURES.md both read back correctly.",
   "next_phase": "B-011 round 2 (D-0666): history rewritten locally and verified clean, NOT yet pushed -- git push --force to main is blocked by the harness's own safety classifier and must be run by the Owner directly (command given in chat). NOESAR_DEBUG_EVOLUTION_TOKEN still live and still in the (now locally-rewritten, not-yet-pushed) history -- NOT rotated: it is a client credential NOESAR EVOLUTION presents to the external DEBUG_EVOLUTION project, rotating it here alone would break that integration without Owner coordination on the other side.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "27e79004a65ddc7c1fc01f0fdf111fdde61105b7",
-  "last_updated_utc": "2026-08-23T14:40:00Z",
+  "last_updated_utc": "2026-08-23T15:15:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -70,7 +70,7 @@
       "id": "B-011",
       "severity": "low-deferred",
       "code": "SECRET_LEAK_IN_HISTORY=NOESAR_RUST_REASONING_TOKEN",
-      "summary": "REOPENED then re-closed 2026-08-23 (D-0666, round 2): B-011's own text was wrong -- it only verified through 2026-07-30. A second file, EVIDENCE/live_config_pre_phase6_deploy_20260805T162814Z.json (2026-08-05), carried THREE more cleartext secrets, one of them (NOESAR_DEBUG_EVOLUTION_TOKEN) still live when found. History rewritten again (main only, 774 commits, bundle backup taken), re-verified zero matches. NOESAR_DEBUG_EVOLUTION_TOKEN rotation and the force-push are the immediate next actions.",
+      "summary": "CLOSED 2026-08-23 round 2 (D-0666): Owner pushed the rewritten history directly (force-push blocked for the assistant by the harness's own safety classifier). VERIFIED this session via a fresh authenticated fetch: origin/main now matches local main exactly (4c947e6a4bb5609bc32cd980c0dcb7ae809a6842), and grep of the full fetched remote history for both raw secret values returns zero matches. Both leaks (D-0258's original 2 files, D-0666's third file) are confirmed gone from what GitHub actually serves.",
       "blocks_next_phase": false,
       "resolution_options": [
         "Rotate NOESAR_RUST_REASONING_TOKEN on the live container and atomd when the project reaches completion (Owner's stated timing).",
@@ -86,9 +86,9 @@
     },
     {
       "id": "B-013",
-      "severity": "low-deferred",
+      "severity": "resolved",
       "code": "GIT_PUSH=UNAUTHENTICATED",
-      "summary": "2026-08-22: git push origin main refused - no GitHub credential stored in this container (by design, B-001/rules 25-26: no token is ever persisted). 15 commits ahead of origin/main after this session (13 from the prior session + 2 from this one, e417aef and c91b647). Local repository is complete and correct; only the push is blocked.",
+      "summary": "CLOSED 2026-08-23: Owner supplied a token and pushed the rewritten main directly (force-push blocked for the assistant specifically; the Owner ran it from their own access). Verified: origin/main = 4c947e6a4bb5609bc32cd980c0dcb7ae809a6842, matches local exactly.",
       "blocks_next_phase": false,
       "resolution_options": [
         "The Owner supplies a fresh token (fine-grained, scoped to this repo) in a future session for a one-time ad-hoc push, never persisted, matching B-001s resolved precedent.",
@@ -1154,7 +1154,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0667 closed (README+FEATURES). D-0666 (history rewrite) is committed locally but the push to origin/main is blocked for me and needs the Owner to run it directly. NOESAR_DEBUG_EVOLUTION_TOKEN rotation needs Owner coordination with the external DEBUG_EVOLUTION project before I touch it.",
+  "next_action": "Security remediation (B-011 round 2) and repository presentation (README/FEATURES) both closed and pushed. NOESAR_DEBUG_EVOLUTION_TOKEN still needs Owner coordination with the external DEBUG_EVOLUTION project before rotation (unchanged). No other open blocker.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
