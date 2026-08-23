@@ -15622,3 +15622,22 @@ structure, only presentation and one added event.
 **Status.** Committed. **Not yet deployed to the live installation** — the Owner tested the
 running `d0651-image-caption-20260823T042521Z` image, which predates this fix; deployment is
 the next action in this same phase, per `CLAUDE10.md` §3a.
+
+## D-0670 · D-0669 deployed live, §3a full sequence, §5a cleanup — 2026-08-23T15:37:00Z
+**Decision.** Built `oci/Dockerfile` offline, deployed via `tools/deploy/redeploy.sh
+--apply --authorized-by-owner`, verified live, cleaned up per §5a.
+**Why.** The Owner tested the live page directly and asked for the fix to be visible
+there, not just committed — CLAUDE10.md §3a makes build+deploy+verify one phase.
+**Rejected.** None — the redeploy tool already implements the sequence; no manual
+alternative was considered.
+**Evidence.** Preflight+apply: image bytes 485/485 equal tree, 0 differing; replacement
+healthy, 4 children spawned, 0 auth-failure lines. Live `curl` after deploy: `/livez`
+`/readyz` 200, `readyz` body `ready:true`; `/app.js` and `/styles.css` served the exact
+D-0669 strings (`CHAT_CLEARED_KEY` ×4, `scrollIntoView` ×4, toolbar card rule ×1) — not
+inferred from the commit. §5a: pre/post `docker network ls`/`volume ls` diffed identical,
+non-project container count (50) unchanged, exactly 2 project containers survive.
+**Reversal cost.** None — `docker stop/rm/rename/start` against the preserved
+predecessor `noesar-evolution-pre-20260823T153622Z`, no migration involved.
+**Status.** applied and installed. `git push origin main` still pending — no credential
+in this session (`B-014`); the deploy read from the local tree, not the remote, so it
+did not depend on the push landing first.

@@ -22,11 +22,15 @@ fixed before trusting the result. Final: 516 checks, 515 pass, 1 pre-existing de
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Deploy `D-0669` (and everything since `d0651`) to the live installation — this is the actual
-next action, not yet done.** The Owner tested the running `d0651-image-caption-20260823T042521Z`
-image, which predates every fix in this handoff. Follow `CLAUDE10.md` §3a: build, prove
-image=tree, stop with grace, backup stopped, preserve predecessor, start with config read back,
-verify live, `§5a` cleanup.
+**`D-0669` is committed AND deployed live (`D-0670`).** Image `d0669-chat-fixes-20260823T153534Z`
+is running, healthy, 4 children, byte-equal to the tree (485/485). The three fixed strings were
+confirmed actually served via `curl` on `/app.js`/`/styles.css`, not inferred from the commit.
+`§5a` cleanup done — exactly two containers survive, networks/volumes diffed unchanged.
+
+**The one real open item: `git push origin main`.** Two commits (`6976232`, `228d616`) sit local
+only — no credential in this session (`B-014`). The deploy itself did not need it, since it
+builds from the local tree. Give the Owner a fresh PAT, or have them run the push directly from
+their own terminal.
 
 `NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of `D-0666`'s three leaked secrets (now
 gone from history, not rotated) — a client credential this project presents to the external

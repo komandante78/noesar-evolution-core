@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0669 — Three real #/chat defects Owner-reported live, all fixed: / menu scroll (1-line fix, matches sibling menu), /clear (was a total no-op, fixed with a client-side per-conversation watermark), toolbar grouping (Where/Version/Model now distinct cards, not a flat wrap). Full disposable e2e: 516 checks, 515 pass, 1 declared gap, 0 undeclared. Not yet deployed live.",
-  "phase_status": "Verified this session: tools/run-browser-e2e.sh (real login, real MFA, full disposable probe) -> 516 checks, 515 pass, 1 pre-existing declared gap (F-I18N-002), 0 undeclared failures, RETENTION=delete. node --test .../*.test.mjs -> 3095/3095 (1 pre-existing skip). ESLint 491/0. Toolbar CSS fix additionally screenshotted before/after via a disposable Puppeteer container against a standalone fixture.",
-  "next_phase": "D-0669 committed, not yet deployed. Live installation still runs d0651-image-caption-20260823T042521Z (this morning, before D-0656 onward). Deployment (build, verify image=tree, stop with grace, backup, preserve predecessor, start with config read back, verify live) is the immediate next action, per CLAUDE10.md SS3a.",
+  "current_phase": "D-0669/D-0670 — three live #/chat defects fixed and DEPLOYED live (redeploy.sh, image d0669-chat-fixes-20260823T153534Z). Verified served (curl on /app.js, /styles.css), healthy, 4 children, 0 auth-failure. Two survivors post §5a cleanup.",
+  "phase_status": "Deploy preflight+apply: 485/485 image bytes = tree, 0 differing. Live: /livez /readyz 200, readyz ready:true. §5a: networks/volumes diffed identical pre/post, non-project containers (50) unchanged.",
+  "next_phase": "git push origin main still pending (B-014, no credential in session) — the two commits 6976232/228d616 are local-only. Otherwise no open next phase; awaiting Owner direction.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "6976232f810fea66d4e6940272780f1ea67367c6",
-  "last_updated_utc": "2026-08-23T15:30:00Z",
+  "last_updated_utc": "2026-08-23T15:40:00Z",
   "last_commit_note": "6976232f810fea66d4e6940272780f1ea67367c6 = \"fix(phase-D-0669): repair three live #/chat defects the Owner reported directly\" (2026-08-23), 7 files, +234/-86. / menu scroll-into-view, /clear given a real client-side per-conversation watermark (was a total no-op), chat toolbar groups given actual card styling (Where/Version/Model). Full disposable e2e: 516 checks, 515 pass, 1 pre-existing declared gap, 0 undeclared. Not yet deployed live. Preceded by 5c272879 (this session's own D-0668 commit record).",
   "blockers": [
     {
@@ -93,6 +93,17 @@
       "resolution_options": [
         "The Owner supplies a fresh token (fine-grained, scoped to this repo) in a future session for a one-time ad-hoc push, never persisted, matching B-001s resolved precedent.",
         "The Owner pushes directly from their own authenticated machine."
+      ]
+    },
+    {
+      "id": "B-014",
+      "severity": "low-deferred",
+      "code": "PUSH_UNAUTHENTICATED",
+      "summary": "D-0669 (commits 6976232, 228d616) committed locally, NOT pushed: git push origin main fails with \"could not read Username\" -- no credential helper configured, no token in this session's environment (by design, rule 25/26: credentials are never persisted, each push needs a fresh token from the Owner). This is a normal fast-forward push, not a force-push -- the earlier B-013 force-push block does not apply here; it just needs a token.",
+      "blocks_next_phase": false,
+      "resolution_options": [
+        "Owner supplies a fresh PAT (repo scope) for this push only, not persisted.",
+        "Owner runs git push origin main directly from their own authenticated terminal."
       ]
     }
   ],
@@ -1154,7 +1165,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Building and deploying D-0669 (and everything since d0651) to the live installation next, in this same phase.",
+  "next_action": "Give the Owner a fresh PAT or have them run git push origin main directly to land the two D-0669 commits on the remote. No other open blocker on this line of work.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

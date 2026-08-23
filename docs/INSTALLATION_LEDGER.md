@@ -6079,3 +6079,32 @@ default su ogni profilo esistente.
 `visionCapable` qui — azione dell'Owner, non un gap di costruzione.
 **Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260823T013756Z`
 rimosso (`Exited (0)` confermato). Superstiti di progetto: **due**.
+
+## `d0669-chat-fixes-20260823T153534Z` — DEPLOYATO e verificato — 2026-08-23
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0669`: tre difetti reali di `#/chat` segnalati dall'Owner sul vivo —
+scroll del menu `/` mai portato in vista (ora `scrollIntoView`, come il menu gemello);
+`/clear` era un no-op totale (ora una watermark client-side per conversazione/ramo,
+`localStorage`, nessun messaggio cancellato); i gruppi della toolbar (`Where`/`Version`/
+`Model`) erano un bordo da 1px invisibile una volta andati a capo, ora tre card con
+sfondo e intestazione in grassetto.
+**Verifica.** Preflight: byte-uguale albero↔immagine **485/485**, differing **0**. Unit
+suite full, ESLint pulito (vedi commit `6976232`). browser-e2e disposable: **516
+controlli, 515 pass, 1 gap dichiarato preesistente (`F-I18N-002`), 0 non dichiarati**.
+Live, dopo il deploy: le tre stringhe di fix confermate SERVITE (`curl` diretto su
+`/app.js`/`styles.css`, non dedotto dal commit) — `CHAT_CLEARED_KEY` ×4,
+`scrollIntoView` ×4, la card CSS ×1.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, `/readyz` body
+`{"ready":true,"setupPending":false}`, 4 figli (postgres/api/codev/atom), 0
+auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260823T153622Z` (era
+`d0651-image-caption-20260823T042521Z`).
+**Costo di rollback — nessuno.** Nessuna migrazione, nessun cambio di schema; il fix
+`/clear` è puramente client-side.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260823T042542Z`
+rimosso (`Exited (0)` confermato). Reti e volumi invariati (diff contro l'inventario
+pre-pulizia). Container non di progetto: 50, invariati. Superstiti di progetto: **due**.
+**Non ancora fatto:** `git push origin main` — nessuna credenziale in questa sessione
+(`B-014`, nuovo blocker); i due commit `6976232`/`228d616` sono locali, il deploy ha
+letto dal working tree, non dal remoto, quindi non ne dipendeva.
