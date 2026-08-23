@@ -15476,3 +15476,42 @@ actually true: fixed at s336, now proven at the dispatch layer too, both halves.
 **Improvement proposal, funding fit: Restack · trait 5, measurable reliability** — third
 instance this session of the same lesson (dispatch-layer proof, not just engine-layer proof)
 now applied to a real SSRF/DNS-rebinding boundary rather than a functional-correctness one.
+
+## D-0666 · `B-011` round 2 — a second cleartext leak found, history rewritten again — 2026-08-23
+**Decision.** Owner-requested audit of "what should go online" found `EVIDENCE/live_config_
+pre_phase6_deploy_20260805T162814Z.json` (commit `d0def34`, 2026-08-05) — six days AFTER
+`D-0258`'s history rewrite and its own stated "process fix... never again" — carrying THREE
+cleartext secrets in a raw, never-redacted `docker inspect .Config.Env` dump:
+`NOESAR_RUST_REASONING_TOKEN`/`ATOM_TOKEN` (same value, already rotated on the live container
+since — dead credential, but still in history) and `NOESAR_DEBUG_EVOLUTION_TOKEN`, which
+**matched the live container's current value at the moment this was found** — a genuinely live,
+still-exposed credential, on a commit already an ancestor of `origin/main`. `B-011`'s own text
+("the cleartext token is gone from every commit... zero matches") was therefore false for this
+second file — it never checked past 2026-07-30. Owner authorised, verbatim: *"sistema tutto
+correggi tutto"*. Backed up (`git bundle create BACKUPS/pre_history_rewrite_20260823T134411Z.
+bundle --all`, verified). Confirmed scope first, not assumed: the file has exactly one blob
+across all 776 commits (never modified after creation) and is reachable only from `main` (not
+`extract/noesar-sandbox` or `phase-4/debug-evolution-api-targets`) — so the rewrite was scoped
+to `main` only, the other two branches untouched. `git filter-branch --tree-filter` (main only,
+774 commits) replaced all three values with `REDACTED_D-0666_...` placeholders. Re-verified: zero
+matches for either raw value across every commit reachable from `main`.
+**Why.** The Owner's own instruction, and the same reasoning `D-0258` already established: a
+secret that stays readable in a repository — private or not — is a defect regardless of
+publication status, and `NOESAR_DEBUG_EVOLUTION_TOKEN` was genuinely still live when found.
+**Rejected.** Trusting `B-011`'s "closed" status at face value and only fixing what this
+session's own audit happened to name — the whole reason this was found is that a stale finding
+was re-verified rather than assumed current, the same discipline already applied this session to
+`F-RUST-002` and `F4-010`.
+**Evidence.** `git rev-list main | git grep` for both raw values across every commit → 0 matches
+(post-rewrite). Pre-rewrite: confirmed the leak was isolated to exactly this one file/blob before
+touching anything. `docker inspect noesar-evolution` confirmed which of the two credentials was
+still live at time of discovery (`NOESAR_DEBUG_EVOLUTION_TOKEN`: match; `NOESAR_RUST_REASONING_
+TOKEN`/`ATOM_TOKEN`: no match, already rotated).
+**Reversal cost.** Every commit from `d0def34` onward has a new hash (774 commits rewritten,
+matching `D-0258`'s own stated cost for the same class of operation). Pre-rewrite state fully
+recoverable from the bundle. `PROJECT_STATE.json.last_commit` (pointed at a now-nonexistent hash)
+corrected in the same phase — the Stop hook caught the inconsistency, exactly as it is built to.
+**Status.** History rewritten locally, verified clean. **Push and the live `NOESAR_DEBUG_
+EVOLUTION_TOKEN` rotation are the next actions in this same phase**, not yet completed at the
+time this entry was written — declared, not implied. `B-011` updated below to stop claiming a
+completeness it did not have.

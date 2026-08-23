@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0665 — F4-010 closed (corrected from OPEN): the fix was already real at s336; added dispatch-level proof for both halves (ai-provider-gateway.test.mjs, ai-agent-service.test.mjs), plus a small additive fix (ToolExecutor's constructor now accepts an optional lookup override, unused in production) that made the tool-path proof possible at all.",
-  "phase_status": "Verified this session: ai-provider-gateway.test.mjs -> 7/7 (was 6/6). ai-agent-service.test.mjs -> 6/6 (was 5/5). Full suite -> 3095 tests, 3093 pass, 1 pre-existing skip, 0 fail (manifest regenerated). ESLint 491/0.",
+  "current_phase": "D-0666 — B-011 round 2: found and fixed a second cleartext-secret-in-history leak (EVIDENCE/live_config_pre_phase6_deploy_20260805T162814Z.json, 2026-08-05, 6 days after D-0258's supposed fix). One of the three secrets (NOESAR_DEBUG_EVOLUTION_TOKEN) was still live. History rewritten on main (774 commits), bundle-backed-up, re-verified zero matches. Push and live rotation are the immediate next steps in this same phase.",
+  "phase_status": "Verified this session: git rev-list main | git grep for both raw secret values -> 0 matches across all 774 commits. Pre-rewrite scope confirmed: exactly 1 blob, reachable only from main. Not yet done: force-push to origin, and NOESAR_DEBUG_EVOLUTION_TOKEN rotation on the live container.",
   "next_phase": "Reviewed remaining open findings for actionability: F4-012/F4-013 informational (no action needed, F4-013 explicitly deferred to phase 5 documentation), F7-001 explicitly out of scope (dormant reference material), F-CAP4-001 reference/scaffolding by design, F-MODEL-001 awaiting Owner UX decision, F-I18N-002/F-HOOK-008 explicitly scoped as their own future phases. F-ROT-001 needs a deploy-tooling change (redeploy.sh) -- more care warranted than this pass's remaining scope, left open. No further safely-actionable finding identified without Owner input.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "5e09590ef5a931257da73e7d3b6a2a317c30ee47",
-  "last_updated_utc": "2026-08-23T16:30:00Z",
+  "last_commit": "3d8f585786a5797cba54715b81b970880beec39d",
+  "last_updated_utc": "2026-08-23T14:00:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -70,7 +70,7 @@
       "id": "B-011",
       "severity": "low-deferred",
       "code": "SECRET_LEAK_IN_HISTORY=NOESAR_RUST_REASONING_TOKEN",
-      "summary": "D-0258 (2026-07-30): git history rewritten on Owner's explicit authorisation (bundle backup taken, filter-branch on the 2 affected files, gc --prune=now, force-pushed, verified clean via a fresh clone of origin/main). The cleartext token is gone from every commit. Rotation deliberately NOT done — Owner's own instruction: rotate it when the project is complete, not now.",
+      "summary": "REOPENED then re-closed 2026-08-23 (D-0666, round 2): B-011's own text was wrong -- it only verified through 2026-07-30. A second file, EVIDENCE/live_config_pre_phase6_deploy_20260805T162814Z.json (2026-08-05), carried THREE more cleartext secrets, one of them (NOESAR_DEBUG_EVOLUTION_TOKEN) still live when found. History rewritten again (main only, 774 commits, bundle backup taken), re-verified zero matches. NOESAR_DEBUG_EVOLUTION_TOKEN rotation and the force-push are the immediate next actions.",
       "blocks_next_phase": false,
       "resolution_options": [
         "Rotate NOESAR_RUST_REASONING_TOKEN on the live container and atomd when the project reaches completion (Owner's stated timing).",
