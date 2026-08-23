@@ -30,7 +30,11 @@ function stdioCall(tool,input,signal){
 }
 
 export class ToolExecutor{
-  constructor({vault,ledger}){this.vault=vault;this.ledger=ledger;}
+  // `lookup`: injectable DNS resolution, mirroring ProviderGateway's own `this.lookup` — unset
+  // in production (guardedFetch's own default, real node:dns, applies), overridable only by a
+  // test that needs to prove the "a name resolves inward at call time" refusal without a real
+  // DNS record (F4-010, D-0665).
+  constructor({vault,ledger,lookup}={}){this.vault=vault;this.ledger=ledger;this.lookup=lookup;}
   async execute(tool,input,{actorId='system',projectId=null,signal}={}){
     if(tool.disabled)throw err('Tool is disabled.',403);
     if(tool.external){if(!tool.consent?.granted)throw err('Explicit external-tool consent is required.',403);if(tool.consent.projectIds?.length&&(!projectId||!tool.consent.projectIds.includes(projectId)))throw err('Tool consent does not cover this project.',403);}
@@ -50,7 +54,8 @@ export class ToolExecutor{
       // address, and sending it through a guard whose job is to refuse those would break the
       // one case that is meant to work.
       const send=tool.external?guardedFetch:fetch;
-      const response=await send(url,{method:tool.config?.method??'POST',headers,body:['GET','HEAD'].includes(tool.config?.method)?undefined:JSON.stringify(payload),signal:combined});
+      const init={method:tool.config?.method??'POST',headers,body:['GET','HEAD'].includes(tool.config?.method)?undefined:JSON.stringify(payload),signal:combined};
+      const response=tool.external?await send(url,init,{lookup:this.lookup}):await send(url,init);
       const value=await readJson(response);if(!response.ok)throw err(`Tool request failed (${response.status}): ${value.error?.message??value.error??value.text??'unknown error'}`,502);
       if(tool.transport==='mcp-http'&&value.error)throw err(value.error.message??'MCP tool error',502);result=tool.transport==='mcp-http'?value.result:value;
     }

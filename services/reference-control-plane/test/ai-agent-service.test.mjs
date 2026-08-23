@@ -19,6 +19,35 @@ test('mutative agent steps require approval and expose progress',()=>{
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
+// F4-010 (D-0665). ToolExecutor.execute() pins the address for external tools via
+// guardedFetch (comment, tool-executor.mjs: "F4-010, closed s336") but guardedFetch's own
+// DNS lookup was never overridable per-call, so nothing could prove the refusal without a
+// real DNS record resolving inward. Added an optional `lookup` on the constructor,
+// mirroring ProviderGateway's own pattern, unset in production (guardedFetch's real
+// node:dns default still applies) and used only here.
+test('ToolExecutor.execute() refuses an external tool whose endpoint resolves to a private address at call time',async()=>{
+  const {CredentialVault}=await import('../src/ai-workspace/credential-vault.mjs');const {ToolExecutor}=await import('../src/ai-workspace/tool-executor.mjs');
+  const dir=mkdtempSync(join(tmpdir(),'noesar-tool-rebind-'));const vault=new CredentialVault({keyPath:join(dir,'vault.key')});
+  const executor=new ToolExecutor({vault,lookup:async()=>[{address:'10.0.0.5',family:4}]});
+  const tool={
+    id:'rebinding-tool', external:true, transport:'http', mutative:false,
+    // Not a literal private IP or LOCAL_HOSTS entry, so endpoint()'s string check passes at
+    // registration — the injected lookup is what makes it resolve inward at call time.
+    endpoint:'https://internal.example.test/execute',
+    consent:{granted:true,projectIds:[]}, disabled:false,
+    encryptedCredential:null, credentialEphemeral:false, timeoutMs:5000, config:{method:'POST'},
+  };
+  try{
+    await assert.rejects(
+      executor.execute(tool,{},{actorId:'tester'}),
+      (error)=>{
+        assert.match(error.message,/resolves to 10\.0\.0\.5, which is inside this installation's own network/);
+        return true;
+      },
+    );
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
 test('approved mutative HTTP tool step executes and records output',async()=>{
   const {createServer}=await import('node:http');const {CredentialVault}=await import('../src/ai-workspace/credential-vault.mjs');const {ToolExecutor}=await import('../src/ai-workspace/tool-executor.mjs');
   const server=createServer(async(req,res)=>{const chunks=[];for await(const c of req)chunks.push(c);res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({received:JSON.parse(Buffer.concat(chunks))}));});

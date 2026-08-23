@@ -74,3 +74,39 @@ test('provider comparison and fallback operate across enabled local profiles',as
 });
 
 test('default local and external provider profiles are provisioned disabled',()=>{const f=fixture();try{const created=f.gateway.ensureDefaults();assert.equal(created.length,4);const profiles=f.gateway.list();assert.deepEqual(new Set(profiles.map((item)=>item.type)),new Set(['local-openai-compatible','openai','anthropic','kimi']));assert.ok(profiles.every((item)=>item.enabled===false));}finally{rmSync(f.dir,{recursive:true,force:true});}});
+
+// F4-010 (D-0665). `validateBaseUrl()` refuses a LITERAL private address or metadata IP at
+// registration time (proven elsewhere), but a hostname that RESOLVES inward at call time is a
+// different attack, closed by `assertReachableAddress()`/`resolvePublicAddresses()` (comment,
+// provider-gateway.mjs: "F4-010, closed s336"). That fix had a real regression test for the
+// underlying primitive (address-guard.test.mjs) but none proving THIS gateway's own `complete()`
+// call path actually invokes it — the exact "engine tested, dispatch path never called" class of
+// gap this project has already found and fixed once for the socket protocol (F-TOOLS2-001).
+test('complete() refuses an external provider whose hostname resolves to a private address at call time, even though the literal string passed registration', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-provider-rebind-'));
+  const store = new AtomicJsonStore(join(dir, 'state.json'));
+  const vault = new CredentialVault({ keyPath: join(dir, 'provider.key') });
+  // `internal.example.test` is not a literal private IP or a name in LOCAL_HOSTS, so it passes
+  // `validateBaseUrl()`'s string check at registration — the injected lookup is what makes it
+  // resolve inward at the moment of the call, the scenario the fix's own comment names.
+  const gateway = new ProviderGateway({ store, vault, lookup: async () => [{ address: '10.0.0.5', family: 4 }] });
+  try {
+    const profile = gateway.create({
+      type: 'custom-openai-compatible', name: 'rebinding-external', external: true,
+      apiStyle: 'openai-chat', baseUrl: 'https://internal.example.test/v1', defaultModel: 'x',
+    });
+    gateway.grantConsent(profile.id, { granted: true, dataClasses: ['prompt'] });
+    gateway.update(profile.id, { enabled: true });
+
+    await assert.rejects(
+      gateway.complete(profile.id, { messages: [{ role: 'user', content: 'hi' }], actorId: 'tester' }),
+      (error) => {
+        assert.match(error.message, /resolves to 10\.0\.0\.5, which is inside this installation's own network/);
+        assert.equal(error.status, 502, 'complete() wraps the refusal as a provider-request failure, not a raw throw');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

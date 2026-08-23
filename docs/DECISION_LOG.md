@@ -15440,3 +15440,39 @@ Owner rather than closed on a false premise. **Improvement proposal, funding fit
 packaging/architecture decision about which control-plane implementation ships is not itself a
 delimited, reusable, fundable unit; naming one here would be the stretched claim this project's
 own funding-fit skill warns against.
+
+## D-0665 · `F4-010` — the fix was real, only its dispatch-level proof was missing — 2026-08-23
+**Decision.** Investigated `F4-010` ("provider and tool URL validation checks the hostname
+string, not the address actually reached") before treating it as unfixed work, and found — like
+`F-RUST-002` — that its own record no longer matched the code: `provider-gateway.mjs` and
+`tool-executor.mjs` both carry `// F4-010, closed s336` comments, and both call a real
+name-resolution guard (`assertReachableAddress`/`resolvePublicAddresses` for providers,
+`guardedFetch`, pinned, for tools) from `address-guard.mjs`, which has 21 of its own passing
+tests. What was missing was not the fix — it was proof that each caller's own dispatch path
+actually reaches it, the exact "engine tested, calling layer never proven to invoke it" gap
+`F-TOOLS2-001` already named for the socket protocol. Added one test per path: `ai-provider-
+gateway.test.mjs` proves `ProviderGateway.complete()` refuses a provider whose hostname resolves
+inward via an injected `lookup` (the gateway already threaded this through); `ai-agent-
+service.test.mjs` proves `ToolExecutor.execute()` does the same — this one required a small,
+additive fix first: `ToolExecutor`'s constructor never accepted a `lookup` override at all, so
+`guardedFetch`'s own injectable resolution seam was unreachable from any test without a real DNS
+record. Added `lookup` to the constructor, mirroring `ProviderGateway`'s identical pattern,
+unset in production (the real `node:dns` default still applies unchanged).
+**Why.** A security fix with no test proving its own call site invokes it is one edit away from
+silently regressing — exactly what this project's own governance already flagged as its worst
+repeat failure class, now checked mechanically instead of by re-reading a comment each time.
+**Rejected.** Nothing scoped out — both halves of the finding (provider, tool) got their proof.
+**Evidence.** `node --test services/reference-control-plane/test/ai-provider-gateway.test.mjs`
+→ 7/7 (was 6/6). `node --test services/reference-control-plane/test/ai-agent-service.test.mjs`
+→ 6/6 (was 5/5). Full suite → 3095 tests, 3093 pass (1 pre-existing skip), 0 fail once
+`MANIFEST.sha256` was regenerated (the one pre-regeneration failure was exactly that, not a real
+defect — declared). `tools/run-eslint.sh` → 491 files/0 errors.
+**Reversal cost.** None for the tests. The `ToolExecutor` constructor change is additive
+(`lookup` optional, undefined by default) and does not change production behaviour — proven by
+the untouched success-path tests (`ai-agent-service.test.mjs`'s existing HTTP-tool test) still
+passing unchanged.
+**Status.** applied. `F4-010` CLOSED — corrected from "OPEN - accepted" to reflect what was
+actually true: fixed at s336, now proven at the dispatch layer too, both halves.
+**Improvement proposal, funding fit: Restack · trait 5, measurable reliability** — third
+instance this session of the same lesson (dispatch-layer proof, not just engine-layer proof)
+now applied to a real SSRF/DNS-rebinding boundary rather than a functional-correctness one.
