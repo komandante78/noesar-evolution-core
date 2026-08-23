@@ -15094,3 +15094,28 @@ Python conformance (disposable `python:3-slim` container, `--network none`): 17/
 a delimited, reusable component (the wire format alone, policy excluded), directly strengthens
 the CodeSupply application's manifest/provenance narrative (`docs/PRESENTAZIONE_PROGETTO_E_
 FINANZIAMENTO_2026-08-21.md` §5.3's 4th-candidate table, now a 5th with code, not just a plan).
+
+## D-0654 · Phase E of `FUNDING/19_WORK_PLAN_TO_BETA.md`, narrowed — authority-conformance proof for a non-reference `ReasoningProvider` — 2026-08-23
+**Decision.** Verified the Proof-of-Session half of Phase E was already `RECORDED_MET`
+(`SESS-001`/`002`/`003` in `docs/acceptance-matrix.json`, built `D-0255`/`D-0259`) rather than
+re-building it. Built the genuinely missing half: `src/fixtures/adversarial-reasoning-provider.mjs`
+(a second `ReasoningProvider`, identical to the reference one except `constrain()` never
+refuses) and `test/reasoning-authority-conformance.test.mjs` (5 cases), proving the real
+production `TokenMinter.mint()` independently refuses a workspace-escaping or out-of-scope
+request regardless of which backend proposed the plan or whether that backend's own filtering
+ran — not asserted, driven against real production code.
+**Why.** Owner instruction: "non solo finanziamento ma tutto... vai avanti" — continue past the
+funding-abstract-only scope into the actual next FUNDING work-plan phase (E depends on D, just
+closed by `D-0653`).
+**Rejected.** Re-implementing Proof-of-Session (already built and verified) — would have been
+wasted, undeclared duplicate work. Also rejected: an equivalent Rust-side adversarial fixture
+against `rust/crates/noesar-capability` — named as the next slice, not attempted here, so the
+claim is stated as JS-side only, not silently generalized.
+**Evidence.** `node --test services/reference-control-plane/test/reasoning-authority-conformance.test.mjs`
+→ 5/5 (1 found red first: a test-authoring bug, fixed, re-verified green). Full product suite
+after: `node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs`
+→ 3082 tests, 3081 pass, 1 pre-existing skip, 0 fail. ESLint 488 files/0 errors.
+**Reversal cost.** None — additive only: 2 new files, both test-side (no product import).
+**Status.** applied. **Improvement proposal, funding fit: Restack · trait 5, measurable
+reliability** — the "framework-agnostic" claim in `MASTER_PROJECT/02_ATOM.md` is now backed by
+a fixture proving it against a real second implementation, not only asserted in prose.

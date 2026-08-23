@@ -6,7 +6,8 @@ shipped direct agent-creation from chat (`D-0648`), decomposed `§4#10` multimod
 three phases (`D-0649`), closed the audio item (`D-0650`), and closed the images item
 (`D-0651`) — both `§4#10` gaps D-0649 found are now built. Six deploys this session, all
 verified live. Reclassified Kokoro→GPU out of scope (`D-0652`). Built and tested
-`packages/capability-token/` — Phase D of the funding work plan (`D-0653`).
+`packages/capability-token/` — Phase D of the funding work plan (`D-0653`). Built the
+authority-conformance fixture and closed Phase E's JS half (`D-0654`).
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -16,13 +17,16 @@ No deploy-blocking item is open. Two independent threads are both at a clean sto
 
 **Funding (`FUNDING/19_WORK_PLAN_TO_BETA.md`):** Phase D done (`D-0653`,
 `packages/capability-token/`, 32/32 JS + 17/17 Python conformance, byte-identical against the
-live `TokenMinter`). Remaining phases E (`ReasoningProvider` conformance suite +
-Proof-of-Session format), F (cross-platform evidence on ≥2 real host classes) and G
-(independent pentest — external party only, cannot be scheduled by this project alone) are
-**not started**, and none is due before the NLnet deadline (3 Nov 2026) — they are the funded
-work itself, not a submission prerequisite. The actual next action for the deadline is writing
-the CodeSupply abstract/milestones/budget (`D-0631`, not started) once the application form
-publishes (~3 Sep 2026).
+live `TokenMinter`). Phase E's JS half done (`D-0654`): Proof-of-Session was already
+`RECORDED_MET` (`SESS-001/002/003`), and the genuinely missing authority-conformance suite now
+proves the real `TokenMinter` contains an adversarial, never-filtering `ReasoningProvider` — 5/5
+cases. **Not built**: the same proof for the Rust authority daemon (named open in `D-0654`).
+Remaining: Phase F (cross-platform evidence on ≥2 real host classes) and Phase G (independent
+pentest — external party only, cannot be scheduled by this project alone). Neither is due before
+the NLnet deadline (3 Nov 2026) — they are the funded work itself, not a submission
+prerequisite. The actual next action for the deadline is writing the CodeSupply
+abstract/milestones/budget (`D-0631`, not started) once the application form publishes
+(~3 Sep 2026).
 
 No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
@@ -56,13 +60,23 @@ capability-token-package-extraction.test.mjs`). A from-spec Python implementatio
 17/17 vectors in a disposable container. **Neither production minter imports this package
 yet** — named as an open decision in the package's own `README.md`, not done silently.
 
+**`D-0654`:** `src/fixtures/adversarial-reasoning-provider.mjs` is a second, real
+`ReasoningProvider` implementation — identical to the reference one except `constrain()` never
+refuses. `test/reasoning-authority-conformance.test.mjs` drives it through the REAL
+`TokenMinter.mint()`/`authorizePlan()` (nothing mocked) and proves workspace-escape and
+step-membership containment hold regardless of whether the backend's own filtering ran. One
+case found genuinely red first during authoring (a test bug, not a product bug), fixed,
+re-verified.
+
 ## WHAT WAS **NOT** DONE
 
 - Kokoro→GPU — out of scope (`D-0652`), not built.
 - Production Rust/JS minters were **not** rewired to import `packages/capability-token/`
   — real architecture change to security-critical code, deliberately left as an open
   decision rather than taken inside this phase (`D-0653`).
-- FUNDING Phases E/F/G — not started, and not due before the deadline (see above).
+- The Rust-side equivalent of `D-0654`'s authority-conformance proof — not built, named
+  open in `D-0654`. The JS half is proven; the Rust authority daemon is not, yet.
+- FUNDING Phases F/G — not started, and not due before the deadline (see above).
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged all session). Commits are complete and correct locally.
 
