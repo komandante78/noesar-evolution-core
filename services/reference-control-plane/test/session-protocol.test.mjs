@@ -27,6 +27,7 @@ import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
 import { ContextGraph } from '../src/ai-workspace/context-graph.mjs';
 import { INVARIANT_ENFORCEMENT } from '../src/path-auth.mjs';
 import { buildCodenAddressBook } from '../src/coden-address-book.mjs';
+import { gitStatus } from '../src/git-status.mjs';
 
 const WEB_ROOT = new URL('../../../apps/webui-static/', import.meta.url).pathname;
 
@@ -97,6 +98,10 @@ before(async () => {
     // proved separately by the catalogue's own tests; what THIS test proves is the wiring:
     // an empty id reaches this thunk at all, through the real socket and dispatch.
     listInstalledModels: () => ({ models: [{ id: 'test-model', lane: 'downloaded' }] }),
+    // F-TOOLS2-001 (D-0663): the real production reader (services/reference-control-plane's
+    // own server.mjs wires this exact function), not a stub — coden.gitStatus's dispatch route
+    // had never been driven by a test the way sibling methods are, only the underlying reader.
+    gitStatus,
   });
   socketPath = join(ws, 'tui-test.sock');
   // The await IS the readiness wait since s326: the promise resolves only once the socket
@@ -296,6 +301,41 @@ describe('session protocol — unix socket transport', () => {
 
     const trail = await call(authenticatedSocket, 'events.correlation', { correlationId: planned.runId });
     assert.ok(trail.events.map((event) => event.action).includes('workspace_action.promoted'));
+  });
+
+  // F-TOOLS2-001 (D-0663): workspace.reject's engine method (orch.reject()) was already
+  // unit-tested in workspace-actions.test.mjs, but the socket dispatch route that a real
+  // `/reject` keystroke actually goes through had never been called by any test.
+  test('workspace.reject over the socket reaches the same orchestrator as approve/restore', async () => {
+    const planned = await call(authenticatedSocket, 'workspace.plan', {
+      request: 'a plan the socket will reject', files: [{ path: 'reject-me.txt', contents: 'x' }],
+    });
+    const rejected = await call(authenticatedSocket, 'workspace.reject', { runId: planned.runId, reason: 'not needed' });
+    assert.deepEqual(rejected, { runId: planned.runId, status: 'REJECTED' });
+
+    const trail = await call(authenticatedSocket, 'events.correlation', { correlationId: planned.runId });
+    assert.ok(trail.events.map((event) => event.action).includes('workspace_action.rejected'));
+  });
+
+  // F-TOOLS2-001 (D-0663): same gap, for /simulate. orch.simulate() was unit-tested; the
+  // dispatch route was not.
+  test('workspace.simulate over the socket reaches the same orchestrator, and carries the reference provider\'s honest unsupported answer through unchanged', async () => {
+    const planned = await call(authenticatedSocket, 'workspace.plan', {
+      request: 'a plan the socket will simulate', files: [{ path: 'simulate-me.txt', contents: 'x' }],
+    });
+    const simulated = await call(authenticatedSocket, 'workspace.simulate', { runId: planned.runId });
+    assert.equal(simulated.runId, planned.runId);
+    assert.equal(simulated.executed, false, 'simulate() must never execute, whatever the provider answers');
+    assert.equal(simulated.simulation.supported, false, 'the reference provider declares simulate unsupported rather than faking a prediction');
+  });
+
+  // F-TOOLS2-001 (D-0663): same gap, for /git. gitStatus() itself was unit-tested in
+  // git-status.test.mjs; the coden.gitStatus dispatch route was not, and this is the real
+  // reader (see the `gitStatus` import above), not a stub — proving the socket reaches the
+  // actual production function, over a real (non-git) temp workspace.
+  test('coden.gitStatus over the socket reaches the real reader', async () => {
+    const status = await call(authenticatedSocket, 'coden.gitStatus', {});
+    assert.deepEqual(status, { available: false, reason: 'not_a_git_repository' });
   });
 
   // Point 4b, the half of the Owner's decision that has to be enforced rather than displayed:

@@ -15375,3 +15375,68 @@ remains open as its own, narrower question — untouched by this closure, named 
 inside a finding that is otherwise done. **Improvement proposal, funding fit: Restack · trait 5,
 measurable reliability** — the whole Rust workspace's untested-logic surface, measured at the
 start of this session as 8/20 crates, is now 0/20 with real logic unverified.
+
+## D-0663 · `F-TOOLS2-001` fixed — the socket dispatch route, not just the engine — 2026-08-23
+**Decision.** Owner: "NON DEVI FERMARTI!! ... VAI AVANTI A FINIRE TUTTO" — continued straight
+into the next tracked, bounded, unblocked finding rather than pausing again. Added 3 tests to
+`services/reference-control-plane/test/session-protocol.test.mjs`, exercising exactly the gap
+the finding named: `orch.reject()`/`orch.simulate()`/`gitStatus()` were already unit-tested, but
+`workspace.reject`/`workspace.simulate`/`coden.gitStatus` — the socket dispatch routes a real
+`/reject`, `/simulate` and `/git` keystroke actually goes through — had never been called by any
+test. Wired the REAL `gitStatus` (`services/reference-control-plane/src/git-status.mjs`, the
+same function `server.mjs` itself imports) into the test harness's `createSessionDispatch`
+config, not a stub, so the new `coden.gitStatus` test proves the socket reaches production code,
+not a double of it.
+**Why.** The finding's own framing is the point: an engine method with a passing unit test says
+nothing about whether the layer a real client actually calls routes to it correctly — this
+project has already found and fixed exactly that class of gap in the browser terminal
+(`F-COMMAND-001`/`F-PANEL-001`, D-0461/D-0512-era).
+**Rejected.** Nothing scoped out — all three commands got a real dispatch-level test.
+**Evidence.** `node --test services/reference-control-plane/test/session-protocol.test.mjs` →
+32/32 (was 29/29). Full suite `node --test services/reference-control-plane/test/*.test.mjs
+packages/*/test/*.test.mjs` → 3093 tests, 3092 pass (1 pre-existing skip), 0 fail once
+`MANIFEST.sha256` was regenerated for the new lines (the one failure observed pre-regeneration
+was exactly that, not a real defect — declared, not silently dismissed). `tools/run-eslint.sh` →
+491 files/0 errors.
+**Reversal cost.** None — test-only, no production code changed.
+**Status.** applied. `F-TOOLS2-001` CLOSED. **Improvement proposal, funding fit: none** — this
+is dispatch-layer regression coverage for an already-shipped surface, not a delimited reusable
+component; naming a platform here would be the stretched claim `noesar-evolution-funding-fit`
+§5 warns against.
+
+## D-0664 · `F-RUST-002` corrected — the packaging picture was smaller than what's actually true — 2026-08-23
+**Decision.** Investigated the finding split out of `F-RUST-001`'s closure ("3 crates compile
+but reach no `oci/*.Dockerfile`") before treating it as actionable, and found its own premise
+undercounted the fact by an order of magnitude. Measured: the canonical `oci/Dockerfile` builds
+and ships exactly **two** Rust binaries, `noesar-supervisor` and `noesar-sandbox`
+(`cargo build --offline --locked --release -p noesar-supervisor -p noesar-sandbox`). A separate,
+standalone pipeline, `rust/build-authority-release.sh`, builds and provenance-seals exactly one
+more, `noesar-authority-daemon`, deliberately outside the product image (`docs/
+RUST_BUILD_PROVENANCE_V060.md`: locked release build, exact SHA-256, deterministic source-tree
+hash, own test/conformance report — a heavier, independently-verifiable chain than a Dockerfile
+`COPY` gives). **That leaves 17 of 20 crates unpackaged, not 3** — and of those 17, most (all but
+`noesar-control-plane`) are **library** crates with no `[[bin]]` target at all, so "not in a
+Dockerfile" was never a meaningful criterion for them; only `noesar-control-plane` is a real,
+standalone binary that compiles and ships nowhere. Its own `health()` endpoint already says so
+in plain text: `"authorityDaemon":"source-present-not-built"`.
+**Why.** `noesar-evolution` step 7 (HUNT AND FIX) requires triage before repair, and a finding
+whose own count is wrong is not ready to be acted on — repairing "3 crates" worth of packaging
+would have left the real, order-of-magnitude-larger fact unrecorded.
+**Rejected.** Wiring `noesar-control-plane` into `oci/Dockerfile`, or building any of the other
+16 library crates into an image — a real product/architecture decision (which control-plane
+implementation the product ships, whether the JS `services/reference-control-plane` or this
+Rust source-candidate one, is not this phase's call), and `CLAUDE10.md` rule 77 names
+"deployment" and architecture decisions among what stops for the Owner rather than being taken
+silently.
+**Evidence.** `grep -n "cargo build\|--bin" oci/Dockerfile` → exactly `-p noesar-supervisor -p
+noesar-sandbox`. `grep -n "cargo build\|--bin" rust/build-authority-release.sh` → exactly
+`--bin noesar-authority-daemon`. `find rust/crates -name main.rs` confirms only
+`noesar-authority-daemon` and `noesar-control-plane` are binary crates; the other 18 are
+libraries.
+**Reversal cost.** None — a corrected record, no code touched.
+**Status.** applied. `F-RUST-002`'s summary and status corrected in `PROJECT_STATE.json` to the
+measured picture; left **OPEN**, correctly scoped now, as an architecture question for the
+Owner rather than closed on a false premise. **Improvement proposal, funding fit: none** — a
+packaging/architecture decision about which control-plane implementation ships is not itself a
+delimited, reusable, fundable unit; naming one here would be the stretched claim this project's
+own funding-fit skill warns against.
