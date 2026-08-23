@@ -106,11 +106,15 @@ function declaredFamilyOf(mimeType,extension){
   return null;
 }
 
-export function extractorCapabilities(){
+export function extractorCapabilities({visionCapableProviderCount=0}={}){
   const command=(name)=>run('sh',['-c',`command -v ${name}`],{maxBuffer:4096}).ok;
   return{
     text:true,archives:command('unzip'),pdf:command('pdftotext'),ocr:command('tesseract'),mediaMetadata:command('ffprobe'),
     officeXml:command('unzip'),audioVideoTranscription:voiceRoutingFrom()[VoiceJob.TRANSCRIBE]?.endpoint?'configured':'not-configured',
+    // `D-0651`: declared, from the operator's own provider profiles — see `visionCapable` on
+    // `provider-gateway.mjs`'s profile shape. Passed in rather than read here: this function has
+    // no store, and reading one just to count a field would be a second, narrower store reader.
+    imageCaption:visionCapableProviderCount>0?'configured':'not-configured',
     limits:{maxInputBytes:MAX_INPUT,maxExtractedTextBytes:MAX_TEXT,maxArchiveEntries:MAX_ENTRIES,maxArchiveEntryBytes:MAX_ENTRY},
   };
 }
@@ -119,8 +123,14 @@ export class FileExtractor{
   // `transcribeImpl`/`routingImpl`/`runImpl` are injectable so a test can prove the wiring
   // below without a real speech server or `ffprobe` on the runner — every production call
   // site constructs this with no overrides and gets the real `voice-engine.mjs` and `spawnSync`.
-  constructor({blobRoot,transcribeImpl=transcribe,routingImpl=voiceRoutingFrom,runImpl=run,fetchImpl}){
-    this.blobRoot=blobRoot;this.transcribeImpl=transcribeImpl;this.routingImpl=routingImpl;this.run=runImpl;this.fetchImpl=fetchImpl;
+  // `captionImpl` has no module-level default: unlike voice routing (read from `process.env`),
+  // a vision-capable provider lives in the operator's provider profiles behind a `ProviderGateway`
+  // instance this file never holds — `server.mjs` is the one place both exist, so it is the one
+  // place that builds the bound function (`vision-caption.mjs`'s `captionImage`). `null` means
+  // "no captioning wired", handled the same as "no provider configured" — a declared gap, not a
+  // silent skip.
+  constructor({blobRoot,transcribeImpl=transcribe,routingImpl=voiceRoutingFrom,runImpl=run,fetchImpl,captionImpl=null}){
+    this.blobRoot=blobRoot;this.transcribeImpl=transcribeImpl;this.routingImpl=routingImpl;this.run=runImpl;this.fetchImpl=fetchImpl;this.captionImpl=captionImpl;
     mkdirSync(blobRoot,{recursive:true,mode:0o700});
   }
   delete(blobId){if(!/^[0-9a-f-]{36}$/i.test(String(blobId)))return false;rmSync(join(this.blobRoot,String(blobId)),{recursive:true,force:true});return true;}
@@ -198,7 +208,26 @@ export class FileExtractor{
         text=parts.join('\n').trim();metadata={entries:all.length,textEntries:selected.length};if(!text){status='indexed_metadata';warning='Archive inventory stored; no supported text entries extracted.';}
       }
     }else if(IMAGE_EXTENSIONS.has(extension)||mimeType.startsWith('image/')){
-      extractor='tesseract-ocr';const result=this.run('tesseract',[path,'stdout']);if(result.ok)text=result.stdout;else{status=result.available?'extraction_failed':'extractor_unavailable';warning=result.error;}
+      extractor='tesseract-ocr';const ocr=this.run('tesseract',[path,'stdout']);
+      if(ocr.ok)text=ocr.stdout;else{status=ocr.available?'extraction_failed':'extractor_unavailable';warning=ocr.error;}
+      // OCR reads text PRINTED IN an image. A photograph with no printed text extracted nothing
+      // and was reported `complete` with empty text — indistinguishable from "nothing is there".
+      // The fallback below (`D-0651`) only fires when OCR itself found no text, whether it ran
+      // and came up empty or could not run at all — the end state ("no text yet") is the same.
+      if(!text.trim()&&this.captionImpl){
+        const caption=await this.captionImpl({bytes,mimeType});
+        if(caption?.configured&&caption.text){
+          text=caption.text;extractor=ocr.ok?'tesseract-ocr+vision-caption':'vision-caption';status='complete';warning=null;
+          metadata.caption={model:caption.model,providerId:caption.providerId};
+        }else if(caption?.configured&&caption.failed){
+          status='caption_failed';
+          const ocrNote=ocr.ok?'No text found by OCR.':String(warning??'').replace(/\.?$/,'.');
+          warning=`${ocrNote} Caption attempt failed: ${(caption.failures??[]).map((item)=>item.error).join('; ')||'unknown error'}`;
+        }else if(ocr.ok){
+          status='caption_required';
+          warning=caption?.reason??'No text found by OCR. Configure a vision-capable provider (Settings → Providers) for a caption fallback.';
+        }
+      }
     }else if(MEDIA_EXTENSIONS.has(extension)||mimeType.startsWith('audio/')||mimeType.startsWith('video/')){
       extractor='ffprobe';const result=this.run('ffprobe',['-v','error','-show_format','-show_streams','-of','json',path]);
       if(result.ok){

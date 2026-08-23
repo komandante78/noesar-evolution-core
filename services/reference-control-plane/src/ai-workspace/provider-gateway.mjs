@@ -244,6 +244,13 @@ export class ProviderGateway {
         // null means "unknown", not zero — the operator states it, or the ctx% field that
         // reads it stays "—" rather than dividing by an invented denominator.
         contextWindow:Number.isFinite(Number(input.contextWindow)) && Number(input.contextWindow) > 0 ? Math.trunc(Number(input.contextWindow)) : null,
+        // Declared, never probed — the same posture as `contextWindow` above. No provider style
+        // here reports "I understand images", so the operator states it. This is the concept
+        // `docs/ai-workspace/FILES_RAG_MULTIMODAL.md`'s image captioning fallback reads
+        // (`vision-caption.mjs`, `D-0651`): a model this false for cannot be offered for the job
+        // it was never declared to do, the same rule `model-catalog.mjs`'s `TYPES` already holds
+        // for the local runtime.
+        visionCapable:Boolean(input.visionCapable),
         consent:{ granted:false, grantedAt:null, projectIds:[], dataClasses:[], allowTools:false, anonymize:true },
         timeoutMs:Math.min(Math.max(Number(input.timeoutMs ?? 120_000), 1_000), 600_000),
         priority:Number.isFinite(Number(input.priority)) ? Number(input.priority) : 100, modes:Array.isArray(input.modes) ? input.modes.map((value)=>String(value).toUpperCase()).filter((value)=>['ASK','CREATE','ACT'].includes(value)) : ['ASK','CREATE','ACT'], fallbackProviderIds:Array.isArray(input.fallbackProviderIds) ? input.fallbackProviderIds.map(String) : [],
@@ -261,6 +268,7 @@ export class ProviderGateway {
       for (const key of ['name','defaultModel']) if (patch[key] !== undefined) profile[key] = String(patch[key]).slice(0,200);
       if (patch.models) profile.models = patch.models.map(String).slice(0,100);
       if (patch.contextWindow !== undefined) profile.contextWindow = Number.isFinite(Number(patch.contextWindow)) && Number(patch.contextWindow) > 0 ? Math.trunc(Number(patch.contextWindow)) : null;
+      if (patch.visionCapable !== undefined) profile.visionCapable = Boolean(patch.visionCapable);
       if (patch.enabled !== undefined) profile.enabled = Boolean(patch.enabled);
       if (patch.external !== undefined) { profile.external = Boolean(patch.external); profile.baseUrl = validateBaseUrl(profile.baseUrl, profile.external); }
       if (patch.timeoutMs !== undefined) profile.timeoutMs = Math.min(Math.max(Number(patch.timeoutMs),1000),600000);

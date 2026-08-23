@@ -15017,3 +15017,39 @@ installation, so the capability is live, not dormant. `/livez`/`/readyz`/`/healt
 it yet — the upload UI could show "will be transcribed" vs "metadata only" before the
 file is sent. **Funding fit: none** — a UI affordance for an already-working backend
 capability, not a delimited reusable component.
+
+## D-0651 · `§4#10` images — OCR gets a vision-caption fallback — 2026-08-23
+**Decision.** New concept: `visionCapable` on a provider profile (`provider-gateway.mjs`
+`create()`/`update()`), declared by the operator like `contextWindow`, never probed — no
+provider style reports "I understand images". New module `vision-caption.mjs`:
+`captionImage()` tries enabled+`visionCapable` profiles in priority order, building the
+`openai-chat` (`image_url`) or `anthropic-messages` (base64 `image` source) content shape
+per profile — the two wire shapes this product can verify against documented contracts;
+`openai-responses`' own multimodal shape has never been exercised here and is refused,
+not guessed. `file-extractors.mjs`'s image branch calls it when OCR (ran empty or was
+unavailable) leaves no text, reusing the RAG pipeline unchanged. WebUI: a "Vision-capable
+(image captioning)" checkbox on each provider card (Settings → Providers), PATCHing the
+same field.
+**Why.** D-0649's own proposed shape, item 2 — a photo with no printed text extracted
+nothing and was reported `complete`, indistinguishable from "nothing is there".
+**Rejected.** Guessing the `openai-responses` input shape to cover all three `apiStyle`s —
+unverifiable without a live account, the exact fabricated-shape risk rule 40 refuses.
+**Evidence.** 16 new tests (`vision-caption.test.mjs` ×10, `file-extractor-caption.
+test.mjs` ×6) proving selection, both wire shapes, the fallback chain, and all five
+extractor outcomes (caption succeeds/fails/unconfigured, OCR-found-text unaffected,
+OCR-unavailable-with-caption) against injected fakes. Full suite 3044/3045 (1
+pre-existing skip), ESLint 481/0/0, bytes-equal tree↔image 482/482 differing 0,
+browser-e2e PASS (`RETENTION=delete only-declared-gaps-failed` — no new regression).
+Screenshot of the live disposable probe's Settings → Providers panel (`tools/page-
+screenshot.mjs`) confirms the checkbox renders on all 4 default provider cards, labelled,
+unchecked by default — seen rendered, not deduced from markup.
+**Reversal cost.** None — additive; `visionCapable` defaults false; existing sources are
+untouched until re-uploaded.
+**Status.** applied, deployed (`d0651-image-caption-…`), verified live. Dormant on this
+installation: no provider is yet marked `visionCapable` here — the Owner's own action,
+not a build gap.
+
+**Improvement proposal (recorded, not built).** Extend `vision-caption.mjs` to the
+`openai-responses` style once its multipart input shape can be checked against a live
+response — small, isolated, the same module, no new concept. **Funding fit: none** — a
+correctness extension to an already-shipped capability, not a new reusable component.

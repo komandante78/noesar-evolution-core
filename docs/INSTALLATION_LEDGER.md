@@ -6053,3 +6053,29 @@ auth-failure.
 `transcription_required` restano invariate finché non ri-caricate.
 **Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260822T165007Z` rimosso
 (`Exited (0)` confermato). Superstiti di progetto: **due**.
+
+## `d0651-image-caption-20260823T042521Z` — DEPLOYATO e verificato — 2026-08-23
+**Tag.** Costruito offline (`docker build --pull=false`, exit 0), installato con
+`tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0651`: il ramo immagine dell'estrattore ora tenta una didascalia
+vision quando l'OCR non trova testo (eseguito ma vuoto, o non disponibile) — nuovo
+concetto `visionCapable` sul profilo provider, dichiarato dall'operatore, mai dedotto;
+`vision-caption.mjs` prova i provider abilitati in ordine di priorità nei due formati
+verificabili (`openai-chat`, `anthropic-messages`). Checkbox "Vision-capable" aggiunta
+a ogni card provider in Settings → Providers.
+**Verifica.** Byte-uguale albero↔immagine **482/482**, differing **0**. Unit
+**3044/3045** (1 skip preesistente, **+16 nuovi test**), ESLint **481/0/0**,
+browser-e2e PASS (`RETENTION=delete only-declared-gaps-failed`, nessuna regressione
+nuova). Screenshot del pannello Providers dal probe live dimostra il checkbox
+renderizzato su tutte e 4 le card di default, etichettato, deselezionato — visto
+renderizzato, non dedotto dal markup.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` `/healthz` **200**, 4 figli, 0
+auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260823T042542Z` (era
+`d0650-audio-transcription-20260823T013721Z`).
+**Costo di rollback — nessuno.** Nessuna migrazione; `visionCapable` è `false` di
+default su ogni profilo esistente.
+**Dormiente su questa installazione:** nessun provider è ancora marcato
+`visionCapable` qui — azione dell'Owner, non un gap di costruzione.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260823T013756Z`
+rimosso (`Exited (0)` confermato). Superstiti di progetto: **due**.

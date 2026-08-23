@@ -108,6 +108,7 @@ import { compactRun } from './memory-compaction.mjs';
 import { ClosureRegister, ProductMetric } from './product-metric.mjs';
 import { ChatOrchestrator } from './ai-workspace/chat-orchestrator.mjs';
 import { FileExtractor, extractorCapabilities } from './ai-workspace/file-extractors.mjs';
+import { captionImage, visionCapableProfiles } from './ai-workspace/vision-caption.mjs';
 import { ToolExecutor } from './ai-workspace/tool-executor.mjs';
 import { Logger } from './logging.mjs';
 import { Metrics } from './metrics.mjs';
@@ -381,7 +382,12 @@ const providerGateway = new ProviderGateway({
   activeRuntime: () => { localModels.liveness(); return localModels.status(); },
 });
 providerGateway.ensureDefaults();
-const fileExtractor = new FileExtractor({ blobRoot:join(workspace, 'files') });
+const fileExtractor = new FileExtractor({
+  blobRoot:join(workspace, 'files'),
+  // `D-0651`: `providerGateway` is defined above this line — the one place in the process both
+  // it and the extractor exist, so it is the one place the bound function is built.
+  captionImpl:({ bytes, mimeType }) => captionImage({ profiles:providerGateway.list(), complete:providerGateway.complete.bind(providerGateway), bytes, mimeType }),
+});
 const aiWorkspace = new WorkspaceService({ store:aiStore, graph:contextGraph, ledger, fileExtractor });
 const toolExecutor = new ToolExecutor({ vault:credentialVault, ledger });
 // UI-080…096 — ephemeral by design, see research.mjs's own module comment: a restart
@@ -4374,7 +4380,7 @@ const requestListener = async (req, res) => {
       const authenticated=requireSession(req,res,'knowledge.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,201,await aiWorkspace.ingestFile({...await body(req),actorId:authenticated.user.id}));
     }
     if(req.method==='GET'&&url.pathname==='/api/v1/sources/capabilities'){
-      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,extractorCapabilities());
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,extractorCapabilities({visionCapableProviderCount:visionCapableProfiles(providerGateway.list()).length}));
     }
     match=url.pathname.match(/^\/api\/v1\/sources\/([^/]+)$/);
     if(match&&req.method==='GET'){
