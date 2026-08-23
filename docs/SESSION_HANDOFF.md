@@ -43,6 +43,15 @@ action, not a build gap.
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged all session). Commits are complete and correct locally.
 
+## LOCAL, UNTRACKED, BY DESIGN
+
+- `EVIDENCE/docker_{ps,network,volume}_post_cleanup_*.txt` — the §5a cleanup inventories
+  from the `D-0650`/`D-0651` deploys. Not staged, not committed: they list every container
+  on this host, other projects included — the same reason `EVIDENCE/docker_inventory_*.txt`
+  is gitignored (`.gitignore` line 135). Their content is already summarised, host-detail
+  stripped, in each deploy's `docs/INSTALLATION_LEDGER.md` entry. Safe to leave or delete;
+  never to commit.
+
 ## OPEN BLOCKERS
 
 - `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; every
