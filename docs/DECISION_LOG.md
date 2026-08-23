@@ -15278,3 +15278,34 @@ same change made after something started depending on the old hash would be a br
 `noesar-control-plane`, `noesar-data-plane`, `noesar-hardware-orchestrator`). **Improvement
 proposal, funding fit: Restack · trait 5, measurable reliability** — same as `D-0658`: a defect
 found and fixed before anything in the product depended on it, rather than after.
+
+## D-0660 · `noesar-hardware-orchestrator`'s memory-sizing formula, tested — 2026-08-23
+**Decision.** Continued `F-RUST-001`. Skipped `noesar-contracts` as a non-candidate: it is pure
+data shapes (2 enums, 2 structs, zero functions) with no behaviour to test beyond serde's own
+derive macros — adding tests there would be padding a count, not proving anything, and this
+project's own discipline (`CLAUDE10.md`: no scope creep, no busywork) argues against it. Tested
+`noesar-hardware-orchestrator`'s `recommend()` instead — the only real logic in the crate, and
+the one of the 8 zero-test crates that most resembles a correctness bug waiting to happen: a
+memory-estimation formula (model weights + KV-cache estimate + fixed overhead, feasibility
+against 82% of total RAM) that recommends a backend for the hardware installer. Added 7 tests:
+first-accelerator-wins backend selection, CPU fallback, the estimate matched against the
+formula recomputed independently in the test (not read back from `recommend()`'s own internals),
+quantization scaling, both sides of the 82% feasibility boundary, and the 0.5 GiB KV-estimate
+floor for a near-zero context.
+**Why.** The crate's own comment says the recommendation "is hardware, memory and workload
+aware" — that claim had never been checked against a single known value.
+**Rejected.** Testing `noesar-contracts` to keep a uniform "N of 8 crates" narrative — a test
+suite that only proves serde can serialize a struct is not evidence of anything this project
+needs proven, and pretending otherwise would be exactly the false-PASS-adjacent theater rule 38
+exists to prevent.
+**Evidence.** Disposable `rust:1-bookworm`, `--network none`, vendored: `cargo test -p
+noesar-hardware-orchestrator --offline` → 7/7. `cargo test --workspace --offline` → 175 tests,
+175 pass, 0 fail (was 168 at `D-0659`, +7), 0 new warnings.
+**Reversal cost.** None — additive only, no formula changed, crate already has zero dependents
+in the workspace (same class as `noesar-auth`/`noesar-audit-ledger`).
+**Status.** applied. `F-RUST-001`, of the original 8: 3 now tested (`noesar-auth`,
+`noesar-audit-ledger`, `noesar-hardware-orchestrator`), 1 reclassified not applicable
+(`noesar-contracts`, data-only), 4 remain with real logic worth testing
+(`noesar-authority-protocol`, `noesar-authority-transport`, `noesar-control-plane`,
+`noesar-data-plane`). **Improvement proposal, funding fit: Restack · trait 5, measurable
+reliability** — same pattern, third instance this session.
