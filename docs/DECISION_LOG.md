@@ -15641,3 +15641,25 @@ predecessor `noesar-evolution-pre-20260823T153622Z`, no migration involved.
 **Status.** applied and installed. `git push origin main` still pending — no credential
 in this session (`B-014`); the deploy read from the local tree, not the remote, so it
 did not depend on the push landing first.
+
+## D-0671 · chat toolbar's double-border removed, found by screenshotting the real page — 2026-08-23T16:05:00Z
+**Decision.** Stripped `border`/`padding`/`background`/`border-radius` from the base
+`.chat-toolbar` rule and deleted the now-orphaned `--surface-toolbar` token (5 theme
+definitions). Removed `.chat-toolbar-group{...}`-external redundancy: outer wrapper no
+longer duplicates the per-group card styling `D-0669` added.
+**Why.** The Owner reported the toolbar still looked wrong after `D-0669` deployed.
+Rather than guess, screenshotted the real live `#/chat` page (auth-gate hidden via DOM
+manipulation, no credentials used) and found a genuine box-wrapping-boxes defect the
+diff review had missed: the pre-existing `.chat-toolbar` rule still carried its own
+border/background, doubled up with each new `.toolbar-group` card.
+**Rejected.** Leaving the outer border since "it's subtle" — the unit suite's own
+`webui-markup-structure.test.mjs` caught the orphaned token immediately, proof the
+defect was real, not cosmetic nitpicking.
+**Evidence.** Puppeteer screenshots (disposable containers, before/after) confirm the
+outer box is gone. Unit suite 3019/3020 (1 pre-existing skip) after removing the
+now-dead `--surface-toolbar` token — the suite failed with `tokens defined and never
+used: surface-toolbar` until it was deleted, proving the check fires. Disposable
+browser-e2e: `RETENTION=delete only-declared-gaps-failed` (only `F-I18N-002`, 0
+undeclared).
+**Reversal cost.** None — pure CSS, no migration, no schema.
+**Status.** applied and installed (deploy in this same phase, see `D-0672`).
