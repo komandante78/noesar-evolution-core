@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0660 — Tested rust/crates/noesar-hardware-orchestrator's recommend() memory-sizing formula (0 -> 7 tests). Skipped noesar-contracts as not applicable (pure data shapes, no logic). F-RUST-001: 3/8 originally-untested crates now tested, 1 reclassified N/A, 4 remain.",
-  "phase_status": "Verified this session: cargo test -p noesar-hardware-orchestrator --offline (disposable rust:1-bookworm, --network none, vendored) -> 7/7. cargo test --workspace --offline -> 175 tests, 175 pass, 0 fail (was 168 at D-0659, +7), 0 new warnings.",
-  "next_phase": "F-RUST-001: 4 crates with real logic remain untested (noesar-authority-protocol, noesar-authority-transport, noesar-control-plane, noesar-data-plane) -- candidates for further bounded phases in the same shape. FUNDING work-plan items remain blocked/not-due (see D-0657).",
+  "current_phase": "D-0661 — Tested rust/crates/noesar-data-plane's production-readiness gates (0 -> 9 tests), with full mutation coverage on the 13-condition RepositoryHealth::production_ready() AND-gate: each condition flipped alone, gate confirmed to still refuse. F-RUST-001: 4/8 originally-untested crates now tested, 1 N/A, 3 remain.",
+  "phase_status": "Verified this session: cargo test -p noesar-data-plane --offline (disposable rust:1-bookworm, --network none, vendored) -> 9/9. cargo test --workspace --offline -> 184 tests, 184 pass, 0 fail (was 175 at D-0660, +9), 0 new warnings.",
+  "next_phase": "F-RUST-001: 3 crates with real logic remain untested (noesar-authority-protocol, noesar-authority-transport, noesar-control-plane) -- candidates for further bounded phases in the same shape. FUNDING work-plan items remain blocked/not-due (see D-0657).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "5f15a27b6566b22cbfbaf11df7c73df7df17be3e",
-  "last_updated_utc": "2026-08-23T14:35:00Z",
+  "last_commit": "d0341aafb20c1a5cb37b2349ca5085bef8708bbc",
+  "last_updated_utc": "2026-08-23T15:00:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -450,7 +450,7 @@
     {
       "id": "F-RUST-001",
       "severity": "medium",
-      "status": "PARTIALLY_FIXED 2026-08-23: D-0658 noesar-auth 13/13, D-0659 noesar-audit-ledger 6/6 (+fixed a real delimiter-collision hash-chain weakness), D-0660 noesar-hardware-orchestrator 7/7 (memory-sizing formula). noesar-contracts reclassified NOT_APPLICABLE (pure data shapes, no logic to test). Correction (D-0658): noesar-auth has zero dependents in the workspace, not one -- this entry's original 'declared as a Cargo dependency of noesar-authority-daemon' claim was false when re-checked. Remaining open: 4/20 crates still carry zero tests with real logic (noesar-authority-protocol, noesar-authority-transport, noesar-control-plane, noesar-data-plane); the packaging gap (3 crates never reach an oci/*.Dockerfile) is untouched.",
+      "status": "PARTIALLY_FIXED 2026-08-23: D-0658 noesar-auth 13/13, D-0659 noesar-audit-ledger 6/6 (+fixed a real delimiter-collision hash-chain weakness), D-0660 noesar-hardware-orchestrator 7/7, D-0661 noesar-data-plane 9/9 (mutation-coverage on a 13-condition production-readiness gate). noesar-contracts reclassified NOT_APPLICABLE (pure data shapes, no logic to test). Correction (D-0658): noesar-auth has zero dependents in the workspace, not one -- this entry's original 'declared as a Cargo dependency of noesar-authority-daemon' claim was false when re-checked. Remaining open: 3/20 crates still carry zero tests with real logic (noesar-authority-protocol, noesar-authority-transport, noesar-control-plane); the packaging gap (3 crates never reach an oci/*.Dockerfile) is untouched.",
       "summary": "8 of 20 Rust crates carry zero tests; noesar-auth holds real untested Argon2/TOTP logic that nothing in the workspace actually calls; 3 crates compile but are never packaged into any deliverable."
     },
     {
@@ -739,7 +739,8 @@
     "d0657_authority_containment_package_2026-08-23": "VERIFIED this session: packages/authority-containment/ (SPEC.md AC-001..AC-006) -> node --test packages/authority-containment/test/*.test.mjs = 8/8. Full suite = 3090 tests, 3089 pass, 1 skip, 0 fail (+8 over D-0656). ESLint 491/0. Packaging-filter regression 29/29. Manifest 6753 files.",
     "d0658_noesar_auth_tests_2026-08-23": "VERIFIED this session: rust/crates/noesar-auth/src/lib.rs +13 tests (was 0) -> cargo test -p noesar-auth --offline = 13/13. cargo test --workspace --offline = 162 tests, 162 pass, 0 fail (+13 over D-0656).",
     "d0659_noesar_audit_ledger_2026-08-23": "VERIFIED this session: rust/crates/noesar-audit-ledger +6 tests (was 0), hash-chain formula hardened (length-delimited feed, fixes a real delimiter-injection collision) -> cargo test -p noesar-audit-ledger --offline = 6/6. cargo test --workspace --offline = 168 tests, 168 pass, 0 fail (+6 over D-0658).",
-    "d0660_noesar_hardware_orchestrator_2026-08-23": "VERIFIED this session: rust/crates/noesar-hardware-orchestrator +7 tests (was 0) -> cargo test -p noesar-hardware-orchestrator --offline = 7/7. cargo test --workspace --offline = 175 tests, 175 pass, 0 fail (+7 over D-0659)."
+    "d0660_noesar_hardware_orchestrator_2026-08-23": "VERIFIED this session: rust/crates/noesar-hardware-orchestrator +7 tests (was 0) -> cargo test -p noesar-hardware-orchestrator --offline = 7/7. cargo test --workspace --offline = 175 tests, 175 pass, 0 fail (+7 over D-0659).",
+    "d0661_noesar_data_plane_2026-08-23": "VERIFIED this session: rust/crates/noesar-data-plane +9 tests (was 0), incl. 13-way mutation coverage on RepositoryHealth::production_ready() -> cargo test -p noesar-data-plane --offline = 9/9. cargo test --workspace --offline = 184 tests, 184 pass, 0 fail (+9 over D-0660)."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1144,7 +1145,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0660 closed: noesar-hardware-orchestrator tested, committed. Continuing per Owner's keep-going instruction, checkpointing progress to the Owner after this phase. No open blocker beyond B-013 (push, no GitHub credential).",
+  "next_action": "D-0661 closed: noesar-data-plane tested, committed. Checkpointing to the Owner after this phase given the volume of chained work this turn (D-0656..D-0661, 6 phases). No open blocker beyond B-013 (push, no GitHub credential).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
