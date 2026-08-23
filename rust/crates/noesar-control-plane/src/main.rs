@@ -49,6 +49,40 @@ fn enforce_release_gate() -> anyhow::Result<()> {
     Ok(())
 }
 
+// D-0664 (F-RUST-001), closing it: enforce_release_gate() is the only function in this
+// binary-only crate with real decision logic, and it is a security-relevant one -- whether the
+// product is willing to start against real users. A single test, not two, deliberately:
+// std::env::set_var mutates process-global state, and cargo test runs tests in the same binary
+// concurrently by default, so two tests each setting NOESAR_RELEASE_CHANNEL would race each
+// other rather than exercising the gate. Both branches are checked sequentially in one test.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_release_gate_blocks_production_but_not_development() {
+        // SAFETY: this crate's test binary is single-threaded for this test (no other test in
+        // this file touches NOESAR_RELEASE_CHANNEL), and the value is restored before return.
+        unsafe { env::remove_var("NOESAR_RELEASE_CHANNEL") };
+        assert!(
+            enforce_release_gate().is_ok(),
+            "an unset channel must default to development and never block startup",
+        );
+
+        unsafe { env::set_var("NOESAR_RELEASE_CHANNEL", "development") };
+        assert!(enforce_release_gate().is_ok(), "an explicit development channel must not block startup");
+
+        unsafe { env::set_var("NOESAR_RELEASE_CHANNEL", "production") };
+        let outcome = enforce_release_gate();
+        assert!(
+            outcome.is_err(),
+            "the production channel must refuse to start on the reference (never production-ready) authority and data-plane status -- ZIP 1 v0.6.0 has no mechanism to construct a real attestation yet",
+        );
+
+        unsafe { env::remove_var("NOESAR_RELEASE_CHANNEL") };
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     enforce_release_gate()?;

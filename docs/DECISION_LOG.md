@@ -15336,3 +15336,42 @@ dependents in the workspace.
 `noesar-control-plane`). **Improvement proposal, funding fit: Restack · trait 5, measurable
 reliability** — same pattern, fourth instance this session; the mutation-coverage technique
 itself is worth naming as a reusable practice for this crate family, not only this one result.
+
+## D-0662 · `F-RUST-001` CLOSED — the last three crates tested — 2026-08-23
+**Decision.** Owner: "VAI AVANTI VOGLIO FINIRE" — closed the finding in one phase rather than
+three, since all that remained was the same bounded pattern repeated. `noesar-authority-protocol`
+(0 → 19 tests): HMAC-signed request envelopes — every refusal branch of `verify()`/
+`validate_body()` gets its own case (replay detection, both clock-skew boundaries, all four
+binding mismatches, a tampered payload, a wrong-secret signature, a garbled signature encoding,
+every schema/action/nonce/lifetime constraint, and the full `ACTIONS` allow-list accepted).
+`noesar-authority-transport` (0 → 14 tests): the length-prefixed IPC frame codec — streamed
+one byte at a time and reassembled correctly, two frames concatenated in one chunk, a
+zero-length frame refused, a frame declaring more than `MAX_FRAME_BYTES` refused without
+needing to actually send that many bytes, malformed JSON refused, a non-object payload refused,
+a partial trailing frame caught by `finish()`, and both platforms' `PeerIdentity::validate()`
+requirements. `noesar-control-plane` (0 → 1 test): `enforce_release_gate()` — one test, not two,
+because `std::env::set_var` mutates process-global state and `cargo test` runs tests
+concurrently by default; both branches (development passes, production refuses on the
+still-reference authority/data-plane status) are checked sequentially inside the same test to
+avoid a real race between two tests each setting the same environment variable.
+**Why.** These three carry the project's actual security boundary — request authentication,
+the wire protocol between the engine and the authority daemon, and the gate deciding whether the
+binary is willing to start against real users — and were the last of the originally-named 8
+crates with none of it checked.
+**Rejected.** Nothing scoped out — unlike `D-0660`'s `noesar-contracts`, every function in these
+three crates is real decision logic; there was no non-candidate to skip.
+**Evidence.** Disposable `rust:1-bookworm`, `--network none`, vendored, one crate at a time then
+the whole workspace: `cargo test -p noesar-authority-protocol --offline` → 19/19,
+`-p noesar-authority-transport` → 14/14, `-p noesar-control-plane` → 1/1. `cargo test
+--workspace --offline` → 218 tests, 218 pass, 0 fail (was 184 at `D-0661`, +34), 0 new warnings.
+**Reversal cost.** None — additive only; none of the three has a workspace dependent whose
+behaviour these tests could have relied on incorrectly.
+**Status.** applied. **`F-RUST-001` is CLOSED**: of the original 8 zero-test crates, 7 are now
+tested (`noesar-auth` `D-0658`, `noesar-audit-ledger` `D-0659`, `noesar-hardware-orchestrator`
+`D-0660`, `noesar-data-plane` `D-0661`, `noesar-authority-protocol`/`noesar-authority-transport`/
+`noesar-control-plane` here) and 1 reclassified not-applicable (`noesar-contracts`). The
+finding's separate packaging observation (3 crates compiled but reaching no `oci/*.Dockerfile`)
+remains open as its own, narrower question — untouched by this closure, named so it is not lost
+inside a finding that is otherwise done. **Improvement proposal, funding fit: Restack · trait 5,
+measurable reliability** — the whole Rust workspace's untested-logic surface, measured at the
+start of this session as 8/20 crates, is now 0/20 with real logic unverified.

@@ -354,7 +354,7 @@ f1302c6af47121dec0a1989c0c42ea5a43f5ef2131e7e0ad1f0aa504e871ef1d  ./PROJECT_GOVE
 4328916a9322d05c80b791d4311577fc24d8396ed5c75adc874eef9addec1895  ./PROJECT_GOVERNANCE/TOOLS/README.md
 00ea8e2dd3220da40373152fa66a6fa0d8b9b0fce9767fe3edf207976092c73e  ./PROJECT_GOVERNANCE/TOOLS/verify_package.py
 aa0bff9fef13b8a9eb6eca2bac182dceb437d2356b5ab542fa8ac40dc049add7  ./PROJECT_GOVERNANCE/TRACEABILITY_MATRIX.csv
-003cd4576b52f12ef13eb9e3095f6b659dfbcfc52a644e43931ef46a1a29fdad  ./PROJECT_STATE.json
+af8c1dff888ef62e743b04a5fcb4ea114765b5dab41222f9d434557c04df75dc  ./PROJECT_STATE.json
 219894b2b7e66ac6d3b68eb54346ff31ed20ba7bc21db9f02da8390e4ba3dda8  ./README.md
 f4a7dd3fe9e69c46c96e87c78b69875b754885f02e938eaed0fec2d5b844275c  ./RELEASE/AI_WORKSPACE_P0_TRACEABILITY.tsv
 586c4ab42209e24d19ff0492e7cabf62b9bcf512fbeff23f344e2b330d71916b  ./RELEASE/COMPANION_ARCHIVE_CHECKSUMS.txt
@@ -563,7 +563,7 @@ bf7f89b5ea581d6dbff828cb555977a1565cbbdad5c50d09930863de1c492132  ./docs/AUTHORI
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-6fd522cd7d4f45d830540486f4ae4a4671fcc517def5b4c5d348e601f79c3c1b  ./docs/DECISION_LOG.md
+38f9b96484aa3ba01908bba2e66dca41de80a5e90bbc47899c3b5e21b9429e33  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
@@ -633,7 +633,7 @@ be04cba0f1c100c99ca965e94657a90b70ed10cacda85d409b073ce6ba4c898e  ./docs/SBOM_RE
 b9aa562749772335f2badaf99d744146f096de14cf8806e539b8d53268a2f68c  ./docs/SBOM_STATUS.md
 1d91d7021b264988bed1ef50d591b470e328fbbcff42d69dc6db7ceb72dba75b  ./docs/SECURITY_IMPLEMENTATION_MATRIX.tsv
 daec00ece820d33471e70f684e0aea3a232efcfe302eeb32b9f88a4b8426bbb2  ./docs/SECURITY_TEST_REPORT.md
-aaaccebe6254dd8f20946f4657d4e9e0b0fb5571bdf98971d9ef2513444c877a  ./docs/SESSION_HANDOFF.md
+54a7a3953eb96be0adcec9a061587863f64050d392875cc0d5e39c18f8dce7e5  ./docs/SESSION_HANDOFF.md
 ae857f71b8faa6e1a1fda2dd25b2ee0ce48797e44629476089aba95a420b2782  ./docs/SOURCE_ARCHIVE_MAP.tsv
 4f36e5e077e82172da338b5626f36be603b9ce412048dd6b8fd9c0bac77deb8a  ./docs/SOURCE_PROVENANCE.md
 f09d2d768fc8e46e162945476b07bf168fbb9153a9296821a5462d6b81fff232  ./docs/THIRD_PARTY_NOTICES_DRAFT.md
@@ -998,9 +998,9 @@ bd36016aa43b57e368c742d2680cb9e7c9c0e2a4495bfc8d571e09e6ecd387c7  ./rust/crates/
 03350dc3ca48202beb5186f66a30667e36afe71a6ea04b66db18775ae7b410fd  ./rust/crates/noesar-authority-daemon/src/lib.rs
 d3913ee8b336c492165a1e1dbfe6b55efa7af6055d4c66509c070101bb5f086c  ./rust/crates/noesar-authority-daemon/src/main.rs
 773e246cdba1d8da115278f48021fc51f09fac8274dd53dfed8ffb4d5ed5192d  ./rust/crates/noesar-authority-protocol/Cargo.toml
-ad94f5fea727c85b690a75b16dd472dff5ff527988dca0c894cb6d24373a9cd3  ./rust/crates/noesar-authority-protocol/src/lib.rs
+b9f983ab93ae541e160986b0d69a4923d180d8bdca7f4960355c9f060d5c3e0b  ./rust/crates/noesar-authority-protocol/src/lib.rs
 0979c7dbbd3cb4577fedcaf05715e0d407fbdeae8722ec1f705fa2c229f7067b  ./rust/crates/noesar-authority-transport/Cargo.toml
-c3cacad8242a08d4b4443c22d2297d5060497f73b08fe17846f93d1af7177d22  ./rust/crates/noesar-authority-transport/src/lib.rs
+7f745c1973c8544f2150b0a64475cf73f706fa4e0b214aa476d23a92e817f8f5  ./rust/crates/noesar-authority-transport/src/lib.rs
 f2fdd9b8d3bb9f7ce5a658177a259fb5291c1a1cbd7b6af9157d2cf840a00c97  ./rust/crates/noesar-canonical-json/Cargo.toml
 5f01fd0ec21de707c7ada12af664d9ebb79003d4b77558245cdaa948757240f3  ./rust/crates/noesar-canonical-json/src/lib.rs
 1ce4a28cc705996851f0d0e5e388eb20739348b77ae4dc6be7a61e20205d2ae5  ./rust/crates/noesar-capability/Cargo.toml
@@ -1010,7 +1010,7 @@ ad0c0e165af2390f72c51d9b9c9c64ad7728a98abee2b0692269732cd6252189  ./rust/crates/
 041fd1232bf550b97353dff212411259ca8ac87de55461aa8e183ad48dfcc0ed  ./rust/crates/noesar-contracts/Cargo.toml
 7d108b79c855acf68607b3b1cc1e18040ed71cfd1464dd241f292d033043fe27  ./rust/crates/noesar-contracts/src/lib.rs
 3529a9e256d2879f07939cf92277a0e10b61909e7b57ea721b8fcb4d2f1b8f29  ./rust/crates/noesar-control-plane/Cargo.toml
-b563cd2fca8714d5a025ce4c5ac56cca0822b7e0021c8ef512de1eca43ebcc0e  ./rust/crates/noesar-control-plane/src/main.rs
+378968e50fb69d50d309efa92f910018e30e35837e57e3163b3afd2469c3d6a8  ./rust/crates/noesar-control-plane/src/main.rs
 4763523ddd5995a75364ba96c1f72a0436d1ca6df3ada4615d62d928cc16f1c4  ./rust/crates/noesar-data-plane/Cargo.toml
 5fbad492931b1a30e48e9b11b19c1b7469bfc70bdcf06a4fd5b5083afd77da00  ./rust/crates/noesar-data-plane/src/lib.rs
 ed3020e28772810f36d75fe806ba3d70b8a613126546ca28c6df74f86365b9f3  ./rust/crates/noesar-events/Cargo.toml
