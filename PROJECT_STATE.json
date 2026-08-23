@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0656 — Phase E's Rust half: rust/crates/noesar-capability/tests/reasoning_authority_conformance.rs proves TokenMinter::mint()/AuthorizedPlan::try_authorize() independently contain a workspace-escaping or out-of-scope request against a non-reference, never-filtering ReasoningProvider (test-local AdversarialReasoningProvider), mirroring D-0654's JS suite. Phase E is now closed on both sides.",
-  "phase_status": "Verified this session: disposable rust:1-bookworm container, --network none, vendored deps -- cargo test --workspace --offline -> 149 tests, 149 pass, 0 fail (was 144 at D-0497, +5 new). No new dependency version pulled in (tokio, noesar-reasoning-reference already workspace members).",
-  "next_phase": "Phase E fully closed (D-0654 JS + D-0656 Rust). Remaining FUNDING work-plan items: Phase F (cross-platform evidence, needs 2+ real host classes) and Phase G (independent pentest, external party). Neither due before the NLnet deadline (3 Nov 2026). Actual next action for the deadline: CodeSupply abstract/milestones/budget (D-0631, not started) once the application form publishes (~3 Sep 2026).",
+  "current_phase": "D-0657 — Promoted the D-0654/D-0656 authority-containment property to packages/authority-containment/ (SPEC.md AC-001..AC-006, adapter-driven runConformance, reference adapter over the real JS TokenMinter). Vectors are NOT duplicated: conformance/index.mjs reads the live conformance/capability-vectors.json by relative path, filtered to CAP-001/002/005/011/012.",
+  "phase_status": "Verified this session: node --test packages/authority-containment/test/*.test.mjs -> 8/8 (incl. 5 broken-implementation adversarial cases). Full suite node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs -> 3090 tests, 3089 pass, 1 pre-existing skip, 0 fail (was 3082, +8). ESLint 491/0. test-packaging-filters.mjs 29/29. MANIFEST.sha256 regenerated, 6753 files, manifest-integrity 13/13.",
+  "next_phase": "Phase E's own named-open 'promote to a versioned package' item is now closed. No other FUNDING work-plan item due before the NLnet deadline (3 Nov 2026). Actual next action for the deadline: CodeSupply abstract/milestones/budget (D-0631, not started) once the application form publishes (~3 Sep 2026).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "8fba4d62e29bb959282e465ebaefa7fccac41790",
-  "last_updated_utc": "2026-08-23T12:30:00Z",
+  "last_commit": "189c7242dfeb0afefc25cab78aa6f22c6f04ee54",
+  "last_updated_utc": "2026-08-23T13:15:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -735,7 +735,8 @@
     "d0651_image_caption_2026-08-23": "VERIFIED this session: node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs -> 3045 tests, 3044 pass, 0 fail, 1 skip, 352 suites (+16 new: vision-caption.test.mjs x10, file-extractor-caption.test.mjs x6). tools/run-eslint.sh -> 481 files, 0 errors. tools/verify-image-provenance.sh: byte-equal 482/482 differing 0. tools/run-browser-e2e.sh: RETENTION=delete only-declared-gaps-failed (no new regression). Deployed d0651-image-caption-20260823T042521Z, live health 200/200/200, 4 children, 0 auth-failures. Screenshot proof: Settings->Providers panel, checkbox rendered on all 4 default cards.",
     "d0653_capability_token_package_2026-08-23": "VERIFIED this session: packages/capability-token/ (SPEC.md CT-001..CT-007) -> node --test packages/capability-token/test/*.test.mjs services/reference-control-plane/test/capability-token-package-extraction.test.mjs = 32/32. Full product suite (node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs) = 3077/3077 (1 pre-existing skip). Python conformance (docker python:3-slim --network none) = 17/17. ESLint 486 files/0 errors.",
     "d0654_authority_conformance_2026-08-23": "VERIFIED this session: reasoning-authority-conformance.test.mjs 5/5 (1 found red first, fixed). Full suite node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs = 3082/3082 (1 pre-existing skip). ESLint 488 files/0 errors.",
-    "d0656_rust_authority_conformance_2026-08-23": "VERIFIED this session: rust/crates/noesar-capability/tests/reasoning_authority_conformance.rs (5 tests: AUTH-001..004 + compile-time surface-completeness) -> cargo test --workspace --offline (disposable rust:1-bookworm, --network none, vendored) = 149 tests, 149 pass, 0 fail, 0 new warnings (was 144 at D-0497)."
+    "d0656_rust_authority_conformance_2026-08-23": "VERIFIED this session: rust/crates/noesar-capability/tests/reasoning_authority_conformance.rs (5 tests: AUTH-001..004 + compile-time surface-completeness) -> cargo test --workspace --offline (disposable rust:1-bookworm, --network none, vendored) = 149 tests, 149 pass, 0 fail, 0 new warnings (was 144 at D-0497).",
+    "d0657_authority_containment_package_2026-08-23": "VERIFIED this session: packages/authority-containment/ (SPEC.md AC-001..AC-006) -> node --test packages/authority-containment/test/*.test.mjs = 8/8. Full suite = 3090 tests, 3089 pass, 1 skip, 0 fail (+8 over D-0656). ESLint 491/0. Packaging-filter regression 29/29. Manifest 6753 files."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1140,7 +1141,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0656 closed Phase E's Rust half. No deploy needed (test-only, no product/runtime surface changed). No open blocker beyond B-013 (push, no GitHub credential).",
+  "next_action": "D-0657 closed: packages/authority-containment/ built, tested, committed. No deploy needed (test/spec-only package, no product runtime import). No open blocker beyond B-013 (push, no GitHub credential).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

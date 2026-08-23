@@ -10,7 +10,8 @@ verified live. Reclassified Kokoro→GPU out of scope (`D-0652`). Built and test
 authority-conformance fixture and closed Phase E's JS half (`D-0654`). Closing this session
 found and fixed a real `.gitignore` gap that had let host-wide evidence files sit untracked
 (`D-0655`). Built the Rust-side equivalent of `D-0654` and closed Phase E's remaining half
-(`D-0656`).
+(`D-0656`). Owner authorised executing `D-0656`'s own improvement proposal: promoted the
+containment property to `packages/authority-containment/` (`D-0657`).
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -20,12 +21,16 @@ No deploy-blocking item is open. Two independent threads are both at a clean sto
 
 **Funding (`FUNDING/19_WORK_PLAN_TO_BETA.md`):** Phase D done (`D-0653`,
 `packages/capability-token/`, 32/32 JS + 17/17 Python conformance, byte-identical against the
-live `TokenMinter`). **Phase E now fully done, both sides.** JS half (`D-0654`):
-Proof-of-Session was already `RECORDED_MET` (`SESS-001/002/003`); the authority-conformance
-suite proves the real `TokenMinter` contains an adversarial, never-filtering `ReasoningProvider`
-— 5/5 cases. Rust half (`D-0656`): the same claim against `rust/crates/noesar-capability`'s real
-`TokenMinter`/`AuthorizedPlan`, via a test-local `AdversarialReasoningProvider` — 5/5 new cases,
-full workspace `cargo test --workspace --offline` 149/149 (was 144 at `D-0497`).
+live `TokenMinter`). **Phase E now fully done, both sides, plus its own named-open extra.** JS
+half (`D-0654`): Proof-of-Session was already `RECORDED_MET` (`SESS-001/002/003`); the
+authority-conformance suite proves the real `TokenMinter` contains an adversarial,
+never-filtering `ReasoningProvider` — 5/5 cases. Rust half (`D-0656`): the same claim against
+`rust/crates/noesar-capability`'s real `TokenMinter`/`AuthorizedPlan`, via a test-local
+`AdversarialReasoningProvider` — 5/5 new cases, full workspace `cargo test --workspace --offline`
+149/149 (was 144 at `D-0497`). `D-0657`: the property promoted to `packages/authority-
+containment/` — `SPEC.md` `AC-001`–`AC-006`, adapter-driven `runConformance()` reading the
+canonical `conformance/capability-vectors.json` (no duplicated vectors), a reference adapter
+proving the real JS engine conforms (8/8, incl. 5 broken-implementation adversarial cases).
 Remaining: Phase F (cross-platform evidence on ≥2 real host classes) and Phase G (independent
 pentest — external party only, cannot be scheduled by this project alone). Neither is due before
 the NLnet deadline (3 Nov 2026) — they are the funded work itself, not a submission
@@ -81,6 +86,15 @@ except `constrain()`, which never filters. Same 4 cases as JS, plus a 5th that i
 form of "not a strawman": coercion to `&dyn ReasoningProvider` would fail to compile if a
 surface were missing. Verified in a disposable `rust:1-bookworm` container, offline, vendored
 deps — no new crate version pulled in.
+
+**`D-0657`:** `packages/authority-containment/` specifies the property `D-0654`/`D-0656` proved
+(`SPEC.md` `AC-001`–`AC-006`) and makes it adapter-driven: `runConformance(attempt)` where
+`attempt(vector, context)` is the only shape a third engine implements. Its vectors are the
+same live `CAP-001`/`002`/`005`/`011`/`012` cases in `conformance/capability-vectors.json` — read
+by relative path, not copied, so there is no second file to drift. `src/reference-adapter.mjs`
+proves the real product JS engine conforms (8/8). Not done: wiring either production engine to
+import this package, and giving Rust an adapter of its own — both named open in the package's
+own `README.md`.
 
 ## WHAT WAS **NOT** DONE
 
