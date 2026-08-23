@@ -4371,7 +4371,7 @@ const requestListener = async (req, res) => {
       const authenticated=requireSession(req,res,'knowledge.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,201,aiWorkspace.ingestSource({...await body(req),actorId:authenticated.user.id}));
     }
     if(req.method==='POST'&&url.pathname==='/api/v1/sources/upload'){
-      const authenticated=requireSession(req,res,'knowledge.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,201,aiWorkspace.ingestFile({...await body(req),actorId:authenticated.user.id}));
+      const authenticated=requireSession(req,res,'knowledge.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,201,await aiWorkspace.ingestFile({...await body(req),actorId:authenticated.user.id}));
     }
     if(req.method==='GET'&&url.pathname==='/api/v1/sources/capabilities'){
       const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,extractorCapabilities());

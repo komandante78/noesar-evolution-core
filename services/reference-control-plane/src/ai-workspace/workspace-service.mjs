@@ -109,9 +109,9 @@ export class WorkspaceService {
     });
   }
 
-  ingestFile({ projectId=null, name, mimeType='application/octet-stream', bytesBase64, origin='upload', metadata={}, actorId='system' }) {
+  async ingestFile({ projectId=null, name, mimeType='application/octet-stream', bytesBase64, origin='upload', metadata={}, actorId='system' }) {
     if (!this.fileExtractor) throw error('Binary file extraction is not configured.',503);
-    const extracted=this.fileExtractor.extract({name,mimeType,bytesBase64});
+    const extracted=await this.fileExtractor.extract({name,mimeType,bytesBase64});
     const item=this.ingestSource({projectId,name:extracted.storedName,mimeType,text:extracted.text,origin,metadata:{...metadata,blobId:extracted.blobId,sha256:extracted.sha256,extractor:extracted.extractor,warning:extracted.warning,...extracted.metadata},actorId});
     return this.store.transact((state)=>{
       const source=find(state.sources,item.id,'Source');source.byteLength=extracted.byteLength;source.extractionStatus=extracted.status;source.blobId=extracted.blobId;source.sha256=extracted.sha256;source.updatedAt=now();

@@ -26,9 +26,9 @@ import { FileExtractor, sniffContentType, looksLikeText } from '../src/ai-worksp
 const b64 = (value) => Buffer.from(value, 'latin1').toString('base64');
 const bytesOf = (...values) => Buffer.from(values).toString('base64');
 
-function withExtractor(run) {
+async function withExtractor(run) {
   const dir = mkdtempSync(join(tmpdir(), 'extractor-sniff-'));
-  try { return run(new FileExtractor({ blobRoot: dir })); } finally { rmSync(dir, { recursive: true, force: true }); }
+  try { return await run(new FileExtractor({ blobRoot: dir })); } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 
 describe('what the bytes say', () => {
@@ -65,9 +65,9 @@ describe('what the bytes say', () => {
 });
 
 describe('SEC-24, both halves, against the real extractor', () => {
-  test('FIRST HALF: PDF bytes declared text/plain are no longer stored as text', () => {
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'notes.txt', mimeType: 'text/plain', bytesBase64: b64('%PDF-1.4\n1 0 obj\n') });
+  test('FIRST HALF: PDF bytes declared text/plain are no longer stored as text', async () => {
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'notes.txt', mimeType: 'text/plain', bytesBase64: b64('%PDF-1.4\n1 0 obj\n') });
       assert.equal(result.detectedType, 'pdf');
       assert.equal(result.extractor, 'pdftotext', 'the bytes did not win');
       assert.equal(result.text, '', 'raw PDF bytes were stored as prose');
@@ -75,9 +75,9 @@ describe('SEC-24, both halves, against the real extractor', () => {
     });
   });
 
-  test('SECOND HALF: text declared application/pdf no longer reaches pdftotext', () => {
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'report.pdf', mimeType: 'application/pdf', bytesBase64: b64('this is just prose') });
+  test('SECOND HALF: text declared application/pdf no longer reaches pdftotext', async () => {
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'report.pdf', mimeType: 'application/pdf', bytesBase64: b64('this is just prose') });
       assert.equal(result.extractor, 'utf8');
       assert.equal(result.status, 'complete');
       assert.equal(result.text, 'this is just prose');
@@ -85,20 +85,20 @@ describe('SEC-24, both halves, against the real extractor', () => {
     });
   });
 
-  test('an honest file produces no mismatch at all', () => {
+  test('an honest file produces no mismatch at all', async () => {
     // The other half of a guard: it must be quiet when nothing is wrong, or the warning stops
     // meaning anything.
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'notes.txt', mimeType: 'text/plain', bytesBase64: b64('ordinary notes') });
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'notes.txt', mimeType: 'text/plain', bytesBase64: b64('ordinary notes') });
       assert.equal(result.status, 'complete');
       assert.equal(result.metadata.typeMismatch, undefined);
       assert.equal(result.warning, null);
     });
   });
 
-  test('an image hiding behind .txt is sent to the image path', () => {
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'x.txt', mimeType: 'text/plain', bytesBase64: bytesOf(0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10, 1, 2, 3, 4) });
+  test('an image hiding behind .txt is sent to the image path', async () => {
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'x.txt', mimeType: 'text/plain', bytesBase64: bytesOf(0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10, 1, 2, 3, 4) });
       assert.equal(result.detectedType, 'png');
       assert.equal(result.extractor, 'tesseract-ocr');
     });
@@ -106,12 +106,12 @@ describe('SEC-24, both halves, against the real extractor', () => {
 });
 
 describe('the container is not the contents', () => {
-  test('a zip named .docx still takes the Office path', () => {
+  test('a zip named .docx still takes the Office path', async () => {
     // Every Office file IS a zip. A sniffer that routed on the signature alone would send every
     // document to the generic archive reader and lose its text — the fix breaking the thing it
     // was meant to protect.
-    withExtractor((extractor) => {
-      const result = extractor.extract({
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({
         name: 'letter.docx',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         bytesBase64: bytesOf(0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0),
@@ -122,20 +122,20 @@ describe('the container is not the contents', () => {
     });
   });
 
-  test('a plain zip named .docx is still read as an archive when nothing claims Office', () => {
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'bundle.zip', mimeType: 'application/octet-stream', bytesBase64: bytesOf(0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0) });
+  test('a plain zip named .docx is still read as an archive when nothing claims Office', async () => {
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'bundle.zip', mimeType: 'application/octet-stream', bytesBase64: bytesOf(0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0) });
       assert.equal(result.extractor, 'safe-zip-text');
     });
   });
 });
 
 describe('an executable is named and refused', () => {
-  test('an ELF called notes.txt is not extracted from at all', () => {
+  test('an ELF called notes.txt is not extracted from at all', async () => {
     // Nothing here would have EXECUTED it — but storing its bytes as prose puts them in a
     // knowledge base, and handing it to unzip is a decision nobody made.
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'notes.txt', mimeType: 'text/plain', bytesBase64: b64('\x7fELF\x02\x01\x01\x00payload') });
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'notes.txt', mimeType: 'text/plain', bytesBase64: b64('\x7fELF\x02\x01\x01\x00payload') });
       assert.equal(result.status, 'unsupported');
       assert.equal(result.extractor, 'none');
       assert.equal(result.text, '');
@@ -143,9 +143,9 @@ describe('an executable is named and refused', () => {
     });
   });
 
-  test('a Windows executable is refused the same way', () => {
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'setup.pdf', mimeType: 'application/pdf', bytesBase64: b64('MZ\x90\x00\x03payload') });
+  test('a Windows executable is refused the same way', async () => {
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'setup.pdf', mimeType: 'application/pdf', bytesBase64: b64('MZ\x90\x00\x03payload') });
       assert.equal(result.status, 'unsupported');
       assert.match(result.warning, /Windows PE executable/);
     });
@@ -153,12 +153,12 @@ describe('an executable is named and refused', () => {
 });
 
 describe('what is reported back', () => {
-  test('the record keeps the caller\'s declaration AND what was found', () => {
+  test('the record keeps the caller\'s declaration AND what was found', async () => {
     // Rewriting the caller's statement in the record would hide the disagreement the record
     // exists to surface — a source that says `application/pdf` and holds prose is a fact worth
     // being able to find later.
-    withExtractor((extractor) => {
-      const result = extractor.extract({ name: 'report.pdf', mimeType: 'application/pdf', bytesBase64: b64('prose') });
+    await withExtractor(async (extractor) => {
+      const result = await extractor.extract({ name: 'report.pdf', mimeType: 'application/pdf', bytesBase64: b64('prose') });
       assert.equal(result.mimeType, 'application/pdf', 'the declaration was overwritten');
       assert.equal(result.extension, '.pdf');
       assert.equal(result.detectedType, 'unknown');

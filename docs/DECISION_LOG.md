@@ -14987,3 +14987,33 @@ session) confirms it is running and GPU-attached.
 **Reversal cost.** None — decomposition only, no code changed this entry.
 **Status.** documents: closed, already met. Images and audio: proposed, not scheduled —
 each opens its own future phase.
+
+## D-0650 · `§4#10` audio item — uploaded files reach `noesar-voice-hear` — 2026-08-22
+**Decision.** `file-extractors.mjs`'s media branch now calls the SAME `transcribe()`
+(`voice-engine.mjs`) the live microphone route already uses, when a transcription
+endpoint is configured — one quality judgment for audio, not two. `extract()`/
+`ingestFile()` are now `async`; `transcribeImpl`/`routingImpl`/`runImpl` are injected on
+`FileExtractor` so the wiring is provable without a real speech server or `ffprobe` on
+the runner. Unconfigured stays `transcription_required` (unchanged); a reachable engine
+that heard nothing reports `transcription_empty`; an unreachable/refusing one reports
+`transcription_failed` without losing the `ffprobe` metadata already indexed.
+**Why.** D-0649's own proposed shape, item 2 — `noesar-voice-hear` already runs
+GPU-attached on this installation for live voice; no new container, no second decoder.
+**Rejected.** A bespoke HTTP client in the extractor — `voice-engine.mjs` already owns
+the OpenAI-shaped request, the multipart assembly and the repetition/no-speech judgment
+(`assessTranscription`, `D-0372`); a second client would be a second place to get it wrong.
+**Evidence.** 5 new tests (`file-extractor-transcription.test.mjs`) proving all four
+outcomes against injected fakes; full suite 2989/2990 (1 pre-existing skip), ESLint
+478/0/0, `auth-http-smoke`/`http-smoke` PASS, bytes-equal tree↔image 479/479 differing 0.
+Live: `docker inspect` confirms `NOESAR_VOICE_TRANSCRIBE_ENDPOINT` is already set on this
+installation, so the capability is live, not dormant. `/livez`/`/readyz`/`/healthz` 200,
+4 children, 0 auth-failures.
+**Reversal cost.** None — additive; no schema change; existing sources with
+`transcription_required` are untouched until re-uploaded.
+**Status.** applied, deployed (`d0650-audio-transcription-…`), verified live.
+
+**Improvement proposal (recorded, not built).** `extractorCapabilities()`'s
+`audioVideoTranscription` now reports `configured`/`not-configured` but no surface reads
+it yet — the upload UI could show "will be transcribed" vs "metadata only" before the
+file is sent. **Funding fit: none** — a UI affordance for an already-working backend
+capability, not a delimited reusable component.

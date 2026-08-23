@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { randomUUID, createHash } from 'node:crypto';
+import { transcribe, voiceRoutingFrom, VoiceJob, VoiceEngineError } from '../voice-engine.mjs';
 
 const MAX_INPUT = 48 * 1024 * 1024;
 const MAX_TEXT = 32 * 1024 * 1024;
@@ -109,15 +110,21 @@ export function extractorCapabilities(){
   const command=(name)=>run('sh',['-c',`command -v ${name}`],{maxBuffer:4096}).ok;
   return{
     text:true,archives:command('unzip'),pdf:command('pdftotext'),ocr:command('tesseract'),mediaMetadata:command('ffprobe'),
-    officeXml:command('unzip'),audioVideoTranscription:'provider-or-installed-tool-required',
+    officeXml:command('unzip'),audioVideoTranscription:voiceRoutingFrom()[VoiceJob.TRANSCRIBE]?.endpoint?'configured':'not-configured',
     limits:{maxInputBytes:MAX_INPUT,maxExtractedTextBytes:MAX_TEXT,maxArchiveEntries:MAX_ENTRIES,maxArchiveEntryBytes:MAX_ENTRY},
   };
 }
 
 export class FileExtractor{
-  constructor({blobRoot}){this.blobRoot=blobRoot;mkdirSync(blobRoot,{recursive:true,mode:0o700});}
+  // `transcribeImpl`/`routingImpl`/`runImpl` are injectable so a test can prove the wiring
+  // below without a real speech server or `ffprobe` on the runner — every production call
+  // site constructs this with no overrides and gets the real `voice-engine.mjs` and `spawnSync`.
+  constructor({blobRoot,transcribeImpl=transcribe,routingImpl=voiceRoutingFrom,runImpl=run,fetchImpl}){
+    this.blobRoot=blobRoot;this.transcribeImpl=transcribeImpl;this.routingImpl=routingImpl;this.run=runImpl;this.fetchImpl=fetchImpl;
+    mkdirSync(blobRoot,{recursive:true,mode:0o700});
+  }
   delete(blobId){if(!/^[0-9a-f-]{36}$/i.test(String(blobId)))return false;rmSync(join(this.blobRoot,String(blobId)),{recursive:true,force:true});return true;}
-  extract({name,mimeType='application/octet-stream',bytesBase64}){
+  async extract({name,mimeType='application/octet-stream',bytesBase64}){
     const bytes=Buffer.from(String(bytesBase64??''),'base64');
     if(!bytes.length)throw Object.assign(new Error('File content is empty.'),{status:400});
     if(bytes.length>MAX_INPUT)throw Object.assign(new Error(`File exceeds ${MAX_INPUT} byte ingestion limit.`),{status:413});
@@ -174,26 +181,55 @@ export class FileExtractor{
     }else if(TEXT_EXTENSIONS.has(extension)||mimeType.startsWith('text/')||['application/json','application/xml','application/yaml'].includes(mimeType)){
       text=bytes.toString('utf8').replace(/\0/g,'');
     }else if(extension==='.pdf'||mimeType==='application/pdf'){
-      extractor='pdftotext';const result=run('pdftotext',['-layout',path,'-']);if(result.ok)text=result.stdout;else{status=result.available?'extraction_failed':'extractor_unavailable';warning=result.error;}
+      extractor='pdftotext';const result=this.run('pdftotext',['-layout',path,'-']);if(result.ok)text=result.stdout;else{status=result.available?'extraction_failed':'extractor_unavailable';warning=result.error;}
     }else if(OFFICE_EXTENSIONS.has(extension)||mimeType.includes('officedocument')||mimeType.includes('opendocument')){
-      extractor='office-xml';const list=run('unzip',['-Z1',path]);if(!list.ok){status=list.available?'extraction_failed':'extractor_unavailable';warning=list.error;}else{
+      extractor='office-xml';const list=this.run('unzip',['-Z1',path]);if(!list.ok){status=list.available?'extraction_failed':'extractor_unavailable';warning=list.error;}else{
         const entries=list.stdout.split(/\r?\n/).filter(Boolean).filter(safeEntry).slice(0,MAX_ENTRIES);
         const preferred=entries.filter((entry)=>/^(word\/document\.xml|xl\/sharedStrings\.xml|ppt\/slides\/slide\d+\.xml|content\.xml|OEBPS\/.*\.(?:xhtml|html))$/.test(entry));
-        const parts=[];for(const entry of preferred){const result=run('unzip',['-p',path,entry],{maxBuffer:MAX_ENTRY});if(result.ok)parts.push(`\n--- ${entry} ---\n${cleanXml(result.stdout)}`);}
+        const parts=[];for(const entry of preferred){const result=this.run('unzip',['-p',path,entry],{maxBuffer:MAX_ENTRY});if(result.ok)parts.push(`\n--- ${entry} ---\n${cleanXml(result.stdout)}`);}
         text=parts.join('\n').trim();metadata.entries=entries.length;if(!text){status='extraction_failed';warning='No supported text-bearing XML entries found.';}
       }
     }else if(extension==='.zip'||mimeType==='application/zip'||mimeType==='application/x-zip-compressed'){
-      extractor='safe-zip-text';const list=run('unzip',['-Z1',path]);if(!list.ok){status=list.available?'extraction_failed':'extractor_unavailable';warning=list.error;}else{
+      extractor='safe-zip-text';const list=this.run('unzip',['-Z1',path]);if(!list.ok){status=list.available?'extraction_failed':'extractor_unavailable';warning=list.error;}else{
         const all=list.stdout.split(/\r?\n/).filter(Boolean);if(all.length>MAX_ENTRIES)throw Object.assign(new Error('Archive contains too many entries.'),{status:413});
         const unsafe=all.filter((entry)=>!safeEntry(entry));if(unsafe.length)throw Object.assign(new Error('Archive contains unsafe paths.'),{status:400});
         const selected=all.filter((entry)=>TEXT_EXTENSIONS.has(extname(entry).toLowerCase())).slice(0,250);const parts=[];let total=0;
-        for(const entry of selected){const result=run('unzip',['-p',path,entry],{maxBuffer:MAX_ENTRY});if(!result.ok)continue;total+=Buffer.byteLength(result.stdout);if(total>MAX_TEXT)break;parts.push(`\n--- ${entry} ---\n${result.stdout}`);}
+        for(const entry of selected){const result=this.run('unzip',['-p',path,entry],{maxBuffer:MAX_ENTRY});if(!result.ok)continue;total+=Buffer.byteLength(result.stdout);if(total>MAX_TEXT)break;parts.push(`\n--- ${entry} ---\n${result.stdout}`);}
         text=parts.join('\n').trim();metadata={entries:all.length,textEntries:selected.length};if(!text){status='indexed_metadata';warning='Archive inventory stored; no supported text entries extracted.';}
       }
     }else if(IMAGE_EXTENSIONS.has(extension)||mimeType.startsWith('image/')){
-      extractor='tesseract-ocr';const result=run('tesseract',[path,'stdout']);if(result.ok)text=result.stdout;else{status=result.available?'extraction_failed':'extractor_unavailable';warning=result.error;}
+      extractor='tesseract-ocr';const result=this.run('tesseract',[path,'stdout']);if(result.ok)text=result.stdout;else{status=result.available?'extraction_failed':'extractor_unavailable';warning=result.error;}
     }else if(MEDIA_EXTENSIONS.has(extension)||mimeType.startsWith('audio/')||mimeType.startsWith('video/')){
-      extractor='ffprobe';const result=run('ffprobe',['-v','error','-show_format','-show_streams','-of','json',path]);if(result.ok){metadata.media=JSON.parse(result.stdout);status='transcription_required';warning='Media metadata indexed. Configure a local speech tool or explicitly approved multimodal provider for transcription.';}else{status=result.available?'metadata_failed':'extractor_unavailable';warning=result.error;}
+      extractor='ffprobe';const result=this.run('ffprobe',['-v','error','-show_format','-show_streams','-of','json',path]);
+      if(result.ok){
+        metadata.media=JSON.parse(result.stdout);
+        // Same product this metadata step already trusts: `noesar-voice-hear`, reached the
+        // identical way the live microphone reaches it (`voice-engine.mjs`'s own `transcribe`),
+        // so a second transcription path with its own quality judgment never has to exist.
+        const routing=this.routingImpl();
+        const configured=routing?.[VoiceJob.TRANSCRIBE];
+        if(!configured?.endpoint){
+          status='transcription_required';
+          warning='Media metadata indexed. Configure a local speech tool or explicitly approved multimodal provider for transcription.';
+        }else{
+          try{
+            const heard=await this.transcribeImpl({audio:bytes,filename:safeName,mimeType,routing,fetchImpl:this.fetchImpl});
+            metadata.transcription={model:heard.model,dropped:Boolean(heard.reason)};
+            if(heard.heardSomething){
+              text=heard.text;extractor='ffprobe+voice-engine';status='complete';
+            }else{
+              status='transcription_empty';
+              warning=heard.reason==='repetition'
+                ?'Media metadata indexed. The transcription model produced only a repetition loop; discarded.'
+                :'Media metadata indexed. No speech was detected.';
+            }
+          }catch(error){
+            if(!(error instanceof VoiceEngineError))throw error;
+            status='transcription_failed';
+            warning=`Media metadata indexed. Transcription failed: ${error.reason}`;
+          }
+        }
+      }else{status=result.available?'metadata_failed':'extractor_unavailable';warning=result.error;}
     }else{status='extractor_required';warning='No extractor is registered for this file type.';}
     if(Buffer.byteLength(text)>MAX_TEXT)text=Buffer.from(text).subarray(0,MAX_TEXT).toString('utf8');
     // The DECLARED type is what is reported back, with the detected one beside it in metadata:

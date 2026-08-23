@@ -322,19 +322,19 @@ function makeZip(dir, name, build) {
   return archive;
 }
 
-test('an archive with too many entries is refused', () => {
+test('an archive with too many entries is refused', async () => {
   const root = workspace();
   const archive = makeZip(root, 'many', (staging) => {
     for (let index = 0; index < 1200; index += 1) writeFileSync(join(staging, `f${index}.txt`), 'x');
   });
   const extractor = new FileExtractor({ blobRoot: join(root, 'blobs') });
-  assert.throws(
+  await assert.rejects(
     () => extractor.extract({ name: 'many.zip', mimeType: 'application/zip', bytesBase64: readFileSync(archive).toString('base64') }),
     /too many entries/,
   );
 });
 
-test('a decompression bomb cannot exhaust memory: extracted text is capped', () => {
+test('a decompression bomb cannot exhaust memory: extracted text is capped', async () => {
   const root = workspace();
   // ~40 MiB of highly compressible text in one entry: tiny on disk, large expanded.
   const archive = makeZip(root, 'bomb', (staging) => {
@@ -343,28 +343,28 @@ test('a decompression bomb cannot exhaust memory: extracted text is capped', () 
   const compressed = readFileSync(archive);
   assert.ok(compressed.length < 1024 * 1024, 'the fixture must actually be a compression bomb');
   const extractor = new FileExtractor({ blobRoot: join(root, 'blobs') });
-  const result = extractor.extract({
+  const result = await extractor.extract({
     name: 'bomb.zip', mimeType: 'application/zip', bytesBase64: compressed.toString('base64'),
   });
   assert.ok(Buffer.byteLength(result.text) <= 32 * 1024 * 1024,
     `extracted text must stay within the cap, saw ${Buffer.byteLength(result.text)}`);
 });
 
-test('an oversized upload is refused before extraction', () => {
+test('an oversized upload is refused before extraction', async () => {
   const root = workspace();
   const extractor = new FileExtractor({ blobRoot: join(root, 'blobs') });
   const oversized = Buffer.alloc(49 * 1024 * 1024, 0x41).toString('base64');
-  assert.throws(
+  await assert.rejects(
     () => extractor.extract({ name: 'big.bin', mimeType: 'application/octet-stream', bytesBase64: oversized }),
     /ingestion limit/,
   );
 });
 
-test('an uploaded filename cannot escape the blob directory', () => {
+test('an uploaded filename cannot escape the blob directory', async () => {
   const root = workspace();
   const blobRoot = join(root, 'blobs');
   const extractor = new FileExtractor({ blobRoot });
-  const result = extractor.extract({
+  const result = await extractor.extract({
     name: '../../../etc/passwd', mimeType: 'text/plain',
     bytesBase64: Buffer.from('root:x:0:0').toString('base64'),
   });

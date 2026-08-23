@@ -6032,3 +6032,24 @@ auth-failure.
 effettivamente scritto "crea un agente che fa X" in chat — provato end-to-end contro un
 upstream scriptato (stesso harness di `prompt-injection-containment.test.mjs`), non
 contro un modello reale collegato all'installazione.
+
+## `d0650-audio-transcription-20260823T013721Z` — DEPLOYATO e verificato — 2026-08-23
+**Tag.** Costruito offline (`docker build --pull=false`, exit 0), installato con
+`tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0650`: upload audio/video ora vengono trascritti tramite
+`voice-engine.mjs` `transcribe()` (lo stesso client del microfono live) quando un
+endpoint di trascrizione è configurato — nessun secondo client HTTP, nessun secondo
+giudizio di qualità. `FileExtractor.extract()`/`ingestFile()` sono ora `async`.
+**Verifica.** Byte-uguale albero↔immagine **479/479**, differing **0**. Unit
+**2989/2990** (1 skip preesistente, **+5 nuovi test**), ESLint **478/0/0**,
+`auth-http-smoke`/`http-smoke` PASS. Live: `NOESAR_VOICE_TRANSCRIBE_ENDPOINT` confermato
+già impostato su questa installazione (`docker inspect`) — la capacità è attiva, non
+dormiente.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` `/healthz` **200**, 4 figli, 0
+auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260823T013756Z` (era
+`d0648-agent-directive-20260822T163425Z`).
+**Costo di rollback — nessuno.** Nessuna migrazione; sorgenti esistenti con
+`transcription_required` restano invariate finché non ri-caricate.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260822T165007Z` rimosso
+(`Exited (0)` confermato). Superstiti di progetto: **due**.
