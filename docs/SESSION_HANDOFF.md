@@ -9,13 +9,14 @@ verified live.
 
 ## ➜ LA PROSSIMA AZIONE
 
-One item remains from `D-0645`/`D-0649`:
+Both `§4#10` items from `D-0645`/`D-0649` are closed. The Kokoro TTS → GPU item is now
+**closed as out-of-scope**, not pending (`D-0652`, 2026-08-23): `noesar-voice-speak` is not
+a `noesar-evolution*` container, and CLAUDE10.md §1/§5/§16 forbid touching it regardless of
+confirmation — the open question was never "how", it was "whether", and the boundary rule
+already answers that. No further action on this item unless the Owner amends CLAUDE10.md
+with a named exception.
 
-**Kokoro TTS → GPU move** — infrastructure on `noesar-voice-speak`, a
-non-`noesar-evolution` container. Stopped here twice already on stale premises (Kokoro
-turned out to already be running; a "24px" symptom turned out to be CSS, not TTS). Needs
-an explicit, separate technical confirmation before touching a running container — not
-covered by a general "vai avanti".
+No open item from this session's work remains. Await the Owner's next instruction.
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 

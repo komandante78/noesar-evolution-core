@@ -15053,3 +15053,18 @@ not a build gap.
 `openai-responses` style once its multipart input shape can be checked against a live
 response — small, isolated, the same module, no new concept. **Funding fit: none** — a
 correctness extension to an already-shipped capability, not a new reusable component.
+
+## D-0652 · Kokoro TTS→GPU reclassified out of scope — container boundary reaffirmed — 2026-08-23
+**Decision.** `noesar-voice-speak` (Kokoro TTS) is not a `noesar-evolution*` container and
+is never started, stopped, exec'd into, or reconfigured by this project — no confirmation
+from the Owner brings it in-scope without a separate, named amendment to `CLAUDE10.md`.
+**Why.** Owner instruction, 2026-08-23 (verbatim): "tutti i container devono stare dentro
+noesar evolution e un selfhosted e nulla legato a unraid" — reaffirms §1 rule 4
+(`PROJECT_ROOT` boundary), §5 rule 16 (no touching non-project containers) and §16
+(self-hosted, no Unraid coupling).
+**Rejected.** Treating "give me a specific confirmation and I'll do the GPU move" as the
+open question — the container itself sits outside this project's authority, so no answer
+about *how* to do it was ever the missing piece.
+**Evidence.** `CLAUDE10.md` §1 rule 4, §5 rule 16, §16 rules 60-64; Owner message 2026-08-23.
+**Reversal cost.** none — no code or container was touched by this decision.
+**Status.** applied — closes the `D-0645`/`D-0649` remaining item as out-of-scope.
