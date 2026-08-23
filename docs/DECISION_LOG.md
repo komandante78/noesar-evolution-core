@@ -15309,3 +15309,30 @@ in the workspace (same class as `noesar-auth`/`noesar-audit-ledger`).
 (`noesar-authority-protocol`, `noesar-authority-transport`, `noesar-control-plane`,
 `noesar-data-plane`). **Improvement proposal, funding fit: Restack · trait 5, measurable
 reliability** — same pattern, third instance this session.
+
+## D-0661 · `noesar-data-plane`'s production-readiness gates, mutation-tested — 2026-08-23
+**Decision.** Continued `F-RUST-001`. Tested `noesar-data-plane`: two AND-gates over booleans
+(`DataPlaneStatus::postgresql_candidate`, 4 conditions; `RepositoryHealth::production_ready`,
+13 conditions) that decide whether the product is allowed to run against production PostgreSQL.
+Added 9 tests, including full **mutation coverage** on the 13-condition gate — each condition
+flipped alone, one at a time, asserting the gate still refuses — the only way to prove every
+term actually participates in the AND rather than being dead weight a future edit could delete
+unnoticed. Also covered: `reference_json()` is never production-ready by construction,
+`require_production_data_plane()`'s two distinct refusal reasons (wrong mode vs. incomplete
+evidence) and its accept path, and `RepositoryContext::validate()`'s required/optional fields.
+**Why.** A 13-term AND-gate is exactly the shape where "it passed once so it must be checking
+everything" is the failure mode this project's own governance names: a clean pass had never
+been shown to mean what it claims.
+**Rejected.** Nothing — this crate had no non-candidate parts the way `noesar-contracts` did;
+every public function here has real decision logic.
+**Evidence.** Disposable `rust:1-bookworm`, `--network none`, vendored: `cargo test -p
+noesar-data-plane --offline` → 9/9. `cargo test --workspace --offline` → 184 tests, 184 pass, 0
+fail (was 175 at `D-0660`, +9), 0 new warnings.
+**Reversal cost.** None — additive only, no gate logic changed, crate already has zero
+dependents in the workspace.
+**Status.** applied. `F-RUST-001`, of the original 8: 4 now tested (`noesar-auth`,
+`noesar-audit-ledger`, `noesar-hardware-orchestrator`, `noesar-data-plane`), 1 not applicable
+(`noesar-contracts`), 3 remain (`noesar-authority-protocol`, `noesar-authority-transport`,
+`noesar-control-plane`). **Improvement proposal, funding fit: Restack · trait 5, measurable
+reliability** — same pattern, fourth instance this session; the mutation-coverage technique
+itself is worth naming as a reusable practice for this crate family, not only this one result.
