@@ -12,7 +12,10 @@ ledger` (+1 real defect fixed), `noesar-hardware-orchestrator`, `noesar-data-pla
 Owner then, more emphatically, "NON DEVI FERMARTI!! ... VAI AVANTI A FINIRE": closed
 `F-TOOLS2-001` (socket dispatch tests for `/reject`/`/simulate`/`/git`, `D-0663`) and
 investigated `F-RUST-002`, finding its own premise undercounted — corrected rather than
-"fixed" on a false basis (`D-0664`).
+"fixed" on a false basis (`D-0664`). Then closed `F4-010` the same way (`D-0665`): the SSRF/
+DNS-rebinding fix was already real, only its dispatch-level proof was missing, plus a small
+additive `ToolExecutor` constructor change to make the tool-path proof possible. Reviewed every
+other open finding for safe actionability — none left without Owner input.
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -35,6 +38,16 @@ test.mjs` 32/32. `F-RUST-002` **OPEN, corrected** (`D-0664`): its own premise wa
 standalone binary (the rest are libraries, for which "no Dockerfile entry" was never a
 meaningful gap). Left open as an Owner-level architecture question (which control-plane
 implementation ships), not closed on the false premise and not decided unilaterally.
+`F4-010` **CLOSED** (`D-0665`): corrected from "OPEN" — the fix was real (s336), only the
+dispatch-level proof was missing; added it for both the provider and tool paths.
+
+**Findings reviewed and left open, on purpose:** `F4-012`/`F4-013` informational (`F4-013`
+explicitly deferred to phase 5 documentation), `F7-001` explicitly out of scope (dormant
+reference material), `F-CAP4-001` reference/scaffolding by design, `F-MODEL-001` awaiting an
+Owner UX decision, `F-I18N-002`/`F-HOOK-008` explicitly scoped as their own future phases,
+`F-ROT-001` needs a change to `tools/deploy/redeploy.sh` (a file with documented past-incident
+history and its own text-level invariant fixture) — more care than a quick bounded fix, left
+open rather than risked.
 
 No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
@@ -67,6 +80,13 @@ binaries (`noesar-supervisor`, `noesar-sandbox`); `rust/build-authority-release.
 builds+provenance-seals `noesar-authority-daemon`; `noesar-control-plane` is the one real
 orphaned binary (health endpoint says so itself: `authorityDaemon:source-present-not-built`).
 
+**`D-0665`:** `ai-provider-gateway.test.mjs`/`ai-agent-service.test.mjs` +1 test each, proving
+`ProviderGateway.complete()`/`ToolExecutor.execute()` actually invoke the DNS-rebinding guard
+for a hostname that resolves inward at call time. `ToolExecutor`'s constructor gained an
+optional `lookup` override (mirrors `ProviderGateway`'s own; unset/no-op in production) to make
+the tool-path test possible at all — the seam existed in `address-guard.mjs`'s `guardedFetch`
+already, `ToolExecutor` just never threaded it through.
+
 ## WHAT WAS **NOT** DONE
 
 - Kokoro→GPU — out of scope (`D-0652`), not built.
@@ -76,6 +96,8 @@ orphaned binary (health endpoint says so itself: `authorityDaemon:source-present
 - FUNDING Phases F/G — not started, and not due before the deadline (see above).
 - `F-RUST-002` — corrected, still open. Deciding whether/how `noesar-control-plane` or
   `noesar-authority-daemon` ever ships is an Owner architecture decision, not taken here.
+- `F-ROT-001` — not touched: the fix lives in `tools/deploy/redeploy.sh`, which warrants more
+  care than this pass's remaining bounded scope (see findings-reviewed note above).
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged all session). Commits are complete and correct locally.
 

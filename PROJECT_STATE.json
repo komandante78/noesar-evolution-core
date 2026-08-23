@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0663/D-0664 — Closed F-TOOLS2-001 (3 new socket-dispatch tests: workspace.reject, workspace.simulate, coden.gitStatus; the real gitStatus wired in, not a stub). Investigated and corrected F-RUST-002: its own premise undercounted -- 17 of 20 Rust crates are unpackaged, not 3, and only noesar-control-plane is actually a standalone binary among them. Left OPEN as an Owner-level architecture question, not closed on the false premise.",
-  "phase_status": "Verified this session: node --test services/reference-control-plane/test/session-protocol.test.mjs -> 32/32 (was 29/29). Full suite -> 3093 tests, 3092 pass, 1 pre-existing skip, 0 fail (manifest regenerated). ESLint 491/0.",
-  "next_phase": "F-TOOLS2-001 closed. F-RUST-002 open, correctly scoped, needs an Owner architecture decision (not a code fix) to actually close. Remaining open findings not yet reviewed this pass: F-ROT-001 (stale allowlist IP, low, needs deploy-tooling change -- out of this pass's safe scope), F4-012/F4-013 (informational), F7-001 (out of scope, named), F-CAP4-001 (reference material, low), F-MODEL-001 (awaiting Owner choice).",
+  "current_phase": "D-0665 — F4-010 closed (corrected from OPEN): the fix was already real at s336; added dispatch-level proof for both halves (ai-provider-gateway.test.mjs, ai-agent-service.test.mjs), plus a small additive fix (ToolExecutor's constructor now accepts an optional lookup override, unused in production) that made the tool-path proof possible at all.",
+  "phase_status": "Verified this session: ai-provider-gateway.test.mjs -> 7/7 (was 6/6). ai-agent-service.test.mjs -> 6/6 (was 5/5). Full suite -> 3095 tests, 3093 pass, 1 pre-existing skip, 0 fail (manifest regenerated). ESLint 491/0.",
+  "next_phase": "Reviewed remaining open findings for actionability: F4-012/F4-013 informational (no action needed, F4-013 explicitly deferred to phase 5 documentation), F7-001 explicitly out of scope (dormant reference material), F-CAP4-001 reference/scaffolding by design, F-MODEL-001 awaiting Owner UX decision, F-I18N-002/F-HOOK-008 explicitly scoped as their own future phases. F-ROT-001 needs a deploy-tooling change (redeploy.sh) -- more care warranted than this pass's remaining scope, left open. No further safely-actionable finding identified without Owner input.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "47b2795f7376ce354a17b29eb3833f80e310bbee",
-  "last_updated_utc": "2026-08-23T16:00:00Z",
+  "last_commit": "5e09590ef5a931257da73e7d3b6a2a317c30ee47",
+  "last_updated_utc": "2026-08-23T16:30:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -252,7 +252,7 @@
     {
       "id": "F4-010",
       "severity": "low",
-      "status": "OPEN - accepted",
+      "status": "CLOSED 2026-08-23 (D-0665): corrected from OPEN - the fix was already real (provider-gateway.mjs/tool-executor.mjs both carry 'F4-010, closed s336' and call a real resolvePublicAddresses/guardedFetch DNS guard, 21/21 own tests in address-guard.test.mjs), only the dispatch-level proof was missing. Added ai-provider-gateway.test.mjs (ProviderGateway.complete() refuses a hostname resolving inward via injected lookup) and ai-agent-service.test.mjs (ToolExecutor.execute() same, after adding an optional constructor lookup override mirroring ProviderGateway's own pattern, unset/no-op in production). Full suite 3095 tests, 3093 pass, 1 pre-existing skip, 0 fail.",
       "summary": "provider and tool URL validation checks the hostname string, not the address actually reached, so a name resolving to an internal address passes. Exploitation requires provider.manage or agent.manage."
     },
     {
@@ -748,7 +748,8 @@
     "d0660_noesar_hardware_orchestrator_2026-08-23": "VERIFIED this session: rust/crates/noesar-hardware-orchestrator +7 tests (was 0) -> cargo test -p noesar-hardware-orchestrator --offline = 7/7. cargo test --workspace --offline = 175 tests, 175 pass, 0 fail (+7 over D-0659).",
     "d0661_noesar_data_plane_2026-08-23": "VERIFIED this session: rust/crates/noesar-data-plane +9 tests (was 0), incl. 13-way mutation coverage on RepositoryHealth::production_ready() -> cargo test -p noesar-data-plane --offline = 9/9. cargo test --workspace --offline = 184 tests, 184 pass, 0 fail (+9 over D-0660).",
     "d0662_frust001_closed_2026-08-23": "VERIFIED this session: noesar-authority-protocol +19 tests, noesar-authority-transport +14 tests, noesar-control-plane +1 test (all were 0). cargo test --workspace --offline = 218 tests, 218 pass, 0 fail (+34 over D-0661). F-RUST-001 CLOSED, F-RUST-002 opened for the packaging observation.",
-    "d0663_socket_dispatch_coverage_2026-08-23": "VERIFIED this session: session-protocol.test.mjs +3 tests (workspace.reject/simulate, coden.gitStatus dispatch routes) -> 32/32. Full suite 3093 tests, 3092 pass, 1 pre-existing skip, 0 fail."
+    "d0663_socket_dispatch_coverage_2026-08-23": "VERIFIED this session: session-protocol.test.mjs +3 tests (workspace.reject/simulate, coden.gitStatus dispatch routes) -> 32/32. Full suite 3093 tests, 3092 pass, 1 pre-existing skip, 0 fail.",
+    "d0665_f4010_dispatch_proof_2026-08-23": "VERIFIED this session: ai-provider-gateway.test.mjs +1 test (7/7), ai-agent-service.test.mjs +1 test (6/6), ToolExecutor constructor gained an optional lookup override. Full suite 3095 tests, 3093 pass, 1 pre-existing skip, 0 fail."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1153,7 +1154,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0663/D-0664 closed, committed. Continuing per Owner's explicit non-stop instruction to look at the remaining open findings.",
+  "next_action": "D-0665 closed, committed. Reviewed all remaining tracked findings; none left that are both safely actionable and unblocked without Owner input. Reporting status.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
