@@ -15,11 +15,28 @@ investigated `F-RUST-002`, finding its own premise undercounted — corrected ra
 "fixed" on a false basis (`D-0664`). Then closed `F4-010` the same way (`D-0665`): the SSRF/
 DNS-rebinding fix was already real, only its dispatch-level proof was missing, plus a small
 additive `ToolExecutor` constructor change to make the tool-path proof possible. Reviewed every
-other open finding for safe actionability — none left without Owner input.
+other open finding for safe actionability — none left without Owner input. Owner then asked for
+a full audit of what should ever go public: found a **second** cleartext-secret-in-history leak
+(`B-011` round 2, `D-0666`) — one credential still live — and rewrote history again to remove
+it. Also rewrote `README.md` and added `FEATURES.md` per Owner request (`D-0667`).
 
 ## ➜ LA PROSSIMA AZIONE
 
-No deploy-blocking item is open. Three independent threads are all at a clean stop:
+**Urgent, blocking on the Owner, read this first:** `origin/main` on GitHub still carries the
+old history with a live secret in cleartext (`D-0666`). The local repo is fixed and verified
+(`git rev-list main | git grep` → 0 matches across 774 commits), backed up
+(`BACKUPS/pre_history_rewrite_20260823T134411Z.bundle`), but **the force-push to `main` is
+blocked by the harness's own safety classifier for me** — it must be run directly by the Owner:
+```
+cd /mnt/cachec/NOESAR_EVOLUTION
+git push --force https://<TOKEN>@github.com/komandante78/NOESAR-EVOLUTION.git main:main
+```
+Separately: `NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of the three leaked
+secrets. It is **not** rotated — it is a client credential this project presents to the
+external `DEBUG_EVOLUTION` project (out of this project's scope); rotating it here alone
+would break that integration without the Owner also updating the other side.
+
+Three other independent threads are all at a clean stop:
 
 **Product/§4#10:** closed — see `D-0645`/`D-0649`/`D-0650`/`D-0651`/`D-0652`.
 
@@ -63,22 +80,12 @@ capability-token wire-format package, and the JS+Rust authority-containment proo
 `packages/authority-containment/`) — full detail in `docs/DECISION_LOG.md`, nothing about them
 changed since.
 
-**`D-0658`–`D-0662` (`F-RUST-001`, CLOSED):** full detail in `docs/DECISION_LOG.md`. Highlights
-worth carrying forward without re-reading it: `noesar-auth`'s RFC 6238 TOTP is checked against
-the **published** Appendix B vector, not self-consistency; `noesar-audit-ledger`'s hash-chain
-had a real delimiter-collision defect, found and fixed (zero reversal cost, zero dependents);
-`noesar-data-plane`'s 13-condition production-readiness gate has full mutation coverage;
-`noesar-authority-protocol`/`noesar-authority-transport` are the project's actual request-auth
-and IPC-framing boundary and now carry 33 tests between them (replay, clock skew, binding
-mismatches, oversized/malformed/non-object frames); `noesar-control-plane`'s release gate is
-proven to block a `production` channel start against the still-reference authority/data-plane
-status. `noesar-contracts` reclassified not-applicable.
-
-**`D-0663`/`D-0664`:** full detail in `docs/DECISION_LOG.md`. `F-TOOLS2-001` closed with 3 new
-dispatch-level tests. `F-RUST-002` corrected, not closed: `oci/Dockerfile` ships exactly 2 Rust
-binaries (`noesar-supervisor`, `noesar-sandbox`); `rust/build-authority-release.sh` separately
-builds+provenance-seals `noesar-authority-daemon`; `noesar-control-plane` is the one real
-orphaned binary (health endpoint says so itself: `authorityDaemon:source-present-not-built`).
+**`D-0658`–`D-0664`:** full detail in `docs/DECISION_LOG.md`, nothing about them changed since.
+`F-RUST-001` closed (7 crates tested incl. a real hash-chain defect fixed, 1 N/A). `F-TOOLS2-001`
+closed (3 dispatch-level tests). `F-RUST-002` corrected: only `noesar-supervisor`/`noesar-sandbox`
+ship in `oci/Dockerfile`, `noesar-authority-daemon` ships via its own separate release script,
+`noesar-control-plane` is the one real orphaned binary — an Owner architecture question, left
+open.
 
 **`D-0665`:** `ai-provider-gateway.test.mjs`/`ai-agent-service.test.mjs` +1 test each, proving
 `ProviderGateway.complete()`/`ToolExecutor.execute()` actually invoke the DNS-rebinding guard
@@ -86,6 +93,19 @@ for a hostname that resolves inward at call time. `ToolExecutor`'s constructor g
 optional `lookup` override (mirrors `ProviderGateway`'s own; unset/no-op in production) to make
 the tool-path test possible at all — the seam existed in `address-guard.mjs`'s `guardedFetch`
 already, `ToolExecutor` just never threaded it through.
+
+**`D-0666`:** Owner-requested "what should go online" audit found `EVIDENCE/live_config_
+pre_phase6_deploy_20260805T162814Z.json` (2026-08-05, six days after `D-0258`'s supposed fix)
+carrying three cleartext secrets, one (`NOESAR_DEBUG_EVOLUTION_TOKEN`) still live. `B-011`'s own
+"gone from every commit" claim was corrected — it only ever covered the first leak. History
+rewritten again, `main` only (774 commits), bundle-backed-up first, re-verified 0 matches. **Not
+yet pushed** — see the urgent note above.
+
+**`D-0667`:** `README.md` was the unedited original V4 README (pre-`D-0096`) — "V4 Package 1",
+a "129/129" test count 20x stale, and a direct Unraid reference (`CLAUDE10.md` §16 violation).
+Rewritten with current framing, no frozen count (points at commands + the handoff instead), no
+host reference. `FEATURES.md` added: name + one-line description per real, tested capability,
+grouped by the WebUI's 12 destinations, for both the repo and a future website.
 
 ## WHAT WAS **NOT** DONE
 
@@ -98,8 +118,11 @@ already, `ToolExecutor` just never threaded it through.
   `noesar-authority-daemon` ever ships is an Owner architecture decision, not taken here.
 - `F-ROT-001` — not touched: the fix lives in `tools/deploy/redeploy.sh`, which warrants more
   care than this pass's remaining bounded scope (see findings-reviewed note above).
-- **No push** — `git push origin main` still fails, no GitHub credential in this
-  container (`B-013`, unchanged all session). Commits are complete and correct locally.
+- **Push of the rewritten history to `origin/main`** — blocked for me by the harness's safety
+  classifier (force-push to `main`). Owner must run it directly (`D-0666`, command above).
+- **`NOESAR_DEBUG_EVOLUTION_TOKEN` rotation** — not done; it authenticates this project to the
+  external `DEBUG_EVOLUTION` project, so rotating it here alone breaks that integration without
+  Owner coordination on the other side (`D-0666`).
 
 ## LOCAL, UNTRACKED, BY DESIGN
 
@@ -117,7 +140,11 @@ already, `ToolExecutor` just never threaded it through.
 
 - `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; every
   diff this session was reviewed with a heuristic grep, clean, declared as heuristic.
-- `B-011` low/deferred (`D-0258`): git history rewritten on Owner's explicit authorisation.
-- `B-013` **still open**: `git push origin main` refused, no GitHub credential stored in
-  this container. Commits keep queuing locally, correct and complete.
+- `B-011` **round 2** (`D-0666`): a second cleartext-secret leak found and fixed locally;
+  push to `origin/main` still pending — see "LA PROSSIMA AZIONE" above, this is now the
+  single most important open item.
+- `B-013` **changed, not closed**: a GitHub token was supplied this session (used for local
+  fetch/rewrite verification only, never written to disk), so the blocker is no longer "no
+  credential" — it is that a `git push --force` to `main` is refused by the harness's own
+  safety classifier for me specifically. The Owner must run the push directly (command above).
 - No other new blocker.

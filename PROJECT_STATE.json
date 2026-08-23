@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0666 — B-011 round 2: found and fixed a second cleartext-secret-in-history leak (EVIDENCE/live_config_pre_phase6_deploy_20260805T162814Z.json, 2026-08-05, 6 days after D-0258's supposed fix). One of the three secrets (NOESAR_DEBUG_EVOLUTION_TOKEN) was still live. History rewritten on main (774 commits), bundle-backed-up, re-verified zero matches. Push and live rotation are the immediate next steps in this same phase.",
-  "phase_status": "Verified this session: git rev-list main | git grep for both raw secret values -> 0 matches across all 774 commits. Pre-rewrite scope confirmed: exactly 1 blob, reachable only from main. Not yet done: force-push to origin, and NOESAR_DEBUG_EVOLUTION_TOKEN rotation on the live container.",
-  "next_phase": "Reviewed remaining open findings for actionability: F4-012/F4-013 informational (no action needed, F4-013 explicitly deferred to phase 5 documentation), F7-001 explicitly out of scope (dormant reference material), F-CAP4-001 reference/scaffolding by design, F-MODEL-001 awaiting Owner UX decision, F-I18N-002/F-HOOK-008 explicitly scoped as their own future phases. F-ROT-001 needs a deploy-tooling change (redeploy.sh) -- more care warranted than this pass's remaining scope, left open. No further safely-actionable finding identified without Owner input.",
+  "current_phase": "D-0667 — README.md rewritten (was the unedited V4-era README from before D-0096, calling itself 'V4 Package 1', citing a 129/129 test count 20x stale, and naming the Owner's Unraid server directly -- a CLAUDE10 SS16 violation). FEATURES.md added: name+description per real, tested capability, grouped by the WebUI's own 12 destinations.",
+  "phase_status": "Verified this session: node tools/verify-source.mjs -> PASS. Every markdown link in the new README checked to resolve to a real tracked file.",
+  "next_phase": "B-011 round 2 (D-0666): history rewritten locally and verified clean, NOT yet pushed -- git push --force to main is blocked by the harness's own safety classifier and must be run by the Owner directly (command given in chat). NOESAR_DEBUG_EVOLUTION_TOKEN still live and still in the (now locally-rewritten, not-yet-pushed) history -- NOT rotated: it is a client credential NOESAR EVOLUTION presents to the external DEBUG_EVOLUTION project, rotating it here alone would break that integration without Owner coordination on the other side.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "9ac332d3d9ec52b1262ca2b3573089684385e270",
-  "last_updated_utc": "2026-08-23T14:00:00Z",
+  "last_updated_utc": "2026-08-23T14:40:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1154,7 +1154,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0665 closed, committed. Reviewed all remaining tracked findings; none left that are both safely actionable and unblocked without Owner input. Reporting status.",
+  "next_action": "D-0667 closed (README+FEATURES). D-0666 (history rewrite) is committed locally but the push to origin/main is blocked for me and needs the Owner to run it directly. NOESAR_DEBUG_EVOLUTION_TOKEN rotation needs Owner coordination with the external DEBUG_EVOLUTION project before I touch it.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -1,42 +1,49 @@
-# NOESAR Evolution V4 — Complete Product Source
+# NOESAR EVOLUTION
 
-This directory is the canonical implementation delivered as Package 1 of the
-five-archive NOESAR EVOLUTION V4 product set. It is not a preview, draft,
-skeleton or mock package.
-
-The product now includes a professional AI workspace organized around three
-operating modes:
+A self-hosted AI workspace: chat, documents, coding agents and automation, running on
+infrastructure the operator controls — any PC, server or OS, not a specific vendor or host.
+The product is organized around three operating modes:
 
 - **Ask** — research, source-grounded answers and controlled retrieval;
 - **Create** — editable documents, code, tables, charts, canvases and apps;
 - **Act** — agents, tools, approvals, scheduled tasks and auditable execution.
 
-The conversation model is a versioned context graph rather than an immutable
-message list. Projects share conversations, files, instructions, memories,
-agents, tools and activities. Users can fork, edit, regenerate, exclude, merge,
-compare and undo context changes.
+**[See `FEATURES.md` for the full list of what is built](FEATURES.md)** — chat and multimodal
+input, documents and a code agent (CodeN Evolution), tools and agents, knowledge and memory,
+capability-token security, and self-hosted installation with update and rollback.
 
-Model access is provider-neutral. Local OpenAI-compatible servers remain the
-default. External OpenAI/ChatGPT, Anthropic/Claude, Moonshot/Kimi and custom
-OpenAI-compatible APIs are optional, disabled by default, credential-encrypted,
-consent-scoped and subject to outbound redaction and SSRF protections.
+The conversation model is a versioned context graph rather than an immutable message list.
+Projects share conversations, files, instructions, memories, agents, tools and activities.
+Model access is provider-neutral: local OpenAI-compatible servers by default; external
+providers (OpenAI, Anthropic, Moonshot/Kimi, or a custom OpenAI-compatible endpoint) are
+opt-in, disabled by default, credential-encrypted and consent-scoped.
 
-The source includes the WebUI, AI workspace control plane, Rust authority
-workspace with locked offline vendor, PostgreSQL migrations and repository
-adapter, capability framework, SDKs, deployment assets, security policy,
-operations tooling, tests, schemas, SBOM material and documentation.
+The repository includes the WebUI, the AI workspace control plane, a Rust authority
+workspace (capability tokens, sandboxing, the reasoning-provider contract), PostgreSQL
+migrations and a repository adapter, SDKs, deployment assets, security policy, operations
+tooling, tests, schemas, SBOM material and documentation.
 
-## Verification status
+## Status
 
-- Node test suite: **129/129 PASS**
-- source verification: **PASS**
-- authenticated HTTP smoke: **PASS**
-- JavaScript/ESM syntax: **57 files PASS**
-- JSON parsing: **85 files PASS**
-- shell syntax: **33 files PASS**
-- temporary server startup, health and static WebUI smoke: **PASS**
-- Rust locked offline tests/release build and authority round-trip: **PASS**
+Actively developed. `docs/SESSION_HANDOFF.md` states exactly what is done, what is in
+progress and what is open, as of the most recent session — read that file for the current
+picture rather than a number frozen at README-authoring time.
 
-The implementation is complete for packaging. Installation and acceptance on
-the owner's Unraid server are the next operation; target-specific defects may
-be remediated there without redefining the functional scope.
+Representative counts, each reproducible from this repository:
+
+- JavaScript/Node unit suite: `node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs`
+- Rust workspace: `cargo test --workspace --offline` (offline, vendored dependencies, no network)
+- Static verification, linting and packaging checks: `scripts/test.sh`
+
+## Architecture and governance
+
+- `ARCHITECTURE.md` — system design.
+- `SECURITY.md` — security posture and reporting.
+- `docs/DECISION_LOG.md` — every non-trivial decision, with its evidence.
+- `MASTER_PROJECT/` — the design documents this rewrite is built from.
+
+## License
+
+`AGPL-3.0-or-later` is the proposed open-core license, with an additional commercial license
+planned — see `docs/LICENSE_STRATEGY.md`. This is a stated proposal, not a final legal
+determination.

@@ -15515,3 +15515,37 @@ corrected in the same phase — the Stop hook caught the inconsistency, exactly 
 EVOLUTION_TOKEN` rotation are the next actions in this same phase**, not yet completed at the
 time this entry was written — declared, not implied. `B-011` updated below to stop claiming a
 completeness it did not have.
+
+## D-0667 · `README.md` rewritten, `FEATURES.md` added — Owner: repository presentation — 2026-08-23
+**Decision.** Owner: *"VOGLIO IL REPOSITI ORGANIZZATO E PULITO, SUL READMI DEVE ESSERCI LA
+PRESENTAZIONE DEL PROGETTO... FA UN FILE DELLA LISTA DI COSA HA NOESAR EVOLUTION E COSA FA...
+SERVE SIA PER REPOSITI CHE PER SITO WEB"*. Two changes. `FEATURES.md` (new, root): name +
+one-line description per capability, grouped the way the WebUI's own twelve destinations are
+grouped (`docs/WEBUI_DESIGN_V3.md` §10) — chat/multimodal, documents/CodeN Evolution, agents and
+tools, knowledge, authority/security, operations/installation, governance. Every row names
+something built and tested this project, not aspiration; the file's own closing line says so and
+points at `docs/DECISION_LOG.md` as the evidence source. `README.md` rewritten: the previous text
+was the **original V4 README from before `D-0096`** (26 lug, made `MASTER_PROJECT/` the plan of
+record) — untouched since — and carried three real defects: it called itself *"V4 — Complete
+Product Source"* / *"Package 1 of the five-archive V4 product set"* (the superseded plan), stated
+*"Node test suite: 129/129 PASS"* (current: 3095+ JS, 218+ Rust — off by over 20x), and named
+*"the owner's Unraid server"* directly in a product artifact, which `CLAUDE10.md` §16 forbids
+absolutely ("NIENTE che presupponga Unraid"). All three fixed: current framing, no frozen test
+count (points at `docs/SESSION_HANDOFF.md` and the actual commands instead, so it cannot go
+stale the same way again), no host reference.
+**Why.** A repository's own front door describing a superseded plan, a host it must never
+presume, and a test count 20x stale is a rule-43 defect (documentation claims must match the
+code) at the single most-read file in the repository — and the Owner asked for exactly this
+audit and this fix in the same breath.
+**Rejected.** Inventing a marketing-style feature list not traceable to real code — every
+`FEATURES.md` row was checked against what this session (or an earlier one, cited via its
+`D-xxxx`) actually built and tested; a capability still in progress is named in the handoff, not
+here. Also rejected: hardcoding a test count in the new README — the exact defect being fixed.
+**Evidence.** `node tools/verify-source.mjs` → PASS (migrations=20, baseline=12/12, 1194 source
+files nul-free) — the change touched no source semantics. Read-verified every `[link](path)`
+reference in the new README resolves to a real tracked file (`ARCHITECTURE.md`, `SECURITY.md`,
+`docs/DECISION_LOG.md`, `MASTER_PROJECT/`, `docs/LICENSE_STRATEGY.md`, `FEATURES.md`).
+**Reversal cost.** None — documentation only, no code or config touched.
+**Status.** applied. **Improvement proposal, funding fit: none** — a README rewrite is
+presentation, not a delimited reusable technical component; naming a platform here would be
+exactly the stretched claim `noesar-evolution-funding-fit` §5 warns against.
