@@ -15242,3 +15242,39 @@ callers).
 **Status.** applied. **Improvement proposal, funding fit: Restack · trait 5, measurable
 reliability** — the same "prove it before something depends on it" principle `D-0654`/`D-0656`
 applied to the authority layer, applied here to the auth primitives one layer below it.
+
+## D-0659 · `noesar-audit-ledger` tested, and a real hash-chain weakness fixed — 2026-08-23
+**Decision.** Continued `F-RUST-001` (Owner: "vai avanti dai non fermarti"). Added 6 tests to
+`rust/crates/noesar-audit-ledger` (0 → 6). While writing them, found the crate's hash formula —
+`format!("{id}|{timestamp}|{actor}|{action}|{result}|{previous_hash}")`, joined with a bare `|`
+— collides whenever a field's own content contains `|`: `actor="a|b", action="c"` and
+`actor="a", action="b|c"` both produce the material `"...|a|b|c|..."` and therefore the
+identical hash. **Confirmed independently before writing the fix**, not assumed: a standalone
+script reproduced the collision against the pre-fix formula. Fixed by extracting
+`compute_hash()` and feeding each field length-delimited (`value` then its byte length as an
+8-byte little-endian suffix) — the identical defense this project already codified in
+`noesar-capability`'s `plan_digest`/`sign`, `noesar-reasoning-reference`'s `digest()`, and
+normatively in `packages/capability-token/SPEC.md` `CT-002`. Re-verified the same two inputs no
+longer collide under the new formula.
+**Why.** A tamper-evident audit ledger whose own hash can be produced two different ways is not
+tamper-evident on the fields that matter; `actor`/`action`/`result` are exactly the kind of
+free-text fields code changes over time might feed from user- or error-message-derived strings.
+**Rejected.** Leaving it recorded-only, per `noesar-evolution`'s own "fix inside the phase when
+the defect is in scope, understood, repairable without containers/host changes, and provable by
+a test" — all four held. Also rejected: keeping the collision-vulnerable format and only adding
+tests around it, which would have meant writing a test suite that certifies a known weakness as
+correct behaviour.
+**Evidence.** Disposable `rust:1-bookworm`, `--network none`, vendored: `cargo test -p
+noesar-audit-ledger --offline` → 6/6, including the exact collision case (now proven distinct).
+`cargo test --workspace --offline` → 168 tests, 168 pass, 0 fail (was 162 at `D-0658`, +6), 0
+new warnings.
+**Reversal cost.** None — the crate has zero dependents anywhere in the workspace (`grep -rn
+noesar_audit_ledger rust/crates/*/src` finds only its own file), so the wire-format change
+breaks nothing currently relying on it. This is also why the fix was safe to make *now*: the
+same change made after something started depending on the old hash would be a breaking one.
+**Status.** applied. `F-RUST-001`: 2/8 previously-untested crates now tested
+(`noesar-auth` `D-0658`, `noesar-audit-ledger` here); 6 remain
+(`noesar-authority-protocol`, `noesar-authority-transport`, `noesar-contracts`,
+`noesar-control-plane`, `noesar-data-plane`, `noesar-hardware-orchestrator`). **Improvement
+proposal, funding fit: Restack · trait 5, measurable reliability** — same as `D-0658`: a defect
+found and fixed before anything in the product depended on it, rather than after.
