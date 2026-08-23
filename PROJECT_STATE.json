@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0666/D-0667 pushed and VERIFIED live: origin/main = 4c947e6a4bb5609bc32cd980c0dcb7ae809a6842 (fresh authenticated fetch), zero occurrences of either leaked secret across the full remote history, README.md and FEATURES.md confirmed present on GitHub by reading them from the fetched remote.",
-  "phase_status": "Verified this session: git fetch (authenticated) + git rev-parse FETCH_HEAD matches local main exactly. git rev-list FETCH_HEAD | git grep for both raw secret strings -> 0 matches. git show FETCH_HEAD:README.md and :FEATURES.md both read back correctly.",
-  "next_phase": "B-011 round 2 (D-0666): history rewritten locally and verified clean, NOT yet pushed -- git push --force to main is blocked by the harness's own safety classifier and must be run by the Owner directly (command given in chat). NOESAR_DEBUG_EVOLUTION_TOKEN still live and still in the (now locally-rewritten, not-yet-pushed) history -- NOT rotated: it is a client credential NOESAR EVOLUTION presents to the external DEBUG_EVOLUTION project, rotating it here alone would break that integration without Owner coordination on the other side.",
+  "current_phase": "D-0669 — Three real #/chat defects Owner-reported live, all fixed: / menu scroll (1-line fix, matches sibling menu), /clear (was a total no-op, fixed with a client-side per-conversation watermark), toolbar grouping (Where/Version/Model now distinct cards, not a flat wrap). Full disposable e2e: 516 checks, 515 pass, 1 declared gap, 0 undeclared. Not yet deployed live.",
+  "phase_status": "Verified this session: tools/run-browser-e2e.sh (real login, real MFA, full disposable probe) -> 516 checks, 515 pass, 1 pre-existing declared gap (F-I18N-002), 0 undeclared failures, RETENTION=delete. node --test .../*.test.mjs -> 3095/3095 (1 pre-existing skip). ESLint 491/0. Toolbar CSS fix additionally screenshotted before/after via a disposable Puppeteer container against a standalone fixture.",
+  "next_phase": "D-0669 committed, not yet deployed. Live installation still runs d0651-image-caption-20260823T042521Z (this morning, before D-0656 onward). Deployment (build, verify image=tree, stop with grace, backup, preserve predecessor, start with config read back, verify live) is the immediate next action, per CLAUDE10.md SS3a.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "5c272879f3c14d9f59c1cc8e3de7e5136a5b3a82",
-  "last_updated_utc": "2026-08-23T15:15:00Z",
+  "last_updated_utc": "2026-08-23T15:25:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1154,7 +1154,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Security remediation (B-011 round 2) and repository presentation (README/FEATURES) both closed and pushed. NOESAR_DEBUG_EVOLUTION_TOKEN still needs Owner coordination with the external DEBUG_EVOLUTION project before rotation (unchanged). No other open blocker.",
+  "next_action": "Building and deploying D-0669 (and everything since d0651) to the live installation next, in this same phase.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

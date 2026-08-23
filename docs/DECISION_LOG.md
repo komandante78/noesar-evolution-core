@@ -15568,3 +15568,57 @@ too, not only committed locally.
 **Reversal cost.** None — this entry only records verification of an already-completed push.
 **Status.** `B-011` and `B-013` both CLOSED. `NOESAR_DEBUG_EVOLUTION_TOKEN` rotation remains the
 one open item from this thread, still pending Owner coordination with `DEBUG_EVOLUTION`.
+
+## D-0669 · Three real `#/chat` defects, Owner-reported live, all fixed — 2026-08-23
+**Decision.** Owner tested `https://192.168.178.100:8443/#/chat` directly and reported three
+things: the `/` command menu does not auto-scroll on arrow-key navigation, `/clear` does not
+clear the chat, and the Project/Version/Model toolbar (already touched once, `OWNER_REVIEW_
+2026-08-21`, "non si capisce nulla") still reads as one flat dump. All three confirmed real by
+reading the code, not assumed from the report:
+1. **Menu scroll** (`renderCommandMenu()`, `app.js`): the sibling menu (`setPaletteActive()`,
+   global search) already calls `scrollIntoView({block:'nearest'})` on its active row; this one
+   never did. One line added, matching the sibling exactly.
+2. **`/clear`** (`app.js`): its own catalogue entry says "Clear the transcript on screen (the
+   session keeps its state)" — declared, never built. Every message including `/clear`'s own
+   line is persisted on the branch (deliberately, so the command's own reply "survives
+   `refreshMessages()` instead of vanishing under it" — the file's own comment), and
+   `refreshMessages()` re-renders the full persisted history unconditionally — the screen
+   never actually cleared. Fixed with a client-side, per-conversation-per-branch watermark
+   (`CHAT_CLEARED_KEY`, the same `localStorage` idiom `THEME_KEY`/`SIDEBAR_KEY` already use):
+   `refreshMessages()` hides everything at or before the watermark; nothing server-side
+   changes, matching the declared contract exactly.
+3. **The toolbar** (`styles.css`): the three groups (`Where`/`Version`/`Model`) existed in the
+   HTML since `D-0437`-era work, separated only by a 1px `border-inline-end` and a 10px gray
+   inline label — invisible once the row wraps, which it does. Screenshotted both states with
+   a disposable Puppeteer container against a standalone fixture (not the live app — no auth
+   needed to prove a CSS change): the "before" fixture confirms the flat-dump reading exactly
+   as reported. Fixed by giving each group its own bordered, backgrounded card (`--surface-
+   card`, already used for `.entity-card`/`.message`) with the label on its own bold heading
+   row — screenshotted again, three unmistakable cards at both 900px and 1300px.
+**Why.** All three were genuinely broken, not a misunderstanding — the Owner's report matched
+the code exactly once read carefully.
+**Rejected.** Making `/clear` actually delete the conversation — a different, more destructive
+feature than its own declared contract asks for or than a slash command should do silently;
+named as a real possible follow-up, not built here without being asked for by name.
+**Evidence, and the three test-writing bugs found and fixed getting here — named because they
+are as real a lesson as the product bugs.** Added a `tools/browser-e2e.mjs` check for `/clear`
+and, driving it, found: (a) my first attempt selected a conversation via `#chatConversation`'s
+`<select>` without ensuring a matching `<option>` existed — silently selected nothing; (b) my
+second attempt waited on `#chatBranch` gaining options as proof of selection — passed
+vacuously, an earlier step in the same run had already populated it for a different
+conversation; (c) my third attempt used a genuinely wrong tool: `sendChat()` posts to
+`/api/v1/chat/stream`, which needs a configured AI provider to complete — the disposable probe
+has none — so the message never sent. Fixed by (a) injecting the `<option>` by hand and
+confirming via `page.waitForResponse()` that `selectConversation()`'s own `GET /api/v1/
+conversations/:id` actually fired (the one signal the page's own boot sequence cannot satisfy
+by accident), and (c) using `/help` (a slash command, `record()`-only, no provider) instead of
+a plain chat message. **Final run: 516 checks, 515 pass, 1 pre-existing declared gap
+(`F-I18N-002`), 0 undeclared failures** — `RETENTION=delete`, the harness's own signal that
+nothing new broke. `node --test .../*.test.mjs` → 3095/3095 (1 pre-existing skip). ESLint
+491/0.
+**Reversal cost.** Low: `/clear`'s new behaviour is additive and reversible per-browser
+(`localStorage`, never sent to the server); the toolbar CSS and the scroll fix touch no markup
+structure, only presentation and one added event.
+**Status.** Committed. **Not yet deployed to the live installation** — the Owner tested the
+running `d0651-image-caption-20260823T042521Z` image, which predates this fix; deployment is
+the next action in this same phase, per `CLAUDE10.md` §3a.

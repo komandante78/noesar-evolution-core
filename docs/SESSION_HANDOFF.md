@@ -1,38 +1,38 @@
 # SESSION HANDOFF
 
 **Session continues:** product `§4#10` multimodality closed (`D-0640`–`D-0652`, six deploys,
-all verified live — see `docs/DECISION_LOG.md` for detail, unchanged since). FUNDING Phase D
-(`D-0653`) and Phase E, both sides plus its own named-open extra, closed (`D-0654`/`D-0656`/
-`D-0657`). A real `.gitignore` gap fixed at session close (`D-0655`). Owner then said keep
-going without stopping between phases, and later "VOGLIO FINIRE": worked `F-RUST-001` (8 Rust
-crates with zero tests) to closure across `D-0658`–`D-0662` — `noesar-auth`, `noesar-audit-
-ledger` (+1 real defect fixed), `noesar-hardware-orchestrator`, `noesar-data-plane`,
-`noesar-authority-protocol`, `noesar-authority-transport`, `noesar-control-plane` all tested;
-`noesar-contracts` reclassified not-applicable. `cargo test --workspace --offline`: 144 → 218.
-Owner then, more emphatically, "NON DEVI FERMARTI!! ... VAI AVANTI A FINIRE": closed
-`F-TOOLS2-001` (socket dispatch tests for `/reject`/`/simulate`/`/git`, `D-0663`) and
-investigated `F-RUST-002`, finding its own premise undercounted — corrected rather than
-"fixed" on a false basis (`D-0664`). Then closed `F4-010` the same way (`D-0665`): the SSRF/
-DNS-rebinding fix was already real, only its dispatch-level proof was missing, plus a small
-additive `ToolExecutor` constructor change to make the tool-path proof possible. Reviewed every
-other open finding for safe actionability — none left without Owner input. Owner then asked for
-a full audit of what should ever go public: found a **second** cleartext-secret-in-history leak
-(`B-011` round 2, `D-0666`) — one credential still live — and rewrote history again to remove
-it. Owner pushed the rewritten history directly (force-push to `main` is blocked for the
-assistant by the harness's own safety classifier) — **verified this session** via a fresh
-authenticated fetch: `origin/main` = `4c947e6a4bb5609bc32cd980c0dcb7ae809a6842`, matches local
-exactly, zero occurrences of either leaked secret across the full remote history. Also rewrote
-`README.md` and added `FEATURES.md` per Owner request (`D-0667`) — both confirmed live on
-GitHub by reading them back from the fetch.
+verified live). FUNDING Phases D and E closed (`D-0653`–`D-0657`). `F-RUST-001` (8 Rust crates
+with zero tests) closed (`D-0658`–`D-0662`, `cargo test`: 144 → 218). `F-TOOLS2-001` closed,
+`F-RUST-002` corrected not closed, `F4-010` closed with real dispatch-level proof
+(`D-0663`–`D-0665`). Owner asked for a "what should go public" audit: found and fixed a
+**second** cleartext-secret-in-history leak (`B-011` round 2, `D-0666`, Owner pushed the
+rewrite directly, verified live via fresh fetch), rewrote `README.md`/added `FEATURES.md`
+(`D-0667`), verified both live (`D-0668`). All of the above is full detail in `docs/
+DECISION_LOG.md`, unchanged since, not repeated here.
+
+**Then:** Owner tested the live `#/chat` page directly and reported three real bugs — the `/`
+menu doesn't auto-scroll, `/clear` does nothing, the toolbar still reads as a flat dump despite
+an earlier fix. All three confirmed and fixed (`D-0669`): one-line scroll fix, `/clear` given a
+real client-side watermark (was a total no-op), toolbar groups given actual card styling
+(screenshotted before/after — the old CSS genuinely was that flat). Building the check for
+`/clear` surfaced three of my OWN test-writing bugs along the way (wrong selection method, a
+vacuous wait, `sendChat()` needing a provider that doesn't exist in the probe) — each found and
+fixed before trusting the result. Final: 516 checks, 515 pass, 1 pre-existing declared gap,
+**0 undeclared failures**.
 
 ## ➜ LA PROSSIMA AZIONE
 
-No deploy-blocking item is open. `NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of
-the three leaked secrets (now gone from history, but not rotated) — it is a client credential
-this project presents to the external `DEBUG_EVOLUTION` project (out of this project's scope);
-rotating it here alone would break that integration without the Owner also updating the other
-side. `BACKUPS/pre_history_rewrite_20260823T134411Z.bundle` is the pre-rewrite recovery point,
-kept per rule 23 (never delete a backup within a phase).
+**Deploy `D-0669` (and everything since `d0651`) to the live installation — this is the actual
+next action, not yet done.** The Owner tested the running `d0651-image-caption-20260823T042521Z`
+image, which predates every fix in this handoff. Follow `CLAUDE10.md` §3a: build, prove
+image=tree, stop with grace, backup stopped, preserve predecessor, start with config read back,
+verify live, `§5a` cleanup.
+
+`NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of `D-0666`'s three leaked secrets (now
+gone from history, not rotated) — a client credential this project presents to the external
+`DEBUG_EVOLUTION` project; rotating it here alone breaks that integration without the Owner
+also updating the other side. `BACKUPS/pre_history_rewrite_20260823T134411Z.bundle` is the
+pre-rewrite recovery point, kept per rule 23.
 
 Three other independent threads are all at a clean stop:
 
@@ -68,42 +68,23 @@ No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a n
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 
-See `docs/DECISION_LOG.md` `D-0640` through `D-0651` for the full session — eight
-decision entries, six deploys, all with before/after evidence. `docs/INSTALLATION_
-LEDGER.md` tail carries the same six deploys with byte-equal/health/test evidence per
-entry, most recently `d0651-image-caption-…`.
+`D-0640` through `D-0668` — multimodal fallbacks, the capability-token package, JS+Rust
+authority-containment, `F-RUST-001`/`F-TOOLS2-001`/`F-RUST-002`/`F4-010`, the second secret
+leak and its push, `README.md`/`FEATURES.md` — full detail in `docs/DECISION_LOG.md`, nothing
+about any of them changed since; not repeated here to keep this file inside its own cap.
 
-**`D-0650`/`D-0651`/`D-0653`/`D-0654`/`D-0656`/`D-0657`:** multimodal fallbacks, the
-capability-token wire-format package, and the JS+Rust authority-containment proofs (promoted to
-`packages/authority-containment/`) — full detail in `docs/DECISION_LOG.md`, nothing about them
-changed since.
-
-**`D-0658`–`D-0664`:** full detail in `docs/DECISION_LOG.md`, nothing about them changed since.
-`F-RUST-001` closed (7 crates tested incl. a real hash-chain defect fixed, 1 N/A). `F-TOOLS2-001`
-closed (3 dispatch-level tests). `F-RUST-002` corrected: only `noesar-supervisor`/`noesar-sandbox`
-ship in `oci/Dockerfile`, `noesar-authority-daemon` ships via its own separate release script,
-`noesar-control-plane` is the one real orphaned binary — an Owner architecture question, left
-open.
-
-**`D-0665`:** `ai-provider-gateway.test.mjs`/`ai-agent-service.test.mjs` +1 test each, proving
-`ProviderGateway.complete()`/`ToolExecutor.execute()` actually invoke the DNS-rebinding guard
-for a hostname that resolves inward at call time. `ToolExecutor`'s constructor gained an
-optional `lookup` override (mirrors `ProviderGateway`'s own; unset/no-op in production) to make
-the tool-path test possible at all — the seam existed in `address-guard.mjs`'s `guardedFetch`
-already, `ToolExecutor` just never threaded it through.
-
-**`D-0666`:** Owner-requested "what should go online" audit found `EVIDENCE/live_config_
-pre_phase6_deploy_20260805T162814Z.json` (2026-08-05, six days after `D-0258`'s supposed fix)
-carrying three cleartext secrets, one (`NOESAR_DEBUG_EVOLUTION_TOKEN`) still live. `B-011`'s own
-"gone from every commit" claim was corrected — it only ever covered the first leak. History
-rewritten again, `main` only (774 commits), bundle-backed-up first, re-verified 0 matches. **Not
-yet pushed** — see the urgent note above.
-
-**`D-0667`:** `README.md` was the unedited original V4 README (pre-`D-0096`) — "V4 Package 1",
-a "129/129" test count 20x stale, and a direct Unraid reference (`CLAUDE10.md` §16 violation).
-Rewritten with current framing, no frozen count (points at commands + the handoff instead), no
-host reference. `FEATURES.md` added: name + one-line description per real, tested capability,
-grouped by the WebUI's 12 destinations, for both the repo and a future website.
+**`D-0669`, current, most relevant to what's next:** `/` menu scroll fixed (`app.js`,
+`renderCommandMenu()`, one line, matches the sibling palette). `/clear` fixed (`app.js`): was a
+declared-but-never-built no-op — every message including `/clear`'s own line is deliberately
+persisted so it "survives `refreshMessages()`", and that function re-rendered the full history
+unconditionally, so the screen never cleared. Fixed with a `localStorage` watermark
+(`CHAT_CLEARED_KEY`), the same idiom `THEME_KEY` already uses — nothing server-side changes.
+Toolbar grouping fixed (`styles.css`): the `Where`/`Version`/`Model` groups existed since
+`D-0437`-era work but were separated only by a 1px border and a 10px gray label, invisible once
+wrapped — screenshotted before/after via a disposable Puppeteer container against a standalone
+fixture (no auth needed to prove a CSS change); now three bordered, backgrounded cards. Full
+disposable e2e: **516 checks, 515 pass, 1 pre-existing declared gap, 0 undeclared failures.**
+**Not yet deployed** — see "LA PROSSIMA AZIONE" above.
 
 ## WHAT WAS **NOT** DONE
 

@@ -1055,7 +1055,20 @@ $('#newConversation').addEventListener('click',async()=>{
   }
   const title=prompt('Conversation title','New conversation');if(!title)return;try{const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title,mode:currentMode,providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;await refreshWorkspace();activate('chat');}catch(error){setStatus(error.message,true);}});
 $('#chatBranch').addEventListener('change',async(event)=>{state.activeBranchId=event.target.value;await refreshMessages();});
-async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);renderMessages(data.messages);await inspectContext();}
+// `/clear`'s own catalogue entry (agent-commands.js) declares it: "Clear the transcript on
+// screen (the session keeps its state)" — display-only, nothing deleted. Owner-reported: it did
+// neither. Every message, including `/clear`'s own line, is persisted on the branch (by design,
+// so the command's result "survives refreshMessages() instead of vanishing under it" — see the
+// comment above submitChatPrompt) and refreshMessages() renders the full persisted history
+// unconditionally, so the screen never actually cleared. Fixed the way the declared contract
+// asks for: a per-conversation-per-branch watermark, client-side only (survives a reload via
+// localStorage, the same idiom THEME_KEY/SIDEBAR_KEY already use here — never sent to the
+// server, never deletes a message), and refreshMessages() hides everything at or before it.
+const CHAT_CLEARED_KEY='noesar.chat.clearedBefore';
+function readChatClearedMap(){try{const parsed=JSON.parse(localStorage.getItem(CHAT_CLEARED_KEY)??'{}');return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}}
+function chatClearedWatermark(conversationId,branchId){return readChatClearedMap()[`${conversationId}:${branchId}`]??null;}
+function setChatClearedWatermark(conversationId,branchId,createdAt){const map=readChatClearedMap();map[`${conversationId}:${branchId}`]=createdAt;try{localStorage.setItem(CHAT_CLEARED_KEY,JSON.stringify(map));}catch{}}
+async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const watermark=chatClearedWatermark(state.activeConversationId,state.activeBranchId);const visible=watermark?data.messages.filter((message)=>message.createdAt>watermark):data.messages;renderMessages(visible);await inspectContext();}
 function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b>${escapeHtml(message.role)}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body">${escapeHtml(message.content).replaceAll('\n','<br>')}</div>${message.citations?.length?`<div class="citations">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
 /**
  * Every source this conversation has cited, gathered where it stays put.
@@ -1350,6 +1363,10 @@ function renderCommandMenu(){
   // Bound within the menu, not through a page-wide selector: a second container rendering the
   // same markup would otherwise double-bind and fire each click twice.
   box.querySelectorAll('[data-command]').forEach((button)=>button.addEventListener('click',()=>completeCommand(button.dataset.command)));
+  // Owner-reported: arrow-key navigation moved `commandMenuIndex` but never brought the newly
+  // active row into view, so a list taller than the box required the scrollbar by hand. The
+  // sibling menu (`setPaletteActive`, global search) already does this; this one never did.
+  box.querySelector('.active')?.scrollIntoView({block:'nearest'});
 }
 function completeCommand(name){
   const command=AGENT_COMMANDS.find((entry)=>entry.name===name);
@@ -1397,11 +1414,13 @@ async function submitChatPrompt(typed){
   if(!state.activeConversationId){setStatus('Create a conversation first.',true);return;}
   const branchId=state.activeBranchId;
   const record=(role,content)=>api(`/api/v1/conversations/${state.activeConversationId}/messages`,{method:'POST',body:JSON.stringify({branchId,role,content})});
-  await record('user',typed);
+  const userMessage=await record('user',typed);
   const offered=codenOffered();
   const turn=planTurn(typed,{resolve:(text)=>resolveCommand(text,offered),parse:parseCommandPrompt,commands:offered,groups:groupMenu});
   if(turn.kind==='help'){await record('tool',turn.lines.join('\n'));return refreshMessages();}
-  if(turn.kind==='clear')return refreshMessages();
+  // The `/clear` line itself is the watermark: everything up to and including it is hidden,
+  // nothing is deleted (see the comment above CHAT_CLEARED_KEY).
+  if(turn.kind==='clear'){setChatClearedWatermark(state.activeConversationId,branchId,userMessage.createdAt);return refreshMessages();}
   if(turn.kind==='unknown'||turn.kind==='confirm'||turn.kind==='needs-argument'){await record('tool',turn.message);return refreshMessages();}
   if(turn.kind==='form'){await record('tool',`→ /${turn.command}. Opening the panel that runs it.`);await refreshMessages();jumpTo(turn.address);return undefined;}
   if(turn.kind==='session'){await record('tool','Ending the session…');await refreshMessages();return $('#logoutButton')?.click();}

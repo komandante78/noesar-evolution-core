@@ -3080,6 +3080,94 @@ try {
   const slashAfterEscape = await page.evaluate(() => document.querySelector('#chatCommands').classList.contains('hidden'));
   check('Escape closes the chat / menu', slashAfterEscape === true, String(slashAfterEscape));
 
+  at('chat-clear');
+  // Owner-reported, live: `/clear` did nothing visible — every message, including `/clear`'s
+  // own line, is persisted on the branch and refreshMessages() re-renders the full history
+  // unconditionally. Fixed with a client-side watermark (CHAT_CLEARED_KEY); this proves the
+  // screen actually empties, driven through the real composer, not read from the source.
+  const clearConversationId = await page.evaluate(async () => {
+    const csrf = document.cookie.split('; ').find((part) => part.startsWith('noesar_csrf='))?.split('=')[1] ?? '';
+    const response = await fetch('/api/v1/conversations', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'content-type': 'application/json', 'x-noesar-csrf': decodeURIComponent(csrf) },
+      body: JSON.stringify({ title: 'E2E /clear check' }),
+    });
+    const created = await response.json();
+    return created.conversation?.id ?? null;
+  });
+  check('a conversation exists to drive the /clear check', Boolean(clearConversationId), String(clearConversationId));
+  await page.reload({ waitUntil: 'networkidle2' });
+  await page.waitForSelector('#chatConversation', { timeout: 15000 });
+  // Three dead ends tried and measured before this one, kept as the record of why it looks
+  // like this: (1) resetting `#chatProject` to "No project" and waiting for the option to
+  // appear — timed out; `state.conversations` here is populated once at boot from `/api/v1/
+  // ai/bootstrap`, and a `change` on `#chatProject` re-renders from that SAME cached array, it
+  // does not re-fetch it. (2) waiting on `#chatBranch` gaining options as proof of selection —
+  // passed vacuously, because an EARLIER step in this same run (s326, "clicking a chat in the
+  // sidebar") had already populated it for a DIFFERENT conversation. (3) waiting for
+  // `#messageList` to read "No messages." — ALSO passed vacuously: the page's own boot
+  // sequence auto-selects its own default conversation on load (`refreshWorkspace()`'s own
+  // fallback), which can itself be empty, so the text matched before this step's own
+  // `selectConversation()` call had even resolved. A DOM-text proxy cannot outrun a race
+  // against the page's own boot logic; the network call itself is not racy.
+  // `selectConversation(id)` fetches `GET /api/v1/conversations/:id` directly — it never reads
+  // `state.conversations` — so appending a real `<option>` by hand (bypassing the bootstrap
+  // cache entirely) plus waiting for THAT EXACT response is the one signal that cannot be
+  // satisfied by anything the boot sequence did on its own.
+  const [detailResponse] = await Promise.all([
+    page.waitForResponse(
+      (res) => res.request().method() === 'GET' && res.url().endsWith(`/api/v1/conversations/${clearConversationId}`),
+      { timeout: 8000 },
+    ).catch(() => null),
+    page.evaluate((id) => {
+      const select = document.querySelector('#chatConversation');
+      const option = document.createElement('option');
+      option.value = id; option.textContent = 'E2E /clear check';
+      select.appendChild(option);
+      select.value = id;
+      select.dispatchEvent(new Event('change'));
+    }, clearConversationId),
+  ]);
+  check('the composer actually switched to the new conversation (the real fetch happened)',
+    Boolean(detailResponse?.ok()), detailResponse ? `status ${detailResponse.status()}` : 'no matching request seen');
+  // The fetch resolving does not guarantee the render it triggers has painted yet.
+  await settled(() => document.querySelector('#messageList')?.textContent?.trim() === 'No messages.',
+    { label: 'the new, empty conversation has rendered' });
+  // NOT a plain chat message: `sendChat()` posts to `/api/v1/chat/stream`, which needs a
+  // configured, enabled AI provider to complete at all — the disposable e2e probe has none.
+  // `/help` goes through `submitChatPrompt()`'s `kind==='help'` branch instead, the exact
+  // same unconditional `record('user', typed)` (and, for help, a `record('tool', ...)` reply)
+  // every slash command uses, `/clear` included — no provider involved, matching what this
+  // check actually needs to prove: that `/clear` hides PERSISTED messages, not that chat
+  // completion works (a different, already-covered surface).
+  await page.evaluate(() => {
+    const input = document.querySelector('#chatInput');
+    input.value = '/help';
+    input.focus();
+  });
+  await page.keyboard.press('Enter');
+  await settled(() => document.querySelector('#messageList')?.textContent?.includes('/help'),
+    { label: 'the /help line to be cleared is on screen' });
+  const beforeClear = await page.evaluate(() => document.querySelector('#messageList').textContent.includes('/help'));
+  check('the message is visible before /clear', beforeClear === true, String(beforeClear));
+  await page.evaluate(() => {
+    const input = document.querySelector('#chatInput');
+    input.value = '/clear';
+    input.focus();
+  });
+  await page.keyboard.press('Enter');
+  await settled(() => !document.querySelector('#messageList')?.textContent?.includes('/help'),
+    { label: 'the /help line is gone from the screen after /clear' });
+  const afterClear = await page.evaluate(() => document.querySelector('#messageList').textContent.includes('/help'));
+  check('/clear actually empties the on-screen transcript', afterClear === false, String(afterClear));
+  const stillOnBranchAfterClear = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/v1/conversations/${id}/messages`, { credentials: 'same-origin' });
+    const data = await response.json();
+    return data.messages.some((message) => message.content === '/help');
+  }, clearConversationId);
+  check('/clear did not delete the message from the branch — "the session keeps its state"',
+    stillOnBranchAfterClear === true, String(stillOnBranchAfterClear));
+
   at('reading-controls');
   // --- text size, zoom and motion, measured rather than asserted -----------
   //

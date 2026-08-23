@@ -1495,13 +1495,19 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .model-catalog-help p:last-child{margin-bottom:0;color:var(--muted)}
 .model-show-all{display:inline-flex!important;align-items:center;gap:6px;margin-inline-start:auto;width:auto;color:var(--muted);font-size:calc(var(--text-scale) * 12px)}
 .model-show-all input{width:auto}
-/* §4#3, OWNER_REVIEW_2026-08-21. Three named groups instead of one flat 8-control row: the
-   group label is the explanation, not a tooltip nobody hovers. Wraps on narrow screens exactly
-   as the flat toolbar already did — only the visual grouping is new, no control moved. */
-.chat-toolbar{align-items:flex-start;flex-wrap:wrap}
-.toolbar-group{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding-inline-end:14px;border-inline-end:1px solid var(--line)}
-.toolbar-group:last-child{padding-inline-end:0;border-inline-end:0}
-.toolbar-group-label{align-self:center;color:var(--text-label);font-size:calc(var(--text-scale) * 10px);letter-spacing:.08em;text-transform:uppercase}
+/* §4#3, OWNER_REVIEW_2026-08-21. Three named groups instead of one flat 8-control row.
+   Repaired 2026-08-23 (Owner, seeing the live page, verbatim: still reads as one flat dump —
+   "Project / No project / Conversation / ... / Version / Branch / main / Fork / ..."): a
+   1px `border-inline-end` and a 10px inline label are not a group boundary once the row
+   wraps — the border only shows on the line it happened to land on, and the label is the
+   same tiny gray weight as every other caption on the page, so nothing distinguishes
+   "Version" (a section heading) from "main" (a branch name) when read in sequence. Each
+   group is now its own bordered, backgrounded card — the same `--surface-card` treatment
+   already used for `.entity-card`/`.message` elsewhere in this file — with the label on its
+   own full-width row at the top, bold, so it reads as a heading rather than flowing text. */
+.chat-toolbar{align-items:flex-start;flex-wrap:wrap;gap:12px}
+.toolbar-group{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-card)}
+.toolbar-group-label{flex-basis:100%;color:var(--text-label);font-size:calc(var(--text-scale) * 11px);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
 .model-picker-head { display: flex; align-items: center; gap: 10px; }
 .model-picker-head h3 { margin: 0; font-size: calc(var(--text-scale) * 14px); }
 .model-picker-head .text-button { margin-inline-start: auto; }
