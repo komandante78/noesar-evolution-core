@@ -9,9 +9,9 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "334c9e82605eaca9acbc913305bc11beb35671ea",
-  "last_updated_utc": "2026-08-23T15:43:00Z",
-  "last_commit_note": "334c9e82605eaca9acbc913305bc11beb35671ea = \"docs(phase-D-0669): record D-0669 deployed live and verified (D-0670)\" (2026-08-23), 5 files, +77/-14. Deployed d0669-chat-fixes-20260823T153534Z via tools/deploy/redeploy.sh, verified live, SS5a cleanup done. Preceded by 6976232 (the fix commit) and 228d616 (its own state-record chore).",
+  "last_commit": "7808776aff48668d6d842f6967c8d8d60480bd1f",
+  "last_updated_utc": "2026-08-23T16:07:00Z",
+  "last_commit_note": "7808776aff48668d6d842f6967c8d8d60480bd1f = \"fix(phase-D-0671): remove the chat toolbar redundant outer border\" (2026-08-23), 3 files, +31/-9. Found by screenshotting the real live page after the Owner reported the toolbar still looked wrong. Preceded by 2bf1b74 (D-0670 deploy record).",
   "blockers": [
     {
       "id": "B-001",
