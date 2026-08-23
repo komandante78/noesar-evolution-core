@@ -9,9 +9,9 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "6976232f810fea66d4e6940272780f1ea67367c6",
-  "last_updated_utc": "2026-08-23T15:40:00Z",
-  "last_commit_note": "6976232f810fea66d4e6940272780f1ea67367c6 = \"fix(phase-D-0669): repair three live #/chat defects the Owner reported directly\" (2026-08-23), 7 files, +234/-86. / menu scroll-into-view, /clear given a real client-side per-conversation watermark (was a total no-op), chat toolbar groups given actual card styling (Where/Version/Model). Full disposable e2e: 516 checks, 515 pass, 1 pre-existing declared gap, 0 undeclared. Not yet deployed live. Preceded by 5c272879 (this session's own D-0668 commit record).",
+  "last_commit": "334c9e82605eaca9acbc913305bc11beb35671ea",
+  "last_updated_utc": "2026-08-23T15:43:00Z",
+  "last_commit_note": "334c9e82605eaca9acbc913305bc11beb35671ea = \"docs(phase-D-0669): record D-0669 deployed live and verified (D-0670)\" (2026-08-23), 5 files, +77/-14. Deployed d0669-chat-fixes-20260823T153534Z via tools/deploy/redeploy.sh, verified live, SS5a cleanup done. Preceded by 6976232 (the fix commit) and 228d616 (its own state-record chore).",
   "blockers": [
     {
       "id": "B-001",
