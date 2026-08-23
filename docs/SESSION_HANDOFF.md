@@ -39,6 +39,14 @@ works). Verified live via `curl` on `/styles.css` and a final screenshot.
 **No open item on this line of work.** Everything is committed, pushed, deployed, and
 verified with real evidence against the running installation — not inferred from the commit.
 
+**Open question, unanswered by the Owner at close — re-ask it first, before touching anything.**
+The Owner said the next work is "organizzati su tutto il progetto come da skill NOESAR
+EVOLUTION e ATOM" — too vague to act on: `ATOM_EVOLUTION` is a separate, proprietary
+repository (`CLAUDE10.md` §14/`D-0633`), so if that's what's meant it needs to be named
+explicitly; if it's NOESAR EVOLUTION itself, it needs one concrete area — a page, a
+function, a file — the same way `D-0671` only became fixable once the Owner accepted a real
+screenshot instead of a description. Do not guess an area and start working from a guess.
+
 `NOESAR_DEBUG_EVOLUTION_TOKEN` is still live and was one of `D-0666`'s three leaked secrets (now
 gone from history, not rotated) — a client credential this project presents to the external
 `DEBUG_EVOLUTION` project; rotating it here alone breaks that integration without the Owner
