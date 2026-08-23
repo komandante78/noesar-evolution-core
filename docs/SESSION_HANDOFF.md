@@ -11,11 +11,13 @@ authority-conformance fixture and closed Phase E's JS half (`D-0654`). Closing t
 found and fixed a real `.gitignore` gap that had let host-wide evidence files sit untracked
 (`D-0655`). Built the Rust-side equivalent of `D-0654` and closed Phase E's remaining half
 (`D-0656`). Owner authorised executing `D-0656`'s own improvement proposal: promoted the
-containment property to `packages/authority-containment/` (`D-0657`).
+containment property to `packages/authority-containment/` (`D-0657`). Owner said keep going
+without stopping between phases: picked up `F-RUST-001` and gave `noesar-auth` its first real
+tests, 0 → 13, including an independent RFC 6238 vector (`D-0658`).
 
 ## ➜ LA PROSSIMA AZIONE
 
-No deploy-blocking item is open. Two independent threads are both at a clean stop:
+No deploy-blocking item is open. Three independent threads are all at a clean stop:
 
 **Product/§4#10:** closed — see `D-0645`/`D-0649`/`D-0650`/`D-0651`/`D-0652`.
 
@@ -37,6 +39,12 @@ the NLnet deadline (3 Nov 2026) — they are the funded work itself, not a submi
 prerequisite. The actual next action for the deadline is writing the CodeSupply
 abstract/milestones/budget (`D-0631`, not started) once the application form publishes
 (~3 Sep 2026).
+
+**Tracked findings (`F-RUST-001`):** `noesar-auth` now tested, 13/13 (`D-0658`). Still open:
+7/20 Rust crates carry zero tests (`noesar-audit-ledger`, `noesar-authority-protocol`,
+`noesar-authority-transport`, `noesar-contracts`, `noesar-control-plane`, `noesar-data-plane`,
+`noesar-hardware-orchestrator`) and 3 of those compile but reach no `oci/*.Dockerfile` — a
+reasonable next bounded slice, same shape as `D-0658`.
 
 No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
@@ -95,6 +103,14 @@ by relative path, not copied, so there is no second file to drift. `src/referenc
 proves the real product JS engine conforms (8/8). Not done: wiring either production engine to
 import this package, and giving Rust an adapter of its own — both named open in the package's
 own `README.md`.
+
+**`D-0658`:** `rust/crates/noesar-auth` (Argon2 password hashing, RFC 6238 TOTP,
+`SessionRecord` elevation) had zero tests and zero workspace dependents — real security logic,
+unverified. Added 13, including the published RFC 6238 Appendix B SHA-1 vector (not
+self-consistency) and a ±1/±2 window boundary check. While verifying, corrected a false claim in
+`F-RUST-001`: `noesar-auth` has **no** dependents in the workspace at all, not one — the
+finding's original text ("declared as a Cargo dependency of `noesar-authority-daemon`") did not
+match `noesar-authority-daemon/Cargo.toml`.
 
 ## WHAT WAS **NOT** DONE
 
