@@ -13,7 +13,8 @@ found and fixed a real `.gitignore` gap that had let host-wide evidence files si
 (`D-0656`). Owner authorised executing `D-0656`'s own improvement proposal: promoted the
 containment property to `packages/authority-containment/` (`D-0657`). Owner said keep going
 without stopping between phases: picked up `F-RUST-001` and gave `noesar-auth` its first real
-tests, 0 → 13, including an independent RFC 6238 vector (`D-0658`).
+tests, 0 → 13, including an independent RFC 6238 vector (`D-0658`), then `noesar-audit-ledger`,
+0 → 6, finding and fixing a real hash-chain delimiter-collision weakness (`D-0659`).
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -40,11 +41,11 @@ prerequisite. The actual next action for the deadline is writing the CodeSupply
 abstract/milestones/budget (`D-0631`, not started) once the application form publishes
 (~3 Sep 2026).
 
-**Tracked findings (`F-RUST-001`):** `noesar-auth` now tested, 13/13 (`D-0658`). Still open:
-7/20 Rust crates carry zero tests (`noesar-audit-ledger`, `noesar-authority-protocol`,
-`noesar-authority-transport`, `noesar-contracts`, `noesar-control-plane`, `noesar-data-plane`,
-`noesar-hardware-orchestrator`) and 3 of those compile but reach no `oci/*.Dockerfile` — a
-reasonable next bounded slice, same shape as `D-0658`.
+**Tracked findings (`F-RUST-001`):** `noesar-auth` (`D-0658`) and `noesar-audit-ledger`
+(`D-0659`, +1 real defect fixed) now tested. Still open: 6/20 Rust crates carry zero tests
+(`noesar-authority-protocol`, `noesar-authority-transport`, `noesar-contracts`,
+`noesar-control-plane`, `noesar-data-plane`, `noesar-hardware-orchestrator`) and 3 of those
+compile but reach no `oci/*.Dockerfile` — a reasonable next bounded slice, same shape.
 
 No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
@@ -55,28 +56,9 @@ decision entries, six deploys, all with before/after evidence. `docs/INSTALLATIO
 LEDGER.md` tail carries the same six deploys with byte-equal/health/test evidence per
 entry, most recently `d0651-image-caption-…`.
 
-**`D-0650`:** `file-extractors.mjs`'s media branch calls the same `transcribe()`
-(`voice-engine.mjs`) the live microphone route uses. `NOESAR_VOICE_TRANSCRIBE_ENDPOINT`
-is already set on this installation, so the capability is live immediately.
-
-**`D-0651`:** `file-extractors.mjs`'s image branch now falls back to a vision-model
-caption (`vision-caption.mjs`) when OCR finds no text. New concept: `visionCapable` on a
-provider profile (Settings → Providers checkbox), declared by the operator, never probed
-— no provider style here reports "I understand images". Only `openai-chat` and
-`anthropic-messages` are supported; `openai-responses`' own multipart shape has never
-been exercised by this product and is refused rather than guessed. **Dormant on this
-installation** — no provider is yet marked `visionCapable` here; that is the Owner's own
-action, not a build gap.
-
-**`D-0653`:** `packages/capability-token/` specifies and ships the capability token's wire
-format only (`SPEC.md` `CT-001`–`CT-007`) — canonical encoding, MAC pre-image, canonical
-limits string, constant-time verify — explicitly excluding the minting/authorization
-policy, which stays in `rust/crates/noesar-capability`/`capability.mjs`. Every `mac`
-conformance vector was minted live by the real `TokenMinter` this session; the package's
-`sign()` reproduces it byte-for-byte (proven, `services/reference-control-plane/test/
-capability-token-package-extraction.test.mjs`). A from-spec Python implementation passes
-17/17 vectors in a disposable container. **Neither production minter imports this package
-yet** — named as an open decision in the package's own `README.md`, not done silently.
+**`D-0650`/`D-0651`/`D-0653`:** audio+image multimodal fallbacks and the capability-token
+wire-format package — detail in `docs/DECISION_LOG.md`, not repeated here; nothing about
+them changed since.
 
 **`D-0654`:** `src/fixtures/adversarial-reasoning-provider.mjs` is a second, real
 `ReasoningProvider` implementation — identical to the reference one except `constrain()` never
@@ -111,6 +93,13 @@ self-consistency) and a ±1/±2 window boundary check. While verifying, correcte
 `F-RUST-001`: `noesar-auth` has **no** dependents in the workspace at all, not one — the
 finding's original text ("declared as a Cargo dependency of `noesar-authority-daemon`") did not
 match `noesar-authority-daemon/Cargo.toml`.
+
+**`D-0659`:** `rust/crates/noesar-audit-ledger` (0 → 6 tests). Found and fixed a real defect
+while testing: the hash-chain material was joined with a bare `|`, which collides whenever a
+field's own content contains `|` (confirmed against the pre-fix formula, not assumed). Fixed
+with the same length-delimited feed this project already uses elsewhere (`CT-002`). Zero
+dependents in the workspace — zero reversal cost, and exactly why now was the safe time to fix
+the format.
 
 ## WHAT WAS **NOT** DONE
 

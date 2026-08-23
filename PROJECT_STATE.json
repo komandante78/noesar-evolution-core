@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0658 — Added a 13-test suite to rust/crates/noesar-auth (0 -> 13 tests): Argon2 hash/verify, TOTP against the published RFC 6238 Appendix B vector, SessionRecord elevation. Corrected a false PROJECT_STATE.json claim found while verifying (F-RUST-001: noesar-auth has zero dependents in the workspace, not one).",
-  "phase_status": "Verified this session: cargo test -p noesar-auth --offline (disposable rust:1-bookworm, --network none, vendored) -> 13/13. cargo test --workspace --offline -> 162 tests, 162 pass, 0 fail (was 149 at D-0656, +13), 0 new warnings.",
-  "next_phase": "F-RUST-001 partially fixed (noesar-auth done); 7/20 crates still carry zero tests (noesar-audit-ledger, noesar-authority-protocol, noesar-authority-transport, noesar-contracts, noesar-control-plane, noesar-data-plane, noesar-hardware-orchestrator) and the packaging gap (3 crates never reach an oci/*.Dockerfile) is untouched -- candidates for a next bounded phase. FUNDING work-plan items remain blocked/not-due (see D-0657).",
+  "current_phase": "D-0659 — Tested and hardened rust/crates/noesar-audit-ledger (0 -> 6 tests). Found and fixed a real hash-chain weakness while testing: the previous bare-pipe-joined material string collided when a field contained the delimiter (verified before and after). Zero dependents in the workspace, zero reversal cost.",
+  "phase_status": "Verified this session: cargo test -p noesar-audit-ledger --offline (disposable rust:1-bookworm, --network none, vendored) -> 6/6. cargo test --workspace --offline -> 168 tests, 168 pass, 0 fail (was 162 at D-0658, +6), 0 new warnings.",
+  "next_phase": "F-RUST-001: 2/8 previously-untested Rust crates now tested (noesar-auth, noesar-audit-ledger). 6 remain (noesar-authority-protocol, noesar-authority-transport, noesar-contracts, noesar-control-plane, noesar-data-plane, noesar-hardware-orchestrator) -- candidates for further bounded phases in the same shape. FUNDING work-plan items remain blocked/not-due (see D-0657).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "5ff7f16724d6ca78c7695ba2e0013fa23e869ed7",
-  "last_updated_utc": "2026-08-23T13:45:00Z",
+  "last_commit": "6fe2225199216d7e526495f6dd255c2247e95c9c",
+  "last_updated_utc": "2026-08-23T14:10:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -450,7 +450,7 @@
     {
       "id": "F-RUST-001",
       "severity": "medium",
-      "status": "PARTIALLY_FIXED 2026-08-23 (D-0658): noesar-auth now has 13/13 tests (Argon2 hash/verify round-trip, malformed-PHC refusal, salt randomness, SHA-256 token_digest against a known vector, RFC 6238 Appendix B TOTP vector, +-1 window acceptance/rejection, cross-secret rejection, SessionRecord elevation). Correction: this entry's own claim that noesar-auth 'is declared as a Cargo dependency of noesar-authority-daemon' was FALSE when re-checked -- grep of every crate Cargo.toml finds zero dependents of noesar-auth anywhere in the workspace; it is a compiled-but-unlinked member, not linked-but-uncalled. Remaining open: 7/20 crates still carry zero tests (noesar-audit-ledger, noesar-authority-protocol, noesar-authority-transport, noesar-contracts, noesar-control-plane, noesar-data-plane, noesar-hardware-orchestrator); the packaging gap (3 crates never reach an oci/*.Dockerfile) is untouched.",
+      "status": "PARTIALLY_FIXED 2026-08-23 (D-0658 noesar-auth 13/13, D-0659 noesar-audit-ledger 6/6 + a real delimiter-collision hash-chain weakness fixed, zero dependents so zero reversal cost). Correction (D-0658): noesar-auth has zero dependents in the workspace, not one -- this entry's original 'declared as a Cargo dependency of noesar-authority-daemon' claim was false when re-checked. Remaining open: 6/20 crates still carry zero tests (noesar-authority-protocol, noesar-authority-transport, noesar-contracts, noesar-control-plane, noesar-data-plane, noesar-hardware-orchestrator); the packaging gap (3 crates never reach an oci/*.Dockerfile) is untouched.",
       "summary": "8 of 20 Rust crates carry zero tests; noesar-auth holds real untested Argon2/TOTP logic that nothing in the workspace actually calls; 3 crates compile but are never packaged into any deliverable."
     },
     {
@@ -737,7 +737,8 @@
     "d0654_authority_conformance_2026-08-23": "VERIFIED this session: reasoning-authority-conformance.test.mjs 5/5 (1 found red first, fixed). Full suite node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs = 3082/3082 (1 pre-existing skip). ESLint 488 files/0 errors.",
     "d0656_rust_authority_conformance_2026-08-23": "VERIFIED this session: rust/crates/noesar-capability/tests/reasoning_authority_conformance.rs (5 tests: AUTH-001..004 + compile-time surface-completeness) -> cargo test --workspace --offline (disposable rust:1-bookworm, --network none, vendored) = 149 tests, 149 pass, 0 fail, 0 new warnings (was 144 at D-0497).",
     "d0657_authority_containment_package_2026-08-23": "VERIFIED this session: packages/authority-containment/ (SPEC.md AC-001..AC-006) -> node --test packages/authority-containment/test/*.test.mjs = 8/8. Full suite = 3090 tests, 3089 pass, 1 skip, 0 fail (+8 over D-0656). ESLint 491/0. Packaging-filter regression 29/29. Manifest 6753 files.",
-    "d0658_noesar_auth_tests_2026-08-23": "VERIFIED this session: rust/crates/noesar-auth/src/lib.rs +13 tests (was 0) -> cargo test -p noesar-auth --offline = 13/13. cargo test --workspace --offline = 162 tests, 162 pass, 0 fail (+13 over D-0656)."
+    "d0658_noesar_auth_tests_2026-08-23": "VERIFIED this session: rust/crates/noesar-auth/src/lib.rs +13 tests (was 0) -> cargo test -p noesar-auth --offline = 13/13. cargo test --workspace --offline = 162 tests, 162 pass, 0 fail (+13 over D-0656).",
+    "d0659_noesar_audit_ledger_2026-08-23": "VERIFIED this session: rust/crates/noesar-audit-ledger +6 tests (was 0), hash-chain formula hardened (length-delimited feed, fixes a real delimiter-injection collision) -> cargo test -p noesar-audit-ledger --offline = 6/6. cargo test --workspace --offline = 168 tests, 168 pass, 0 fail (+6 over D-0658)."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1142,7 +1143,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0658 closed: noesar-auth tested, committed. Owner said keep going without stopping between phases -- continuing to look for the next well-scoped, unblocked item. No open blocker beyond B-013 (push, no GitHub credential).",
+  "next_action": "D-0659 closed: noesar-audit-ledger tested and hardened, committed. Continuing per Owner's keep-going instruction. No open blocker beyond B-013 (push, no GitHub credential).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
