@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "5d45639",
-  "last_updated_utc": "2026-08-24T16:39:51Z",
+  "last_updated_utc": "2026-08-24T16:40:50Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
@@ -117,7 +117,7 @@
       "id": "B-015",
       "severity": "low",
       "status": "recurring",
-      "summary": "REOPENED 2026-08-24 for commits 5d45639 and 81a33f9 (D-0680/D-0681/D-0682). git push fails: \"could not read Username for https://github.com: No such device or address\" -- no credential helper is persisted, exactly the recurring condition this blocker describes. The local repository is complete and the working tree is clean; only the remote is behind. Owner action: push directly, as on 2026-08-24 for 49cc252..9b433dd.",
+      "summary": "REOPENED 2026-08-24 for every phase-D-0680 commit from 5d45639 onward (git log origin/main..HEAD). git push fails: \"could not read Username for https://github.com: No such device or address\" -- no credential helper is persisted, exactly the recurring condition this blocker describes. The local repository is complete and the working tree is clean; only the remote is behind. Owner action: push directly, as on 2026-08-24 for 49cc252..9b433dd.",
       "opened_utc": "2026-08-24T12:17:32Z"
     }
   ],

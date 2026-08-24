@@ -136,5 +136,6 @@ next session should measure before believing a written premise, including its ow
 
 `git push` failed with *"could not read Username for https://github.com"* — no credential
 helper is persisted (`B-015`, recurring, not new). The local repository is complete and the
-working tree is clean; only `origin` is behind, by **5d45639** and **81a33f9**. Push them
+working tree is clean; only `origin` is behind, by every `phase-D-0680` commit from **5d45639**
+onward (`git log origin/main..HEAD`). Push them
 directly, as on 2026-08-24 for `49cc252..9b433dd`.
