@@ -6212,3 +6212,23 @@ il più recente: `D-0673`, il build intra-fase `d0676` portava il difetto ripara
 pubblicato) e `…-pre-20260824T094056Z`. Immagini `d0674` e `d0672b` conservate.
 Container non di progetto **50 → 50**, reti **10 → 10**, volumi **65 → 65**.
 Superstiti di progetto: **due**.
+
+## `d0677-spoken-intent-20260824T113429Z` — DEPLOYATO e verificato — 2026-08-24
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0677`: estratto `packages/spoken-intent/` (SPEC `SI-001`…`SI-008`,
+implementazione di riferimento, 60 vettori di conformità). L'unica modifica al
+prodotto è un parametro opzionale con default identico:
+`contentWords(text, filler = FILLER)` in `apps/webui-static/voice-intent.js` — il
+set era cablato e non sovrascrivibile, trovato scrivendo la seconda implementazione.
+**Verifica.** Preflight: byte-uguale albero↔immagine **492/492**, differing **0**.
+Unit **3174 test, 3172 pass, 0 fail, 1 skip preesistente**. ESLint 501/0.
+Live: `sha256` del `voice-intent.js` **servito** identico all'albero, e i **byte
+serviti** passano **60/60** i casi di conformità del pacchetto — non "contiene la
+stringa giusta", ma "supera il contratto".
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260824T113439Z` (`d0676b`).
+**Costo di rollback — nessuno.** Additivo, nessuno schema, nessuna migrazione.
+**Pulizia (§5a).** Rimosso il rollback più vecchio `…-pre-20260824T101213Z`
+(`Exited (0)` confermato); la sua immagine `d0674` resta su disco. Container non di
+progetto **50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.

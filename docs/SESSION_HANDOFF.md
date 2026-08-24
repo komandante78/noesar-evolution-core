@@ -4,7 +4,7 @@
 progetto sia finito entro 11 giorni … la cosa che è veramente vergognosa è la voce e la chat"*.
 Deadline **2026-09-04**, one day after NLnet's calls reopen. The plan is
 `docs/PLAN_11_DAYS_TO_DELIVERY.md` — read it first; it carries the live measurements and the
-three-block schedule. **P1, P2 and P4 are done and deployed.**
+three-block schedule. **P1, P2 and P4 are done and deployed, plus the extraction the Owner authorised (`D-0677`).**
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -73,6 +73,15 @@ that routed to a command had asked to navigate. An earlier reading said 1/20 —
 probe passed `translateString` raw and it returns `{text, translated}`, so every handle was built
 from an object and matched nothing. **The instrument was the defect, not the product.** The plan
 now carries that correction in place.
+
+**`D-0677` — the improvement proposal, executed on authorisation.** `packages/spoken-intent/`:
+SPEC `SI-001`…`SI-008`, a reference implementation, 60 conformance vectors, and — the part that
+makes it a contract rather than a description — the **shipped** browser resolver held to the same
+suite, plus a test that drives both implementations over the same utterances and fails on any
+disagreement. Writing that second binding found **two real defects in my own specification**: an
+unwritten handle-expansion rule (the utterance is filler-stripped before matching, so a label with
+a preposition in it could never match), and a filler set the shipped resolver had hardcoded so the
+language it assumed was unoverridable. Live: the bytes the installation serves pass **60/60**.
 
 **A hang found and fixed, worth keeping.** `assistant-identity.test.mjs` stopped terminating: an
 unguarded `inspection.tools` threw, the rejection skipped the fixture's own `server.close()`, and

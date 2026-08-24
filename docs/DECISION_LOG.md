@@ -15789,3 +15789,40 @@ tests, 3161 pass, 0 fail, 1 pre-existing skip**. ESLint 496/0. Every oracle repr
 **Status.** applied, DEPLOYED and verified live (`d0676b-voice-conversational-20260824T105343Z`).
 **Cleanup followed `D-0673`**: the kept rollback is the last PUBLISHED predecessor (`d0674`), not
 the intra-phase `d0676` build whose slug defect this phase fixed.
+
+## D-0677 · `@noesar/spoken-intent` — the voice resolver extracted as a specified, conformance-tested package — 2026-08-24
+**Decision.** `packages/spoken-intent/` (SPEC `SI-001`…`SI-008`, reference implementation,
+60 conformance vectors, runner) holds the ALGORITHM: normalisation with accent folding, injected
+filler, the eight-rank exact-or-containing ladder, uniqueness by destination, trailing-argument
+capture and additive compound splitting. The product's entry shape, translator, sentences and
+languages stay out — the same boundary `@noesar/capability-token` draws between a wire format and
+a policy.
+**Why.** The Owner authorised the improvement proposal recorded after `D-0676`. The resolver is
+the most reusable thing this project owns: any local-first product with a command palette or an
+address book needs *"which of these, or none"* answered without a model and without a network.
+**Rejected.** Serving `packages/` to the browser so there would be one implementation instead of
+two. It needs a third static root inside `serveStatic`'s traversal guard — a security surface, for
+a refactor. `apps/shared/` exists as the precedent and the risk was not worth it for a proposal.
+**Two implementations, one contract — which is the whole value.** The shipped browser resolver
+(`apps/webui-static/voice-intent.js`) is measured by the SAME `conformance/index.mjs`
+(`spoken-intent-browser-conformance.test.mjs`), plus a third test that drives both over the same
+utterances and fails on any disagreement.
+**Writing the second binding found two real defects in the first draft of the specification.**
+(1) A handle-expansion rule that was never written down: the utterance has its filler stripped
+before matching, so *"flussi di lavoro"* arrives as `flussi lavoro` and never matches the label —
+stripping one side and not the other is two rules, and the second is invisible. Now `SI-004`.
+(2) The shipped resolver had its filler set **hardcoded** and took no parameter, so the language
+it assumed was unoverridable. Fixed (`contentWords(text, filler = FILLER)`, backwards-compatible)
+and now `SI-003`.
+**The suite is proven able to fail.** Three deliberate mutilations, including a fuzzy matcher that
+passes every matching case and is caught only by `nongoals:no-fuzzy` — the case that separates
+this contract from every approximate matcher.
+**Evidence.** Package 8/8 (60 cases). Browser conformance 3/3 (60/60). Full suite **3174 tests,
+3172 pass, 0 fail, 1 pre-existing skip**. ESLint 501/0. Live: the bytes the installation SERVES
+(sha256 == tree) pass **60/60**.
+**Reversal cost.** None — additive; the only product change is one optional parameter with an
+identical default.
+**Status.** applied, DEPLOYED and verified live (`d0677-spoken-intent-20260824T113429Z`).
+**Funding fit.** Restack · traits 1 (delimited, realizable component), 2 (reusable beyond this
+product), 5 (measurable reliability: a spec with an executable conformance suite and two
+independent implementations answering it).

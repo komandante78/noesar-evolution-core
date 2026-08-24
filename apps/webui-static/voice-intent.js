@@ -113,8 +113,8 @@ export function normalise(text) {
  *
  *  A phrase that is nothing BUT filler comes back empty, and the caller reports `unheard`
  *  rather than matching everything: "open the" has named nothing. */
-export function contentWords(text) {
-  return normalise(text).split(' ').filter((word) => word && !FILLER.has(word));
+export function contentWords(text, filler = FILLER) {
+  return normalise(text).split(' ').filter((word) => word && !filler.has(word));
 }
 
 /**

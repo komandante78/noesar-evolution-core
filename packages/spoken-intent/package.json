@@ -1,0 +1,29 @@
+{
+  "name": "@noesar/spoken-intent",
+  "version": "1.0.0",
+  "description": "Resolving what a person said against a registry of things a product can do: normalisation with accent folding, injected filler, an eight-rank exact-or-containing ladder with no fuzzy matching anywhere, uniqueness by destination, trailing-argument capture, and additive compound splitting. Extracted from NOESAR EVOLUTION's voice layer — the product's entry shape, its sentences and its languages deliberately stay out.",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./conformance": "./conformance/index.mjs",
+    "./conformance/vectors.json": "./conformance/vectors.json",
+    "./SPEC.md": "./SPEC.md"
+  },
+  "files": [
+    "src",
+    "conformance",
+    "SPEC.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
