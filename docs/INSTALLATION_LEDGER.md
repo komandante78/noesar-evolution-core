@@ -6158,3 +6158,30 @@ il più recente in senso letterale: vedi `D-0673`.
 `d0672-…` (mai pubblicato, difettoso) e il rollback vecchio `…-pre-20260823T160333Z`.
 Container non di progetto **50 → 50**, reti **10 → 10**, volumi invariati.
 Superstiti di progetto: **due**.
+
+## `d0674-tool-loop-20260824T093438Z` — DEPLOYATO e verificato — 2026-08-24
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0674`: la chat può chiamare strumenti. `tool-call-stream.mjs`
+riassembla una tool call frammentata per i tre apiStyle; `parseSse()` la emette su un
+frame finale; `ChatOrchestrator` esegue un loop limitato a 4 round attraverso
+`ToolExecutor`, con eventi SSE `tool-call`/`tool-result` resi dalla WebUI.
+Riparati due difetti di scope che lo rendevano irraggiungibile: `sendChat()` non ha
+mai inviato `toolIds` (quindi zero strumenti in ogni turno mai servito), e
+`project.toolIds` — scritto `[]` e mai da nessuno — era letto come deny-list.
+`D-0675`: `probeToolCalling()` sulla rotta health esistente.
+**Verifica.** Preflight: byte-uguale albero↔immagine **490/490**, differing **0**.
+Unit **3151 test, 3149 pass, 0 fail, 1 skip preesistente** (+34). ESLint 496/0.
+Live: `/livez` `/readyz` 200; la probe eseguita **dal codice deployato** contro il
+modello reale risponde `supported:false` nominando `--jinja` come rimedio.
+**Limite dichiarato, non nascosto.** Il modello configurato su questa installazione
+**non emette tool call**: il loop è corretto ma qui non ha nulla che lo guidi finché
+l'Owner non riavvia quel server con `--jinja` (container di un altro progetto: non
+si tocca da qui) o configura un provider capace.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 4 figli, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260824T094056Z` (`d0672b`).
+**Costo di rollback — nessuno.** Nessuno schema, nessuna migrazione; il contratto
+`{delta, usage}` è invariato.
+**Pulizia (§5a).** Rimosso il rollback più vecchio `…-pre-20260824T053620Z`
+(`Exited (0)` confermato); la sua immagine `d0671` resta su disco. Container non di
+progetto **50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.

@@ -7,7 +7,7 @@
 // The last block drives the REAL ChatOrchestrator against a fake upstream and reads the system
 // message off the wire, because a prompt composed correctly and then not sent is the same defect
 // as one composed wrong — and this project has shipped that exact shape before.
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
@@ -167,6 +167,16 @@ test('the answering register is present, since it is what makes this a chat rath
 
 /* ---- the same properties, proven on the wire rather than on the function ---- */
 
+// Every server this file starts is closed by `after()`, not by the test body.
+//
+// This is not tidiness. A test whose assertion rejects never reaches its own `server.close()`, and
+// a listening server keeps the event loop alive — so ONE failing assertion turned this file into a
+// process that never terminated, which in the full suite looked like a hang with zero reported
+// failures rather than like a failure. `closeAllConnections()` is needed too: `close()` alone
+// waits for keep-alive sockets the provider's fetch pool is holding open.
+const startedServers = [];
+after(() => { for (const server of startedServers) { server.closeAllConnections?.(); server.close(); } });
+
 function scriptedUpstream() {
   const seen = [];
   const server = createServer((req, res) => {
@@ -181,6 +191,7 @@ function scriptedUpstream() {
       return res.end();
     });
   });
+  startedServers.push(server);
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ server, seen, port: server.address().port })));
 }
 

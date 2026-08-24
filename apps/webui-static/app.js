@@ -1233,6 +1233,46 @@ $('#startWorkFromChat')?.addEventListener('click',()=>{
  * server-side run: a stream the browser stopped reading is not a run the model stopped
  * producing, and leaving it going would burn a GPU on an answer nobody will ever hear.
  */
+/**
+ * Show that a tool is running, and then how it ended.
+ *
+ * Built with `textContent`, never with markup interpolation: the name comes from a tool record and
+ * the detail from a provider's own answer, and neither is this page's text to trust.
+ *
+ * The state is carried by a word, not only by a colour or a glyph — "running", "done", "refused"
+ * are readable to a screen reader and to someone who cannot distinguish the two icons.
+ */
+function renderToolActivity(article,data){
+  if(!article)return null;
+  let list=article.querySelector('.tool-activity');
+  if(!list){
+    list=document.createElement('ul');
+    list.className='tool-activity';
+    // `status`, not `alert`: a tool running is progress, and an assertive live region would
+    // interrupt whatever the person is reading to say so.
+    list.setAttribute('role','status');
+    article.querySelector('.message-body').before(list);
+  }
+  const row=document.createElement('li');
+  row.className='tool-activity-row running';
+  const icon=document.createElement('span');icon.className='tool-activity-icon';icon.setAttribute('aria-hidden','true');icon.textContent='⟳';
+  const name=document.createElement('span');name.className='tool-activity-name';name.textContent=data.name??t('unnamed tool');
+  const state=document.createElement('span');state.className='tool-activity-state';state.textContent=t('running');
+  row.append(icon,name,state);
+  list.append(row);
+  return row;
+}
+
+function resolveToolActivity(row,data){
+  if(!row)return;
+  row.classList.remove('running');
+  row.classList.add(data.ok?'ok':'failed');
+  row.querySelector('.tool-activity-icon').textContent=data.ok?'✓':'✗';
+  // The reason travels with the failure. "Refused" on its own sends a person looking for a fault
+  // that is not there — out-of-scope is the scope working, and a malformed call is the model's.
+  row.querySelector('.tool-activity-state').textContent=data.ok?t('done'):`${t('not run')} — ${data.detail??t('failed')}`;
+}
+
 async function sendChat(spoken=null,{signal=null}={}){
   if(!state.activeConversationId){setStatus('Create a conversation first.',true);return '';}
   const content=typeof spoken==='string'&&spoken.trim()?spoken.trim():$('#chatInput').value.trim();
@@ -1244,6 +1284,7 @@ async function sendChat(spoken=null,{signal=null}={}){
   let assistantText='';
   let article=null;
   let agentCreatedName=null;
+  let toolRow=null;
   try{
     const response=await fetch('/api/v1/chat/stream',{
       method:'POST',
@@ -1290,6 +1331,18 @@ async function sendChat(spoken=null,{signal=null}={}){
           // UI-043: deliberately NOT announced. A live region fed per delta reads the
           // whole answer aloud as it arrives and again when it settles.
           if(article)article.querySelector('.message-body').textContent=assistantText;
+        }else if(event==='tool-call'){
+          // A tool running is one of the operational states §76 requires be visible: without this
+          // the page shows a stalled stream for as long as the tool takes, which reads as a hang.
+          // The row is created here and RESOLVED by the matching `tool-result`, so a tool that
+          // never answers still leaves a visible "running" rather than nothing at all.
+          toolRow=renderToolActivity(article,data);
+        }else if(event==='tool-result'){
+          // Resolved in place, and deliberately NOT announced from here. UI-043 forbids the
+          // streaming branch from announcing, and its own test caught this line: announcing
+          // per-event is how the answer gets read aloud twice. The row lives in a `role="status"`
+          // region, which is the mechanism that speaks a change without a second announcer.
+          resolveToolActivity(toolRow,data);
         }else if(event==='error'){
           throw new Error(data.error);
         }else if(event==='stopped'){

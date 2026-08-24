@@ -4,6 +4,7 @@ import { isIP } from 'node:net';
 import { redactMessages } from './privacy-redaction.mjs';
 import { resolvePublicAddresses } from './address-guard.mjs';
 import { localRuntimeProfileFrom, LOCAL_RUNTIME_PROFILE_ID } from './active-runtime-provider.mjs';
+import { newToolCallState, observeToolCallFrame, finishToolCalls } from './tool-call-stream.mjs';
 
 const STYLES = new Set(['openai-responses','openai-chat','anthropic-messages']);
 const LOCAL_HOSTS = new Set(['localhost','127.0.0.1','::1','host.docker.internal']);
@@ -95,8 +96,18 @@ function publicProfile(profile) {
   return { ...safe, credentialConfigured:Boolean(encryptedCredential || profile.credentialEphemeral) };
 }
 
+// A tool round-trip needs two fields this mapper used to drop on the floor: the assistant turn
+// that REQUESTED the calls carries `tool_calls`, and each result turn carries the `tool_call_id`
+// that pairs it back. Without them the second round of a tool loop is a conversation where the
+// model is shown answers to questions it has no record of asking, and every provider rejects it.
+// Both are emitted only when present, so an ordinary text turn produces the exact object it did.
 function mapOpenAiMessages(messages) {
-  return messages.map((message) => ({ role:message.role === 'tool' ? 'tool' : message.role, content:message.content }));
+  return messages.map((message) => {
+    const mapped = { role:message.role === 'tool' ? 'tool' : message.role, content:message.content };
+    if (message.tool_calls) mapped.tool_calls = message.tool_calls;
+    if (message.tool_call_id) mapped.tool_call_id = message.tool_call_id;
+    return mapped;
+  });
 }
 function extractOpenAiResponses(value) {
   if (typeof value.output_text === 'string') return value.output_text;
@@ -104,6 +115,16 @@ function extractOpenAiResponses(value) {
 }
 function extractOpenAiChat(value) { return value.choices?.[0]?.message?.content ?? ''; }
 function extractAnthropic(value) { return (value.content ?? []).filter((item) => item.type === 'text').map((item) => item.text).join(''); }
+
+/** Did a NON-streaming answer contain a tool call? Three styles, three places it lives — the same
+ *  divergence `tool-call-stream.mjs` handles for the streaming case, kept here rather than there
+ *  because a whole response needs no reassembly and sharing the fold would mean pretending it did. */
+export function toolCallsPresent(style, value) {
+  if (!value || typeof value !== 'object') return false;
+  if (style === 'anthropic-messages') return (value.content ?? []).some((item) => item?.type === 'tool_use');
+  if (style === 'openai-responses') return (value.output ?? []).some((item) => item?.type === 'function_call');
+  return Boolean(value.choices?.[0]?.message?.tool_calls?.length);
+}
 
 // Usage is reported differently per style, and by a different frame than the text deltas:
 // openai-chat only attaches it to the final chunk, and only when the request asked for it
@@ -141,6 +162,11 @@ async function *parseSse(response, style, signal) {
   if (!response.body) throw statusError('Provider returned no streaming body.', 502);
   const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
   const remembered = {};
+  // Tool calls are folded across the whole stream and emitted ONCE, at the end, on a frame of
+  // their own. They cannot be yielded as they arrive: the arguments are a JSON document cut at
+  // arbitrary character boundaries, so a partial fragment is not a partial call — it is not a
+  // call at all. See tool-call-stream.mjs for the per-style join rules.
+  const toolState = newToolCallState();
   while (true) {
     if (signal?.aborted) throw Object.assign(new Error('Generation stopped.'), { name:'AbortError', status:499 });
     const { value, done } = await reader.read(); if (done) break;
@@ -156,10 +182,15 @@ async function *parseSse(response, style, signal) {
       if (style === 'openai-chat') delta = event.choices?.[0]?.delta?.content ?? '';
       else if (style === 'openai-responses') delta = event.type === 'response.output_text.delta' ? event.delta ?? '' : '';
       else if (style === 'anthropic-messages') delta = event.type === 'content_block_delta' ? event.delta?.text ?? '' : '';
+      observeToolCallFrame(style, event, toolState);
       const usage = usageFrom(style, event, remembered);
       if (delta || usage) yield { delta, usage };
     }
   }
+  // Emitted only when there is something to emit, so a stream with no tool calls yields exactly
+  // the frames it always did — the `{delta, usage}` contract the rest of the product reads is
+  // unchanged, and a consumer that does not know about `toolCalls` never sees one.
+  if (toolState.size) yield { delta:'', usage:null, toolCalls:finishToolCalls(toolState) };
 }
 
 export class ProviderGateway {
@@ -425,7 +456,48 @@ export class ProviderGateway {
     // `providerId` was never declared here, so this line threw a ReferenceError on the
     // success path: a reachable, healthy provider answered 500 while an unreachable one
     // answered a tidy 502. Only the failure path had ever been exercised.
-    return{status:'healthy',providerId:profileId,latencyMs:Date.now()-started,models:Array.isArray(value.data)?value.data.slice(0,100).map((item)=>item.id??item.name).filter(Boolean):[]};
+    // Reachability is not capability. Measured on this installation 2026-08-24: a healthy
+    // llama.cpp server accepted a `tools` array, answered in prose, and emitted no `tool_calls`
+    // at all — it only honours them when started with `--jinja` and a template that has them. A
+    // health check that says "healthy" while the chat silently cannot call anything is a health
+    // check that sends someone looking in the wrong place for a day.
+    const toolCalling=await this.probeToolCalling(profileId,{signal}).catch((error)=>({supported:null,reason:error.message}));
+    return{status:'healthy',providerId:profileId,latencyMs:Date.now()-started,models:Array.isArray(value.data)?value.data.slice(0,100).map((item)=>item.id??item.name).filter(Boolean):[],toolCalling};
+  }
+
+  /**
+   * Does this provider actually honour a `tools` array?
+   *
+   * Answered by asking it, once, with a tool so trivial that any model that CAN call one will —
+   * never by consulting a table of model names, which goes stale the day someone points the
+   * profile at a different build. `supported:null` means the question could not be answered
+   * (unreachable, no credential, a refusal), and is deliberately distinct from `false`: telling an
+   * operator their model cannot call tools when the probe simply failed is a wrong answer that
+   * looks like a measurement.
+   *
+   * Not called per turn. This is an operator-triggered check, on the same route as the health
+   * check, because a probe in the path of every chat message is a second generation nobody asked
+   * to pay for.
+   */
+  async probeToolCalling(profileId,{signal}={}){
+    const profile=this.get(profileId);
+    const probeTool={type:'function',function:{name:'noesar_probe_echo',description:'Echo a word back. Call this to confirm tool calling works.',parameters:{type:'object',properties:{word:{type:'string'}},required:['word']}}};
+    const request={actorId:'system',model:null,temperature:0,maxOutputTokens:64,dataClasses:['prompt'],
+      messages:[{role:'user',content:'Call the tool noesar_probe_echo with word set to "ok". Reply with the tool call only.'}],
+      tools:[probeTool]};
+    let value;
+    try{
+      const {credential,descriptor}=this.#prepared(profile,{...request,stream:false});
+      const timeout=AbortSignal.timeout(Math.min(profile.timeoutMs,20000));
+      const combined=signal?AbortSignal.any([signal,timeout]):timeout;
+      const response=await fetchOnceRetryingStaleSocket(descriptor.url,{method:'POST',headers:this.#headers(profile,credential),body:JSON.stringify(descriptor.body),signal:combined},{external:Boolean(profile.external),lookup:this.lookup});
+      if(!response.ok)return{supported:null,reason:`probe request failed (${response.status})`};
+      value=await response.json();
+    }catch(error){return{supported:null,reason:describeFetchFailure(error)};}
+    const called=toolCallsPresent(profile.apiStyle,value);
+    return called
+      ?{supported:true,reason:null}
+      :{supported:false,reason:'The provider accepted a tools array and answered without calling one. A llama.cpp server needs --jinja and a chat template with tool support; other servers may not implement tool calling at all.'};
   }
   async complete(profileId, request, { signal } = {}) {
     const profile = this.get(profileId);
@@ -481,7 +553,15 @@ export class ProviderGateway {
         // In an ES module that is a ReferenceError thrown on the FIRST delta, so every
         // streaming reply failed with "providerId is not defined" and the fallback loop
         // could not report which provider had failed either.
-        for await(const item of this.stream(profileId,request,options)){emitted=true;yield{providerId:profileId,delta:item.delta,usage:item.usage};}
+        // `emitted` deliberately does NOT count a tool-call frame. It exists to decide whether a
+        // failure may still fall back to the next provider, and the rule is about what the PERSON
+        // has already seen: once text is on their screen, switching provider mid-answer would
+        // splice two different models' prose together. A tool-call frame is the last thing in a
+        // stream and shows nothing, so it cannot be the thing that forecloses a fallback.
+        for await(const item of this.stream(profileId,request,options)){
+          if(item.delta)emitted=true;
+          yield{providerId:profileId,delta:item.delta,usage:item.usage,toolCalls:item.toolCalls};
+        }
         return;
       }catch(error){
         failures.push({providerId:profileId,error:error.message});

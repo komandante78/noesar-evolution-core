@@ -422,7 +422,7 @@ const PRODUCT_IDENTITY = Object.freeze({ name:'NOESAR Evolution', edition:'Open 
  * is for, and it is the surface that already reports it.
  */
 const installationSnapshotForChat = () => installationFromState(aiStore.read(), process.env, PRODUCT_IDENTITY);
-const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat });
+const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat, toolExecutor });
 const hardware = discoverHardware();
 // The bootstrap token is resolved from a 0600 runtime file, not from the
 // environment: an environment variable is visible in `docker inspect` and in

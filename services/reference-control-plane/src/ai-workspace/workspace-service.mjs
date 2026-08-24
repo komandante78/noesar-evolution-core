@@ -179,7 +179,21 @@ export class WorkspaceService {
     const project=conversation.projectId ? state.projects.find((item)=>item.id===conversation.projectId) : null;
     const memories=state.memories.filter((item)=>!item.deletedAt && item.visible && (item.scope==='global' || (item.scope==='project'&&item.projectId===conversation.projectId) || (item.scope==='conversation'&&item.conversationId===conversationId)));
     const sources=state.sources.filter((item)=>!item.deletedAt && item.projectId===conversation.projectId);
-    const tools=state.tools.filter((item)=>!item.disabled && (!project || project.toolIds.includes(item.id)));
+    // An EMPTY `project.toolIds` means "this project has not narrowed the tool set", not "this
+    // project forbids every tool".
+    //
+    // Measured, not assumed: `context-graph.mjs` writes `toolIds:[]` at creation, `createProject`
+    // does not accept the field, `updateProject` does not patch it, and a repository-wide grep
+    // finds no other writer. So the list was write-once-empty and this line read it as a deny-all
+    // — meaning a conversation attached to a project got ZERO tools, permanently, through every
+    // product surface, while a conversation with no project (`!project`) got all of them. Putting
+    // your work in a project silently disabled every tool, and nothing could re-enable it.
+    //
+    // Narrowing still works the moment anything writes a non-empty list; what is removed is a
+    // denial nobody chose. The operator's two real gates are untouched: a tool must be registered
+    // and must not be disabled.
+    const narrowed=Array.isArray(project?.toolIds)&&project.toolIds.length>0;
+    const tools=state.tools.filter((item)=>!item.disabled && (!narrowed || project.toolIds.includes(item.id)));
     const text=[project?.instructions ?? '',...messages.map((item)=>item.content),...memories.map((item)=>item.content)].join('\n');
     return {
       conversation, branchId:branch, project, messages, memories, sources, tools,

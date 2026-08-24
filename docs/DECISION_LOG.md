@@ -15709,3 +15709,51 @@ intra-phase container as litter this phase must remove.
 **Reversal cost.** None — `d0669`'s and `d0671`'s images both remain on disk, so every rollback
 path documented in the ledger still works.
 **Status.** applied.
+
+## D-0674 · the chat can call tools — the loop, end to end — 2026-08-24
+**Decision.** Three layers built: `tool-call-stream.mjs` reassembles a fragmented tool call for
+`openai-chat`, `anthropic-messages` and `openai-responses`; `parseSse()` folds the fragments and
+emits them on one final frame; `ChatOrchestrator` runs a bounded 4-round call→execute→feed-back
+loop through `ToolExecutor`, streaming `tool-call`/`tool-result` SSE events the WebUI renders.
+**Why.** The largest measured difference from Claude/ChatGPT: `parseSse()` read only
+`choices[0].delta.content` and **discarded `delta.tool_calls`**; `streamToResponse()` sent a
+`tools` array and never parsed, executed or fed back a call; `ToolExecutor` had two callers and
+neither was the chat. Tools were advertised to the model and unreachable.
+**Rejected.** Buffering the whole answer before parsing — it would have cost the streaming feel
+the chat already had, for no gain the fold does not give.
+**Two scope defects found while building, both of which made the loop unreachable in production.**
+(1) `enforceToolScope` intersects granted with REQUESTED, and `sendChat()` has never sent
+`toolIds` — so **every chat turn this product ever served offered zero tools**. A caller naming
+none now gets the project's set; an explicit list still narrows. (2) `project.toolIds` is written
+`[]` at creation, is not accepted by `createProject`, not patched by `updateProject`, and has no
+writer anywhere — yet was read as a deny-list, so attaching a conversation to a project disabled
+every tool permanently. Empty now means "not narrowed", non-empty still narrows.
+**Security.** Out-of-scope names refused by name (never looked up in the full store); malformed
+arguments never executed and never coerced to `{}`; tool results fenced by `wrapUntrusted` and a
+detection closes the agent-directive channel for the rest of the turn; a failing tool is a result,
+not a failed turn; rounds bounded and the exhaustion stated in the answer.
+**Evidence.** `tool-call-stream.test.mjs` 20/20, `chat-tool-loop.test.mjs` 14/14. Full suite
+**3151 tests, 3149 pass, 0 fail, 1 pre-existing skip** (+34). ESLint 496/0. Deploy preflight
+**490/490 byte-equal to tree**.
+**Reversal cost.** None — no schema, no migration. The `{delta, usage}` frame contract is
+unchanged, and a stream with no tool calls yields exactly the frames it always did.
+**Status.** applied, DEPLOYED and verified live (`d0674-tool-loop-20260824T093438Z`).
+
+## D-0675 · reachable is not capable — the tool-calling probe, and the live limit it found — 2026-08-24
+**Decision.** `ProviderGateway.probeToolCalling()` asks the provider, once, with a trivial tool,
+and reports `true`/`false`/`null`. Folded into the existing `/api/v1/providers/:id/health` route,
+which the WebUI already renders verbatim — so the operator sees it with no new surface.
+**Why, measured live.** The installation's configured model **does not emit tool calls at all**: a
+healthy `llama.cpp` server (container `atom-evolution-model`, phi-4-q4) accepted the `tools` array
+and answered in prose. So `D-0674`'s loop is correct and, on this installation as configured, has
+nothing to drive it. A health check reporting "healthy" while the chat silently cannot call
+anything sends someone looking in the wrong place for a day.
+**Rejected.** A table of known tool-capable model names — stale the day the profile is repointed.
+**Not done, and deliberately.** `llama.cpp` honours tools only when started with `--jinja`. That
+container belongs to a **separate project**, so restarting or reconfiguring it is forbidden here
+(`CLAUDE10.md` §5 rules 16-21, REGOLA ZERO) and is the Owner's to do. Detect and declare is the
+portable answer (§63); changing another project's runtime is not.
+**Evidence.** 6 tests incl. `supported:null` for unreachable (never `false`). Run from the
+**deployed** code against the real model: `supported:false` with the `--jinja` remedy named.
+**Reversal cost.** None — the probe is opt-in on an operator-triggered route.
+**Status.** applied, DEPLOYED and verified live.

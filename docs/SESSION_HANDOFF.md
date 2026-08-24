@@ -2,94 +2,99 @@
 
 **The Owner set a deadline and named two shames.** 2026-08-24: *"devi fare in modo che il
 progetto sia finito entro 11 giorni … la cosa che è veramente vergognosa è la voce e la chat"*.
-The deadline is **2026-09-04**, one day after NLnet's calls reopen (2026-09-03). The plan is
-`docs/PLAN_11_DAYS_TO_DELIVERY.md` — read it before anything else; it carries the live
-measurements this session took and the three-block schedule.
+Deadline **2026-09-04**, one day after NLnet's calls reopen. The plan is
+`docs/PLAN_11_DAYS_TO_DELIVERY.md` — read it first; it carries the live measurements and the
+three-block schedule. **P1 and P2 are done and deployed.**
 
 ## ➜ LA PROSSIMA AZIONE
 
-**P2 — the tool-call loop.** `docs/PLAN_11_DAYS_TO_DELIVERY.md` §4, Block 1.
+**Put `B-016` to the Owner, then start P4 — not P3.**
 
-Measured this session, not inferred: **the chat cannot act, at two layers.**
-`provider-gateway.mjs:156` extracts only `choices[0].delta.content` and **discards
-`delta.tool_calls`** — the channel never reaches the orchestrator. `streamToResponse()` builds a
-`tools` array, sends it, accumulates text and stops: it never parses a call, never executes one,
-never feeds a result back. `ToolExecutor` has exactly two callers (`workflow-service.mjs`,
-`agent-service.mjs`) and **neither is the chat**. So tools are advertised to the model and are
-unreachable.
+`B-016`, measured live twice: **the configured model cannot emit tool calls.** A healthy
+`llama.cpp` server accepts the `tools` array and answers in prose. It honours tools only when
+started with `--jinja`. **That container belongs to a separate project and is out of bounds from
+here** (`CLAUDE10.md` §5 rules 16-21, REGOLA ZERO) — the Owner restarts it, or points a provider
+profile at a tool-capable endpoint. The loop is proven by suite (14/14 end to end) and the
+limitation is declared in the product itself, not hidden.
 
-**First thing to measure when P2 opens:** whether `parseSse()` can surface `tool_calls` for all
-three `apiStyle`s (`openai-chat`, `openai-responses`, `anthropic-messages`) without breaking the
-`{delta, usage}` contract 3117 tests currently depend on.
+**Why P4 and not P3:** P3 (wiring the CodeN commands in as tools) cannot be *demonstrated*
+end-to-end until a tool-capable model is reachable, so building it now means building blind.
+**P4 (voice conversation-first routing) depends on the loop EXISTING, not on it being drivable on
+this host today**, so it is not blocked. Do P4, and take P3 the moment `B-016` clears.
 
-P1 makes this the *felt* limitation: the assistant now correctly offers the three Debug Evolution
-tools by name — and cannot call any of them.
+**P4, first thing to measure:** `applyHeardText()` (`app.js:3511`) runs `heardResult(text)` on the
+**raw utterance first**, so any sentence containing a destination word navigates and returns
+`reply:''` — silence. Natural speech must reach the conversation; acting belongs inside the answer
+now that P2 exists.
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 
 **`D-0672` — the chat knows what it is.** The whole system message used to be
-`instructionForMode()`: three sentences about ASK/CREATE/ACT and nothing else. It is now composed
-from live state by `ai-workspace/assistant-identity.mjs` — product, which model is answering and
-whether it runs locally, whether voice is configured (all four states, including the two
-half-configured ones), workspace counts, enabled tools by name or an honest statement that there
-are none — plus an answering register. The citation instruction is now **conditional on evidence
-actually being retrieved**; it used to be emitted on every turn, including every turn of an
-installation with zero sources, which is this one.
+`instructionForMode()`: three sentences. It is now composed from live state by
+`ai-workspace/assistant-identity.mjs` — product, which model answers and whether it runs locally,
+voice in all four states, workspace counts, enabled tools by name or an honest "none" — plus an
+answering register. The citation instruction is conditional on evidence actually retrieved.
+**A/B against the live phi-4** (`EVIDENCE/chat_identity_ab_20260824T041426Z.txt`): asked *"chi
+sei?"* the old prompt answered **"Sono un modello di linguaggio sviluppato da Microsoft"**; asked
+*"PERCHE NON FUNZIONI?"* it answered **in English** with a tutorial about checking the power
+supply. The new one names the product and the real model, in Italian.
 
-**Measured A/B against the live phi-4** (`EVIDENCE/chat_identity_ab_20260824T041426Z.txt`): asked
-*"chi sei?"*, the old prompt answered **"Sono un modello di linguaggio sviluppato da Microsoft"*.
-Asked *"PERCHE NON FUNZIONI?"*, it answered **in English** with a generic tutorial about checking
-the power supply and cables. The new prompt names the product and the real model, and answers in
-Italian about this installation.
+**`D-0674` — the chat can call tools.** `tool-call-stream.mjs` reassembles a fragmented call for
+all three apiStyles; `parseSse()` emits it on a final frame; `ChatOrchestrator` runs a bounded
+4-round call→execute→feed-back loop through `ToolExecutor`, streaming `tool-call`/`tool-result`
+the WebUI renders as live rows. Refusals are by design: out-of-scope names refused **by name**,
+malformed arguments never coerced to `{}`, tool results fenced and a detection closes the
+agent-directive channel, a failing tool is a result not a failed turn.
 
-**Two live defects found by looking at the running system, not by review** — recorded because the
-method is the lesson. Composing the prompt **inside the running container against the real
-provider record** showed *"served by via Local OpenAI-compatible, running on an external
-service"*: the snapshot read `profile.model` and `profile.kind` while the record carries
-`defaultModel` and `external`, so the model was nameless and its locality backwards. **A
-hand-written fixture would have carried the same wrong field names and agreed with the bug** — so
-the regression test now builds its profile with the real `ProviderGateway`, and
-`installationFromState()` was extracted as a pure exported function precisely so it could be
-pinned that way. Second: `#buildContext` read `inspection.sources.length` unguarded and took a
-whole turn down on a partial inspection, caught by CE-007's own containment fixture. Grounding is
-decoration on the answer and must never be able to remove the answer.
+**Two scope defects found while building it, either of which alone made the loop unreachable:**
+`enforceToolScope` intersects granted with *requested*, and `sendChat()` has never sent `toolIds`
+— **every chat turn this product ever served offered zero tools**. And `project.toolIds` is
+written `[]` at creation with **no writer anywhere in the repository**, yet was read as a
+deny-list, so attaching a conversation to a project disabled every tool permanently. Both fixed,
+both pinned by tests.
 
-**`D-0673`** — the surviving rollback is `…-pre-20260824T053620Z` (`d0671`), the last *published*
-predecessor, not the literally-newer one that carried the defective intra-phase `d0672` build.
+**`D-0675` — reachable is not capable.** `probeToolCalling()` on the existing health route, which
+the WebUI already renders verbatim. It is what measured `B-016`, and it names `--jinja` as the
+remedy rather than reporting a bare failure.
+
+**A hang found and fixed, worth keeping.** `assistant-identity.test.mjs` stopped terminating: an
+unguarded `inspection.tools` threw, the rejection skipped the fixture's own `server.close()`, and
+a live listener kept the process alive — so the **full suite reported a hang with zero failures**
+rather than a failure. Fixed at both ends: the guard, and `after()`-based server cleanup in all
+three new suites so a future failing assertion can never do it again.
 
 ## WHAT WAS **NOT** DONE
 
-- **P2 through P9 of the plan** — not started. That is the schedule, not a slip.
-- **The voice was not touched this session.** Its diagnosis is complete and written up
-  (`PLAN` §3): the turn machine is sound and is *not* static, but `applyHeardText()` (`app.js:3511`)
-  resolves the **raw utterance against the menu first**, so natural speech containing a
-  destination word navigates and answers nothing. Fixing it is P4, and it depends on P2 —
-  "open the memory and tell me what is in it" needs a tool loop to be one answer instead of two.
-- **The model itself is unchanged** and is the ceiling on felt quality: a 14B q4 local build.
-  P1-P3 make the assistant grounded, capable and honest on *whatever* model runs; they do not
-  make it reason like a frontier model. Named in `PLAN` §5 as the Owner's lever, not a defect.
-- **FUNDING Phases F and G** — cannot be produced from inside this repository at any speed
-  (G is an external pentest by definition; F needs host classes that are not this machine).
+- **P3 and P5-P9** — not started. P3 is deliberately deferred behind `B-016` (see above).
+- **The voice is still untouched.** Diagnosis complete in `PLAN` §3; P4 is next.
+- **`llama.cpp` was not restarted with `--jinja`.** Forbidden from here — another project's
+  container. This is the Owner's action, and it is the whole of `B-016`.
+- **The model itself** remains the ceiling on felt quality. P1-P3 make the assistant grounded,
+  capable and honest on whatever model runs; they do not make a 14B q4 build reason like a
+  frontier model.
+- **No browser e2e was run this phase.** The new UI element is created at runtime, so the static
+  audit cannot see it; `webui-markup-structure.test.mjs` (52/52) covers the tokens and structure,
+  and it caught two real defects here — an undefined `--font-mono` and a **UI-043 violation**
+  where my `announceEvent` in the streaming branch would have read the answer aloud twice.
+  Declared rather than implied: the rendered rows have **not** been seen in a browser.
+- **FUNDING Phases F and G** — cannot be produced from inside this repository at any speed.
 - `F-RUST-002`, `F-ROT-001`, `F-MODEL-001`, `F4-012`, `F4-013`, `F7-001`, `F-CAP4-001`,
-  `F-I18N-002`, `F-HOOK-008` — unchanged, all previously triaged. `F-ROT-001` and `F-MODEL-001`
-  are scheduled for P7.
+  `F-I18N-002`, `F-HOOK-008` — unchanged, previously triaged; `F-ROT-001`/`F-MODEL-001` are P7.
 - **`NOESAR_DEBUG_EVOLUTION_TOKEN` rotation** — still not done; it authenticates this project to
-  the external `DEBUG_EVOLUTION` project, so rotating it here alone breaks that integration
-  without Owner coordination on the other side (`D-0666`).
+  an external one, so rotating it here alone breaks that integration (`D-0666`).
 
 ## LOCAL, UNTRACKED, BY DESIGN
 
-- `EVIDENCE/docker_inventory_pre_cleanup_*.txt` — the §5a inventory; lists every container on
-  this host, other projects included, which is why the pattern is gitignored. Its content is
-  summarised, host-detail stripped, in the ledger entry.
-- `BACKUPS/pre_history_rewrite_20260823T134411Z.bundle` — pre-rewrite recovery point, kept per
-  rule 23.
+- `EVIDENCE/docker_inventory_pre_cleanup_*.txt` — the §5a inventories; they list every container
+  on this host, other projects included, which is why the pattern is gitignored.
+- `BACKUPS/pre_history_rewrite_20260823T134411Z.bundle` — pre-rewrite recovery point, rule 23.
 
 ## OPEN BLOCKERS
 
-- `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; this session's
-  diff was reviewed with a heuristic grep, clean, **declared as heuristic**.
-- `B-015` **OPEN**: `git push origin main` fails with "could not read Username" — no credential
-  helper here. Commit `7fbfcd9` is complete locally and **deployed live**, but not on `origin`.
-  Same shape as `B-014`, which the Owner closed by supplying a PAT ad-hoc. Needs the Owner.
-- `B-011`, `B-013`, `B-014` all closed previously.
+- `B-016` **OPEN, needs the Owner** — the configured model cannot emit tool calls. See above.
+- `B-015` **OPEN** — `git push origin main` fails, no credential helper here. Everything is
+  complete locally and **deployed live**, but not on `origin`. Same shape as `B-014`, which the
+  Owner closed by supplying a PAT ad-hoc.
+- `B-002` **STALE** (`D-0257`) — neither `gitleaks` nor `trufflehog` on `PATH`; this session's
+  diffs were reviewed with a heuristic grep, clean, **declared as heuristic**.
+- `B-011`, `B-013`, `B-014` closed previously.
