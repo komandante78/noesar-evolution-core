@@ -58,6 +58,13 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // Owner, 2026-08-24 («pulire intera chat»). The clear's confirmation, its refusal and its
+  // result line are written by `app.js` when the button is pressed, so none of the four can
+  // appear in `index.html` — the control itself is in the markup and is covered there.
+  'Open a conversation first.',
+  'Clear this conversation on screen? Nothing is deleted — the messages stay on their branch and you can reopen it from the branch list.',
+  'Conversation cleared.',
+  'messages kept on the previous branch.',
   // `D-0567`, `CE-008`. The Approve button carries one of two titles depending on whether the
   // run has been measured; the DISABLED one is in `index.html` and covered there, this is the
   // enabled one, which `renderPlanActions()` writes. Listed rather than tolerated, per the rule
@@ -539,7 +546,6 @@ const it = {
   'VERSIONED CONTEXT GRAPH': 'GRAFO DI CONTESTO VERSIONATO',
   'AI Workspace': 'Spazio di lavoro IA',
   'Conversation': 'Conversazione',
-  '＋ Conversation': '＋ Conversazione',
   'Branch': 'Ramo',
   'Fork': 'Ramifica',
   'Compare branches': 'Confronta i rami',
@@ -547,16 +553,31 @@ const it = {
   'Provider / route': 'Fornitore / instradamento',
   'Model': 'Modello',
   'Compare models': 'Confronta i modelli',
-  // §4#3, OWNER_REVIEW_2026-08-21: the chat toolbar's three group labels and their explanations.
-  'Where': 'Dove',
-  'Version': 'Versione',
-  'Where this conversation lives': 'Dove vive questa conversazione',
+  // §4#3 REOPENED by the Owner 2026-08-24 («un menu per software per bambini»): the bar keeps
+  // only what says where you are, and these are the actions that moved behind the "⋯" menu —
+  // plus the clear the Owner asked for and had never been given a control for.
+  '＋ New conversation': '＋ Nuova conversazione',
+  'Clear conversation': 'Pulisci la conversazione',
+  'Branches': 'Rami',
+  'Model ID': 'ID del modello',
+  'Which project this conversation belongs to': 'A quale progetto appartiene questa conversazione',
+  'The conversation you are reading': 'La conversazione che stai leggendo',
+  'More conversation actions': 'Altre azioni sulla conversazione',
+  'Empty this conversation on screen. Nothing is deleted: the messages stay on the branch they are on, and you can reopen it from the branch list.': 'Svuota questa conversazione sullo schermo. Non viene cancellato nulla: i messaggi restano sul ramo in cui si trovano e puoi riaprirlo dall\'elenco dei rami.',
+  'Open a conversation first.': 'Apri prima una conversazione.',
+  'Clear this conversation on screen? Nothing is deleted — the messages stay on their branch and you can reopen it from the branch list.': 'Pulire questa conversazione sullo schermo? Non viene cancellato nulla: i messaggi restano sul loro ramo e puoi riaprirlo dall\'elenco dei rami.',
+  'Conversation cleared.': 'Conversazione pulita.',
+  'messages kept on the previous branch.': 'messaggi conservati sul ramo precedente.',
+  // §4#3, OWNER_REVIEW_2026-08-21: the chat toolbar's three group labels — "Where", "Version",
+  // "Model" — and the group titles that explained them. Removed 2026-08-24 with the groups
+  // themselves: the Owner reopened the row («un menu per software per bambini»), and a catalogue
+  // entry for markup that no longer exists is a claim of coverage no page can honour — which is
+  // exactly what `ui-language-coverage.test.mjs` fails on. The translations survive in git.
   'Start a new conversation in the selected project': 'Avvia una nuova conversazione nel progetto selezionato',
   'Branches let you try an approach without changing the conversation everyone else sees': 'I rami permettono di provare un approccio senza cambiare la conversazione che vedono tutti gli altri',
   'Copy this branch so you can try something without changing the original': 'Copia questo ramo per provare qualcosa senza cambiare l’originale',
   'Show two branches side by side': 'Mostra due rami affiancati',
   'Bring a branch\'s changes back into the one you started it from': 'Riporta le modifiche di un ramo in quello da cui è partito',
-  'Which AI answers, and how': 'Quale IA risponde, e come',
   'Which external or local AI service answers this conversation': 'Quale servizio IA, esterno o locale, risponde a questa conversazione',
   'Leave blank to use the provider\'s default model': 'Lascia vuoto per usare il modello predefinito del fornitore',
   'Ask the same prompt to more than one model at once, to compare the answers': 'Fai la stessa domanda a più modelli insieme, per confrontare le risposte',

@@ -34,6 +34,49 @@ test('versioned context graph supports edit, fork, exclude, merge and undo',()=>
   }finally{rmSync(f.dir,{recursive:true,force:true});}
 });
 
+// Owner, 2026-08-24: "pulire intera chat". The whole point of the design is that clearing
+// empties the SCREEN and destroys NOTHING, so the assertions are in that order: the thread the
+// person now sees is empty, and every message is still readable on the branch it came from.
+test('clearing a conversation empties the thread and keeps every message on the old branch',()=>{
+  const f=fixture();
+  try{
+    const {conversation,branch}=f.graph.createConversation({title:'Long chat'});
+    f.graph.addMessage({conversationId:conversation.id,branchId:branch.id,role:'user',content:'first'});
+    const last=f.graph.addMessage({conversationId:conversation.id,branchId:branch.id,role:'assistant',content:'second'});
+    assert.equal(f.graph.branchMessages(conversation.id,branch.id).length,2);
+
+    const cleared=f.graph.clearConversation({conversationId:conversation.id});
+    assert.equal(cleared.previousBranchId,branch.id);
+    assert.equal(cleared.keptMessageCount,2);
+    assert.equal(cleared.branch.name,'clean-1');
+    assert.equal(cleared.branch.headId,null);
+
+    // What the person sees now: nothing.
+    const active=f.graph.getConversation(conversation.id).conversation.activeBranchId;
+    assert.equal(active,cleared.branch.id);
+    assert.equal(f.graph.branchMessages(conversation.id,active).length,0);
+
+    // What was NOT destroyed: everything.
+    const old=f.graph.branchMessages(conversation.id,branch.id);
+    assert.equal(old.length,2);
+    assert.equal(old.at(-1).id,last.id);
+
+    // The cleared thread is a real thread — writing to it works and does not resurrect history.
+    f.graph.addMessage({conversationId:conversation.id,branchId:active,role:'user',content:'fresh'});
+    assert.deepEqual(f.graph.branchMessages(conversation.id,active).map((m)=>m.content),['fresh']);
+
+    // Clearing twice does not collide on the name, which is what a person doing it daily gets.
+    assert.equal(f.graph.clearConversation({conversationId:conversation.id}).branch.name,'clean-2');
+  }finally{rmSync(f.dir,{recursive:true,force:true});}
+});
+
+test('clearing an unknown conversation is refused, not silently created',()=>{
+  const f=fixture();
+  try{
+    assert.throws(()=>f.graph.clearConversation({conversationId:'no-such-id'}),/Conversation not found/);
+  }finally{rmSync(f.dir,{recursive:true,force:true});}
+});
+
 test('conversation modes are constrained to Ask Create Act',()=>{
   const f=fixture();
   try{

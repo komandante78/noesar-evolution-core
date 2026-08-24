@@ -261,29 +261,43 @@
 
       <section class="view" id="view-chat">
         <div class="section-header compact"><div><p class="eyebrow">VERSIONED CONTEXT GRAPH</p><h1>AI Workspace</h1></div><div class="mode-switch" id="chatModes"><button class="selected" data-chat-mode="ASK">Ask</button><button data-chat-mode="CREATE">Create</button><button data-chat-mode="ACT">Act</button></div></div>
-        <!-- §4#3, OWNER_REVIEW_2026-08-21: «non si capisce nulla, non è per niente intuitivo» —
-             the same 8 controls, now in three named groups instead of one flat row, each
-             ambiguous one carrying a plain-language `title` (i18n translates `title`, see the
-             voice-access note above for why that attribute is safe to rely on in this file). -->
+        <!-- §4#3, OWNER_REVIEW_2026-08-21, REOPENED by the Owner 2026-08-24: «un menu per
+             software per bambini». The previous answer (`D-0641`) kept all ten controls on
+             screen and merely boxed them into three labelled cards — which is what made it read
+             like a teaching form bolted on top of a conversation. Grouping was not the problem;
+             PERMANENCE was.
+             What is on screen now is only what tells you where you are: project, conversation,
+             branch, model. The nine actions live behind one "⋯" button and are one click away.
+             The IDs are unchanged, so every existing behaviour and test still binds. -->
         <div class="chat-toolbar">
-          <div class="toolbar-group" title="Where this conversation lives">
-            <span class="toolbar-group-label">Where</span>
-            <label>Project<select id="chatProject"></select></label>
-            <label>Conversation<select id="chatConversation"></select></label>
-            <button id="newConversation" title="Start a new conversation in the selected project">＋ Conversation</button>
+          <div class="chat-crumb">
+            <label><span class="visually-hidden">Project</span><select id="chatProject" title="Which project this conversation belongs to"></select></label>
+            <span class="chat-crumb-sep" aria-hidden="true">›</span>
+            <label><span class="visually-hidden">Conversation</span><select id="chatConversation" title="The conversation you are reading"></select></label>
           </div>
-          <div class="toolbar-group" title="Branches let you try an approach without changing the conversation everyone else sees">
-            <span class="toolbar-group-label">Version</span>
-            <label>Branch<select id="chatBranch"></select></label>
-            <button id="forkBranch" title="Copy this branch so you can try something without changing the original">Fork</button>
-            <button id="compareBranches" title="Show two branches side by side">Compare branches</button>
-            <button id="mergeBranch" title="Bring a branch's changes back into the one you started it from">Merge</button>
+          <div class="chat-chips">
+            <!-- No decorative glyph in front of either select. The first draft had `⑂` and `◈`;
+                 seen rendered on the probe they came out as tofu boxes, because a self-hosted
+                 product cannot presume a font on the machine it is installed on (platform law,
+                 §62). The selects already say "main" and "Automatic route" — a decoration that
+                 may fail to draw is exactly what §76 forbids. -->
+            <label class="chat-chip"><span class="visually-hidden">Branch</span><select id="chatBranch" title="Branches let you try an approach without changing the conversation everyone else sees"></select></label>
+            <label class="chat-chip"><span class="visually-hidden">Provider / route</span><select id="chatProvider" title="Which external or local AI service answers this conversation"></select></label>
           </div>
-          <div class="toolbar-group" title="Which AI answers, and how">
-            <span class="toolbar-group-label">Model</span>
-            <label>Provider / route<select id="chatProvider" title="Which external or local AI service answers this conversation"></select></label>
-            <label>Model<input id="chatModel" placeholder="Model ID or provider default" title="Leave blank to use the provider's default model"></label>
-            <button id="compareModels" title="Ask the same prompt to more than one model at once, to compare the answers">Compare models</button>
+          <div class="chat-more">
+            <button id="chatMore" class="secondary" type="button" aria-expanded="false" aria-controls="chatMoreMenu" aria-label="More conversation actions" title="More conversation actions">⋯</button>
+            <div class="chat-more-menu hidden" id="chatMoreMenu" role="group" aria-labelledby="chatMore">
+              <p class="chat-more-heading">Conversation</p>
+              <button id="newConversation" type="button" title="Start a new conversation in the selected project">＋ New conversation</button>
+              <button id="clearConversation" type="button" title="Empty this conversation on screen. Nothing is deleted: the messages stay on the branch they are on, and you can reopen it from the branch list.">Clear conversation</button>
+              <p class="chat-more-heading">Branches</p>
+              <button id="forkBranch" type="button" title="Copy this branch so you can try something without changing the original">Fork</button>
+              <button id="compareBranches" type="button" title="Show two branches side by side">Compare branches</button>
+              <button id="mergeBranch" type="button" title="Bring a branch's changes back into the one you started it from">Merge</button>
+              <p class="chat-more-heading">Model</p>
+              <label class="chat-more-field">Model ID<input id="chatModel" placeholder="Model ID or provider default" title="Leave blank to use the provider's default model"></label>
+              <button id="compareModels" type="button" title="Ask the same prompt to more than one model at once, to compare the answers">Compare models</button>
+            </div>
           </div>
         </div>
         <div class="chat-grid">

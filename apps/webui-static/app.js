@@ -1055,6 +1055,47 @@ $('#newConversation').addEventListener('click',async()=>{
   }
   const title=prompt('Conversation title','New conversation');if(!title)return;try{const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title,mode:currentMode,providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;await refreshWorkspace();activate('chat');}catch(error){setStatus(error.message,true);}});
 $('#chatBranch').addEventListener('change',async(event)=>{state.activeBranchId=event.target.value;await refreshMessages();});
+
+/* §4#3 reopened, Owner 2026-08-24: the nine actions that used to sit permanently above the
+   conversation now live behind this one disclosure. Closing rules are the page's existing ones
+   (click outside, Escape) so it behaves like the help popovers rather than inventing a second
+   idiom; focus returns to the button on Escape, which is what makes it usable without a mouse. */
+function setChatMoreOpen(open){
+  const menu=$('#chatMoreMenu');const button=$('#chatMore');
+  if(!menu||!button)return;
+  menu.classList.toggle('hidden',!open);
+  button.setAttribute('aria-expanded',open?'true':'false');
+}
+$('#chatMore').addEventListener('click',(event)=>{event.stopPropagation();setChatMoreOpen($('#chatMoreMenu').classList.contains('hidden'));});
+document.addEventListener('click',(event)=>{if(!event.target.closest?.('.chat-more'))setChatMoreOpen(false);});
+document.addEventListener('keydown',(event)=>{
+  if(event.key!=='Escape'||$('#chatMoreMenu')?.classList.contains('hidden'))return;
+  setChatMoreOpen(false);$('#chatMore').focus();
+});
+
+/* Owner, 2026-08-24: «ho detto di mettere qualcosa per pulire intera chat e non è stata fatta».
+   It had not been: the only clear that existed was the `/clear` COMMAND, whose declared contract
+   is display-only and whose watermark lives in this browser's localStorage — undiscoverable from
+   the interface, and invisible on a second device.
+   This is the durable one, and it destroys nothing (`ContextGraph.clearConversation`): the thread
+   on screen becomes empty because a new empty branch is opened, and every message stays readable
+   on the branch it was written on. The confirmation says exactly that instead of the usual "this
+   cannot be undone", because here it can — and a warning that lies about severity is how people
+   learn to click through warnings. */
+$('#clearConversation').addEventListener('click',async()=>{
+  setChatMoreOpen(false);
+  if(!state.activeConversationId)return setStatus(t('Open a conversation first.'),true);
+  if(!confirm(t('Clear this conversation on screen? Nothing is deleted — the messages stay on their branch and you can reopen it from the branch list.')))return;
+  try{
+    const cleared=await api(`/api/v1/conversations/${state.activeConversationId}/clear`,{method:'POST',body:'{}'});
+    state.activeBranchId=cleared.branch.id;
+    await refreshWorkspace();
+    // The count is what makes the promise checkable by the person: they are told how much was
+    // set aside and where, not merely that something happened.
+    setStatus(`${t('Conversation cleared.')} ${cleared.keptMessageCount} ${t('messages kept on the previous branch.')}`);
+    announceEvent(`Conversation cleared, ${cleared.keptMessageCount} messages kept`);
+  }catch(error){setStatus(error.message,true);}
+});
 // `/clear`'s own catalogue entry (agent-commands.js) declares it: "Clear the transcript on
 // screen (the session keeps its state)" — display-only, nothing deleted. Owner-reported: it did
 // neither. Every message, including `/clear`'s own line, is persisted on the branch (by design,

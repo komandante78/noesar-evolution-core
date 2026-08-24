@@ -29,7 +29,9 @@ const SETUP_TOKEN = process.env.NOESAR_E2E_SETUP_TOKEN;
 // NOESAR_E2E_BASE_URL/SETUP_TOKEN to the runner container, and adding a third
 // pass-through to a shared script for a one-off list is exactly the coupling
 // CLAUDE10.md's no-overengineering guidance warns against. Edit this array directly.
-const VIEWS = ['#/knowledge', '#/memory'];
+const VIEWS = ['#/chat'];
+/** route -> selector to click before taking a second shot. Same reason as VIEWS: edited here. */
+const AFTER_CLICK = { '#/chat': '#chatMore' };
 const PASSWORD = 'e2e throwaway passphrase for a disposable probe';
 const USERNAME = 'e2eowner';
 
@@ -66,6 +68,17 @@ try {
     console.log(`===SCREENSHOT ${route}===`);
     console.log(png);
     console.log('===END===');
+    // A disclosure is not seen by screenshotting the page it hides behind. `AFTER_CLICK` names
+    // a control to press before a SECOND capture, so a menu can be looked at rather than
+    // reasoned about from its CSS.
+    const opener = AFTER_CLICK[route];
+    if (opener && await page.$(opener)) {
+      await page.click(opener);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      console.log(`===SCREENSHOT ${route} ${opener}===`);
+      console.log(await page.screenshot({ encoding: 'base64', fullPage: true }));
+      console.log('===END===');
+    }
   }
 } catch (error) {
   console.error(`SCREENSHOT_ERROR=${error.message}`);

@@ -4306,6 +4306,16 @@ const requestListener = async (req, res) => {
       const authenticated=requireSession(req,res,'workspace.write');if(!authenticated||!requireCsrf(req,res,authenticated))return;
       return json(res,201,contextGraph.fork({conversationId:match[1],...(await body(req))}));
     }
+    // Owner, 2026-08-24: "pulire intera chat". Non-destructive by construction — see
+    // `ContextGraph.clearConversation`. It is audited like every other write that changes what
+    // the person sees, so "who emptied my chat" has an answer.
+    match=url.pathname.match(/^\/api\/v1\/conversations\/([^/]+)\/clear$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'workspace.write');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const cleared=contextGraph.clearConversation({conversationId:match[1],...(await body(req))});
+      ledger.append({actor:authenticated.user.id,action:'conversation.clear',result:'success',details:{conversationId:match[1],previousBranchId:cleared.previousBranchId,keptMessageCount:cleared.keptMessageCount}});
+      return json(res,201,cleared);
+    }
     match=url.pathname.match(/^\/api\/v1\/conversations\/([^/]+)\/merge$/);
     if(match&&req.method==='POST'){
       const authenticated=requireSession(req,res,'workspace.write');if(!authenticated||!requireCsrf(req,res,authenticated))return;

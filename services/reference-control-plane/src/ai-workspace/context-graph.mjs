@@ -292,6 +292,43 @@ export class ContextGraph {
     });
   }
 
+  /**
+   * Empty the thread the person is looking at, without destroying a word of it.
+   *
+   * Owner, 2026-08-24: *"ho detto di mettere qualcosa per pulire intera chat"*. The obvious
+   * implementation — delete the messages — is the one this product must not ship: `binSession`
+   * exists precisely because "deleted by mistake" is a workspace's most common accident, and
+   * `CLAUDE10.md` §4 forbids destruction by implication. A versioned graph does not need it.
+   *
+   * So clearing opens a NEW, EMPTY branch and makes it active. `branchMessages` walks from
+   * `headId`, so a branch with no head renders as a clean thread — while the previous branch
+   * keeps every message and stays selectable in the branch picker, and `Compare branches` can
+   * still show it. Nothing is lost, and the screen is genuinely empty.
+   *
+   * Real deletion remains where it already lives and where it is confirmed and reversible for
+   * thirty days: the Sessions surface (`binSession` / `purgeSession`). Two verbs, two places,
+   * neither pretending to be the other.
+   */
+  clearConversation({ conversationId, name=null } = {}) {
+    return this.store.transact((state) => {
+      const conversation = findById(state.conversations, conversationId, 'Conversation');
+      const existing = state.branches.filter((item) => item.conversationId === conversation.id);
+      const cleared = existing.filter((item) => /^clean(-\d+)?$/.test(item.name)).length;
+      const branch = {
+        id:randomUUID(), conversationId, name:String(name ?? `clean-${cleared + 1}`).slice(0,100),
+        headId:null, forkedFromMessageId:null, createdAt:now(), updatedAt:now(),
+      };
+      state.branches.push(branch);
+      const previousBranchId = conversation.activeBranchId;
+      conversation.activeBranchId = branch.id; conversation.updatedAt = now();
+      // The count is returned rather than looked up again by the caller: the interface has to
+      // tell the person what it just set aside ("42 messages kept on branch main"), and a
+      // second read could disagree with the transaction that actually moved it.
+      const kept = state.messages.filter((item) => item.branchId === previousBranchId).length;
+      return { branch, previousBranchId, keptMessageCount:kept };
+    });
+  }
+
   merge({ conversationId, sourceBranchId, targetBranchId, note='Merged conversation branches.' }) {
     return this.store.transact((state) => {
       const conversation = findById(state.conversations, conversationId, 'Conversation');
