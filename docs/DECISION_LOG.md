@@ -15926,7 +15926,7 @@ recoverable**: no backup was taken and none was asked for. This is why the excep
 by an explicit protected list rather than by care.
 **Status.** applied.
 
-## D-0681 · F-HOOK-008 — the destructive-command guard did not see `find … -exec rm` — 2026-08-24
+## D-0681 · F-HOOK-009 — the destructive-command guard did not see `find … -exec rm` — 2026-08-24
 **Decision.** Normalise the *act* rather than trusting the command word: in
 `.claude/hooks/destructive-command-guard.sh`, a `find` whose operands carry `-delete`, or a
 remover in the `-exec`/`-execdir`/`-ok`/`-okdir` position, is judged as that remover with the

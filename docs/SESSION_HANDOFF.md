@@ -49,7 +49,9 @@ does not change the next action above.
   removed by name through `tools/cache-cleanup.sh`, the only authorised mechanism.
   `NOESAR/`, `NOESAR_EVOLUTION*`, `ATOM*`, `NOESAR-ATOM-PRIVATE` verified present afterwards;
   non-project containers 38→38, volumes 75→75; installation `/livez` `/readyz` 200.
-- **`F-HOOK-008`, a real hole in this project's own guard**: `find … -exec rm -rf {} +` and
+- **`F-HOOK-009`, a real hole in this project's own guard** (numbered 009, not 008: `F-HOOK-008`
+  was already taken by the multi-line quote-mask defect, still open — the ID collision was caught
+  at close): `find … -exec rm -rf {} +` and
   `find … -delete` were invisible to it, because it judged the command word. 89 GB outside
   `PROJECT_ROOT` went through unchecked before the fix. Repaired, with 4 oracle cases.
 - **`NOESAR_BRAIN` (25 GB) and `DEBUG_EVOLUTION*` (2.8 GB) are gone** — the Owner classified them

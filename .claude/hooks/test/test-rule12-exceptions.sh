@@ -343,16 +343,16 @@ assert_decision "rm /srv/probe-artifacts/e2e/$STAMP" deny \
   "the same path is NOT an exception when the environment does not point there"
 
 # --- nothing else about the guard moved ---
-# --- F-HOOK-008: find that removes is a removal, whatever the command word says ---------------
+# --- F-HOOK-009: find that removes is a removal, whatever the command word says ---------------
 # Found 2026-08-24 during D-0680, by the removal it failed to stop: 89 GB outside PROJECT_ROOT.
 assert_decision 'find /mnt/cachec/somewhere -mindepth 1 -maxdepth 1 -exec rm -rf {} +' deny \
-  "F-HOOK-008: find -exec rm -rf is a recursive+force removal"
+  "F-HOOK-009: find -exec rm -rf is a recursive+force removal"
 assert_decision 'find /mnt/cachec/somewhere -delete' deny \
-  "F-HOOK-008: find -delete is a removal too"
+  "F-HOOK-009: find -delete is a removal too"
 assert_decision 'find /etc -name rm' allow \
-  "F-HOOK-008: find -name rm is a SEARCH — normalising it to a removal would deny a read"
+  "F-HOOK-009: find -name rm is a SEARCH — normalising it to a removal would deny a read"
 assert_decision "find $ROOT/tools -name '*.tmp' -exec rm -rf {} +" deny \
-  "F-HOOK-008: recursive+force is denied inside PROJECT_ROOT as well, exactly like a bare rm -rf"
+  "F-HOOK-009: recursive+force is denied inside PROJECT_ROOT as well, exactly like a bare rm -rf"
 
 assert_decision 'cat .env'                deny "unchanged: a dotenv file as cat's operand denies"
 assert_decision 'docker system prune -af' deny "unchanged: docker system prune denies"

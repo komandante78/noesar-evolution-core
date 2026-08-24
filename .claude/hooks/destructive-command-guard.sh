@@ -301,7 +301,7 @@ $TOK"
 
     [ -z "$CMDWORD" ] && continue
 
-    # --- find that removes (F-HOOK-008, found 2026-08-24) -------------------------------------
+    # --- find that removes (F-HOOK-009, found 2026-08-24) -------------------------------------
     # `find <path> -exec rm -rf {} +` and `find <path> -delete` remove exactly what `rm -rf`
     # removes, and this guard saw neither: it judges the COMMAND WORD, and the command word was
     # `find` — `rm` was merely an operand. Measured the day it was found, during D-0680: 89 GB

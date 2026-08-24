@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "5d45639",
-  "last_updated_utc": "2026-08-24T16:38:41Z",
+  "last_updated_utc": "2026-08-24T16:39:51Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
@@ -524,8 +524,8 @@
     {
       "id": "F-DISK-001",
       "severity": "low",
-      "status": "open",
-      "summary": "Measured at session close 2026-08-24: docker build cache is 168.3 GB with 153 GB reclaimable, and this project holds 54 unique image layer-sets (~847 MB each) because every deploy keeps its image as a documented rollback point. Filesystem is at 54% with 117 GB free, so this is NOT urgent. Deliberately NOT acted on: `docker builder prune` and every other prune is host-wide and forbidden without exception (CLAUDE10.md 21d) -- it would destroy other projects build caches. The removable part is the OLDEST product images whose ledger entries are long superseded, and deciding which rollback points may be retired is an Owner decision under rule 12, not a cleanup.",
+      "status": "resolved",
+      "summary": "Measured at session close 2026-08-24: docker build cache is 168.3 GB with 153 GB reclaimable, and this project holds 54 unique image layer-sets (~847 MB each) because every deploy keeps its image as a documented rollback point. Filesystem is at 54% with 117 GB free, so this is NOT urgent. Deliberately NOT acted on: `docker builder prune` and every other prune is host-wide and forbidden without exception (CLAUDE10.md 21d) -- it would destroy other projects build caches. The removable part is the OLDEST product images whose ledger entries are long superseded, and deciding which rollback points may be retired is an Owner decision under rule 12, not a cleanup. RESOLVED 2026-08-24 (D-0680): docker builder prune -af reclaimed the full 168.3 GB, and /mnt/cachec went 224G->69G used (49%->15%) after the Owner-authorised cleanup. The 54 image layer-sets were NOT touched: they are the documented rollback lineage, which CLAUDE10.md 5a keeps.",
       "opened_utc": "2026-08-24T13:32:47Z"
     }
   ],
