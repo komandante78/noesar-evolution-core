@@ -39,67 +39,28 @@ container). Blocks P3 only.
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 
-**`D-0679` — a spoken answer is asked for as speech.** `spoken:true` travels from the browser to
-the system prompt; the model is asked for two or three sentences, no markdown, no paths. And
-because a prompt is a request rather than a guarantee — the q4 build read
-`/models/phi-4-q4_k_m.gguf` aloud despite being told not to — the model name is made speakable
-**deterministically**: `phi-4` spoken, exact string written. A/B on the live model: 441 → 289
-characters. **Partial, and stated as partial:** ~20 seconds of speech remain, and the real fix is
-the streaming above.
+Six decisions, all DEPLOYED and verified live. Full detail in `docs/DECISION_LOG.md`, which owns
+history; condensed here because this file describes *now*.
 
-**`D-0678` — the voice stopped reacting to the room, and this was the Owner's own catch.**
-Measured before changing anything: **10 of 45 realistic transcription fragments performed a real
-action**. `"no"` ran `/sweep`. `"ok"` ran `/revoke`. `"senti"` ran `/model`. Saying "no" to
-another person in the room swept the workspace. Every misfire matched at `WORD` (5) or
-`SUBSTRING` (6) — the ranks meaning *the phrase is PART of something* — while every legitimate
-phrase resolved at `NAME`, `SEGMENT` or `PROSE`. Two gates: speech acts only on an exact match
-(`actFloor`), and anything neither exact nor request-shaped ends the turn **in silence**
-(`addressedToProduct`). Live, against the served bytes: **15 of 15 noise fragments silent**, all
-real phrases intact.
+| | What is true now | The measurement that made it necessary |
+|---|---|---|
+| `D-0672` | the chat knows what product it is, which model answers, and what it can actually do | asked *"chi sei?"* it answered **"Sono un modello sviluppato da Microsoft"**, in English |
+| `D-0674` | the chat can call a tool and answer from the real result | `parseSse` discarded `delta.tool_calls`; `ToolExecutor` had two callers, neither the chat |
+| `D-0675` | a health check says whether a provider can call tools at all | the configured model accepts a `tools` array and answers in prose (`B-016`) |
+| `D-0676` | the voice says what it did, and a compound request keeps both halves | a performed command returned `reply:''` — the product acted in **total silence** |
+| `D-0677` | `@noesar/spoken-intent`: SPEC, 60 vectors, and the SHIPPED resolver held to them | a spec with one implementation is a description of that implementation |
+| `D-0678` | speech acts only on an exact match; anything else ends the turn silently | **10 of 45 noise fragments acted** — `"ok"` ran `/revoke`, `"no"` ran `/sweep` |
+| `D-0679` | a spoken answer is asked for as speech, with a speakable model name | it read 562 characters aloud, including `/models/phi-4-q4_k_m.gguf` |
 
-**This defect predates `D-0676` — my change is what made it audible.** The same fragments already
-navigated; they did it silently, so the page jumped and nothing said why. Making a performed
-command speak is what let the Owner finally hear a fault that had been shipping all along. The
-microphone was **not** turned off, though that was the easy fix: `continuous` is the Owner's own
-standing instruction (*«resti attiva finché non la fermo io»*), never withdrawn.
+**Two scope defects worth carrying forward:** every chat turn this product ever served offered the
+model **zero tools** (two independent causes, both fixed), and `project.toolIds` was written `[]`
+at creation with **no writer anywhere in the repository** yet read as a deny-list.
 
-**`D-0672`, `D-0674`, `D-0675`, `D-0677` — the chat given an identity and a real tool-call loop, the
-tool-calling capability probe, and `@noesar/spoken-intent` extracted with its conformance suite.
-Full detail in `docs/DECISION_LOG.md`, unchanged since; not repeated here to stay inside the cap.
-The two findings worth carrying: **every chat turn this product ever served offered the model zero
-tools** (two independent scope defects, both fixed), and **the configured model cannot emit tool
-calls at all** (`B-016`, the Owner's to clear).
+**Three times this session the INSTRUMENT was the defect, not the product** — a raw
+`translateString` returning an object, wrong provider field names, and a Kokoro voice check
+comparing strings to objects. Each was caught before it became a false claim, and each is why the
+next session should measure before believing a written premise, including its own.
 
-**`D-0676` — the voice says what it did, and keeps both halves of a compound request.** It used
-to perform a command and **stay silent**: `applyHeardText()` returned `reply:''`, which
-`VoiceSession` treats as nothing to say, so the acknowledgement existed only as a *visual* note —
-useless to the person hands-free voice is for. New `resolveCompound()` makes *"apri la memoria e
-dimmi cosa c'è dentro"* navigate **and** answer in one spoken turn; it runs only where the
-resolver already answered `NOTHING`, so nothing that works today can change. The destination is
-spoken by its translated label ("Vado a Memoria"), not its slug.
-
-**My own premise was wrong, and the correction is the most useful thing in this handoff.** `PLAN`
-§3 said command-first routing hijacks natural speech. Measured against the real 42-entry list with
-the real Italian translation: **pure navigation resolves correctly**, and all 9 of 20 utterances
-that routed to a command had asked to navigate. An earlier reading said 1/20 — wrong, because the
-probe passed `translateString` raw and it returns `{text, translated}`, so every handle was built
-from an object and matched nothing. **The instrument was the defect, not the product.** The plan
-now carries that correction in place.
-
-**`D-0677` — the improvement proposal, executed on authorisation.** `packages/spoken-intent/`:
-SPEC `SI-001`…`SI-008`, a reference implementation, 60 conformance vectors, and — the part that
-makes it a contract rather than a description — the **shipped** browser resolver held to the same
-suite, plus a test that drives both implementations over the same utterances and fails on any
-disagreement. Writing that second binding found **two real defects in my own specification**: an
-unwritten handle-expansion rule (the utterance is filler-stripped before matching, so a label with
-a preposition in it could never match), and a filler set the shipped resolver had hardcoded so the
-language it assumed was unoverridable. Live: the bytes the installation serves pass **60/60**.
-
-**A hang found and fixed, worth keeping.** `assistant-identity.test.mjs` stopped terminating: an
-unguarded `inspection.tools` threw, the rejection skipped the fixture's own `server.close()`, and
-a live listener kept the process alive — so the **full suite reported a hang with zero failures**
-rather than a failure. Fixed at both ends: the guard, and `after()`-based server cleanup in all
-three new suites so a future failing assertion can never do it again.
 
 ## WHAT WAS **NOT** DONE
 
