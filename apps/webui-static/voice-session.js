@@ -101,6 +101,8 @@ class StaleGeneration extends Error {
   }
 }
 
+import { createSentenceStream } from './sentence-stream.js';
+
 const isAbort = (error) => error?.name === 'AbortError' || error?.name === 'StaleGeneration';
 
 /**
@@ -113,6 +115,12 @@ const isAbort = (error) => error?.name === 'AbortError' || error?.name === 'Stal
  *                                             the endpointer decides the person has finished.
  *   `transcribe({audio, mimeType, signal})`-> `{text, heardSomething, reason}`
  *   `converse({text, signal})`             -> `{reply}` — the chat turn, history and tools included
+ *   `converseStream({text, signal, onDelta})`
+ *                                          -> `{reply}` — the same turn, calling `onDelta(chunk)`
+ *                                             as the answer is written. OPTIONAL: when it is
+ *                                             absent the session waits for the whole reply
+ *                                             exactly as before, so an installation without a
+ *                                             streaming chat path degrades instead of failing.
  *   `synthesize({text, signal})`           -> `{audio, contentType}`
  *   `play({audio, contentType, signal, onPlaybackStart})`
  *                                          -> resolves **when playback has ENDED**. This contract
@@ -254,6 +262,90 @@ export class VoiceSession {
 
   #note(note) { this.#onNote(note); }
 
+  /**
+   * P5 — speak the answer while it is still being written.
+   *
+   * Measured on the live installation before this existed: **~5794 ms** of silence for one
+   * spoken question, of which 4790 ms was waiting for the LAST token of an answer whose first
+   * sentence had been ready almost immediately.
+   *
+   * Two rules hold the whole design together, and both are about not reintroducing `D-0373`
+   * (two voices talking over each other):
+   *
+   * 1. **Synthesis may overlap; playback never does.** The next sentence is sent to the speech
+   *    engine while the current one is playing — that overlap is where the remaining wait goes —
+   *    but exactly one `play()` is awaited at a time, in order.
+   * 2. **Every leg is under the SAME generation token barge-in already uses.** `#assert` runs
+   *    before each synthesis and after each playback, and the turn's `signal` reaches the
+   *    producer and every adapter. A barge-in advances the generation, so the sentence in flight
+   *    is dropped in silence and nothing that was queued behind it is ever spoken.
+   *
+   * Returns `{spokenInFlight:true, …}` when it actually spoke. When the adapter took a path that
+   * produces no sentences — a navigation performed, an utterance not addressed to the product —
+   * its own `{reply, reason}` is returned untouched and the caller's ordinary path handles it.
+   */
+  async #speakAsItArrives(generation, signal, text) {
+    const stream = createSentenceStream();
+    const queue = [];
+    let wake = null;
+    let finished = false;
+    const nudge = () => { const resume = wake; wake = null; resume?.(); };
+    const enqueue = (sentence) => { queue.push(sentence); nudge(); };
+
+    const produce = (async () => {
+      try {
+        const result = await this.#adapters.converseStream({
+          text, signal,
+          onDelta: (chunk) => { for (const sentence of stream.push(chunk)) enqueue(sentence); },
+        });
+        for (const sentence of stream.flush()) enqueue(sentence);
+        return result;
+      } finally { finished = true; nudge(); }
+    })();
+    // Marks the rejection handled: if the consumer fails first (a barge-in mid-sentence), the
+    // producer's own abort must not surface as an unhandled rejection.
+    produce.catch(() => {});
+
+    const startedAt = Date.now();
+    let spoken = 0;
+    let firstAudioMs = null;
+    let ahead = null;
+
+    const consume = (async () => {
+      for (;;) {
+        if (!queue.length) {
+          if (finished) break;
+          await new Promise((resume) => { wake = resume; });
+          continue;
+        }
+        this.#assert(generation);
+        const sentence = queue.shift();
+        const audio = ahead ? await ahead : await this.#adapters.synthesize({ text: sentence, signal });
+        ahead = null;
+        this.#assert(generation);
+        // The overlap. Started before playback, awaited after it — so the engine works through
+        // the next sentence during the seconds this one takes to be heard.
+        if (queue.length) {
+          ahead = this.#adapters.synthesize({ text: queue[0], signal });
+          ahead.catch(() => {});
+        }
+        await this.#adapters.play({
+          audio: audio.audio, contentType: audio.contentType, signal,
+          onPlaybackStart: () => {
+            if (firstAudioMs === null) firstAudioMs = Date.now() - startedAt;
+            if (this.#current(generation) && this.#state === VoiceTurn.THINKING) this.#to(VoiceTurn.SPEAKING, { generation });
+          },
+        });
+        this.#assert(generation);
+        spoken += 1;
+      }
+    })();
+
+    const [result] = await Promise.all([produce, consume]);
+    if (!spoken) return result;
+    return { spokenInFlight: true, sentences: spoken, firstAudioMs, reply: String(result?.reply ?? '') };
+  }
+
   async #run(generation, controller) {
     const { signal } = controller;
     try {
@@ -290,8 +382,22 @@ export class VoiceSession {
       this.#note({ kind: 'heard', text: heard.text });
 
       this.#to(VoiceTurn.THINKING, { generation });
-      const answered = await this.#adapters.converse({ text: heard.text, signal });
+      // P5. When the adapter can stream, the answer is spoken sentence by sentence while the
+      // rest of it is still being written; when it cannot, this is exactly the old call. The
+      // capability is DETECTED, never presumed — an installation whose chat has no streaming
+      // path degrades to the whole-answer wait instead of failing (platform law §63).
+      const answered = this.#adapters.converseStream
+        ? await this.#speakAsItArrives(generation, signal, heard.text)
+        : await this.#adapters.converse({ text: heard.text, signal });
       this.#assert(generation);
+      if (answered?.spokenInFlight) {
+        // Everything there was to say has already been said, one sentence at a time, and each
+        // `play()` was awaited to its end. Nothing is left to synthesise.
+        this.#note({ kind: 'spoken', sentences: answered.sentences, firstAudioMs: answered.firstAudioMs });
+        if (this.#continuous) this.#begin('after-reply');
+        else this.#to(VoiceTurn.IDLE, { reason: 'reply-finished' });
+        return;
+      }
       const reply = String(answered?.reply ?? '').trim();
       if (!reply) {
         // A turn that produced no words is finished, not broken: the utterance may have been a

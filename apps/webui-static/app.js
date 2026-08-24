@@ -1314,7 +1314,7 @@ function resolveToolActivity(row,data){
   row.querySelector('.tool-activity-state').textContent=data.ok?t('done'):`${t('not run')} — ${data.detail??t('failed')}`;
 }
 
-async function sendChat(spoken=null,{signal=null}={}){
+async function sendChat(spoken=null,{signal=null,onDelta=null}={}){
   if(!state.activeConversationId){setStatus('Create a conversation first.',true);return '';}
   const content=typeof spoken==='string'&&spoken.trim()?spoken.trim():$('#chatInput').value.trim();
   if(!content)return '';
@@ -1374,6 +1374,11 @@ async function sendChat(spoken=null,{signal=null}={}){
           $('#messageList').append(article);
         }else if(event==='delta'){
           assistantText+=data.text;
+          // P5. The spoken turn gets each fragment as it lands, so `VoiceSession` can start
+          // speaking the first finished sentence instead of waiting for the last token. The
+          // written path is untouched: `onDelta` is null for it, and the reply still settles
+          // once, in one place, exactly as UI-043 requires.
+          if(onDelta)onDelta(data.text);
           // UI-043: deliberately NOT announced. A live region fed per delta reads the
           // whole answer aloud as it arrives and again when it settles.
           if(article)article.querySelector('.message-body').textContent=assistantText;
@@ -3615,7 +3620,7 @@ function performHeard(result){
  * already understands exactly, slower and occasionally differently, and a navigation gesture that
  * lands somewhere else on a second try is worse than one that fails.
  */
-async function applyHeardText(text,{signal=null}={}){
+async function applyHeardText(text,{signal=null,onDelta=null}={}){
   const direct=heardResult(text);
   // Step 0, and it comes FIRST because everything below it either acts or talks.
   //
@@ -3654,7 +3659,13 @@ async function applyHeardText(text,{signal=null}={}){
     // Both halves are spoken as one turn: the acknowledgement of what was DONE, then the answer
     // to what was ASKED. Two separate spoken turns would let a barge-in cancel one and leave the
     // other talking — the exact defect `D-0373` removed from the single-answer path.
-    const answer=await sendChat(compound.tail,{signal});
+    // Streamed, and in the right order: the acknowledgement of what was DONE is pushed into the
+    // same sentence stream first, so "Ho aperto la memoria." is spoken while the answer to what
+    // was ASKED is still being written. Both halves stay one turn under one generation — which
+    // is the property `D-0373` exists to protect, unchanged by making the first half arrive
+    // sooner.
+    if(onDelta)onDelta(`${said}. `);
+    const answer=await sendChat(compound.tail,{signal,onDelta});
     return {reply:`${said}. ${String(answer??'').trim()}`.trim()};
   }
   // Step 2. The sentence goes up alone: the candidate list is built server-side from this
@@ -3698,7 +3709,7 @@ async function applyHeardText(text,{signal=null}={}){
     return {reply:'',reason:'no-conversation'};
   }
   voiceNote(text);
-  const reply=await sendChat(text,{signal});
+  const reply=await sendChat(text,{signal,onDelta});
   return {reply:String(reply??'')};
 }
 
@@ -4275,6 +4286,11 @@ function ensureVoiceSession(){
       listen:captureUtterance,
       transcribe:({audio,signal})=>transcribeRecording(audio,{signal}),
       converse:({text,signal})=>applyHeardText(text,{signal}),
+      // P5. Same function, same turn, same signal — the only difference is that the answer is
+      // handed over as it is written. Declared as its own adapter rather than as a flag on
+      // `converse` so `VoiceSession` can DETECT the capability instead of presuming it: an
+      // installation reached through a path with no streaming keeps the whole-answer behaviour.
+      converseStream:({text,signal,onDelta})=>applyHeardText(text,{signal,onDelta}),
       synthesize:({text,signal})=>synthesizeReply(text,{signal}),
       play:playSpokenAudio,
       release:releaseVoiceResources,
