@@ -142,6 +142,7 @@ scrivilo: metà prova non è una prova.
 | 1 | modelCatalogPanel (`#/models`) | la lista mostra solo un sottoinsieme di modelli, sembra limitata | tutti i modelli disponibili elencati (o un modo per vederli tutti), non solo una selezione ristretta |
 | 2 | modelCatalogPanel (`#/models`) | manca un'icona informativa ("i") con spiegazione di come caricare/usare un modello | un'icona "i" con una spiegazione chiara del procedimento |
 | 3 | chatWorkPanel — menu "Progetto" (`#/chat`) | menu con: Nessun progetto · Conversazione · Debug Evolution · ＋ Conversazione · Ramo (main) · Ramifica · Confronta i rami · Unisci · Fornitore/instradamento · Instradamento automatico · Modello · ID del modello o valore predefinito del fornitore · Confronta i modelli — non si capisce nulla, non è per niente intuitivo | un menu comprensibile, con voci chiare o spiegate |
+| 3 · **RIAPERTA dall'Owner il 2026-08-24** | idem | *«il menu sopra la chat è un menu per software per bambini»*. `D-0641` aveva raggruppato i dieci controlli in tre schede etichettate e li aveva lasciati tutti a schermo: il problema non era il raggruppamento, era la **permanenza**. Su questa colonna **decide l'Owner** (§0), quindi la sua parola di oggi supera la chiusura precedente | **RIFATTA `D-0683`**: la barra tiene solo dove sei (progetto › conversazione, ramo, fornitore), le nove azioni stanno dietro un solo "⋯". Vista renderizzata, non dedotta |
 | 4 | voiceFace (voce, `#/chat`) | la voce (sintesi) è orribile, non sembra umana | una voce naturale, umana |
 | 5 | voiceFace (voce, `#/chat`) | la schermata della voce è statica, non sembra intelligenza artificiale, sembra un gioco per bambini | un'interfaccia con vera interazione, non statica |
 | 6 | `#/knowledge` | non si capisce a cosa serva né se funziona — "come le altre, non ha personalità" | un'identità e uno scopo chiari (in attesa: cosa vuole l'Owner che questa pagina dica di sé) |
@@ -149,6 +150,8 @@ scrivilo: metà prova non è una prova.
 | 8 | `#/research` | nessun fornitore di ricerca configurabile, non si capisce come funzioni — "senz'anima, senza evoluzione" | fornitori configurabili + un'identità chiara |
 | 9 | chat / CodeN Evolution (capacità generale) | se scrivo di creare un agente, deve crearlo — "non voglio storie" | creazione agenti guidata dal linguaggio naturale, in chat e in CodeN |
 | 10 | NOESAR EVOLUTION (capacità generale) | — | il prodotto deve essere multimodale |
+| **11** · aggiunta il 2026-08-24 | `#/chat` | *«ho detto di mettere qualcosa per pulire intera chat e non è stata fatta»*. Non era stata fatta davvero: l'unico clear esistente era il **comando** `/clear`, dichiaratamente solo-visivo e memorizzato nel localStorage di quel browser — non scopribile dall'interfaccia e invisibile su un secondo dispositivo | **FATTA `D-0683`**: voce `Clear conversation` nel menu "⋯", non distruttiva (apre un ramo nuovo vuoto; i messaggi restano leggibili sul ramo di prima). La cancellazione vera resta in Sessions, con cestino a 30 giorni |
+| **4 · 5 · RIAPERTE dall'Owner il 2026-08-24** | voiceFace (`#/chat`) | *«la voce è un qualcosa di squallido»*. `D-0642`/`D-0644` le avevano chiuse in attesa di verifica dal vivo: l'Owner l'ha vista dal vivo e non basta | **APERTE** — è il prossimo lavoro |
 | | | | |
 
 ## 5. Numeri di partenza per i benchmark

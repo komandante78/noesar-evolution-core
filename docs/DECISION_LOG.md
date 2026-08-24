@@ -15954,3 +15954,28 @@ beyond this product — the report is useful to any self-hosted service, not onl
 **Rejected.** Bundling it into the removal tool — a reporter that can also delete is a reporter
 nobody dares run.
 **Status.** deferred (proposal only, per CLAUDE10.md rule 69 — the Owner decides execution).
+
+## D-0683 · §4#3 reopened by the Owner, and the chat clear that was never built — 2026-08-24
+**Decision.** The chat bar keeps only what says where you are (project › conversation, branch,
+provider); the nine actions move behind one "⋯" disclosure. `Clear conversation` is added there
+and is **non-destructive**: `ContextGraph.clearConversation` opens a new empty branch, so the
+thread reads empty while every message stays on the branch it was written on.
+**Why.** The Owner reopened `§4#3` in his own words («un menu per software per bambini») and
+named a request that was never on the list at all — a clear control. `D-0641` had boxed ten
+permanent controls into three labelled cards: grouping was not the problem, permanence was.
+**Rejected.** Deleting the messages — the obvious clear. `binSession` exists because "deleted by
+mistake" is a workspace's commonest accident, and §4 forbids destruction by implication.
+**Evidence.** ai-context-graph 4/4 (2 new), ui-language-coverage 26/26, markup 52/52, hook suite
+3188/3186 pass/1 skip/0 fail, ESLint 502 0/0/0. Seen rendered 3× on a disposable probe.
+**Reversal cost.** None: ids unchanged, `/clear`'s display-only watermark untouched.
+**Status.** applied, committed `8bd8017`. Not deployed — the live box still serves `d0679`.
+
+## D-0684 · Improvement proposal — the interface must stop depending on emoji fonts — 2026-08-24
+**Decision.** Proposed, not executed: replace the composer's eight emoji icon-buttons with inline
+SVG from one sprite. **Funding fit:** none — it is interface hygiene, not a reusable component.
+**Why.** Measured on the probe this session: 🗂 ↩ ⏹ 🎙 🗣 🧠 🔇 ➤ all render as tofu boxes on a
+host without an emoji font. §62 forbids presuming a font, and §76 forbids decoration that hides
+a function — eight unreadable controls is both at once, and it is part of what the Owner is
+seeing when he calls the product shabby. **Cost:** ~1 phase. **Benefit:** the toolbar draws
+identically on every host, which no font-dependent glyph can promise.
+**Status.** recorded for the Owner's decision (`noesar-evolution-budget` §5).
