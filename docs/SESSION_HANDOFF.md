@@ -89,4 +89,7 @@ predecessor, not the literally-newer one that carried the defective intra-phase 
 
 - `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; this session's
   diff was reviewed with a heuristic grep, clean, **declared as heuristic**.
-- No other open blocker. `B-011`, `B-013`, `B-014` all closed previously.
+- `B-015` **OPEN**: `git push origin main` fails with "could not read Username" — no credential
+  helper here. Commit `7fbfcd9` is complete locally and **deployed live**, but not on `origin`.
+  Same shape as `B-014`, which the Owner closed by supplying a PAT ad-hoc. Needs the Owner.
+- `B-011`, `B-013`, `B-014` all closed previously.

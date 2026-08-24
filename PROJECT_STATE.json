@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "59cddb23a7475b85a77acfdf319f0f7f3c629abd",
-  "last_updated_utc": "2026-08-24T07:16:55Z",
+  "last_commit": "7fbfcd9",
+  "last_updated_utc": "2026-08-24T07:20:14Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
@@ -105,6 +105,13 @@
         "Owner supplies a fresh PAT (repo scope) for this push only, not persisted.",
         "Owner runs git push origin main directly from their own authenticated terminal."
       ]
+    },
+    {
+      "id": "B-015",
+      "severity": "low",
+      "status": "open",
+      "summary": "git push origin main fails with \"could not read Username for https://github.com\" -- no credential helper is configured in this environment. Commit 7fbfcd9 (D-0672/D-0673) is COMPLETE LOCALLY and DEPLOYED LIVE, but not on origin. Identical in shape to B-014, which the Owner closed by supplying a PAT ad-hoc (never persisted in remote config). Needs the Owner to push, or to supply a token for one push.",
+      "opened_utc": "2026-08-24T07:20:14Z"
     }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
