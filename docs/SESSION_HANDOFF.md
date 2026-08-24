@@ -129,3 +129,10 @@ next session should measure before believing a written premise, including its ow
 - `B-002` **STALE** (`D-0257`) — neither `gitleaks` nor `trufflehog` on `PATH`; this session's
   diffs were reviewed with a heuristic grep, clean, **declared as heuristic**.
 - `B-011`, `B-013`, `B-014` closed previously.
+
+## ➜ OWNER ACTION OUTSTANDING — the remote is two commits behind
+
+`git push` failed with *"could not read Username for https://github.com"* — no credential
+helper is persisted (`B-015`, recurring, not new). The local repository is complete and the
+working tree is clean; only `origin` is behind, by **5d45639** and **81a33f9**. Push them
+directly, as on 2026-08-24 for `49cc252..9b433dd`.
