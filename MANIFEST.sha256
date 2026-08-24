@@ -1,8 +1,8 @@
-2a70044c21769726de213792ad772d728a23e0eef24614842783e7d7393f01f4  ./.claude/hooks/destructive-command-guard.sh
+89da015e0514f50dfdb2ada7756e3faa69636d77a15e7a49ccc5dba3e2215c8b  ./.claude/hooks/destructive-command-guard.sh
 c186dd2fd689c01596a4fae74cf52426fb7882d90e96b28ca42c56ee3fff2dec  ./.claude/hooks/engineering-orchestrator.sh
 f370a4aada739ef22753edcd0107dcb48ee01080e0c84c2f7bdab0dfaad165f6  ./.claude/hooks/lib/container-baseline.sh
 f2950c9c0402f47ef3470e4751dab9442773adbe1d7ad9c282672dfc4863d3c8  ./.claude/hooks/lib/hook-matcher-enums.sh
-b07906b2487a2ce3bd23e1451c6413a4ac472a702321c7767a0761fcde3b9eae  ./.claude/hooks/lib/rule12-exceptions.json
+c9f101c7b7446088800bb56d570a370eb46b6b08416f83323bf747a07cf220cf  ./.claude/hooks/lib/rule12-exceptions.json
 8bbef3a5e883286a82a3b19829ec7bb91427650741d3e840566ee50f9f6dd2fc  ./.claude/hooks/lib/tooling-inventory-baseline.json
 673a09fb1e4868cb977460186037f60026b601b4ab618cc512648899e6248e0c  ./.claude/hooks/lib/tooling-inventory.sh
 86d5a03b656730d8ab573acf52bae4db005b1e96c48ab31777a2c08fcd1b8712  ./.claude/hooks/session-close-guard.sh
@@ -12,7 +12,7 @@ d5f314a91e81cdb1acf83cc12b5b5156f2816e9bb2130c2c9c4a89a33b3da92d  ./.claude/hook
 afd8cfcc969dd3d4c6e8f75dcd5179d4bf675cd7dd5879dee94063ac2057d155  ./.claude/hooks/test/test-container-baseline.sh
 9c01bffd470c1935789dc2a089c66413528f8abc3d01deaa75de28f5744cc969  ./.claude/hooks/test/test-engineering-orchestrator.sh
 0a7aaf5c5b8f7489fa8632e4b14bcd3096007f96e19acab5cb34480d6ce0f2ce  ./.claude/hooks/test/test-hook-matcher-enums.sh
-c68a18a2059961883e26dc91e06cf0291d421daba13e6bbb0e635ad6110262fe  ./.claude/hooks/test/test-rule12-exceptions.sh
+d4eda77622782a40d769f11ebf8eac2616b11c28fdc9c97c948312831ce7b62a  ./.claude/hooks/test/test-rule12-exceptions.sh
 e9d2a4255fc0869e1b3fc205942d15344da88568569e700692ffc6ae7f58b946  ./.claude/hooks/test/test-session-lifecycle.sh
 e9dad7207349b9bedb34b4637fad3efb312a802dd0df66d032745fd8b8d1a377  ./.claude/hooks/test/test-tooling-inventory.sh
 46cb98d86aa8d24c1f9d62b6cc4068f26c4bfe640b8efe35a5f9f2c01b0d65ae  ./.claude/settings.json
@@ -31,7 +31,7 @@ ff6f24c91df2b1308df700b0b18c55d768c0fc60b952d03a80b770a44bd137ff  ./.gitignore
 228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  ./.gitleaks.toml
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
 5fb5ff63977cef06eb42d8603b15f1c9771e897463c82f05f0141107f928b360  ./CLAUDE.md
-01f48a97e48f2ac68727110b1123721a8790dd0f9e759efd663edd5183763861  ./CLAUDE10.md
+c0202e37072c2d44c9353a0a4d88e0309b28c2c1051afba6f5bffc041734d32b  ./CLAUDE10.md
 79f4cbbb6909d201fa3b0c5e965f6dc4208bc18a43353c017a0cbc8bee383c3e  ./DOCUMENTATION/ACCEPTANCE_CHECKLIST.md
 22009696a48cf2eb2d242d1538d8632891dbb2db54683fa4f62773e881bf5dcd  ./DOCUMENTATION/AI_PROVIDER_RUNTIME.md
 a9b2b6d74d12b45bc1699520d701cb8b015f83f14094fe461748fa9df8c4ae53  ./DOCUMENTATION/AI_WORKSPACE/AI_WORKSPACE_P0_IMPLEMENTATION.md
@@ -118,6 +118,8 @@ b84b7bec34324f1224281d88b7906a5103d1adcf2d7b7b1f4570f7aa1bb9e216  ./EVIDENCE/RUS
 edab3e36429af5c6b133748be684b05a1735105abd666f807da48f64d32d2f69  ./EVIDENCE/RUST_MANIFEST_REMEDIATION_V1/FINAL_REPORT.txt
 f10f7170eeb4986f69d764a4cb97c3f8e9337963222188a647fc4c0ac289d0e4  ./EVIDENCE/a2_log_marker.txt
 ffab722c4165f59136c1fab84214789efd376d3851cc4195e3555c3755201e7e  ./EVIDENCE/a2_log_marker_2.txt
+02e15fc6df20045b86f2c2da728d97d8e5e0a50f0b49f9a116ad3c8bad2d7d39  ./EVIDENCE/cache_cleanup_post_20260824T145643Z.txt
+d86da3d208fac41f93c58fe00f77f0242c17397cbb0b61292f6bd0080b5ef25e  ./EVIDENCE/cache_cleanup_pre_20260824T144128Z.txt
 fd260fdfaacbcef360190df3fb7cbed91528413ad4c7ee8d3cc3e387e10435e5  ./EVIDENCE/ce023_projection_coverage_20260820T110405Z.txt
 f5770ec1a2a800386338a01bcb6267f5b3d6b0c9945b44a33071ac2c3290a8a8  ./EVIDENCE/ce023_projection_coverage_final_20260820T110812Z.txt
 e0e411a9f79d906352bd609fdc11ed48803d08529e7d4d113d4756ebd4034a01  ./EVIDENCE/chat_identity_ab_20260824T041426Z.txt
@@ -356,7 +358,7 @@ f1302c6af47121dec0a1989c0c42ea5a43f5ef2131e7e0ad1f0aa504e871ef1d  ./PROJECT_GOVE
 4328916a9322d05c80b791d4311577fc24d8396ed5c75adc874eef9addec1895  ./PROJECT_GOVERNANCE/TOOLS/README.md
 00ea8e2dd3220da40373152fa66a6fa0d8b9b0fce9767fe3edf207976092c73e  ./PROJECT_GOVERNANCE/TOOLS/verify_package.py
 aa0bff9fef13b8a9eb6eca2bac182dceb437d2356b5ab542fa8ac40dc049add7  ./PROJECT_GOVERNANCE/TRACEABILITY_MATRIX.csv
-669dbd17982fb0507b3f6b5a49512008fb43a6890daa49a2ac9a6275456caffc  ./PROJECT_STATE.json
+f3cf01309ff9c72ca1ab9413ebc69b444aaf6fd979be406607a68f3a4049f3d7  ./PROJECT_STATE.json
 d6a4ac86b3c6bb0b22b9f98c7d67bb602e8169e07f20eb63ca48736e4f689974  ./README.md
 f4a7dd3fe9e69c46c96e87c78b69875b754885f02e938eaed0fec2d5b844275c  ./RELEASE/AI_WORKSPACE_P0_TRACEABILITY.tsv
 586c4ab42209e24d19ff0492e7cabf62b9bcf512fbeff23f344e2b330d71916b  ./RELEASE/COMPANION_ARCHIVE_CHECKSUMS.txt
@@ -565,7 +567,7 @@ bf7f89b5ea581d6dbff828cb555977a1565cbbdad5c50d09930863de1c492132  ./docs/AUTHORI
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-dfcb777ea47ac5b4deca68bbfc218268b038743c284a42e907e9cae7be2075ca  ./docs/DECISION_LOG.md
+78a89e8465a070a7c478cc4aee8eafd234ec6337dc0cb833d68a6cef6ea87286  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
@@ -636,7 +638,7 @@ be04cba0f1c100c99ca965e94657a90b70ed10cacda85d409b073ce6ba4c898e  ./docs/SBOM_RE
 b9aa562749772335f2badaf99d744146f096de14cf8806e539b8d53268a2f68c  ./docs/SBOM_STATUS.md
 1d91d7021b264988bed1ef50d591b470e328fbbcff42d69dc6db7ceb72dba75b  ./docs/SECURITY_IMPLEMENTATION_MATRIX.tsv
 daec00ece820d33471e70f684e0aea3a232efcfe302eeb32b9f88a4b8426bbb2  ./docs/SECURITY_TEST_REPORT.md
-b3addf69cf82a1d3f019180a642a0e157fc886ee9123ceb53aa5be26c6c81e92  ./docs/SESSION_HANDOFF.md
+2bc1ab05f67ae883923ee656b68434ff49750b5fa734f4156ea11abdc6ac8c32  ./docs/SESSION_HANDOFF.md
 ae857f71b8faa6e1a1fda2dd25b2ee0ce48797e44629476089aba95a420b2782  ./docs/SOURCE_ARCHIVE_MAP.tsv
 4f36e5e077e82172da338b5626f36be603b9ce412048dd6b8fd9c0bac77deb8a  ./docs/SOURCE_PROVENANCE.md
 f09d2d768fc8e46e162945476b07bf168fbb9153a9296821a5462d6b81fff232  ./docs/THIRD_PARTY_NOTICES_DRAFT.md
@@ -6700,6 +6702,7 @@ c93f39e1874d24997b7fb1de42530806f25a087b5f9d19a3937da703a800d231  ./tools/benchm
 fcf262e912884b3d345df9d72490c8b9905ed266b11ad07865df6eccd1aea3a0  ./tools/benchmarks/results-s336.jsonl
 ed02e17a5c5f0f00cdb836e425127206af63fe3da8c16633e0df811750de31a2  ./tools/benchmarks/run-bench.mjs
 bc3765b3b1e979e316743ff22a9a1fd1822f6fa07ddb3d86bddf83af58fb7df5  ./tools/browser-e2e.mjs
+9fbce73b5894bbb632d552bff4f989b687c576dfe752e3c8748b65d395598b7f  ./tools/cache-cleanup.sh
 565a208458fa387c12020398b80168ed1e66ead5e01f4fa18a0df202566932f7  ./tools/cbom.mjs
 a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-build-reproducibility.mjs
 a1df315d15d1e88dba83d8fd5383929050bfbd78b1d554d5e33d00b87d6ff0fc  ./tools/coden-evolution
@@ -6743,6 +6746,7 @@ ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-r
 ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-update-artifact.mjs
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
+882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
 070a44cbd179841748012908b5deaada61d05076040016080bf417d10a8e824a  ./tools/test-cross-platform-installers.mjs
 89f8d7634a65596cfa8ece1a192d8ec61e3edfe756dcaccbc601281652087379  ./tools/test-e2e-retention.sh
 90c25b2dc354d76851de0fbc954470199733e569fb490d2e5c7e792f3b6639c1  ./tools/test-installer-hardening.mjs

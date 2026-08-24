@@ -182,20 +182,28 @@ else bad "every entry's marker, quote and named mechanism appear in rule 12" "$R
 
 # Recoverability is not decoration: it is what the guard prints when it refuses, and the reason a
 # reader can tell "removed from the working tree" from "gone". Rule 12 says so in its own words.
-if jq -e '[ .exceptions[] | select(.recoverable == false) ] | length == 1' "$SOURCE_JSON" >/dev/null; then
-  ok "exactly one exception is recorded as irreversible"
+N_IRREV="$(jq -r '[ .exceptions[] | select(.recoverable == false) ] | length' "$SOURCE_JSON")"
+if [ "$N_IRREV" -ge 1 ]; then
+  ok "at least one exception is recorded as irreversible ($N_IRREV)"
 else
-  bad "exactly one exception is recorded as irreversible" "$(jq -c '[ .exceptions[] | {id, recoverable} ]' "$SOURCE_JSON")"
+  bad "at least one exception is recorded as irreversible" "$(jq -c '[ .exceptions[] | {id, recoverable} ]' "$SOURCE_JSON")"
 fi
 # Flattened, because the authority is prose wrapped at 90 columns: the phrase this looks for is
 # split across two lines in the real file ("this content is **not**\n    recoverable"). A check
 # that only works when a sentence happens not to wrap is a check that reports on formatting.
 BLOCK_FLAT="$TMPDIR/rule12-flat.txt"
 tr -s '[:space:]' ' ' < "$BLOCK" > "$BLOCK_FLAT"
-if grep -qF 'not** recoverable' "$BLOCK_FLAT"; then
-  ok "rule 12 itself declares that one exception is not recoverable"
+# The counts must AGREE, not merely both be positive. This check used to hardcode "exactly one",
+# which was true only while E3 was the only irreversible exception; when E4 arrived on 2026-08-24
+# it went red for a correct amendment — reporting drift where there was none, the same class of
+# false signal D-0511 repaired. What the rule actually needs is that the source and the prose name
+# the SAME number of irreversible exceptions, so neither can gain one silently.
+N_DECLARED="$(grep -o 'not\*\* recoverable' "$BLOCK_FLAT" | grep -c . || true)"
+if [ "$N_DECLARED" = "$N_IRREV" ]; then
+  ok "rule 12 itself declares every irreversible exception as such ($N_DECLARED of $N_IRREV)"
 else
-  bad "rule 12 itself declares that one exception is not recoverable" "phrase absent from the block"
+  bad "rule 12 itself declares every irreversible exception as such" \
+      "prose declares $N_DECLARED, the source records $N_IRREV"
 fi
 
 printf '\n=== 3 · oracle — the alignment checks are shown to go RED ===\n'
@@ -335,6 +343,17 @@ assert_decision "rm /srv/probe-artifacts/e2e/$STAMP" deny \
   "the same path is NOT an exception when the environment does not point there"
 
 # --- nothing else about the guard moved ---
+# --- F-HOOK-008: find that removes is a removal, whatever the command word says ---------------
+# Found 2026-08-24 during D-0680, by the removal it failed to stop: 89 GB outside PROJECT_ROOT.
+assert_decision 'find /mnt/cachec/somewhere -mindepth 1 -maxdepth 1 -exec rm -rf {} +' deny \
+  "F-HOOK-008: find -exec rm -rf is a recursive+force removal"
+assert_decision 'find /mnt/cachec/somewhere -delete' deny \
+  "F-HOOK-008: find -delete is a removal too"
+assert_decision 'find /etc -name rm' allow \
+  "F-HOOK-008: find -name rm is a SEARCH — normalising it to a removal would deny a read"
+assert_decision "find $ROOT/tools -name '*.tmp' -exec rm -rf {} +" deny \
+  "F-HOOK-008: recursive+force is denied inside PROJECT_ROOT as well, exactly like a bare rm -rf"
+
 assert_decision 'cat .env'                deny "unchanged: a dotenv file as cat's operand denies"
 assert_decision 'docker system prune -af' deny "unchanged: docker system prune denies"
 assert_decision 'git push -f origin main' deny "unchanged: git push -f denies"

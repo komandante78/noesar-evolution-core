@@ -85,6 +85,26 @@
         ],
         "summary": "only tools/e2e-retention-policy.sh's e2e_retention_prunable(), driven by tools/run-browser-e2e.sh (NOESAR_E2E_RETAIN, default 5) or tools/test-e2e-retention.sh; never the newest NOESAR_E2E_RETAIN runs, never a glob, never an ad-hoc rm"
       }
+    },
+    {
+      "id": "E4-host-cache-and-superseded-projects",
+      "what": "the host cache reclaim (docker build cache, Claude Code's claude_tmp contents) and superseded project directories directly under /mnt/cachec, each named individually by the Owner and recorded in docs/DECISION_LOG.md before removal",
+      "authority_marker": "Fourth named exception",
+      "authority_quote": "superseded project directories",
+      "added_utc": "2026-08-24",
+      "governed_by": "D-0680",
+      "recoverable": false,
+      "recoverable_how": "NOT recoverable — no git history, no archive, no backup was taken or asked for; bounded by an explicit protected list a test enforces, rather than by care",
+      "filesystem_roots": [],
+      "docker_name_prefixes": [],
+      "mechanism": {
+        "implementation": "tools/cache-cleanup.sh",
+        "function": "cache_cleanup_removable",
+        "callers": [
+          "tools/test-cache-cleanup.sh"
+        ],
+        "summary": "only tools/cache-cleanup.sh's cache_cleanup_removable(), proven by tools/test-cache-cleanup.sh; it refuses every protected name (NOESAR, NOESAR_EVOLUTION*, ATOM*, NOESAR-ATOM-PRIVATE), any path not directly under the cache root, any '..', any symlink and anything that is not an existing directory. filesystem_roots is deliberately empty: no ad-hoc rm is covered anywhere, so the guard keeps denying every one of them and the tool stays the only route. docker builder prune is permitted; docker system/container/image/volume prune stay forbidden by §5a 21d"
+      }
     }
   ]
 }

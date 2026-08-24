@@ -136,6 +136,46 @@ verified work in the source tree for a deployment that never comes.
     authorises **nothing else outside `PROJECT_ROOT`**: no other path, no glob, no `prune`, and
     no artifact of any other project. Unlike the first two exceptions this content is **not**
     recoverable — which is why it is bounded by a pattern a test enforces rather than by care.
+
+    **Fourth named exception**, added by the owner on 2026-08-24 (*"autorizza la pulizia anche
+    di altri"*, answering the blocker this session declared and re-declared twice): the
+    **host cache reclaim and the removal of superseded project directories under
+    `/mnt/cachec`, each named individually by the Owner**. This is the widest exception in this
+    file — it reaches outside `PROJECT_ROOT` and what it removes is **not** recoverable — so it is bounded by
+    an explicit protected list rather than by care, and it authorises nothing that is not on the
+    allowed list below.
+
+    **Allowed, and only these:**
+    (a) `docker builder prune` — build cache only. It is **not** one of the four prunes §5a 21d
+        forbids without exception, and the difference is the reason: it destroys no image, no
+        container, no volume and no project's data — only regenerable cache, whose loss costs
+        rebuild time and nothing else. The four forbidden prunes stay forbidden.
+    (b) the **contents** of `/mnt/cachec/NOESAR/.tools/claude_tmp/` — Claude Code's own
+        throwaway temp, 295,789 entries measured 2026-08-24, which the tool recreates. The
+        directory itself and everything else under `.tools/` survive.
+    (c) a project directory **directly under `/mnt/cachec`** that the Owner names in session and
+        that is recorded, by full path, in `docs/DECISION_LOG.md` before it is removed.
+
+    **Protected by name — never removed under this exception, whatever else is said:**
+    `NOESAR_EVOLUTION`, `NOESAR_EVOLUTION_ARTIFACTS`, `NOESAR_EVOLUTION_BACKUPS`,
+    `NOESAR_EVOLUTION_CANONICAL_V1`, `NOESAR_EVOLUTION_RUNTIME`, `NOESAR_EVOLUTION_SHADOWS`,
+    `NOESAR_EVOLUTION_STAGING`, `ATOM`, `ATOM_EVOLUTION`, `ATOM_INTERNAL`, `ATOM_MODEL`,
+    `NOESAR-ATOM-PRIVATE`, and **`NOESAR/` itself** — which holds `.tools/claude_home`, this
+    project's own session memory, history and Claude Code configuration, so deleting it would
+    damage NOESAR EVOLUTION rather than another project. Nothing outside `/mnt/cachec` is
+    reachable at all. Containers, images and volumes are untouched by this exception: §5a
+    continues to govern them alone.
+
+    **Mechanically, and only this way:** removal happens **only** through
+    `cache_cleanup_removable()` in `tools/cache-cleanup.sh`, driven by
+    `tools/test-cache-cleanup.sh` — never an ad-hoc `rm`, never a glob at the top level of
+    `/mnt/cachec`, never a `find -exec rm`. That function refuses any name on the protected list,
+    any path not directly under `/mnt/cachec`, any path containing `..`, and anything that is not
+    an existing directory; it names every target it removes and every one it refuses. The
+    `ls`/`df` inventory is captured to `EVIDENCE/` before and after, and the protected set is
+    re-listed afterwards and shown unchanged. The list of names is passed in per invocation and
+    recorded in `docs/DECISION_LOG.md` first: this exception grants **no standing** authority to
+    remove anything, only the mechanism by which a named, recorded decision is carried out.
 13. **No destructive modification by implication.** Overwriting, truncating,
     renaming, moving, or replacing an existing artifact requires that the phase
     specification explicitly asks for it, and requires a backup first (§6).

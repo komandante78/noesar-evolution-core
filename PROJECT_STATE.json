@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": "SESSION CLOSED 2026-08-24 — five phases delivered and deployed: D-0672 (chat identity and grounding), D-0674/D-0675 (chat tool-call loop + capability probe), D-0676 (voice speaks what it did, compound requests), D-0677 (@noesar/spoken-intent extracted with SPEC and conformance), D-0678 (voice stops acting on room noise), D-0679 (spoken answers asked for as speech, spoken turn timed).",
-  "phase_status": "CLOSED. Working tree clean. Live: d0679-spoken-answer-20260824T125551Z, running, healthy, /livez /readyz 200. Full suite 3186 tests, 3184 pass, 0 fail, 1 pre-existing skip (from 3095 at session start, +91). ESLint 502 files / 0 errors. Section 5a: exactly 2 project containers, non-project 50 unchanged, networks 10 unchanged, volumes 65 unchanged. 4 commits await the Owner push (B-015).",
+  "phase_status": "D-0680/D-0681/D-0682 CLOSED 2026-08-24. Host cache cleanup executed under the Owner-authorised fourth named exception to CLAUDE10.md rule 12. /mnt/cachec 224G->69G used (49%->15%); Docker build cache 168.3GB reclaimed; 21 named directories removed via tools/cache-cleanup.sh. Protected set verified present; non-project containers 38->38, volumes 75->75; installation /livez /readyz 200. Guard defect F-HOOK-008 (find -exec rm invisible) repaired. Governance 6/6 suites, rule-12 alignment 56/56, cache-cleanup 18/18, T0 3102 pass 0 fail, MANIFEST 6776 files.",
   "next_phase": "P5 proper — sentence-level streamed synthesis. This is the 6.7x that is still on the table and it is now backed by numbers rather than by the plan text.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "a375b3e",
-  "last_updated_utc": "2026-08-24T13:32:47Z",
+  "last_updated_utc": "2026-08-24T15:00:37Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {

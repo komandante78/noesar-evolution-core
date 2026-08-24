@@ -1,0 +1,161 @@
+=== UTC 20260824T145643Z ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme1n1p1  466G   69G  398G  15% /mnt/cachec
+--- ls ---
+total 28
+drwxrwxrwx  18 nobody users 4096 Aug 24 07:56 ./
+drwxr-xr-x  13 root   root   260 Aug 22 02:28 ../
+drwxrwxrwx   4 nobody users   98 Jul 17 22:57 ATOM/
+drwxrwxrwx  17 nobody users 4096 Aug  8 04:37 ATOM_EVOLUTION/
+drwxrwxrwx   4 nobody users   47 Jul 16 18:26 ATOM_INTERNAL/
+drwxrwxrwx  10 nobody users  110 Jul 18 06:01 ATOM_MODEL/
+drwxrwxrwx  25 nobody users 8192 Aug 10 11:19 NOESAR/
+drwxrwxrwx  11 nobody users  210 Jul 26 09:54 NOESAR-ATOM-PRIVATE/
+drwxrwxrwx   2 nobody users    6 Jun 20 17:33 NOESAR_BACKUPS/
+drwxrwxrwx  43 nobody users 4096 Aug 24 07:55 NOESAR_EVOLUTION/
+drwxrwxrwx  32 nobody users 4096 Aug  9 20:04 NOESAR_EVOLUTION_ARTIFACTS/
+drwxrwxrwx   2 nobody users  154 Jul 31 09:03 NOESAR_EVOLUTION_BACKUPS/
+drwxrwxrwx+ 13 nobody users  242 Jul 23 22:21 NOESAR_EVOLUTION_CANONICAL_V1/
+drwxrwxrwx  20 nobody users  284 Aug  9 03:28 NOESAR_EVOLUTION_RUNTIME/
+drwxrwsrwx   2 nobody users    6 Jul 29 00:53 NOESAR_EVOLUTION_SHADOWS/
+drwxrwxrwx   5 nobody users  223 Jul 26 01:18 NOESAR_EVOLUTION_STAGING/
+drwxrwxrwx   5 nobody users   60 Jul 14 08:46 claude-code-unrestricted/
+drwxrwxrwx   2 nobody users    6 Aug 24 07:00 noesar_bk/
+--- docker system df ---
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          106       46        68.83GB   6.454GB (9%)
+Containers      52        11        1.535GB   1.404GB (91%)
+Local Volumes   65        8         3.138GB   184MB (5%)
+Build Cache     0         0         0B        0B
+--- docker ps -a ---
+noesar-evolution	Up 2 hours (healthy)
+noesar-evolution-pre-20260824T125603Z	Exited (0) 2 hours ago
+Plex-Media-Server	Created
+qbittorrent	Created
+sonarr	Exited (255) 2 days ago
+Nginx-Proxy-Manager-Official	Up 2 days
+noesar-voice-hear	Up 2 days
+noesar-voice-speak	Up 2 days
+noesar-search	Up 2 days
+atom-evolution-model	Up 2 days (healthy)
+radarr	Exited (255) 2 days ago
+atomd	Exited (0) 2 weeks ago
+atomd-old-phase6-a0025	Exited (0) 2 weeks ago
+debug-evolution-runner	Up 2 days (healthy)
+debug-evolution	Up 2 days (healthy)
+debug-evolution-runner-old-api-targets	Exited (0) 3 weeks ago
+debug-evolution-old-api-targets	Exited (0) 3 weeks ago
+debug-evolution-pre-sandbox	Exited (0) 3 weeks ago
+debug-evolution-pre-cube-memory	Exited (0) 3 weeks ago
+debug-evolution.rollback-remote-targets-20260801T172826Z	Exited (0) 3 weeks ago
+atom-evolution-model-old-qwen-coder	Exited (0) 2 weeks ago
+coden-ultra-full-product	Exited (0) 4 weeks ago
+coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z	Exited (0) 4 weeks ago
+coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z	Exited (0) 4 weeks ago
+noesar-coden-ultra-nllb	Exited (0) 4 weeks ago
+ai-lab	Exited (0) 4 weeks ago
+binhex-prowlarr	Exited (255) 2 days ago
+ai-lab-prev-s214b	Exited (0) 5 weeks ago
+stats-hub	Exited (0) 4 weeks ago
+schema-service	Exited (0) 5 weeks ago
+coden-ultra-brainlab	Exited (0) 4 weeks ago
+nous-simulator-engine	Exited (0) 5 weeks ago
+noesar-webui	Exited (0) 4 weeks ago
+coden-ultra-brainlab-phase4-bak	Exited (0) 5 weeks ago
+coden-ultra-trainer	Exited (0) 5 weeks ago
+coden-nous-train	Exited (0) 6 weeks ago
+nous-phase0-training	Exited (0) 5 weeks ago
+nova-ai	Exited (137) 8 weeks ago
+coden-benchmark-lab	Exited (0) 4 weeks ago
+fridayn-model-factory	Exited (143) 2 months ago
+noesar-fridayn-tei-embedder-v2	Exited (0) 4 weeks ago
+noesar-fridayn-tei-reranker-v1	Exited (0) 7 weeks ago
+binhex-flaresolverr	Exited (0) 2 days ago
+EmbyServer	Up 2 days
+noesar-core	Exited (2) 4 weeks ago
+noesar-dataset-factory	Exited (137) 7 weeks ago
+noesar-gateway	Exited (2) 7 weeks ago
+noesar-qdrant	Exited (143) 7 weeks ago
+noesar-db	Exited (0) 4 weeks ago
+Krusader	Exited (143) 6 weeks ago
+Unraid-Cloudflared-Tunnel	Up 2 days
+Cloudflare-DDNS	Up 2 days
+--- volumes ---
+DRIVER    VOLUME NAME
+local     0a00bb46187e4045c3c9f1dcf02507947da3137b3f9912309fd773577b9eb08d
+local     0be7ed2998d2f28841bb57546c80ae69a7e401f64e7e8967b3b0d9d53ebf35f1
+local     00de13a2fb52585099a3525dd09a4421f10b63c3f30aa9a158c9b905de5e0299
+local     1c0f4b7ab03d17328ebed1f6c02fed942f7ab81f2c950e9324898c461f418dc6
+local     2b100680d405957d99294b07f176880c65c8c947f827ecd5f7ed51ef07b2e61a
+local     2c7dd1e0d2b951984da3ce3353fc82c231daeb9c4d08db355eff1390bf8d27da
+local     2ed92f94bfe7ff34b93802862d6a5b1b784e11b70541aae39b4427dcaefcf103
+local     3a63a07987b17661c910ad5b92a153fdf5efb6fe73b22a4c6e4832096b9b3359
+local     5aba328094c74601b0979b0101b4c17f17f7ec9e0d441d9ed451c53286481798
+local     5d8b8474e8ee14b7b1c73ad63fba875278c0af73e2eb8505abfe478ba0376e21
+local     6c69e02689510f59a27c222b647fbf3c8ad05e1e2aa22cf834d94ed7de5ad791
+local     7bc628c437ad60d3acca4c3db5dd0357c4a4f6ae195c7067527bf89d9e4f95a4
+local     07e04a813e2d9bf11a5147d47d4aeb0d3d677f76d1981724402db08188e38bb4
+local     9bc7efaa6aacaf2692cb964b607dfb248f9eaa0349095416a6e6e614b92d7a22
+local     9e15c6b9b8b98a05ed076e25fca4e066bfc01d4a4537cbb82b9cd9ddb4be7897
+local     9ee974af168d9b81dc7da27a6a1e25e39e5d2b1055412c6f0bce5b97c1de54ba
+local     9f455c76aba73bcd018b1cae897ee2f18580ad62f0a707cdf5b8171b80967f13
+local     15ea4903ff8e6d640f92c8eafa4b3f6a5da7b99a0240aed16f0a89f0b0932c3b
+local     017cbfa7ee586dbe0918d5171ac9a84ace25e675cd70055f1c3ac8bd68454795
+local     55b76f9d750ef6af472ebd61be5a45e4564d21ba7a1120c858c02daada2bf612
+local     67f515483084e9fc66a3bafec05a2cf1a2402e7e6b3e94a68a2691b3e02e857d
+local     80b970ad1bcd188ccdd230b66cbedabcbdcd67c0bf1f9b45f90b36179dae4b23
+local     92f60cb48b7013e1639844273607be9cb06ffe45d6edce9a8b8bd6437a90b67b
+local     644bb446c405859b66e921e58a25b0f0740d3077c15364fd12a32725f7df0b12
+local     928b5c104fd9f8b6eb1be48c23ddb63944fedcf74f7eba9fdac336b2984ad927
+local     957de204fc95408def9e1380b598d83694de9ed1871e4c335b2124667c86b65f
+local     1994f6b3d41d0a1d76be7a76eea975be366f260e457798a6fbb2b5512e1caf99
+local     8511d8a88cb7035f02b58ab0069d509bc7afa39511965f4501c03ca69b2ba1ee
+local     15037e5ea8df0c186375a827f33dd1967b27a611b9af3460b3a2ad2542e8b300
+local     35431c05e9fdbeb88b09d4ec9040e8c96b24245e55077f81d5418b0cd30c1848
+local     076135fd4b66d198376ab43c6f3af1f1c2e6b1b1a51ecaab702693fe46e04cac
+local     94840c80754a2114ca5396b79dab3f756f3d881c75d04098965ca5b1fbcb86ac
+local     306403f6bdefd175ebb5d35f5a1b298d0c0b8e6c126a565697e39456778aac33
+local     332979e93843d46fab89b0f160001790c0a7c679fdbe9ec0cf089eb9ea1e4ccd
+local     797250fea9a3330d6f40cc3d5f3285c09a3f8eb176fbf7a2840cc17e3647c339
+local     558422098a484dc291e883b4897d89ece3bd742a6e024556338b2028789b0802
+local     a06c8387a682a6e2ccafb90b097d415a37f3488c8e6a5b0e04ce7677ecc78ee7
+local     a6402879c71f79f92bbdec770e1232f67ae5ebd749d4e3198ac4fd18517fcf99
+local     ai_lab_data
+local     b61727a74686528d25f3618a0f25d9e3042615a068f3ee9d98c86d6c7431ba7e
+local     brainlab_data
+local     c2d2c547ccaebcea62a13478810c2c7ce4b03aee3907a4e0a5a42d1546de1748
+local     c850a38844c23ad9064fb150885cbe42c1ae544651e277b55ea799d21ca4e0f6
+local     c7921216e8877020ce4e35360de019155b50fcfa1ae3497463874439b9b2bd9f
+local     c8294891b55dcc341b90955ab84e3419194ef6f866ac785f4e3cee399039ea66
+local     ca35aa70d02914641a54029097d04427d581e2fa10efad70be2c31da40984e24
+local     cdc68fbd2d228fc572e92c0b6ffbd784f25d686a7be9ddd0daf675bcce901ef2
+local     d0c22e22dbb3b1de20ceb1fe8fd9eff5394c9e349e50c43dcec55df754684db1
+local     d1a6b957dd0453ee104560c5d740ad161947db23ae624f03e689c97df8704cd5
+local     d1b941631a5b8ade782020b6bb577a6de16627ac58a74cd6737343e4d2c4ffae
+local     d567da6be77cba539b98e5d23cf52a06f22c0729b9e245d8fbb9fdba4cb82b89
+local     d673c50a8a82e07df984b3ad0edabdaf2d5c52676c7bbac5a5a0fe50e07f21a2
+local     db103f6bb390a63ee6c2ef2fafaf30f8f69239ece11be7e881e7a91c8b59ede2
+local     dcc624d1f0f012030aa7cc42e6891caf6981f73cf90ed44d298b9a630d32b8e1
+local     de54b7aecd2b9de43b71ac948a14e6145dff89dffb1bb5d6275030d5d83283fa
+local     debug_evolution_data
+local     debug_evolution_sandbox
+local     e33a393f2b2f73712a6ba0dcc04e5be03ac7962657c3ff2baf5d861fcd522420
+local     ec958f354afe69ab497d7bdaf98fb18ca636fba366cffb73aee48f4ae2d98ab7
+local     f8cd93d8ae7f7fea0a92badd9bce992c45b14bf3d28bd9f479ace678c2353832
+local     f244d9fe5939f3a3f7208d40ecc52c81fa94844fbed7a92e125282a961d4f558
+local     f4612cb2bfa954fb55f1d7b3409311c5eea2daec12ff3c1f7bc26b41c056229d
+local     fcd6ea15543537fb0c57fd45b63b7f20cc213bc31d32a6c3710efcf981f1b438
+local     noesar_voice_hear_cache
+local     stats_hub_data
+--- networks ---
+NETWORK ID     NAME                   DRIVER    SCOPE
+c06d787e975c   br0                    macvlan   local
+c04e722485ee   bridge                 bridge    local
+f6241d9ccde6   coden-bridge           bridge    local
+7175c4af2fec   coden-local            bridge    local
+40f4ceaab3ec   deploy_default         bridge    local
+112b7d278067   host                   host      local
+8ab2ca15b91e   noesar-e2e-net         bridge    local
+f55f74343e47   noesar-evolution-net   bridge    local
+f4b140b767f9   noesar-local           bridge    local
+8528d96f624f   none                   null      local

@@ -301,6 +301,34 @@ $TOK"
 
     [ -z "$CMDWORD" ] && continue
 
+    # --- find that removes (F-HOOK-008, found 2026-08-24) -------------------------------------
+    # `find <path> -exec rm -rf {} +` and `find <path> -delete` remove exactly what `rm -rf`
+    # removes, and this guard saw neither: it judges the COMMAND WORD, and the command word was
+    # `find` — `rm` was merely an operand. Measured the day it was found, during D-0680: 89 GB
+    # outside PROJECT_ROOT was removed through this hook without a single check firing, by a
+    # command written for no reason other than that a 296k-entry glob overflows ARG_MAX.
+    # `xargs` never had the gap — it is in WRAPPERS_RE, so `xargs rm -rf` already resolves to rm.
+    # The command word is not the act. Normalise the act, then let the checks below judge it
+    # against the path operands they have already collected.
+    if [ "$CMDWORD" = "find" ]; then
+      FIND_ACTION=""; SEEN_EXEC=0
+      while IFS= read -r TOK; do
+        [ -z "$TOK" ] && continue
+        T="$(strip_token "$TOK")"
+        case "$T" in
+          -exec|-execdir|-ok|-okdir) SEEN_EXEC=1; continue ;;
+          # -delete is the removal itself, and it recurses and never prompts.
+          -delete) FIND_ACTION="rm"; FLAGS="$FLAGS -r -f"; continue ;;
+        esac
+        # Only a word in the -exec position counts. `find . -name rm` names a file and removes
+        # nothing; treating it as a removal would deny a search, which is its own defect.
+        if [ "$SEEN_EXEC" = "1" ] && printf '%s' "${T##*/}" | grep -qE "$REMOVERS_RE"; then
+          FIND_ACTION="${T##*/}"
+        fi
+      done <<< "$OPERANDS"
+      [ -n "$FIND_ACTION" ] && CMDWORD="$FIND_ACTION"
+    fi
+
     # --- rm -rf and equivalent forms (flags of an actual rm, not the words in a string) ---
     if printf '%s' "$CMDWORD" | grep -qE "$REMOVERS_RE"; then
       # Does any operand fall inside a path rule 12 names as removable? Computed BEFORE the

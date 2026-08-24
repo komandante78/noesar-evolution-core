@@ -15902,3 +15902,55 @@ still a monologue, because a q4 model follows a length instruction weakly. The r
 the whole answer. Not built here — it changes `VoiceSession`'s generation and barge-in semantics,
 and rushing that at the end of a long session is how "two voices talking" (`D-0373`) comes back.
 **Status.** applied, DEPLOYED and verified live (`d0679-spoken-answer-20260824T125551Z`).
+
+## D-0680 · Host cache reclaim and removal of superseded project directories — 2026-08-24
+**Decision.** Owner authorised (*"autorizza la pulizia anche di altri"*) a fourth named
+exception to `CLAUDE10.md` §4 r.12, written before execution. Reclaimed: Docker build cache
+(`docker builder prune -af`, 168.3 GB) and the contents of
+`/mnt/cachec/NOESAR/.tools/claude_tmp/` (295,789 entries). Then removed, each named in full and
+each checked against the protected list immediately before: `/mnt/cachec/` + `CODEN_ULTRA`,
+`CODEN_ULTRA_ATOM`, `CODEN_ULTRA_TUI`, `CODEN_ULTRA_NEURAL_CG`, `CODEN_ULTRA_TRAINER`,
+`CODEN_ULTRA_BRAINLAB`, `CODEN_ULTRA_NLLB`, `CODEN_NOUS`, `Coden_Nous`, `CODEN_BENCHMARK`,
+`NOUS_FARM`, `NOUS_ARCH_TEST`, `NOVA`, `AI_LAB`, `STATS_HUB`, `FRIDAYN_MODEL_FACTORY`,
+`BraiN Test`, `NOESAR_BRAIN`, `DEBUG_EVOLUTION`, `DEBUG_EVOLUTION_FINALIZATION_WORK`,
+`DEBUG_EVOLUTION_ZIP20_CONTROLLER`.
+**Why.** `/mnt/cachec` was 49% full and 89 GB of it was Claude Code temp nobody had ever pruned.
+**Rejected.** Deleting `/mnt/cachec/NOESAR/` as "NOESAR ultra" — it holds `.tools/claude_home`,
+this project's own memory, history and config; removing it would damage NOESAR EVOLUTION.
+Rejected too: `docker system/container/image/volume prune` — host-wide, forbidden by §5a 21d,
+and never needed here since `builder prune` touches no image, container or volume.
+**Evidence.** `EVIDENCE/cache_cleanup_pre_20260824T144128Z.txt` and `…_post_*`; `/mnt/cachec`
+224G→136G used (49%→30%) before the project removals; build cache `Total: 168.3GB`.
+**Reversal cost.** None for the cache — it regenerates. **The 21 directories are NOT
+recoverable**: no backup was taken and none was asked for. This is why the exception is bounded
+by an explicit protected list rather than by care.
+**Status.** applied.
+
+## D-0681 · F-HOOK-008 — the destructive-command guard did not see `find … -exec rm` — 2026-08-24
+**Decision.** Normalise the *act* rather than trusting the command word: in
+`.claude/hooks/destructive-command-guard.sh`, a `find` whose operands carry `-delete`, or a
+remover in the `-exec`/`-execdir`/`-ok`/`-okdir` position, is judged as that remover with the
+find's own path operands. `find … -name rm` stays a search.
+**Why.** Found by the removal it failed to stop, in this same phase: `find <path> -mindepth 1
+-maxdepth 1 -exec rm -rf {} +` removed 89 GB **outside `PROJECT_ROOT`** and no check fired. The
+guard tested `CMDWORD`, which was `find`. `xargs` never had the gap — it is in `WRAPPERS_RE`.
+**Rejected.** Matching `rm` anywhere in the operands — it denies `find . -name rm`, and a guard
+that blocks reads gets switched off.
+**Evidence.** 4 new cases in `.claude/hooks/test/test-rule12-exceptions.sh`; the suite goes
+56/56 (was 51/52 before this phase). Full governance battery 6/6 suites, 332 checks.
+**Reversal cost.** None — the change only widens what is already denied for `rm -rf`.
+**Status.** applied.
+
+## D-0682 · Improvement proposal — a reclaim report the product can run on its own host — 2026-08-24
+**Decision.** Proposed, not built. `tools/cache-cleanup.sh` is today a removal mechanism driven
+by a human decision. The advance is the half in front of it: a **read-only reclaim report** —
+what a self-hosted install is holding (old images, orphaned run directories, stale caches), what
+is safe to reclaim, and what it would free — as a delimited component with no removal authority
+at all, so an operator on any OS can see the cost of an install before it surprises them.
+**Why.** Self-hosted products routinely fill a disk silently; this host reached 49% with 89 GB
+of one tool's temp nobody could see. Benefit: an operator-visible number. Cost: ~1 phase.
+**Funding fit.** Restack · trait 1 (delimited, realizable component) and trait 2 (reusable
+beyond this product — the report is useful to any self-hosted service, not only this one).
+**Rejected.** Bundling it into the removal tool — a reporter that can also delete is a reporter
+nobody dares run.
+**Status.** deferred (proposal only, per CLAUDE10.md rule 69 — the Owner decides execution).

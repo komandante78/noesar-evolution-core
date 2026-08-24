@@ -37,6 +37,24 @@ and I nearly repaired a healthy component.
 container). Blocks P3 only.
 
 
+## SINCE THEN — a host cleanup the Owner authorised, and the guard defect it exposed
+
+`D-0680`/`D-0681`/`D-0682`, 2026-08-24, **after** the six below. It touched no product code and
+does not change the next action above.
+
+- **The Owner amended `CLAUDE10.md` rule 12 with a fourth named exception** (*"autorizza la
+  pulizia anche di altri"*), for host cache reclaim and superseded project directories under
+  `/mnt/cachec`. It is **irreversible** and bounded by an explicit protected list, not by care.
+- **`/mnt/cachec` 224G→69G used (49%→15%)**, plus 168.3 GB of Docker build cache. 21 directories
+  removed by name through `tools/cache-cleanup.sh`, the only authorised mechanism.
+  `NOESAR/`, `NOESAR_EVOLUTION*`, `ATOM*`, `NOESAR-ATOM-PRIVATE` verified present afterwards;
+  non-project containers 38→38, volumes 75→75; installation `/livez` `/readyz` 200.
+- **`F-HOOK-008`, a real hole in this project's own guard**: `find … -exec rm -rf {} +` and
+  `find … -delete` were invisible to it, because it judged the command word. 89 GB outside
+  `PROJECT_ROOT` went through unchecked before the fix. Repaired, with 4 oracle cases.
+- **`NOESAR_BRAIN` (25 GB) and `DEBUG_EVOLUTION*` (2.8 GB) are gone** — the Owner classified them
+  as projects, not modules, against this session's recommendation to keep them. Not recoverable.
+
 ## WHAT IS TRUE NOW THAT WAS NOT
 
 Six decisions, all DEPLOYED and verified live. Full detail in `docs/DECISION_LOG.md`, which owns
