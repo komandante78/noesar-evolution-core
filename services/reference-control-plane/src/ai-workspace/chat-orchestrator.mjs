@@ -33,7 +33,7 @@ export class ChatOrchestrator{
     catch(error){this.ledger?.append({actor:'system',action:'chat.identity',result:'degraded',details:{message:error.message}});return{};}
   }
   stop(runId,actorId='system'){const active=this.active.get(runId);if(!active)return false;active.controller.abort();this.ledger?.append({actor:actorId,action:'chat.stop',result:'stopped',details:{runId}});return true;}
-  #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[]}){
+  #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[],spoken=false}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??inspection.conversation.mode??'ASK').toUpperCase();
     const projectInstructions=inspection.project?.instructions?`Project instructions:\n${inspection.project.instructions}`:'';
@@ -89,6 +89,9 @@ export class ChatOrchestrator{
       // turn including the ones with nothing retrieved — which is every turn on an installation
       // with no sources.
       hasEvidence:evidence.length>0,
+      // An answer that will be READ ALOUD is a different answer, not the same one delivered
+      // differently (measured: 562 characters, ~35 seconds of speech, for a two-word question).
+      spoken,
       projectInstructions,memoryText,
       extraInstructions:[this.agentService&&AGENT_DIRECTIVE_INSTRUCTION],
     });
@@ -170,7 +173,7 @@ export class ChatOrchestrator{
     this.ledger?.append({actor:actorId,action:'models.compared',result:'success',details:{conversationId,providerIds:providerIds.slice(0,8)}});
     return{...result,citations:this.#citations(built.evidence),mode:built.selectedMode};
   }
-  async streamToResponse({res,actorId,conversationId,branchId,content,providerId=null,model=null,mode=null,sourceIds=[],toolIds=[]}){
+  async streamToResponse({res,actorId,conversationId,branchId,content,providerId=null,model=null,mode=null,sourceIds=[],toolIds=[],spoken=false}){
     const initial=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??initial.conversation.mode??'ASK').toUpperCase();
     // The two are passed apart, not collapsed with `??`. `providerId` is THIS caller naming a
@@ -186,7 +189,7 @@ export class ChatOrchestrator{
     // answer with a status code any more, and a rejection from here used to escape the
     // request handler entirely and take the process down with it.
     const user=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'user',content,metadata:{mode:selectedMode,sourceIds,toolIds}});
-    const built=this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds});
+    const built=this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds,spoken});
     // #buildContext includes the just-persisted user message; remove its duplicate final copy.
     built.messages=built.messages.filter((message,index)=>!(index===built.messages.length-2&&message.role==='user'&&message.content===user.content));
     const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});

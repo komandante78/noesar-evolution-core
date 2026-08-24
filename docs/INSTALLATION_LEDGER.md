@@ -6260,3 +6260,30 @@ parlano, non agiscono. Il rimedio vero è una wake word, proposta e non finta.
 **Costo di rollback — nessuno.** Un parametro con default retrocompatibile.
 **Pulizia (§5a).** Rimosso `…-pre-20260824T113439Z`. Container non di progetto
 **50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.
+
+## `d0679-spoken-answer-20260824T125551Z` — DEPLOYATO e verificato — 2026-08-24
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0679`: una risposta che verrà **letta ad alta voce** è una
+risposta diversa, non la stessa consegnata diversamente. `spoken:true` viaggia dal
+browser al prompt di sistema; il nome del modello diventa pronunciabile (`phi-4`
+invece di `/models/phi-4-q4_k_m.gguf`) in modo **deterministico**, perché il modello
+ignorava l'istruzione.
+**Cronometrato sull'installazione.** interpret 204 ms · primo token 66 ms ·
+risposta completa 4.790 ms · TTS ~800 ms → **~5,8 s di silenzio** prima di sentire
+una parola; **~0,87 s** se si sintetizzasse alla prima frase.
+**Due mie ipotesi smontate dalla misura.** Il round-trip `interpret` non è il collo
+di bottiglia (204 ms). E il TTS **non è il difetto**: round-trip sintesi→trascrizione
+dà **WER 0,0%** con la voce italiana, contro **81,8%** del controllo in inglese.
+**Verifica.** Preflight **493/493** byte-uguali, differing 0. Unit **3186 test,
+3184 pass, 0 fail, 1 skip preesistente**. ESLint 502/0. A/B sul modello vivo:
+441 → 289 caratteri. Live dal codice in esecuzione: prompt parlato dice `phi-4`,
+nessun percorso file; prompt scritto invariato.
+**Limite dichiarato.** Vittoria **parziale**: ~20 s di parlato restano. Il 6,7×
+vero è sintetizzare alla prima frase, non fatto qui perché tocca la macchina a
+stati della voce e il barge-in.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260824T125603Z` (`d0678`).
+**Costo di rollback — nessuno.**
+**Pulizia (§5a).** Rimosso `…-pre-20260824T121516Z`. Non di progetto **50 → 50**,
+reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.

@@ -77,7 +77,24 @@ export function instructionForMode(mode, { hasEvidence = false } = {}) {
  * nothing — it is pure so that its output can be pinned by a test, which is the only way a claim
  * about honesty is worth anything.
  */
-export function describeInstallation(snapshot = {}) {
+/**
+ * A model name a person can hear.
+ *
+ * `/models/phi-4-q4_k_m.gguf` read aloud is a path, an extension and a quantisation code — and
+ * measured on the live model, `SPOKEN_STYLE`'s "no file paths" instruction did not stop a 14B q4
+ * build from saying the whole thing. A prompt is a request; this is the guarantee. The written
+ * turn keeps the exact string, because there it is copyable and precise, which is the whole
+ * reason it is useful.
+ */
+export function speakableModelName(name) {
+  const base = String(name ?? '').split(/[/\\]/).pop() ?? '';
+  // The quantisation tag is several segments, not one: `q4_k_m`, `Q5_K_M`, `IQ3_XXS`. Matching a
+  // single trailing segment left "phi-4-q4_k_m", which is no more listenable than the path was.
+  const withoutExtension = base.replace(/\.(gguf|bin|safetensors|pt|onnx)$/i, '');
+  return withoutExtension.replace(/[-_](i?q\d+(?:[-_][a-z0-9]+)*|f16|f32|bf16|int[48])$/i, '') || withoutExtension || base;
+}
+
+export function describeInstallation(snapshot = {}, { spoken = false } = {}) {
   const {
     productName = 'NOESAR Evolution',
     edition = null,
@@ -106,7 +123,7 @@ export function describeInstallation(snapshot = {}) {
     // read. The sentence is now correct for all three combinations, so a future caller passing
     // only one of them gets prose rather than a seam.
     const who = modelName
-      ? `model ${label(modelName, 64)}${providerName ? ` via ${label(providerName)}` : ''}`
+      ? `model ${label(spoken ? speakableModelName(modelName) : modelName, 64)}${providerName ? ` via ${label(providerName)}` : ''}`
       : label(providerName);
     const where = providerIsLocal === true ? ', running inside this installation' : providerIsLocal === false ? ', running on an external service the operator configured' : '';
     lines.push(`You are being served by ${who}${where}. If you are asked which model you are, answer with that and do not guess.`);
@@ -147,6 +164,27 @@ export function describeCapabilities(tools = []) {
     'When a question is about this installation and a tool can answer it, call the tool and answer from its real result. Do not describe how someone could find out — that is the single most useless answer you can give a person who is already looking at the thing.',
   ];
 }
+
+/**
+ * What changes when the answer will be heard instead of read.
+ *
+ * Not a shorter version of the same instruction — a different one, because the two media fail
+ * differently. A reader skims, skips and re-reads; a listener receives every word in order at
+ * one speed and cannot skip ahead. Measured on this installation 2026-08-24: the question
+ * *"chi sei e cosa sai fare?"* produced **562 characters**, roughly **35 seconds** of speech, for
+ * something asked in two. That is not a long answer, it is a monologue at somebody.
+ *
+ * Markdown is stripped for the same reason: a heading, a bullet or a code fence has no spoken
+ * form, and a speech model reads the punctuation or swallows the structure. Either way the person
+ * hears something nobody wrote.
+ */
+export const SPOKEN_STYLE = [
+  'This answer will be SPOKEN ALOUD, not read. That changes what a good answer is:',
+  '- Two or three sentences. If the full answer genuinely needs more, say the short answer first and offer the rest ("posso entrare nel dettaglio se vuoi").',
+  '- No markdown at all: no headings, no bullet lists, no numbered lists, no code fences, no asterisks. They have no spoken form.',
+  '- No URLs, no file paths, no long identifiers unless the person asked for exactly that — they are unlistenable and unrememberable.',
+  '- Plain spoken sentences, the way you would answer someone standing next to you.',
+].join('\n');
 
 /** The register. This is the part that turns a general-purpose completion into a chat someone
  *  wants to keep talking to, and every line of it was written against a specific failure seen in
@@ -207,6 +245,7 @@ export function composeSystemPrompt({
   installation = {},
   tools = [],
   hasEvidence = false,
+  spoken = false,
   projectInstructions = '',
   memoryText = '',
   extraInstructions = [],
@@ -217,10 +256,13 @@ export function composeSystemPrompt({
     'You are not a general-purpose chatbot running on someone else\'s servers: you are part of a self-hosted product, you are talking to the person who operates it, and the facts below describe THAT installation as it is right now.',
   ].join(' '));
 
-  sections.push(['This installation:', ...describeInstallation(installation).map((line) => `- ${line}`)].join('\n'));
+  sections.push(['This installation:', ...describeInstallation(installation, { spoken }).map((line) => `- ${line}`)].join('\n'));
   sections.push(describeCapabilities(tools).join('\n'));
   sections.push(instructionForMode(String(mode ?? 'ASK').toUpperCase(), { hasEvidence }));
   sections.push(CONVERSATION_STYLE);
+  // AFTER the general register, so where the two disagree about length the spoken rule is the one
+  // the model has just read.
+  if (spoken) sections.push(SPOKEN_STYLE);
 
   for (const extra of extraInstructions) if (extra) sections.push(String(extra));
   if (projectInstructions) sections.push(String(projectInstructions));

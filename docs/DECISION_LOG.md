@@ -15866,3 +15866,39 @@ measured. Restack · traits 1 and 3 (a delimited component; local processing, no
 service).
 **Reversal cost.** None — a parameter with a backwards-compatible default and one new predicate.
 **Status.** applied, DEPLOYED and verified live (`d0678-voice-not-addressed-20260824T121503Z`).
+
+## D-0679 · the spoken turn is measured, and a spoken answer stops being a monologue — 2026-08-24
+**Decision.** `spoken:true` travels from `sendChat()` through `/api/v1/chat/stream` into
+`composeSystemPrompt`, which adds `SPOKEN_STYLE` (two or three sentences, no markdown, no paths,
+offer the rest) and presents a **speakable** model name via `speakableModelName()`.
+**Why — the Owner selected all four complaints about the voice; these are the two this phase could
+measure and act on.** Timed against the live installation:
+
+| stage | ms |
+|---|---|
+| `/api/v1/voice/interpret` round-trip | **204** |
+| chat, first token | **66** |
+| chat, COMPLETE answer (562 chars) | **4790** |
+| TTS | ~800 |
+| **silence before a single word is heard** | **~5794** |
+| **if synthesis started at the first sentence** | **~866** |
+
+**Two premises of my own plan destroyed by measurement, recorded not hidden.** (1) `PLAN` §3 named
+the `interpret` round-trip as the costly gate — it is **204 ms**, irrelevant. (2) I suspected the
+Kokoro voice was wrong or mis-phonemized. Measured by a **synthesize-then-transcribe round trip**:
+Italian voice `if_sara` scores **WER 0.0%**, `lang_code` changes nothing, and the control with an
+English voice scores **81.8%** (*"Aprila Memoria, Cisonotri, Progetti Apperti"*) — which is what
+proves the instrument works. **The TTS is not the defect.** I nearly repaired a healthy component.
+**A prompt is a request; `speakableModelName` is the guarantee.** `SPOKEN_STYLE` says "no file
+paths" and the 14B q4 build read `/models/phi-4-q4_k_m.gguf` aloud anyway. Spoken turns now get
+`phi-4`; written turns keep the exact string, where it is copyable and precise.
+**Evidence.** A/B on the live model: 441 → 289 chars (−34%) and 340 → 274 (−19%).
+`assistant-identity.test.mjs` 25/25. Full suite **3186 tests, 3184 pass, 0 fail, 1 pre-existing
+skip**. ESLint 502/0. Live, from the running code: spoken prompt says `phi-4` and carries no path;
+written prompt unchanged.
+**Honest limit — this is a PARTIAL win and is not presented otherwise.** ~20 seconds of speech is
+still a monologue, because a q4 model follows a length instruction weakly. The real fix is the
+**6.7× still on the table**: synthesise the FIRST SENTENCE as it completes instead of waiting for
+the whole answer. Not built here — it changes `VoiceSession`'s generation and barge-in semantics,
+and rushing that at the end of a long session is how "two voices talking" (`D-0373`) comes back.
+**Status.** applied, DEPLOYED and verified live (`d0679-spoken-answer-20260824T125551Z`).

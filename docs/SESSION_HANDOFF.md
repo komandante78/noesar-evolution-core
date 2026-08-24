@@ -8,26 +8,44 @@ three-block schedule. **P1, P2 and P4 are done and deployed, plus the extraction
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Ask the Owner to listen again, before opening P5.**
+**P5 proper: sentence-level streamed synthesis. It is the 6.7×, and it is now measured.**
 
-They reported the deployed voice as *«fa schifo … parla a caso senza chiedere nulla»*. The second
-half was a real, measured defect and is fixed (`D-0678`, below). The first half — *"fa schifo"* —
-may be about the **sound**: the Kokoro voice, its prosody, the delay before it answers. Those are
-different repairs, and guessing between them already cost a phase once — P4 was built on a premise
-that measurement destroyed.
+Timed on the live installation this session — the first time the spoken turn was ever timed:
 
-- If the complaint is **the sound**: that is P5 (latency, sentence-level streamed synthesis) plus
-  the voice choice in `NOESAR_VOICE_RUNE` / `NOESAR_VOICE_ESTRELA`.
-- If it is **still talking at random**: the residue is pinned in `voice-not-addressed.test.mjs`
-  as exactly `["dove sei", "quanto costa"]`, and the honest remedy is a **wake word** — proposed
-  in `D-0678` and deliberately not built inside a repair phase.
+| stage | ms |
+|---|---|
+| `/api/v1/voice/interpret` round-trip | **204** |
+| chat, first token | **66** |
+| chat, COMPLETE answer (562 chars) | **4790** |
+| TTS | ~800 |
+| **silence before one word is heard** | **~5794** |
+| **if synthesis began at the first sentence** | **~866** |
 
-**`B-016` unchanged, still needs the Owner**: the configured model cannot emit tool calls
-(`llama.cpp` honours them only with `--jinja`, and that container belongs to a separate
-project). It blocks P3 only.
+**Deliberately not started.** It changes `VoiceSession`'s generation and barge-in semantics, and
+getting that wrong brings back `D-0373` — two voices talking over each other. That needs a fresh
+session, not the tail of a long one. **Design constraint to carry in:** the `converse` adapter
+returns a whole `{reply}` string today; streaming means yielding sentences, and every leg must
+stay cancellable by the SAME generation token barge-in already uses.
+
+**Two of my own premises died to measurement this session. Do not skip the measuring step.**
+`PLAN` §3 blamed the `interpret` round-trip: it is **204 ms**. And I suspected the Kokoro voice
+was wrong — a synthesize-then-transcribe round trip scored **WER 0.0%** with the Italian voice
+against **81.8%** for a deliberately-wrong English-voice control. **The TTS is not the defect**,
+and I nearly repaired a healthy component.
+
+**`B-016` unchanged, still needs the Owner** (`llama.cpp` needs `--jinja`; another project's
+container). Blocks P3 only.
 
 
 ## WHAT IS TRUE NOW THAT WAS NOT
+
+**`D-0679` — a spoken answer is asked for as speech.** `spoken:true` travels from the browser to
+the system prompt; the model is asked for two or three sentences, no markdown, no paths. And
+because a prompt is a request rather than a guarantee — the q4 build read
+`/models/phi-4-q4_k_m.gguf` aloud despite being told not to — the model name is made speakable
+**deterministically**: `phi-4` spoken, exact string written. A/B on the live model: 441 → 289
+characters. **Partial, and stated as partial:** ~20 seconds of speech remain, and the real fix is
+the streaming above.
 
 **`D-0678` — the voice stopped reacting to the room, and this was the Owner's own catch.**
 Measured before changing anything: **10 of 45 realistic transcription fragments performed a real
@@ -45,33 +63,12 @@ command speak is what let the Owner finally hear a fault that had been shipping 
 microphone was **not** turned off, though that was the easy fix: `continuous` is the Owner's own
 standing instruction (*«resti attiva finché non la fermo io»*), never withdrawn.
 
-**`D-0672` — the chat knows what it is.** The whole system message used to be
-`instructionForMode()`: three sentences. It is now composed from live state by
-`ai-workspace/assistant-identity.mjs` — product, which model answers and whether it runs locally,
-voice in all four states, workspace counts, enabled tools by name or an honest "none" — plus an
-answering register. The citation instruction is conditional on evidence actually retrieved.
-**A/B against the live phi-4** (`EVIDENCE/chat_identity_ab_20260824T041426Z.txt`): asked *"chi
-sei?"* the old prompt answered **"Sono un modello di linguaggio sviluppato da Microsoft"**; asked
-*"PERCHE NON FUNZIONI?"* it answered **in English** with a tutorial about checking the power
-supply. The new one names the product and the real model, in Italian.
-
-**`D-0674` — the chat can call tools.** `tool-call-stream.mjs` reassembles a fragmented call for
-all three apiStyles; `parseSse()` emits it on a final frame; `ChatOrchestrator` runs a bounded
-4-round call→execute→feed-back loop through `ToolExecutor`, streaming `tool-call`/`tool-result`
-the WebUI renders as live rows. Refusals are by design: out-of-scope names refused **by name**,
-malformed arguments never coerced to `{}`, tool results fenced and a detection closes the
-agent-directive channel, a failing tool is a result not a failed turn.
-
-**Two scope defects found while building it, either of which alone made the loop unreachable:**
-`enforceToolScope` intersects granted with *requested*, and `sendChat()` has never sent `toolIds`
-— **every chat turn this product ever served offered zero tools**. And `project.toolIds` is
-written `[]` at creation with **no writer anywhere in the repository**, yet was read as a
-deny-list, so attaching a conversation to a project disabled every tool permanently. Both fixed,
-both pinned by tests.
-
-**`D-0675` — reachable is not capable.** `probeToolCalling()` on the existing health route, which
-the WebUI already renders verbatim. It is what measured `B-016`, and it names `--jinja` as the
-remedy rather than reporting a bare failure.
+**`D-0672`, `D-0674`, `D-0675`, `D-0677` — the chat given an identity and a real tool-call loop, the
+tool-calling capability probe, and `@noesar/spoken-intent` extracted with its conformance suite.
+Full detail in `docs/DECISION_LOG.md`, unchanged since; not repeated here to stay inside the cap.
+The two findings worth carrying: **every chat turn this product ever served offered the model zero
+tools** (two independent scope defects, both fixed), and **the configured model cannot emit tool
+calls at all** (`B-016`, the Owner's to clear).
 
 **`D-0676` — the voice says what it did, and keeps both halves of a compound request.** It used
 to perform a command and **stay silent**: `applyHeardText()` returned `reply:''`, which

@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import {
   composeSystemPrompt, describeInstallation, describeCapabilities, instructionForMode,
-  installationFromState, CONVERSATION_STYLE,
+  installationFromState, speakableModelName, CONVERSATION_STYLE,
 } from '../src/ai-workspace/assistant-identity.mjs';
 import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
 import { ContextGraph } from '../src/ai-workspace/context-graph.mjs';
@@ -156,6 +156,44 @@ test('the operator\'s own instructions and memory come last, after the defaults 
   });
   assert.ok(prompt.indexOf(CONVERSATION_STYLE) < prompt.indexOf('PROJECT-RULES'));
   assert.ok(prompt.indexOf('PROJECT-RULES') < prompt.indexOf('MEMORY-ITEMS'));
+});
+
+// Measured on the live model 2026-08-24: "chi sei e cosa sai fare?" produced 562 characters —
+// about 35 seconds of speech for a question asked in two. A spoken answer is a different answer,
+// not the same one delivered differently, so the instruction is a separate section rather than a
+// softer version of the written one.
+test('a spoken turn asks for a spoken answer, and a written one is unchanged', () => {
+  const written = composeSystemPrompt({ installation: {} });
+  const heard = composeSystemPrompt({ installation: {}, spoken: true });
+  assert.doesNotMatch(written, /SPOKEN ALOUD/, 'a typed turn must not be told to answer as if speaking');
+  assert.match(heard, /This answer will be SPOKEN ALOUD/);
+  assert.match(heard, /Two or three sentences/);
+  assert.match(heard, /No markdown at all/, 'markdown has no spoken form');
+  assert.match(heard, /No URLs, no file paths/);
+});
+
+// A prompt is a request; this is the guarantee. Measured on the live model: SPOKEN_STYLE says "no
+// file paths" and a 14B q4 build read "/models/phi-4-q4_k_m.gguf" aloud anyway.
+test('a spoken turn is told a model name a person can hear; a written turn keeps the exact string', () => {
+  for (const [given, spokenName] of [
+    ['/models/phi-4-q4_k_m.gguf', 'phi-4'],
+    ['/opt/m/llama-3.1-8b-instruct-Q5_K_M.gguf', 'llama-3.1-8b-instruct'],
+    ['qwen2.5-14b-IQ3_XXS.gguf', 'qwen2.5-14b'],
+    ['models/mistral-7b.safetensors', 'mistral-7b'],
+    ['gpt-4o', 'gpt-4o'],
+    ['claude-sonnet-5', 'claude-sonnet-5'],
+  ]) {
+    assert.equal(speakableModelName(given), spokenName);
+    assert.match(describeInstallation({ modelName: given }, { spoken: true }).join('\n'), new RegExp(`model ${spokenName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[ ,.]`));
+    // The written turn keeps the exact string: there it is copyable and precise, which is the
+    // whole reason it is useful.
+    assert.match(describeInstallation({ modelName: given }).join('\n'), new RegExp(given.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('the spoken rule comes after the general register, so it wins where they disagree on length', () => {
+  const prompt = composeSystemPrompt({ installation: {}, spoken: true });
+  assert.ok(prompt.indexOf(CONVERSATION_STYLE) < prompt.indexOf('SPOKEN ALOUD'));
 });
 
 test('the answering register is present, since it is what makes this a chat rather than a manual', () => {

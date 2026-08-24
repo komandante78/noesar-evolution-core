@@ -1297,7 +1297,12 @@ async function sendChat(spoken=null,{signal=null}={}){
         content,
         providerId,
         model:$('#chatModel').value.trim(),
-        mode:currentMode
+        mode:currentMode,
+        // An answer that will be SPOKEN is a different answer, not the same one delivered
+        // differently. Measured 2026-08-24: "chi sei e cosa sai fare" produced 562 characters —
+        // about 35 seconds of speech for a question a person asked in two. Reading is skimmable
+        // and interruptible by the eye; listening is neither.
+        spoken:Boolean(spoken)
       })
     });
     if(!response.ok){

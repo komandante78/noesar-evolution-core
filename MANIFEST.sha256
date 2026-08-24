@@ -356,7 +356,7 @@ f1302c6af47121dec0a1989c0c42ea5a43f5ef2131e7e0ad1f0aa504e871ef1d  ./PROJECT_GOVE
 4328916a9322d05c80b791d4311577fc24d8396ed5c75adc874eef9addec1895  ./PROJECT_GOVERNANCE/TOOLS/README.md
 00ea8e2dd3220da40373152fa66a6fa0d8b9b0fce9767fe3edf207976092c73e  ./PROJECT_GOVERNANCE/TOOLS/verify_package.py
 aa0bff9fef13b8a9eb6eca2bac182dceb437d2356b5ab542fa8ac40dc049add7  ./PROJECT_GOVERNANCE/TRACEABILITY_MATRIX.csv
-cc8e9088324519fca6636bfd763dbdf0552ef18f8a07453cf6396c8debe9f105  ./PROJECT_STATE.json
+a4296249858bfdef57a340eb4ac7371ea5585aa152641fa8f8f244981473f331  ./PROJECT_STATE.json
 d6a4ac86b3c6bb0b22b9f98c7d67bb602e8169e07f20eb63ca48736e4f689974  ./README.md
 f4a7dd3fe9e69c46c96e87c78b69875b754885f02e938eaed0fec2d5b844275c  ./RELEASE/AI_WORKSPACE_P0_TRACEABILITY.tsv
 586c4ab42209e24d19ff0492e7cabf62b9bcf512fbeff23f344e2b330d71916b  ./RELEASE/COMPANION_ARCHIVE_CHECKSUMS.txt
@@ -393,7 +393,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 2b52b3bf08af80911e350a956dbba14b6f2d507add9c772a0871d77feab86e5a  ./apps/shared/coden/tui-screen.mjs
-4a8f388803820f9fdaf5fe159e96183a1ee8597069c910338c247ccee8a1fe43  ./apps/webui-static/app.js
+e7bfb1b3fa23515c7d34447e0cb746cff8a64bdaadf887bbe46518de30480aaf  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
@@ -565,7 +565,7 @@ bf7f89b5ea581d6dbff828cb555977a1565cbbdad5c50d09930863de1c492132  ./docs/AUTHORI
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-cdd26be40375dc759b8a6b463fcd38b83c67eacf90f17d458d1aae45c0ed6fb1  ./docs/DECISION_LOG.md
+dfcb777ea47ac5b4deca68bbfc218268b038743c284a42e907e9cae7be2075ca  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
@@ -577,7 +577,7 @@ f3614b3b2f6920ab897534897916f68acc9989322aee2b843e1679b465568c8f  ./docs/GPU_LOC
 7c60e13981bcc1c908363c21e9178c4789eefbd5c126d93f3ce72e37d8ac7c43  ./docs/HOST_CAPABILITY_INVENTORY.md
 cedc1946015e0b16463abf5a64e9963dee15e105a39d0ce183836f6185e3b74b  ./docs/INSTALLABLE_ARTIFACT_MAP.md
 d2a2f5638d5e065b374a672d24e68133248610f0d51e2e9a39c3048aa2fc5f6c  ./docs/INSTALLATION_DESIGN.md
-728fc2262f92ad5bddbe54786874c4bd08410948f27dfdd10934f8c7472f8567  ./docs/INSTALLATION_LEDGER.md
+7e8119dcea67c2aa9313a344e97bba097d8370da6d358272c84cd7651f30a90e  ./docs/INSTALLATION_LEDGER.md
 8d3ec36bd937ac3a9709ab2f9af0cf320a8a251ec91673f1355495b815b21a95  ./docs/JAVASCRIPT_STATIC_ANALYSIS.md
 943623f062694c7ed8fa2aecec55759bfe509bc3e969a49590467b2a8cef32c5  ./docs/LAN_ACCESS_CONFIGURATION.md
 599c02f59d9039a5a5719e8e7a243b3126ded56c5db7fc0cd5610029ef77f66c  ./docs/LICENSE_INVENTORY.tsv
@@ -636,7 +636,7 @@ be04cba0f1c100c99ca965e94657a90b70ed10cacda85d409b073ce6ba4c898e  ./docs/SBOM_RE
 b9aa562749772335f2badaf99d744146f096de14cf8806e539b8d53268a2f68c  ./docs/SBOM_STATUS.md
 1d91d7021b264988bed1ef50d591b470e328fbbcff42d69dc6db7ceb72dba75b  ./docs/SECURITY_IMPLEMENTATION_MATRIX.tsv
 daec00ece820d33471e70f684e0aea3a232efcfe302eeb32b9f88a4b8426bbb2  ./docs/SECURITY_TEST_REPORT.md
-412347911ee355e1056e0485d2b9a0b1a155dda9e74c5c4fcfeeecb5ebed3f50  ./docs/SESSION_HANDOFF.md
+626e4078ab40a3ada563753f1b04068438d42eb533b9071cc7763677a949d6b5  ./docs/SESSION_HANDOFF.md
 ae857f71b8faa6e1a1fda2dd25b2ee0ce48797e44629476089aba95a420b2782  ./docs/SOURCE_ARCHIVE_MAP.tsv
 4f36e5e077e82172da338b5626f36be603b9ce412048dd6b8fd9c0bac77deb8a  ./docs/SOURCE_PROVENANCE.md
 f09d2d768fc8e46e162945476b07bf168fbb9153a9296821a5462d6b81fff232  ./docs/THIRD_PARTY_NOTICES_DRAFT.md
@@ -6310,9 +6310,9 @@ d81d7d9dd64e3f08bf65ecd874ec846be140bab30cae9b13693a78034bc43c69  ./services/ref
 a1fdcbc32182fef5a89f18b21cf3b0bee3db574f5356725d1b6bc5cdec1b1da9  ./services/reference-control-plane/src/ai-workspace/address-guard.mjs
 e7ef0cf8658aec40e2518dc8072c82b04bda13ddcea24ef6cdeb77a44e42f3f2  ./services/reference-control-plane/src/ai-workspace/agent-directive.mjs
 f370efff5022df4b9bb1683c21a29563612b9f2feb2ed97ca72e5eefd7fa9428  ./services/reference-control-plane/src/ai-workspace/agent-service.mjs
-81082265947418c9e65adc5840b0e0853f50958b8b400cfca3f32c3d53c7e5fc  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
+cff41b2f53cf39b510f942960f8087d8b312f5531b08e4882a28c4f5a823094e  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
 cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/reference-control-plane/src/ai-workspace/atomic-store.mjs
-4fbf10bd9325f67d80c733105918bdfb001d4ca0e60ef77b120bdf91c33995f1  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
+2df9702664e8eb0263724b70781066c13ac34f96a5995116ccb88600acd4a309  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
 66fb902198bd26eb7a06bfca08553c4b41926c6a9295ea4488608140dc8b8bf0  ./services/reference-control-plane/src/ai-workspace/context-graph.mjs
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
 76d056c72d2501f14804d66c66d4b86400d0b3395582d19c1e89bbcd43daf3ce  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
@@ -6443,7 +6443,7 @@ b788e43a4553068fc9db158e03e61a918368fada7b2af54137201e79ca100c41  ./services/ref
 fc1fb90903479d51017717de91437cc9bb72852caa64059284e3dce047b3b203  ./services/reference-control-plane/test/api-target-probe.test.mjs
 77fc7237231704711a97488e675f7a3c256862b229991b2bbaceea145c0e7004  ./services/reference-control-plane/test/api-target-registry.test.mjs
 cbcff58008da1946bf799829fcf177d48f1458edc57ffb192e259a963db3d491  ./services/reference-control-plane/test/approval-queue.test.mjs
-eba4aaa1a5101ca655eea382448f99dab84338a620a44533e750713f7265addb  ./services/reference-control-plane/test/assistant-identity.test.mjs
+b377fc934cbe94463fc44bb6ccbba6879f1777f8871710109a764a2c7dae9716  ./services/reference-control-plane/test/assistant-identity.test.mjs
 9b06ef2c5e8da89964356a017d3f6a938560789618b8ea24921b5d651386eedb  ./services/reference-control-plane/test/atom-fallback-declared.test.mjs
 429425961dccd0ef458049902cb7ca7702c21e873e49d8654c3620c95016eadc  ./services/reference-control-plane/test/attach-code.test.mjs
 f453d0d696573a9e0a8ec9e9484635f6021ab5a38a000b4ed34359b1e545ca69  ./services/reference-control-plane/test/audit.test.mjs
