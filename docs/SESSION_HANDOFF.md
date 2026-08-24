@@ -8,27 +8,42 @@ three-block schedule. **P1, P2 and P4 are done and deployed, plus the extraction
 
 ## ➜ LA PROSSIMA AZIONE
 
-**P5 — voice latency. But time the turn before optimising any part of it.**
+**Ask the Owner to listen again, before opening P5.**
 
-`docs/PLAN_11_DAYS_TO_DELIVERY.md` §4 Block 2. The plan asserts the
-`/api/v1/voice/interpret` round-trip is a costly gate in the middle of a spoken turn. **That has
-not been timed.** P4 is the reason this warning is here: its own stated premise turned out to be
-mostly false when finally measured with the right instrument. Time STT, the interpret round-trip,
-the chat generation and TTS separately, then optimise what the numbers name — not what the plan
-text says.
+They reported the deployed voice as *«fa schifo … parla a caso senza chiedere nulla»*. The second
+half was a real, measured defect and is fixed (`D-0678`, below). The first half — *"fa schifo"* —
+may be about the **sound**: the Kokoro voice, its prosody, the delay before it answers. Those are
+different repairs, and guessing between them already cost a phase once — P4 was built on a premise
+that measurement destroyed.
 
-**P6 is smaller than the plan claims** and the plan row now says so: `voice-session.js` **already**
-re-arms on every path (`after-reply`, `after-command`, `after-not-understood`) when `continuous`
-is set. What may be missing is reach — whether the setting is exposed, defaulted and explained,
-and whether an explicit end exists. Re-measure before building.
+- If the complaint is **the sound**: that is P5 (latency, sentence-level streamed synthesis) plus
+  the voice choice in `NOESAR_VOICE_RUNE` / `NOESAR_VOICE_ESTRELA`.
+- If it is **still talking at random**: the residue is pinned in `voice-not-addressed.test.mjs`
+  as exactly `["dove sei", "quanto costa"]`, and the honest remedy is a **wake word** — proposed
+  in `D-0678` and deliberately not built inside a repair phase.
 
-**`B-016` is still the Owner's to clear, and still blocks P3 only.** The configured model cannot
-emit tool calls: a healthy `llama.cpp` server accepts the `tools` array and answers in prose,
-because it honours them only with `--jinja`. **That container belongs to a separate project and is
-out of bounds from here** (`CLAUDE10.md` §5 rules 16-21, REGOLA ZERO). P3 (wiring the CodeN
-commands in as tools) cannot be *demonstrated* until it clears, which is why P4 was taken first.
+**`B-016` unchanged, still needs the Owner**: the configured model cannot emit tool calls
+(`llama.cpp` honours them only with `--jinja`, and that container belongs to a separate
+project). It blocks P3 only.
+
 
 ## WHAT IS TRUE NOW THAT WAS NOT
+
+**`D-0678` — the voice stopped reacting to the room, and this was the Owner's own catch.**
+Measured before changing anything: **10 of 45 realistic transcription fragments performed a real
+action**. `"no"` ran `/sweep`. `"ok"` ran `/revoke`. `"senti"` ran `/model`. Saying "no" to
+another person in the room swept the workspace. Every misfire matched at `WORD` (5) or
+`SUBSTRING` (6) — the ranks meaning *the phrase is PART of something* — while every legitimate
+phrase resolved at `NAME`, `SEGMENT` or `PROSE`. Two gates: speech acts only on an exact match
+(`actFloor`), and anything neither exact nor request-shaped ends the turn **in silence**
+(`addressedToProduct`). Live, against the served bytes: **15 of 15 noise fragments silent**, all
+real phrases intact.
+
+**This defect predates `D-0676` — my change is what made it audible.** The same fragments already
+navigated; they did it silently, so the page jumped and nothing said why. Making a performed
+command speak is what let the Owner finally hear a fault that had been shipping all along. The
+microphone was **not** turned off, though that was the easy fix: `continuous` is the Owner's own
+standing instruction (*«resti attiva finché non la fermo io»*), never withdrawn.
 
 **`D-0672` — the chat knows what it is.** The whole system message used to be
 `instructionForMode()`: three sentences. It is now composed from live state by
@@ -92,11 +107,10 @@ three new suites so a future failing assertion can never do it again.
 ## WHAT WAS **NOT** DONE
 
 - **P3 and P5-P9** — not started. P3 is deliberately deferred behind `B-016` (see above).
-- **The voice was never heard by me.** `D-0676` is proven by suite and by executing the resolver
-  against the **bytes the live installation serves** — not by speaking into a microphone. What is
-  `[UNVERIFIED]`: how the acknowledgement actually *sounds* through Kokoro, and whether the
-  compound turn feels like one utterance or two when spoken. The Owner is the only one who can
-  say that, and it is worth asking them to try it.
+- **The voice still has not been heard by me, and the Owner says it sounds bad.** `D-0678` is
+  verified against the bytes the installation serves, not through a speaker. *"fa schifo"* is
+  `[UNVERIFIED]` and unactioned: it may be the Kokoro voice, the prosody or the latency, and
+  those are different repairs. See LA PROSSIMA AZIONE.
 - **P4 did not do what `PLAN` §3 originally said**, because that premise was measured and found
   mostly wrong; the plan now carries the correction in place rather than an edited-away claim.
 - **`llama.cpp` was not restarted with `--jinja`.** Forbidden from here — another project's

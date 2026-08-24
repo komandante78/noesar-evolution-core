@@ -15826,3 +15826,43 @@ identical default.
 **Funding fit.** Restack · traits 1 (delimited, realizable component), 2 (reusable beyond this
 product), 5 (measurable reliability: a spec with an executable conformance suite and two
 independent implementations answering it).
+
+## D-0678 · the voice stops reacting to the room — an exact-match floor and an addressed-to-me gate — 2026-08-24
+**Decision.** Two gates. (1) `resolveUtterance` gains `actFloor`, default `RANK.GROUP` so every
+existing caller is unchanged; the VOICE path passes `RANK.PROSE`, so **speech may act only on an
+exact match** (`NAME`/`SEGMENT`/`PROSE`). (2) `addressedToProduct()` — an utterance that neither
+resolves exactly nor looks like a request ends the turn in **silence**: no navigation, no model
+round-trip, no chat turn, nothing spoken.
+**Why — Owner, verbatim, after hearing the deployed voice: *"parla a caso senza chiedere nulla"*.**
+Measured before changing anything, against the real 42-entry list with the real Italian
+translation: **10 of 45 realistic transcription fragments performed a real action** —
+`"no"` → `/sweep`, `"ok"` → `/revoke`, `"senti"` → `/model`, `"mm"` → `/help`,
+`"niente"` → `/retention`, `"come"` → `/divergence`, `"set"` → `/settings`, `"doc"` → `/documents`.
+Saying "no" to another person in the room ran a sweep.
+**Where the line is, measured not chosen.** Every misfire matched at `WORD` (5) or `SUBSTRING` (6)
+— the ranks meaning *the phrase is PART of something*. Every legitimate phrase resolved at
+`NAME`, `SEGMENT` or `PROSE`. A menu and a microphone are different inputs: in a menu a partial
+match is READ before it is clicked; from a room it is acted on by something the person cannot see.
+The floor is therefore a parameter, not a new global rule — the typed menu keeps partial matching.
+**This defect PREDATES `D-0676` and was made audible by it.** The same fragments already navigated;
+they did it silently, so the page jumped and nothing said why. `D-0676` made a performed command
+speak, which is how the Owner finally heard a fault that had been there all along.
+**The microphone was NOT turned off**, though that would have been the easy fix: `continuous` is
+the Owner's own standing instruction (*"resti attiva finché non la fermo io"*, `§3#6`), never
+withdrawn. The two requests are compatible only by filtering what comes back from the room.
+**Evidence.** `voice-not-addressed.test.mjs` 9/9, seen RED first: the suite asserts the ten
+fragments DID fire without the floor before asserting none fires with it. All voice + conformance
+suites 50/50. Full suite **3183 tests, 3181 pass, 0 fail, 1 pre-existing skip**. ESLint 502/0.
+Live, against the bytes the installation SERVES: **15 of 15 noise fragments produce total
+silence**, and all 6 real phrases still act or reach the chat.
+**Residue, pinned rather than hidden.** `"quanto costa"` and `"dove sei"` still reach the chat.
+They are grammatically questions and nothing about their length, word count or opener separates
+them from `"chi sei"`, which MUST reach the chat. The test asserts that residue exactly, so a
+change to it fails. Both are harmless — a spoken answer, never an action.
+**Improvement proposed, not faked.** A **wake word** is the real answer to the last three, and to
+always-on voice generally. Not built here: it needs a local keyword spotter and its own
+verification, and guessing at it inside a repair phase is how a fix becomes a feature nobody
+measured. Restack · traits 1 and 3 (a delimited component; local processing, no cloud keyword
+service).
+**Reversal cost.** None — a parameter with a backwards-compatible default and one new predicate.
+**Status.** applied, DEPLOYED and verified live (`d0678-voice-not-addressed-20260824T121503Z`).

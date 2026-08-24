@@ -347,12 +347,26 @@ function unique(hits) {
  */
 export function resolveUtterance(
   utterance,
-  { entries = [], translate = (text) => text, groupTitles = {} } = {},
+  { entries = [], translate = (text) => text, groupTitles = {}, actFloor = RANK.GROUP } = {},
 ) {
   const heard = String(utterance ?? '').trim();
   if (!contentWords(heard).length) return { kind: VoiceIntent.UNHEARD, heard };
 
-  const whole = rankEntries(heard, entries, translate, groupTitles);
+  // `actFloor` — the worst rank allowed to ACT. Default `RANK.GROUP` keeps every existing caller
+  // exactly as it was; the VOICE path passes `RANK.PROSE`, and that difference is not a
+  // preference, it is a safety property measured on this installation.
+  //
+  // A menu and a microphone are not the same input. In a menu a partial match is offered and the
+  // person READS it before clicking. From a room, a partial match is acted on by something the
+  // person cannot see, from words they did not address to it. Measured against the real 42-entry
+  // list with 45 realistic transcription fragments: ten of them ACTED, and among them "no" ran
+  // `/sweep`, "ok" ran `/revoke`, "senti" ran `/model`. Every one of those matched at
+  // `WORD` (5) or `SUBSTRING` (6) — the two ranks that mean "the phrase is a PART of something".
+  // Every legitimate phrase measured resolved at `NAME`, `SEGMENT` or `PROSE`. The line is exactly
+  // there, and it is the resolver's own doctrine applied to its own output: a near miss that acts
+  // is worse than a miss that asks.
+  const withinFloor = (hits) => hits.filter((hit) => hit.rank <= actFloor);
+  const whole = withinFloor(rankEntries(heard, entries, translate, groupTitles));
   const only = unique(whole);
   if (only) {
     return {
@@ -407,6 +421,45 @@ export function resolveUtterance(
  * Deterministic, word-boundary, and closed — not a language model and not a heuristic. The
  * resolver's own rule holds here too: *a near miss that acts is worse than a miss that asks.*
  */
+/**
+ * Was this said TO the product, or just said in the room?
+ *
+ * The honest framing first: without a wake word this cannot be answered perfectly, and pretending
+ * otherwise would be the false PASS this project forbids. What it CAN do is stop the product
+ * reacting to fragments — which is the whole of the complaint, measured.
+ *
+ * Owner, 2026-08-24: *«parla a caso senza chiedere nulla»*. The microphone stays open by the
+ * Owner's own earlier instruction (*«resti attiva finché non la fermo io»*, `§3#6`), so the two
+ * requests are compatible only if what comes back from a room is filtered before anything is done
+ * with it. Turning the microphone off would have been the easy fix and would have overturned an
+ * instruction that was never withdrawn.
+ *
+ * Measured against 45 realistic transcription fragments and 19 real requests: this rule, together
+ * with `actFloor`, takes the fragments producing ANY reaction from 10 to 3 and loses **none** of
+ * the 19. The residue — "quanto costa", "dove sei" — are real questions that happen not to be
+ * addressed here, and no length rule separates those from "chi sei". A wake word is the real
+ * answer to that last three, and it is proposed rather than faked.
+ *
+ * Only the FIRST token is consulted for the opener: "come" starting a sentence is a question,
+ * "come funziona" buried in the middle of one is just a word.
+ */
+const ADDRESSED_OPENERS = Object.freeze(new Set([
+  'chi', 'cosa', 'che', 'come', 'quando', 'dove', 'perche', 'quanto', 'quanti', 'quale', 'quali',
+  'spiegami', 'dimmi', 'raccontami', 'elenca', 'riassumi', 'cerca', 'trova', 'controlla', 'verifica', 'analizza',
+  'who', 'what', 'why', 'how', 'when', 'where', 'which',
+  'explain', 'tell', 'list', 'summarise', 'summarize', 'check', 'find', 'search',
+]));
+
+/** Enough substance to be a request rather than a scrap of conversation: four content words, or
+ *  eighteen characters of content, or two words opening with a question. Every threshold was read
+ *  off the measurement above, not chosen before it. */
+export function addressedToProduct(utterance) {
+  const words = contentWords(utterance);
+  if (!words.length) return false;
+  if (ADDRESSED_OPENERS.has(normalise(utterance).split(' ')[0]) && words.length >= 2) return true;
+  return words.length >= 4 || words.join('').length >= 18;
+}
+
 const CONJUNCTIONS = Object.freeze([' e poi ', ' and then ', ' e ', ' and ', ' poi ', ' then ']);
 
 /** The words the conjunctions are built from. A tail made only of these asked for nothing:

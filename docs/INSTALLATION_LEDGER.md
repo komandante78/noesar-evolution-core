@@ -6232,3 +6232,31 @@ stringa giusta", ma "supera il contratto".
 **Pulizia (§5a).** Rimosso il rollback più vecchio `…-pre-20260824T101213Z`
 (`Exited (0)` confermato); la sua immagine `d0674` resta su disco. Container non di
 progetto **50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.
+
+## `d0678-voice-not-addressed-20260824T121503Z` — DEPLOYATO e verificato — 2026-08-24
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0678`, difetto di sicurezza segnalato dall'Owner ascoltando la
+voce live: il prodotto **agiva su frammenti di rumore**. Misurato prima di toccare
+nulla: **10 frammenti di trascrizione su 45 eseguivano un'azione reale** — `"no"`
+faceva partire `/sweep`, `"ok"` faceva `/revoke`, `"senti"` faceva `/model`.
+Due cancelli: `actFloor` (il parlato agisce **solo** su una corrispondenza esatta —
+ranghi `NAME`/`SEGMENT`/`PROSE`) e `addressedToProduct()` (ciò che non è rivolto al
+prodotto chiude il turno **in silenzio**, senza modello e senza chat).
+Il microfono **non** è stato spento: `continuous` è un'istruzione dell'Owner mai
+ritirata. Il menu digitato conserva la corrispondenza parziale — è un parametro,
+non una regola nuova globale.
+**Verifica.** Preflight: byte-uguale albero↔immagine **493/493**, differing **0**.
+Unit **3183 test, 3181 pass, 0 fail, 1 skip preesistente**. ESLint 502/0.
+Suite `voice-not-addressed` 9/9, vista **rossa prima**: afferma che i dieci
+frammenti sparavano davvero, poi che nessuno spara più.
+Live, contro i **byte serviti**: **15 frammenti su 15 → silenzio totale**; tutte e 6
+le frasi vere continuano ad agire o a raggiungere la chat.
+**Residuo dichiarato.** `"quanto costa"` e `"dove sei"` arrivano ancora alla chat:
+sono domande, e nessuna regola di lunghezza le separa da `"chi sei"`. Innocui —
+parlano, non agiscono. Il rimedio vero è una wake word, proposta e non finta.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260824T121516Z` (`d0677`).
+**Costo di rollback — nessuno.** Un parametro con default retrocompatibile.
+**Pulizia (§5a).** Rimosso `…-pre-20260824T113439Z`. Container non di progetto
+**50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.

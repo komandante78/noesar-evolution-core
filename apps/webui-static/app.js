@@ -7,7 +7,7 @@ import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedul
 // What an utterance MEANS — resolved against the same entries typing resolves against, so the
 // microphone reaches everything the prompt reaches and nothing else (s336, voice stage 2).
 import {
-  resolveUtterance, resolveCompound, utteranceReply, VoiceIntent, VoiceDisposition,
+  resolveUtterance, resolveCompound, addressedToProduct, utteranceReply, VoiceIntent, VoiceDisposition, RANK,
 } from './voice-intent.js';
 // The lifecycle of a spoken turn — states, generations, cancellation. Everything below this
 // import is an ADAPTER: the browser parts the machine deliberately does not know about, so the
@@ -3514,6 +3514,9 @@ function heardResult(text){
   // served address book included. Not a copy assembled for voice: the same call.
   return resolveUtterance(text,{
     entries:codenOffered(),translate:t,
+    // Speech may act only on an EXACT match. See `voice-intent.js` for the measurement: ten of
+    // 45 realistic transcription fragments used to act, and "ok" ran `/revoke`.
+    actFloor:RANK.PROSE,
     groupTitles:codenGroupTitles(),
   });
 }
@@ -3568,6 +3571,21 @@ function performHeard(result){
  */
 async function applyHeardText(text,{signal=null}={}){
   const direct=heardResult(text);
+  // Step 0, and it comes FIRST because everything below it either acts or talks.
+  //
+  // The microphone stays open between turns — the Owner asked for that and it has not been
+  // withdrawn — so most of what arrives here was said in the room and not to the product. An
+  // utterance that neither resolves EXACTLY nor looks like a request ends the turn in silence:
+  // no navigation, no model round-trip, no chat turn, nothing spoken. `VoiceSession` re-arms on
+  // this path exactly as it does on every other, so listening is uninterrupted.
+  //
+  // Owner, 2026-08-24: «parla a caso senza chiedere nulla». Measured: of 45 realistic
+  // transcription fragments, ten used to ACT — "ok" ran /revoke, "no" ran /sweep — and the rest
+  // reached the chat and were answered aloud. With this gate and the resolver's `actFloor`, three
+  // produce any reaction at all, and none of 19 real requests is lost.
+  if(direct.kind===VoiceIntent.NOTHING&&!addressedToProduct(text)&&!resolveCompound(text,{entries:codenOffered(),translate:t,groupTitles:codenGroupTitles()})){
+    return {reply:'',reason:'not-addressed'};
+  }
   if(direct.kind!==VoiceIntent.NOTHING){
     const said=utteranceReply(direct,t);
     voiceNote(said);
