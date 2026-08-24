@@ -6287,3 +6287,31 @@ stati della voce e il barge-in.
 **Costo di rollback — nessuno.**
 **Pulizia (§5a).** Rimosso `…-pre-20260824T121516Z`. Non di progetto **50 → 50**,
 reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.
+
+## `d0685-streamed-voice-20260824T174106Z` — DEPLOYATO e verificato — 2026-08-24
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** Due lavori chiesti dall'Owner nella stessa sessione. `D-0683`: la barra
+sopra la chat tiene solo *dove sei* e le nove azioni passano dietro un solo "⋯"
+(`§4#3` **riaperta** dall'Owner — «un menu per software per bambini»); e
+`Clear conversation`, che non era mai stata costruita (`§4#11`), non distruttiva —
+apre un ramo nuovo vuoto, i messaggi restano leggibili sul ramo di prima.
+`D-0685`: la voce **parla dalla prima frase** mentre il resto è ancora in scrittura.
+**Verifica.** Byte-uguale albero↔installazione viva su 5 file
+(`sentence-stream.js`, `voice-session.js`, `app.js`, `index.html`, `styles.css`) —
+md5 identici, confrontati dentro il container in esecuzione.
+Unit **3203 test, 3201 pass, 0 fail, 1 skip preesistente**. ESLint **505/0/0**.
+Nuove: `voice-streamed-speech` **7/7**, `voice-sentence-stream` **8/8**,
+`ai-context-graph` **4/4**; `voice-session` **25/25** invariata.
+**Oracolo con i denti**: disattivando il ramo di streaming, **4 dei 7 test nuovi
+falliscono**; ripristinato, 7/7.
+Browser e2e: **1 FAIL, dichiarato** (`F-I18N-002`, il cricchetto del catalogo),
+`BROWSER_E2E_FAIL_UNDECLARED=0`.
+Pagina **vista renderizzata** tre volte su sonda usa-e-getta prima del deploy.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260824T174123Z` (`d0679`).
+**Costo di rollback — nessuno.** Nessuna migrazione, nessuno schema toccato; il ramo
+creato da `Clear conversation` è un record in più nel grafo, che la versione
+precedente legge senza modifiche.
+**Pulizia (§5a).** Rimosso `…-pre-20260824T125603Z`. Container non di progetto
+**50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.

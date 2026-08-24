@@ -15979,3 +15979,32 @@ a function — eight unreadable controls is both at once, and it is part of what
 seeing when he calls the product shabby. **Cost:** ~1 phase. **Benefit:** the toolbar draws
 identically on every host, which no font-dependent glyph can promise.
 **Status.** recorded for the Owner's decision (`noesar-evolution-budget` §5).
+
+## D-0685 · P5 — the voice speaks the first sentence while the answer is still written — 2026-08-24
+**Decision.** `VoiceSession` gained `#speakAsItArrives`: an optional `converseStream` adapter
+delivers the answer as it is written, `sentence-stream.js` cuts it into whole sentences, and each
+one is synthesised and played in order. Synthesis may overlap; playback never does.
+**Why.** Owner: «la voce è un qualcosa di squallido». Measured live, that is mostly a WAIT:
+~5794 ms of silence, 4790 ms of it waiting for the LAST token of an answer whose first sentence
+was ready almost at once. The timbre is a separate, Owner-scoped runtime decision (`D-0645`).
+**Rejected.** Streaming word by word — a speech engine builds prosody over the unit it is given,
+so tokens produce chopped, flatter speech than the wait they save.
+**Evidence.** voice-streamed-speech 7/7 (new), voice-sentence-stream 8/8 (new), voice-session
+25/25 unchanged, hook suite 3203/3201 pass/1 skip/0 fail, ESLint 505 0/0/0. **Oracle proven:**
+with the streaming branch disabled 4 of 7 fail; restored, 7/7.
+**Reversal cost.** None — `converseStream` is detected, not presumed; without it the old
+whole-answer path runs unchanged, and a test holds that path green.
+**Status.** applied, committed `c9c8d57`, **deployed** `d0685-streamed-voice-20260824T174106Z`.
+
+## D-0686 · The i18n runtime ratchet has drifted and is reported, not re-baselined — 2026-08-24
+**Decision.** `F-I18N-002`'s baseline stays at **607**. Measured this session: **654 closable of
+919**. The number is recorded here and NOT written into `tools/browser-e2e.mjs`.
+**Why.** Raising a ratchet to whatever the code currently does converts the defect into the
+requirement — the s330 rule this project already learned. The growth is real: recent phases added
+runtime strings with no catalogue entry (sample: "Elimina", "Usa il progetto", the schedule and
+provider rows). None of them came from this session's work.
+**Rejected.** Bumping the baseline to make the suite green. That is the false PASS of rule 38.
+**Evidence.** `tools/run-browser-e2e.sh` → `BROWSER_E2E_FAIL=1`, `FAIL_DECLARED=1`,
+**`FAIL_UNDECLARED=0`**; the same single declared FAIL recorded since `D-0508`.
+**Reversal cost.** None — nothing changed.
+**Status.** recorded; closing the 47 is a phase of its own, not a line in this one.

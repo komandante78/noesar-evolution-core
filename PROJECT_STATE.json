@@ -1,7 +1,7 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0683 delivered (chat bar rebuilt + non-destructive Clear conversation). IN PROGRESS: the voice — OWNER_REVIEW §4#4/#5, reopened by the Owner 2026-08-24 (\"la voce e un qualcosa di squallido\").",
+  "current_phase": "D-0683 + D-0685 delivered AND DEPLOYED (d0685-streamed-voice-20260824T174106Z): the chat bar rebuilt, Clear conversation added, and the voice now speaks from the first sentence.",
   "phase_status": "D-0680/D-0681/D-0682 CLOSED 2026-08-24. Host cache cleanup executed under the Owner-authorised fourth named exception to CLAUDE10.md rule 12. /mnt/cachec 224G->69G used (49%->15%); Docker build cache 168.3GB reclaimed; 21 named directories removed via tools/cache-cleanup.sh. Protected set verified present; non-project containers 38->38, volumes 75->75; installation /livez /readyz 200. Guard defect F-HOOK-008 (find -exec rm invisible) repaired. Governance 6/6 suites, rule-12 alignment 56/56, cache-cleanup 18/18, T0 3102 pass 0 fail, MANIFEST 6776 files.",
   "next_phase": "P5 proper — sentence-level streamed synthesis. This is the 6.7x that is still on the table and it is now backed by numbers rather than by the plan text.",
   "canonical_repository_constructed": true,
@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "0b64875",
-  "last_updated_utc": "2026-08-24T17:26:46.002Z",
+  "last_commit": "c9c8d57",
+  "last_updated_utc": "2026-08-24T17:43:09.749Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
@@ -1192,7 +1192,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "P5 sentence-level streamed synthesis (the measured 6.7x: ~5.8s to first audio today, ~0.87s if synthesis begins at the first sentence) and the live voice face (§4#5). NOT deployed yet: the live box still serves d0679; one single deploy after the voice work, per the Owner review file s own plan.",
+  "next_action": "The Owner must LISTEN to the deployed voice and say whether OWNER_REVIEW §4#4/#5 are closed. What is measurably fixed is the WAIT (first sentence spoken while the rest is written). What is NOT touched is the TIMBRE — D-0645 left that as the Owner s runtime choice: move the running Kokoro container to the idle RTX 3060, or bind a larger open model. Open list rows: §4#4 timbre (Owner decision), §4#6/#7 knowledge/memory identity (delegated to me, D-0647), §4#10 multimodality video (three-phase, audio and images done). Also open: B-015 push (13 commits unpushed), B-016 tool calls, F-I18N-002 ratchet at 654 vs baseline 607 (D-0686).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
