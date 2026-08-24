@@ -401,6 +401,70 @@ export function resolveUtterance(
 }
 
 /**
+ * The conjunctions a person uses to ask for two things at once, longest first so "e poi" is tried
+ * before the "e" inside it.
+ *
+ * Deterministic, word-boundary, and closed — not a language model and not a heuristic. The
+ * resolver's own rule holds here too: *a near miss that acts is worse than a miss that asks.*
+ */
+const CONJUNCTIONS = Object.freeze([' e poi ', ' and then ', ' e ', ' and ', ' poi ', ' then ']);
+
+/** The words the conjunctions are built from. A tail made only of these asked for nothing:
+ *  *"apri la memoria e poi"* split on the bare " e " leaves "poi", which has a content word and no
+ *  meaning. Longest-first ordering alone does not catch it, because " e poi " matches with an
+ *  EMPTY tail and is skipped, and then " e " matches with a useless one. */
+const CONNECTIVES = Object.freeze(new Set(['e', 'and', 'poi', 'then']));
+
+/**
+ * "Do this AND tell me that" — one utterance that is a command and a question.
+ *
+ * Measured 2026-08-24 against the real 42-entry list with the real Italian translation:
+ * *"apri la memoria"* resolves and navigates correctly, but **"apri la memoria e dimmi cosa c'è
+ * dentro" resolves to NOTHING** — the whole sentence matches no handle — so the navigation is
+ * lost and only the question survives. The person asked for two things and got one.
+ *
+ * # Why this is additive, and why that matters
+ *
+ * It runs ONLY where `resolveUtterance` already answered `NOTHING`. Every utterance that resolves
+ * today resolves identically tomorrow, so a phrase that navigates cannot start doing something
+ * else — the failure mode this project fears most in a resolver, stated in `rankEntries` and
+ * honoured here rather than restated.
+ *
+ * The head must resolve **uniquely** by the same rules as any other utterance. That is what makes
+ * splitting on " e " safe in a language that uses it constantly: *"parlami di gatti e cani"* has a
+ * head that resolves to nothing, so nothing splits and the whole sentence goes to the
+ * conversation, exactly as it does now.
+ *
+ * @returns {{kind:'compound', intent:object, tail:string}|null} `null` when this is not a
+ *   compound — never a partial answer the caller has to re-check.
+ */
+export function resolveCompound(utterance, options = {}) {
+  const heard = String(utterance ?? '').trim();
+  if (!heard) return null;
+  const lowered = ` ${heard.toLowerCase()} `;
+  for (const conjunction of CONJUNCTIONS) {
+    let from = 0;
+    for (;;) {
+      const at = lowered.indexOf(conjunction, from);
+      if (at < 0) break;
+      from = at + 1;
+      // Offsets are into `lowered`, which is the original with one space prepended — so the head
+      // ends at `at - 1` in the original and the tail starts after the conjunction.
+      const head = heard.slice(0, Math.max(0, at - 1)).trim();
+      const tail = heard.slice(at - 1 + conjunction.length).trim();
+      if (!head) continue;
+      // The tail has to ASK something. Content words alone are not enough — a leftover connective
+      // is a content word and means nothing.
+      if (!contentWords(tail).some((word) => !CONNECTIVES.has(word))) continue;
+      const intent = resolveUtterance(head, options);
+      if (intent.kind !== VoiceIntent.INTENT) continue;
+      return { kind: 'compound', intent, tail };
+    }
+  }
+  return null;
+}
+
+/**
  * What to say back, in the language in effect.
  *
  * Here rather than in each shell for the reason the whole shared model exists: two shells that
@@ -418,8 +482,15 @@ export function utteranceReply(result, translate = (text) => text) {
     case VoiceIntent.AMBIGUOUS:
       return `${translate('That matches several — say which:')} ${result.candidates.map((entry) => entry.name).join(', ')}`;
     case VoiceIntent.INTENT:
+      // The destination is named by its LABEL, translated — "Vado a Memoria", not "Vado a memory".
+      //
+      // This sentence changed medium, and that is why the rule changed with it. It used to be a
+      // visual note beside a nav item already reading "Memoria", where the slug was merely odd.
+      // Since the acknowledgement is SPOKEN, an Italian voice saying an English slug names the
+      // destination by a word the person has never seen on their own screen. The slug remains the
+      // fallback for any entry that carries no label.
       return result.disposition === VoiceDisposition.NAVIGATE
-        ? `${translate('Going to')} ${result.entry.name}`
+        ? `${translate('Going to')} ${translate(result.entry?.summary ?? '') || result.entry?.name}`
         : `${translate('Ready to send:')} ${result.line}`;
     default:
       return translate('I did not catch that.');

@@ -326,7 +326,12 @@ describe('what it says back', () => {
     assert.equal(utteranceReply({ kind: VoiceIntent.UNHEARD }, italian), 'Non ho capito.');
     assert.match(utteranceReply(hear('sblindarifico'), italian), /^Qui non si chiama/);
     assert.match(utteranceReply(hear('Progetti'), italian), /^Corrisponde a più cose/);
-    assert.match(utteranceReply(hear('memory'), italian), /^Vado a memory$/);
+    // Changed deliberately on 2026-08-24, not drifted: this used to expect `Vado a memory`, the
+    // entry's slug. It was written when the sentence was a VISUAL note sitting beside a nav item
+    // already reading "Memoria", where the slug was merely odd. The acknowledgement is now SPOKEN
+    // aloud, and an Italian voice pronouncing an English slug names the destination by a word the
+    // person has never seen on their own screen. The label, translated, is what a person calls it.
+    assert.match(utteranceReply(hear('memory'), italian), /^Vado a Memoria$/);
     assert.match(utteranceReply(hear('plan fix it'), italian), /^Pronto da mandare: \/plan fix it$/);
   });
 

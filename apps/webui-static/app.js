@@ -7,7 +7,7 @@ import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedul
 // What an utterance MEANS — resolved against the same entries typing resolves against, so the
 // microphone reaches everything the prompt reaches and nothing else (s336, voice stage 2).
 import {
-  resolveUtterance, utteranceReply, VoiceIntent, VoiceDisposition,
+  resolveUtterance, resolveCompound, utteranceReply, VoiceIntent, VoiceDisposition,
 } from './voice-intent.js';
 // The lifecycle of a spoken turn — states, generations, cancellation. Everything below this
 // import is an ADAPTER: the browser parts the machine deliberately does not know about, so the
@@ -3504,12 +3504,17 @@ async function synthesizeReply(text,{signal=null}={}){
  *              This is the case that makes the feature worth having: everything the product can
  *              be asked in prose is now sayable, and nothing had to be listed for it to be.
  */
+/** The group headings, as one expression. Extracted the moment a second caller appeared
+ *  (`resolveCompound`): two copies of the same map is how two resolvers start disagreeing about
+ *  what a room is called, which is the drift this file already keeps `codenOffered()` single for. */
+function codenGroupTitles(){return Object.fromEntries(MENU_GROUPS.map((group)=>[group.id,group.title]));}
+
 function heardResult(text){
   // `codenOffered()` — literally the array the `/` menu is built from, permission filter and
   // served address book included. Not a copy assembled for voice: the same call.
   return resolveUtterance(text,{
     entries:codenOffered(),translate:t,
-    groupTitles:Object.fromEntries(MENU_GROUPS.map((group)=>[group.id,group.title])),
+    groupTitles:codenGroupTitles(),
   });
 }
 
@@ -3564,12 +3569,29 @@ function performHeard(result){
 async function applyHeardText(text,{signal=null}={}){
   const direct=heardResult(text);
   if(direct.kind!==VoiceIntent.NOTHING){
-    voiceNote(utteranceReply(direct,t));
+    const said=utteranceReply(direct,t);
+    voiceNote(said);
     await performHeard(direct);
-    // Nothing to say: a destination was reached, or a line is waiting for the person to commit
-    // to it. Reported as a REASON rather than as an empty answer, so the session ends the turn
-    // deliberately instead of treating it as a model that produced nothing.
-    return {reply:'',reason:direct.kind===VoiceIntent.INTENT?'performed':'not-a-command'};
+    // SPOKEN, not only shown. This used to return `reply:''`, and `VoiceSession` treats an empty
+    // reply as "nothing to say" — so the product performed the action in total silence. The note
+    // it wrote was VISUAL, which is no use at all to the person this feature exists for: someone
+    // talking to the room, not reading the screen. Saying what it just did is the difference
+    // between an assistant and a remote control that beeps at nobody.
+    return {reply:said,reason:direct.kind===VoiceIntent.INTENT?'performed':'not-a-command'};
+  }
+  // "Apri la memoria E dimmi cosa c'è dentro" — one sentence, two things. Only reached because
+  // the whole utterance resolved to NOTHING above, so nothing that works today changes.
+  const compound=resolveCompound(text,{entries:codenOffered(),translate:t,groupTitles:codenGroupTitles()});
+  if(compound){
+    const said=utteranceReply(compound.intent,t);
+    voiceNote(said);
+    await performHeard(compound.intent);
+    if(!state.activeConversationId)return {reply:said,reason:'performed-no-conversation'};
+    // Both halves are spoken as one turn: the acknowledgement of what was DONE, then the answer
+    // to what was ASKED. Two separate spoken turns would let a barge-in cancel one and leave the
+    // other talking — the exact defect `D-0373` removed from the single-answer path.
+    const answer=await sendChat(compound.tail,{signal});
+    return {reply:`${said}. ${String(answer??'').trim()}`.trim()};
   }
   // Step 2. The sentence goes up alone: the candidate list is built server-side from this
   // session's identity, so nothing here decides what the model is allowed to pick.

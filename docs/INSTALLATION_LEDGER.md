@@ -6185,3 +6185,30 @@ si tocca da qui) o configura un provider capace.
 **Pulizia (§5a).** Rimosso il rollback più vecchio `…-pre-20260824T053620Z`
 (`Exited (0)` confermato); la sua immagine `d0671` resta su disco. Container non di
 progetto **50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.
+
+## `d0676b-voice-conversational-20260824T105343Z` — DEPLOYATO e verificato — 2026-08-24
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0676`: la voce dice ad alta voce quello che ha fatto — prima
+eseguiva il comando e restava in silenzio, perché `applyHeardText()` restituiva
+`reply:''` e `VoiceSession` lo tratta come "niente da dire"; la conferma esisteva
+solo come nota **visiva**. Aggiunto `resolveCompound()`: "apri la memoria e dimmi
+cosa c'è dentro" ora naviga **e** risponde, in un solo turno parlato. La
+destinazione è detta con l'etichetta tradotta ("Vado a Memoria"), non con lo slug.
+**Verifica.** Preflight: byte-uguale albero↔immagine **491/491**, differing **0**.
+Unit **3163 test, 3161 pass, 0 fail, 1 skip preesistente**. ESLint 496/0.
+Live: `sha256` del `voice-intent.js` **servito** identico all'albero, e il resolver
+**eseguito da quei byte** dà `Vado a Memoria`, composta → `/memory` + coda
+`"dimmi cosa c'è dentro"`, controllo non-composta → `null`.
+**Premessa corretta, non nascosta.** L'ipotesi iniziale ("la voce dirotta il parlato
+naturale") era in gran parte **falsa**: la navigazione pura risolve correttamente.
+Una misura precedente diceva 1/20 invece di 9/20 perché la sonda passava
+`translateString` grezza, che restituisce un oggetto: lo strumento era il difetto.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 4 figli, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260824T101213Z` (`d0674`) — non
+il più recente: `D-0673`, il build intra-fase `d0676` portava il difetto riparato qui.
+**Costo di rollback — nessuno.** Nessuno schema, nessuna migrazione.
+**Pulizia (§5a).** Rimossi `…-pre-20260824T105354Z` col tag `d0676-…` (intra-fase, mai
+pubblicato) e `…-pre-20260824T094056Z`. Immagini `d0674` e `d0672b` conservate.
+Container non di progetto **50 → 50**, reti **10 → 10**, volumi **65 → 65**.
+Superstiti di progetto: **due**.

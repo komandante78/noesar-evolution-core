@@ -4,28 +4,29 @@
 progetto sia finito entro 11 giorni … la cosa che è veramente vergognosa è la voce e la chat"*.
 Deadline **2026-09-04**, one day after NLnet's calls reopen. The plan is
 `docs/PLAN_11_DAYS_TO_DELIVERY.md` — read it first; it carries the live measurements and the
-three-block schedule. **P1 and P2 are done and deployed.**
+three-block schedule. **P1, P2 and P4 are done and deployed.**
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Put `B-016` to the Owner, then start P4 — not P3.**
+**P5 — voice latency. But time the turn before optimising any part of it.**
 
-`B-016`, measured live twice: **the configured model cannot emit tool calls.** A healthy
-`llama.cpp` server accepts the `tools` array and answers in prose. It honours tools only when
-started with `--jinja`. **That container belongs to a separate project and is out of bounds from
-here** (`CLAUDE10.md` §5 rules 16-21, REGOLA ZERO) — the Owner restarts it, or points a provider
-profile at a tool-capable endpoint. The loop is proven by suite (14/14 end to end) and the
-limitation is declared in the product itself, not hidden.
+`docs/PLAN_11_DAYS_TO_DELIVERY.md` §4 Block 2. The plan asserts the
+`/api/v1/voice/interpret` round-trip is a costly gate in the middle of a spoken turn. **That has
+not been timed.** P4 is the reason this warning is here: its own stated premise turned out to be
+mostly false when finally measured with the right instrument. Time STT, the interpret round-trip,
+the chat generation and TTS separately, then optimise what the numbers name — not what the plan
+text says.
 
-**Why P4 and not P3:** P3 (wiring the CodeN commands in as tools) cannot be *demonstrated*
-end-to-end until a tool-capable model is reachable, so building it now means building blind.
-**P4 (voice conversation-first routing) depends on the loop EXISTING, not on it being drivable on
-this host today**, so it is not blocked. Do P4, and take P3 the moment `B-016` clears.
+**P6 is smaller than the plan claims** and the plan row now says so: `voice-session.js` **already**
+re-arms on every path (`after-reply`, `after-command`, `after-not-understood`) when `continuous`
+is set. What may be missing is reach — whether the setting is exposed, defaulted and explained,
+and whether an explicit end exists. Re-measure before building.
 
-**P4, first thing to measure:** `applyHeardText()` (`app.js:3511`) runs `heardResult(text)` on the
-**raw utterance first**, so any sentence containing a destination word navigates and returns
-`reply:''` — silence. Natural speech must reach the conversation; acting belongs inside the answer
-now that P2 exists.
+**`B-016` is still the Owner's to clear, and still blocks P3 only.** The configured model cannot
+emit tool calls: a healthy `llama.cpp` server accepts the `tools` array and answers in prose,
+because it honours them only with `--jinja`. **That container belongs to a separate project and is
+out of bounds from here** (`CLAUDE10.md` §5 rules 16-21, REGOLA ZERO). P3 (wiring the CodeN
+commands in as tools) cannot be *demonstrated* until it clears, which is why P4 was taken first.
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 
@@ -57,6 +58,22 @@ both pinned by tests.
 the WebUI already renders verbatim. It is what measured `B-016`, and it names `--jinja` as the
 remedy rather than reporting a bare failure.
 
+**`D-0676` — the voice says what it did, and keeps both halves of a compound request.** It used
+to perform a command and **stay silent**: `applyHeardText()` returned `reply:''`, which
+`VoiceSession` treats as nothing to say, so the acknowledgement existed only as a *visual* note —
+useless to the person hands-free voice is for. New `resolveCompound()` makes *"apri la memoria e
+dimmi cosa c'è dentro"* navigate **and** answer in one spoken turn; it runs only where the
+resolver already answered `NOTHING`, so nothing that works today can change. The destination is
+spoken by its translated label ("Vado a Memoria"), not its slug.
+
+**My own premise was wrong, and the correction is the most useful thing in this handoff.** `PLAN`
+§3 said command-first routing hijacks natural speech. Measured against the real 42-entry list with
+the real Italian translation: **pure navigation resolves correctly**, and all 9 of 20 utterances
+that routed to a command had asked to navigate. An earlier reading said 1/20 — wrong, because the
+probe passed `translateString` raw and it returns `{text, translated}`, so every handle was built
+from an object and matched nothing. **The instrument was the defect, not the product.** The plan
+now carries that correction in place.
+
 **A hang found and fixed, worth keeping.** `assistant-identity.test.mjs` stopped terminating: an
 unguarded `inspection.tools` threw, the rejection skipped the fixture's own `server.close()`, and
 a live listener kept the process alive — so the **full suite reported a hang with zero failures**
@@ -66,7 +83,13 @@ three new suites so a future failing assertion can never do it again.
 ## WHAT WAS **NOT** DONE
 
 - **P3 and P5-P9** — not started. P3 is deliberately deferred behind `B-016` (see above).
-- **The voice is still untouched.** Diagnosis complete in `PLAN` §3; P4 is next.
+- **The voice was never heard by me.** `D-0676` is proven by suite and by executing the resolver
+  against the **bytes the live installation serves** — not by speaking into a microphone. What is
+  `[UNVERIFIED]`: how the acknowledgement actually *sounds* through Kokoro, and whether the
+  compound turn feels like one utterance or two when spoken. The Owner is the only one who can
+  say that, and it is worth asking them to try it.
+- **P4 did not do what `PLAN` §3 originally said**, because that premise was measured and found
+  mostly wrong; the plan now carries the correction in place rather than an edited-away claim.
 - **`llama.cpp` was not restarted with `--jinja`.** Forbidden from here — another project's
   container. This is the Owner's action, and it is the whole of `B-016`.
 - **The model itself** remains the ceiling on felt quality. P1-P3 make the assistant grounded,

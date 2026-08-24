@@ -15757,3 +15757,35 @@ portable answer (§63); changing another project's runtime is not.
 **deployed** code against the real model: `supported:false` with the `--jinja` remedy named.
 **Reversal cost.** None — the probe is opt-in on an operator-triggered route.
 **Status.** applied, DEPLOYED and verified live.
+
+## D-0676 · the voice acknowledges out loud, and a compound request keeps both halves — 2026-08-24
+**Decision.** `applyHeardText()` returns the acknowledgement as `reply` instead of `''`, so a
+performed command is **spoken**. New `resolveCompound()` splits "do X and tell me Y" on a closed
+set of conjunctions, performs the head and sends the tail to the conversation as one turn. The
+spoken destination is now the translated **label** ("Vado a Memoria"), not the slug.
+**Why.** Owner: *"la voce deve fare quello che chiedo in modo naturale stile jarvis"*. Measured:
+`VoiceSession` treats an empty `reply` as nothing to say (`voice-session.js:296`), so the page
+moved and the room stayed silent — the acknowledgement existed only as a VISUAL note, useless to
+the person hands-free voice is for.
+**My own premise was wrong and is corrected, not dropped.** `PLAN` §3 said command-first routing
+hijacks natural speech. Driven against the real 42-entry list with the real Italian translation,
+pure navigation resolves **correctly** (9/20 utterances route to a command, and each one asked to
+navigate). An earlier measurement said 1/20 — that reading was wrong because the probe passed
+`translateString` raw, and it returns `{text, translated}`, so every handle was built from an
+object and matched nothing. The instrument was the defect, not the product.
+**Additive by construction.** `resolveCompound` runs ONLY where `resolveUtterance` already
+answered `NOTHING`, so nothing that resolves today can start resolving differently — the failure
+`rankEntries` refuses ("a near miss that acts is worse than a miss that asks"). The head must
+resolve **uniquely**, which is what makes splitting on " e " safe in Italian: *"parlami di gatti e
+cani"* has a head that resolves to nothing, so nothing splits.
+**One pinned expectation changed deliberately.** `voice-intent.test.mjs` asserted `Vado a memory`.
+Correct as a visual note beside a nav item already reading "Memoria"; wrong the moment an Italian
+voice pronounces an English slug. Updated with the reason in the test itself.
+**Evidence.** `voice-conversational.test.mjs` 12/12, all voice suites 84/84, full suite **3163
+tests, 3161 pass, 0 fail, 1 pre-existing skip**. ESLint 496/0. Every oracle reproduced red against
+`git show HEAD:`. Live: the resolver executed **from the bytes the installation serves**
+(sha256 served == tree) gives `Vado a Memoria`, compound → `/memory` + tail, control → `null`.
+**Reversal cost.** None — no schema, no persisted shape.
+**Status.** applied, DEPLOYED and verified live (`d0676b-voice-conversational-20260824T105343Z`).
+**Cleanup followed `D-0673`**: the kept rollback is the last PUBLISHED predecessor (`d0674`), not
+the intra-phase `d0676` build whose slug defect this phase fixed.

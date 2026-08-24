@@ -58,12 +58,29 @@ states, abort on every leg, barge-in detected locally, and the product-side engi
 (`voice-engine.mjs`, 468 lines) so audio never leaves the installation. `D-0373` already removed
 dictation-into-a-box. This is not a placeholder.
 
-**V1 · Command-first routing hijacks natural speech.** `applyHeardText()` (`app.js:3511`) runs
-`heardResult(text)` on the **raw utterance first**. Any sentence containing a word that resolves
-to a destination is executed as navigation and the person gets `reply:''` — silence. A natural
-request like *"apri la memoria e dimmi cosa c'è dentro"* matches `memoria`, navigates, and
-answers nothing. Jarvis is conversation-first with action inside it; this is menu-first with
-conversation as the leftover. `VERIFIED`
+**V1 · ~~Command-first routing hijacks natural speech.~~ CORRECTED 2026-08-24 (`D-0676`) — this
+was mostly wrong, and the correction is left visible rather than edited away.**
+
+Driven against the real 42-entry list with the real Italian translation, **pure navigation
+resolves correctly**: *"apri la memoria"*, *"fammi vedere i progetti"*, *"impostazioni"*,
+*"modelli"* all navigate, which is what each one asked for. 9 of 20 sampled utterances route to a
+command and **every one of them was a navigation request**. The resolver is exact-or-containing
+with no fuzzy matching and it does its job. An earlier reading of this same question said 1/20 —
+that number was wrong because the probe passed `translateString` raw, and it returns
+`{text, translated}`, so every handle was built from an object and matched nothing. **The
+instrument was the defect, not the product.**
+
+What was really wrong, and is now fixed:
+- **The product acted in silence.** A performed command returned `reply:''`, which
+  `VoiceSession` (`voice-session.js:296`) treats as nothing to say. The acknowledgement existed
+  only as a *visual* note — no use at all to the person hands-free voice exists for.
+- **A compound request lost half of itself.** *"apri la memoria e dimmi cosa c'è dentro"*
+  resolves to `NOTHING` (no handle matches the whole sentence), so the navigation was dropped and
+  only the question survived.
+- **The destination was spoken by its slug** — an Italian voice saying "Vado a memory".
+
+`VERIFIED` — and the lesson is the one this project keeps relearning: measure with the real
+instrument before believing a premise, including your own.
 
 **V2 · A whole LLM round-trip sits in the middle of the turn.** When the deterministic resolver
 misses, `/api/v1/voice/interpret` asks the model to *choose a menu entry* before the chat is even
@@ -91,9 +108,9 @@ live → clean → handoff), not a checkpoint.
 
 | Phase | What it makes true | Acceptance |
 |---|---|---|
-| **P4** | **Conversation-first routing**: an utterance goes to the conversation unless it is an unambiguous command; the `interpret` round-trip becomes a fallback, not a gate. Acting happens *inside* the answer via P2's tools — so "apri la memoria e dimmi cosa c'è" both opens it and says what is there | a scripted set of natural Italian utterances, each with its expected outcome, passes as a suite — no silent `reply:''` |
+| **P4** ✅ **DONE** (`D-0676`) | The voice **says what it did** instead of acting in silence; a compound *"apri la memoria e dimmi cosa c'è dentro"* both navigates and answers, as one spoken turn; the destination is named by its translated label | `voice-conversational.test.mjs` 12/12, all voice suites 84/84, and the resolver run **from the bytes the live installation serves** |
 | **P5** | **The turn is fast enough to feel alive**: sentence-level streamed synthesis so speech begins before the answer is complete; the removed round-trip; measured end-to-end latency budget | `tools/acceptance/voice-latency.mjs` extended with a first-audio-out metric and a declared budget that the run meets |
-| **P6** | **Continuous conversation**: the turn re-arms without a new gesture, with an explicit end, so a person can talk to it the way the Owner asked | a multi-turn spoken exchange completes with one activation |
+| **P6** | ~~Continuous conversation~~ — **re-scoped 2026-08-24**: measured, `voice-session.js` **already** re-arms on every path (`after-reply`, `after-command`, `after-not-understood`) when `continuous` is set. What is left is not the mechanism but its **reach**: whether the setting is exposed, defaulted and explained, and whether an explicit end exists | do not build from this row — re-measure first and state what is actually missing |
 
 ### Block 3 — Close the product (days 7-11)
 
