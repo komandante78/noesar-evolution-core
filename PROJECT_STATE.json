@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0678 + D-0679 — the Owner reported the voice as bad on all four counts. Fixed and deployed: it no longer acts on room noise (10 of 45 fragments used to, \"ok\" ran /revoke), and a spoken answer is now asked for as speech rather than as prose. The spoken turn was TIMED end to end for the first time.",
-  "phase_status": "D-0679 deploy: 493/493 image bytes = tree. Unit 3186 tests / 3184 pass / 0 fail / 1 pre-existing skip. ESLint 502/0. Timed live: interpret 204ms, chat first token 66ms, chat complete 4790ms, TTS ~800ms -> ~5.8s of silence before any word is heard, ~0.87s if synthesis began at the first sentence. TTS quality measured by synthesize-then-transcribe: Italian voice WER 0.0%, English-voice control 81.8% (so the TTS is NOT the defect). A/B on the live model: 441 -> 289 chars. Cleanup: 2 project containers, non-project 50->50, networks 10->10, volumes 65->65.",
+  "current_phase": "SESSION CLOSED 2026-08-24 — five phases delivered and deployed: D-0672 (chat identity and grounding), D-0674/D-0675 (chat tool-call loop + capability probe), D-0676 (voice speaks what it did, compound requests), D-0677 (@noesar/spoken-intent extracted with SPEC and conformance), D-0678 (voice stops acting on room noise), D-0679 (spoken answers asked for as speech, spoken turn timed).",
+  "phase_status": "CLOSED. Working tree clean. Live: d0679-spoken-answer-20260824T125551Z, running, healthy, /livez /readyz 200. Full suite 3186 tests, 3184 pass, 0 fail, 1 pre-existing skip (from 3095 at session start, +91). ESLint 502 files / 0 errors. Section 5a: exactly 2 project containers, non-project 50 unchanged, networks 10 unchanged, volumes 65 unchanged. 4 commits await the Owner push (B-015).",
   "next_phase": "P5 proper — sentence-level streamed synthesis. This is the 6.7x that is still on the table and it is now backed by numbers rather than by the plan text.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "a375b3e",
-  "last_updated_utc": "2026-08-24T12:59:09Z",
+  "last_updated_utc": "2026-08-24T13:32:47Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
@@ -520,6 +520,13 @@
       "severity": "low",
       "status": "CORRECTED 2026-08-23 (D-0664): the finding's own premise undercounted by an order of magnitude. Measured: oci/Dockerfile ships exactly 2 Rust binaries (noesar-supervisor, noesar-sandbox); rust/build-authority-release.sh separately builds+provenance-seals noesar-authority-daemon (deliberately outside the product image, its own heavier verification chain). That leaves 17 of 20 crates unpackaged, not 3 -- and of those, only noesar-control-plane is actually a standalone binary (the rest are libraries with no [[bin]] target, so 'not in a Dockerfile' was never a meaningful criterion for them). Left OPEN, correctly scoped, as an Owner-level architecture question (which control-plane implementation ships) rather than closed on a false premise.",
       "summary": "noesar-control-plane is a real, standalone Rust binary (health() literally says authorityDaemon:source-present-not-built) that compiles under cargo build --workspace but ships in neither oci/Dockerfile (JS control plane ships instead) nor rust/build-authority-release.sh (which ships noesar-authority-daemon). Whether/when a Rust control-plane or authority-daemon replaces the JS one is an architecture decision, not a packaging bug."
+    },
+    {
+      "id": "F-DISK-001",
+      "severity": "low",
+      "status": "open",
+      "summary": "Measured at session close 2026-08-24: docker build cache is 168.3 GB with 153 GB reclaimable, and this project holds 54 unique image layer-sets (~847 MB each) because every deploy keeps its image as a documented rollback point. Filesystem is at 54% with 117 GB free, so this is NOT urgent. Deliberately NOT acted on: `docker builder prune` and every other prune is host-wide and forbidden without exception (CLAUDE10.md 21d) -- it would destroy other projects build caches. The removable part is the OLDEST product images whose ledger entries are long superseded, and deciding which rollback points may be retired is an Owner decision under rule 12, not a cleanup.",
+      "opened_utc": "2026-08-24T13:32:47Z"
     }
   ],
   "resolved_findings": [
@@ -1185,7 +1192,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Build sentence-level streamed synthesis: speak the first sentence as soon as it completes instead of waiting for the whole answer (~5.8s -> ~0.87s to first audio, measured). It is deliberately NOT started yet because it changes VoiceSession generation and barge-in semantics, and getting that wrong reintroduces D-0373 (two voices talking) — so it needs a fresh session, not the tail of a long one. Design constraint to carry in: the `converse` adapter currently returns a whole {reply} string; streaming means it must yield sentences, and every leg must stay cancellable by the SAME generation token barge-in already uses.",
+  "next_action": "P5 proper — sentence-level streamed synthesis, the measured 6.7x (~5.8s to first audio today, ~0.87s if synthesis begins at the first sentence). Needs a FRESH session: it changes VoiceSession generation and barge-in semantics and rushing it reintroduces D-0373 (two voices talking). Carry in this constraint: the `converse` adapter returns a whole {reply} string today, streaming means yielding sentences, and every leg must stay cancellable by the SAME generation token barge-in already uses. Before that, two Owner decisions are outstanding and neither blocks P5: B-015 (push, and whether to move origin to SSH so it stops recurring) and B-016 (the model cannot emit tool calls, blocking P3 only).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -123,14 +123,23 @@ three new suites so a future failing assertion can never do it again.
 - **FUNDING Phases F and G** — cannot be produced from inside this repository at any speed.
 - `F-RUST-002`, `F-ROT-001`, `F-MODEL-001`, `F4-012`, `F4-013`, `F7-001`, `F-CAP4-001`,
   `F-I18N-002`, `F-HOOK-008` — unchanged, previously triaged; `F-ROT-001`/`F-MODEL-001` are P7.
-- **`NOESAR_DEBUG_EVOLUTION_TOKEN` rotation** — still not done; it authenticates this project to
-  an external one, so rotating it here alone breaks that integration (`D-0666`).
+- **`NOESAR_DEBUG_EVOLUTION_TOKEN` rotation** — not done: it authenticates this project to an
+  external one, so rotating it here alone breaks that integration (`D-0666`).
 
 ## LOCAL, UNTRACKED, BY DESIGN
 
-- `EVIDENCE/docker_inventory_pre_cleanup_*.txt` — the §5a inventories; they list every container
-  on this host, other projects included, which is why the pattern is gitignored.
+- `EVIDENCE/docker_inventory_pre_cleanup_*.txt` — the §5a inventories, gitignored: they list every
+  container on this host, other projects included.
 - `BACKUPS/pre_history_rewrite_20260823T134411Z.bundle` — pre-rewrite recovery point, rule 23.
+
+## MEASURED AT CLOSE, FOR THE OWNER TO DECIDE
+
+- **`F-DISK-001`** — the docker build cache is **168.3 GB, 153 GB reclaimable**, and this project
+  holds **54 unique image layer-sets** because every deploy keeps its image as a documented
+  rollback point. The filesystem is at 54% with 117 GB free, so it is **not urgent**. Deliberately
+  **not acted on**: every `prune` is host-wide and forbidden without exception (`CLAUDE10.md`
+  §21d) — it would destroy other projects' caches. Retiring old rollback images is an Owner
+  decision under rule 12, not a cleanup.
 
 ## OPEN BLOCKERS
 
