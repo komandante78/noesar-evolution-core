@@ -3,139 +3,76 @@
 **The Owner set a deadline and named two shames.** 2026-08-24: *"devi fare in modo che il
 progetto sia finito entro 11 giorni … la cosa che è veramente vergognosa è la voce e la chat"*.
 Deadline **2026-09-04**, one day after NLnet's calls reopen. The plan is
-`docs/PLAN_11_DAYS_TO_DELIVERY.md` — read it first; it carries the live measurements and the
-three-block schedule. **P1, P2 and P4 are done and deployed, plus the extraction the Owner authorised (`D-0677`).**
+`docs/PLAN_11_DAYS_TO_DELIVERY.md`.
+
+**And on 2026-08-24 he said the working method itself was wrong** — *"perdi tempo e non fai ciò
+che chiedo"*. He was right, and the cause was specific: a status report with a question at the
+end instead of the work, and **his own page-by-page list left unused on disk**. That list is
+`docs/OWNER_REVIEW_2026-08-21.md` §4. **Read it before deciding what to build.** Two of its rows
+had been closed by me and were reopened by him in his own words — on the "NON MI PIACE" column
+**the Owner decides**, so his word of today outranks any earlier closure.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**P5 proper: sentence-level streamed synthesis. It is the 6.7×, and it is now measured.**
+**The Owner must LISTEN to the deployed voice** (`d0685-streamed-voice-20260824T174106Z`, live)
+and say whether `§4#4`/`§4#5` are closed. Then one of two things:
 
-Timed on the live installation this session — the first time the spoken turn was ever timed:
+- **if the wait is fixed but the voice still sounds wrong** → it is the TIMBRE, which `D-0645`
+  already left as his runtime choice: move the running Kokoro container to the idle RTX 3060
+  (fast, same voice), or bind a larger open model (XTTS-v2 / Chatterbox). **Neither is mine to
+  do** — rule 16, another project's container.
+- **if it is closed** → `§4#6`/`§4#7` (Knowledge/Memory identity, delegated to me in `D-0647`)
+  and `§4#10` video are the remaining rows.
 
-| stage | ms |
+## WHAT WAS DEPLOYED AND VERIFIED THIS SESSION
+
+`d0685-streamed-voice-20260824T174106Z` — byte-equal to the tree on five files, md5 compared
+**inside the running container**. `running`/`healthy`, `/livez` `/readyz` 200, 0 auth-failure.
+
+| | what is true now that was not |
 |---|---|
-| `/api/v1/voice/interpret` round-trip | **204** |
-| chat, first token | **66** |
-| chat, COMPLETE answer (562 chars) | **4790** |
-| TTS | ~800 |
-| **silence before one word is heard** | **~5794** |
-| **if synthesis began at the first sentence** | **~866** |
+| **`D-0683` · `§4#3` reopened** | the chat bar keeps only *where you are* (project › conversation, branch, provider); the nine actions moved behind one "⋯". `D-0641` had boxed ten permanent controls into three labelled cards — grouping was never the problem, **permanence** was |
+| **`D-0683` · `§4#11` new** | **`Clear conversation` exists.** It had never been built: the only clear was the `/clear` COMMAND, display-only, watermarked in one browser's localStorage. The new one is **non-destructive** — a new empty branch, every message still readable on the branch it was written on. Real deletion stays in Sessions, 30-day bin |
+| **`D-0685` · P5** | **the voice speaks the first sentence while the rest is still being written.** Measured before: ~5794 ms of silence, 4790 ms of it waiting for the last token |
 
-**Deliberately not started.** It changes `VoiceSession`'s generation and barge-in semantics, and
-getting that wrong brings back `D-0373` — two voices talking over each other. That needs a fresh
-session, not the tail of a long one. **Design constraint to carry in:** the `converse` adapter
-returns a whole `{reply}` string today; streaming means yielding sentences, and every leg must
-stay cancellable by the SAME generation token barge-in already uses.
+**Three defects found by LOOKING at the rendered page**, not by reading the diff: two decorative
+glyphs drew as tofu boxes (no font may be presumed, §62); the branch chip drew as a wide empty
+pill before a conversation is open; the open menu was see-through onto the Work column.
 
-**Two of my own premises died to measurement this session. Do not skip the measuring step.**
-`PLAN` §3 blamed the `interpret` round-trip: it is **204 ms**. And I suspected the Kokoro voice
-was wrong — a synthesize-then-transcribe round trip scored **WER 0.0%** with the Italian voice
-against **81.8%** for a deliberately-wrong English-voice control. **The TTS is not the defect**,
-and I nearly repaired a healthy component.
-
-**`B-016` unchanged, still needs the Owner** (`llama.cpp` needs `--jinja`; another project's
-container). Blocks P3 only.
-
-
-## SINCE THEN — a host cleanup the Owner authorised, and the guard defect it exposed
-
-`D-0680`/`D-0681`/`D-0682`, 2026-08-24, **after** the six below. It touched no product code and
-does not change the next action above.
-
-- **The Owner amended `CLAUDE10.md` rule 12 with a fourth named exception** (*"autorizza la
-  pulizia anche di altri"*), for host cache reclaim and superseded project directories under
-  `/mnt/cachec`. It is **irreversible** and bounded by an explicit protected list, not by care.
-- **`/mnt/cachec` 224G→69G used (49%→15%)**, plus 168.3 GB of Docker build cache. 21 directories
-  removed by name through `tools/cache-cleanup.sh`, the only authorised mechanism.
-  `NOESAR/`, `NOESAR_EVOLUTION*`, `ATOM*`, `NOESAR-ATOM-PRIVATE` verified present afterwards;
-  non-project containers 38→38, volumes 75→75; installation `/livez` `/readyz` 200.
-- **`F-HOOK-009`, a real hole in this project's own guard** (numbered 009, not 008: `F-HOOK-008`
-  was already taken by the multi-line quote-mask defect, still open — the ID collision was caught
-  at close): `find … -exec rm -rf {} +` and
-  `find … -delete` were invisible to it, because it judged the command word. 89 GB outside
-  `PROJECT_ROOT` went through unchecked before the fix. Repaired, with 4 oracle cases.
-- **`NOESAR_BRAIN` (25 GB) and `DEBUG_EVOLUTION*` (2.8 GB) are gone** — the Owner classified them
-  as projects, not modules, against this session's recommendation to keep them. Not recoverable.
-
-## WHAT IS TRUE NOW THAT WAS NOT
-
-Six decisions, all DEPLOYED and verified live. Full detail in `docs/DECISION_LOG.md`, which owns
-history; condensed here because this file describes *now*.
-
-| | What is true now | The measurement that made it necessary |
-|---|---|---|
-| `D-0672` | the chat knows what product it is, which model answers, and what it can actually do | asked *"chi sei?"* it answered **"Sono un modello sviluppato da Microsoft"**, in English |
-| `D-0674` | the chat can call a tool and answer from the real result | `parseSse` discarded `delta.tool_calls`; `ToolExecutor` had two callers, neither the chat |
-| `D-0675` | a health check says whether a provider can call tools at all | the configured model accepts a `tools` array and answers in prose (`B-016`) |
-| `D-0676` | the voice says what it did, and a compound request keeps both halves | a performed command returned `reply:''` — the product acted in **total silence** |
-| `D-0677` | `@noesar/spoken-intent`: SPEC, 60 vectors, and the SHIPPED resolver held to them | a spec with one implementation is a description of that implementation |
-| `D-0678` | speech acts only on an exact match; anything else ends the turn silently | **10 of 45 noise fragments acted** — `"ok"` ran `/revoke`, `"no"` ran `/sweep` |
-| `D-0679` | a spoken answer is asked for as speech, with a speakable model name | it read 562 characters aloud, including `/models/phi-4-q4_k_m.gguf` |
-
-**Two scope defects worth carrying forward:** every chat turn this product ever served offered the
-model **zero tools** (two independent causes, both fixed), and `project.toolIds` was written `[]`
-at creation with **no writer anywhere in the repository** yet read as a deny-list.
-
-**Three times this session the INSTRUMENT was the defect, not the product** — a raw
-`translateString` returning an object, wrong provider field names, and a Kokoro voice check
-comparing strings to objects. Each was caught before it became a false claim, and each is why the
-next session should measure before believing a written premise, including its own.
-
+**Measured:** hook suite **3203 tests / 3201 pass / 1 pre-existing skip / 0 fail** · ESLint
+**505 files, 0/0/0** · new suites `voice-streamed-speech` 7/7, `voice-sentence-stream` 8/8,
+`ai-context-graph` 4/4 · `voice-session` 25/25 unchanged · MANIFEST 6779 files.
+**Oracle proven to have teeth:** with the streaming branch disabled **4 of 7 new tests fail**;
+restored, 7/7.
 
 ## WHAT WAS **NOT** DONE
 
-- **P3 and P5-P9** — not started. P3 is deliberately deferred behind `B-016` (see above).
-- **The voice still has not been heard by me, and the Owner says it sounds bad.** `D-0678` is
-  verified against the bytes the installation serves, not through a speaker. *"fa schifo"* is
-  `[UNVERIFIED]` and unactioned: it may be the Kokoro voice, the prosody or the latency, and
-  those are different repairs. See LA PROSSIMA AZIONE.
-- **P4 did not do what `PLAN` §3 originally said**, because that premise was measured and found
-  mostly wrong; the plan now carries the correction in place rather than an edited-away claim.
-- **`llama.cpp` was not restarted with `--jinja`.** Forbidden from here — another project's
-  container. This is the Owner's action, and it is the whole of `B-016`.
-- **The model itself** remains the ceiling on felt quality. P1-P3 make the assistant grounded,
-  capable and honest on whatever model runs; they do not make a 14B q4 build reason like a
-  frontier model.
-- **No browser e2e was run this phase.** The new UI element is created at runtime, so the static
-  audit cannot see it; `webui-markup-structure.test.mjs` (52/52) covers the tokens and structure,
-  and it caught two real defects here — an undefined `--font-mono` and a **UI-043 violation**
-  where my `announceEvent` in the streaming branch would have read the answer aloud twice.
-  Declared rather than implied: the rendered rows have **not** been seen in a browser.
-- **FUNDING Phases F and G** — cannot be produced from inside this repository at any speed.
-- `F-RUST-002`, `F-ROT-001`, `F-MODEL-001`, `F4-012`, `F4-013`, `F7-001`, `F-CAP4-001`,
-  `F-I18N-002`, `F-HOOK-008` — unchanged, previously triaged; `F-ROT-001`/`F-MODEL-001` are P7.
-- **`NOESAR_DEBUG_EVOLUTION_TOKEN` rotation** — not done: it authenticates this project to an
-  external one, so rotating it here alone breaks that integration (`D-0666`).
-
-## LOCAL, UNTRACKED, BY DESIGN
-
-- `EVIDENCE/docker_inventory_pre_cleanup_*.txt` — the §5a inventories, gitignored: they list every
-  container on this host, other projects included.
-- `BACKUPS/pre_history_rewrite_20260823T134411Z.bundle` — pre-rewrite recovery point, rule 23.
-
-## MEASURED AT CLOSE, FOR THE OWNER TO DECIDE
-
-- **`F-DISK-001`** — the docker build cache is **168.3 GB, 153 GB reclaimable**, and this project
-  holds **54 unique image layer-sets** because every deploy keeps its image as a documented
-  rollback point. The filesystem is at 54% with 117 GB free, so it is **not urgent**. Deliberately
-  **not acted on**: every `prune` is host-wide and forbidden without exception (`CLAUDE10.md`
-  §21d) — it would destroy other projects' caches. Retiring old rollback images is an Owner
-  decision under rule 12, not a cleanup.
+- **`§4#4` — the voice's TIMBRE is untouched.** Only the wait was removed. If it still sounds
+  bad after listening, that is the container decision above, and it is the Owner's.
+- **`§4#6`/`§4#7`/`§4#10`-video** — not started this session.
+- **The i18n ratchet is red and stays red** (`D-0686`): `F-I18N-002` measures **654 closable of
+  919** against a declared baseline of **607**. It was **not** re-baselined — raising a ratchet
+  to whatever the code currently does turns the defect into the requirement. None of the 47 came
+  from this session. `BROWSER_E2E_FAIL_UNDECLARED=0`.
+- **Nothing was pushed** — see the blocker below.
+- The composer's eight emoji icon-buttons still depend on an emoji font and drew as empty boxes
+  on the probe (`D-0684`, proposed, not executed).
 
 ## OPEN BLOCKERS
 
-- `B-016` **OPEN, needs the Owner** — the configured model cannot emit tool calls. See above.
-- `B-015` **OPEN** — `git push origin main` fails, no credential helper here. Everything is
-  complete locally and **deployed live**, but not on `origin`. Same shape as `B-014`, which the
-  Owner closed by supplying a PAT ad-hoc.
-- `B-002` **STALE** (`D-0257`) — neither `gitleaks` nor `trufflehog` on `PATH`; this session's
-  diffs were reviewed with a heuristic grep, clean, **declared as heuristic**.
-- `B-011`, `B-013`, `B-014` closed previously.
+- **`B-015` — 15 commits unpushed** (`git log origin/main..HEAD`). Needs the Owner: authorise the
+  push, and decide whether to move `origin` to SSH so this stops recurring.
+- **`B-016`** — the configured model cannot emit tool calls (`llama.cpp` needs `--jinja`, another
+  project's container). Blocks P3 only.
+- **`F-I18N-002`** — above. Recorded, not hidden, not re-baselined.
 
-## ➜ OWNER ACTION OUTSTANDING — the remote is two commits behind
+## THE METHOD THAT WAS CORRECTED, AND MUST NOT DRIFT BACK
 
-`git push` failed with *"could not read Username for https://github.com"* — no credential
-helper is persisted (`B-015`, recurring, not new). The local repository is complete and the
-working tree is clean; only `origin` is behind, by every `phase-D-0680` commit from **5d45639**
-onward (`git log origin/main..HEAD`). Push them
-directly, as on 2026-08-24 for `49cc252..9b433dd`.
+1. **His list is the backlog.** Do not ask him to re-dictate what is already in
+   `docs/OWNER_REVIEW_2026-08-21.md`.
+2. **A row he reopens is open**, whatever a `D-0xxx` says. §0 of that file: on "NON MI PIACE"
+   the Owner decides.
+3. **Do not end a turn with a question when the work was already authorised.** Deliver, then ask
+   only what genuinely needs him — a container, a push, a product direction.
+4. **A UI surface is seen rendered before it is called done.** Three screenshots this session
+   found three defects that no test would have.
