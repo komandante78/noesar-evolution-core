@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0671 — chat toolbar double-border removed and DEPLOYED live (image d0671-toolbar-border-20260823T160319Z). Found by screenshotting the real live page after the Owner reported the toolbar still looked wrong; orphaned --surface-toolbar token also removed.",
-  "phase_status": "Deploy preflight+apply: 485/485 image bytes = tree. Unit 3019/3020. browser-e2e RETENTION=delete only-declared-gaps-failed. Live curl on /styles.css confirms 0 surface-toolbar occurrences; live screenshot confirms outer border gone.",
-  "next_phase": "No open next phase on this line of work. Awaiting Owner direction — either a further concrete UI defect (with screenshot/detail) or a new named task.",
+  "current_phase": "D-0672/D-0673 — the chat given a real identity and live grounding (assistant-identity.mjs), DEPLOYED live (d0672b-chat-identity-20260824T054848Z). Day 1 of the 11-day plan in docs/PLAN_11_DAYS_TO_DELIVERY.md.",
+  "phase_status": "Deploy preflight+apply: 487/487 image bytes = tree, 0 differing. Unit 3117 tests / 3115 pass / 0 fail / 1 pre-existing skip. ESLint 493/0. Live: prompt recomposed inside the RUNNING container from real state, 4 assertions green. Cleanup: 2 project containers, non-project 50->50, networks 10->10.",
+  "next_phase": "P2 of docs/PLAN_11_DAYS_TO_DELIVERY.md — the tool-call loop. Measured this session: provider-gateway.mjs:156 extracts only delta.content and DISCARDS delta.tool_calls; ChatOrchestrator.streamToResponse() sends a tools array and never parses, executes or feeds back a call. ToolExecutor has two callers and neither is the chat. The chat therefore cannot act at all.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "59cddb23a7475b85a77acfdf319f0f7f3c629abd",
-  "last_updated_utc": "2026-08-23T16:15:00Z",
+  "last_updated_utc": "2026-08-24T07:16:55Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
@@ -760,7 +760,8 @@
     "d0661_noesar_data_plane_2026-08-23": "VERIFIED this session: rust/crates/noesar-data-plane +9 tests (was 0), incl. 13-way mutation coverage on RepositoryHealth::production_ready() -> cargo test -p noesar-data-plane --offline = 9/9. cargo test --workspace --offline = 184 tests, 184 pass, 0 fail (+9 over D-0660).",
     "d0662_frust001_closed_2026-08-23": "VERIFIED this session: noesar-authority-protocol +19 tests, noesar-authority-transport +14 tests, noesar-control-plane +1 test (all were 0). cargo test --workspace --offline = 218 tests, 218 pass, 0 fail (+34 over D-0661). F-RUST-001 CLOSED, F-RUST-002 opened for the packaging observation.",
     "d0663_socket_dispatch_coverage_2026-08-23": "VERIFIED this session: session-protocol.test.mjs +3 tests (workspace.reject/simulate, coden.gitStatus dispatch routes) -> 32/32. Full suite 3093 tests, 3092 pass, 1 pre-existing skip, 0 fail.",
-    "d0665_f4010_dispatch_proof_2026-08-23": "VERIFIED this session: ai-provider-gateway.test.mjs +1 test (7/7), ai-agent-service.test.mjs +1 test (6/6), ToolExecutor constructor gained an optional lookup override. Full suite 3095 tests, 3093 pass, 1 pre-existing skip, 0 fail."
+    "d0665_f4010_dispatch_proof_2026-08-23": "VERIFIED this session: ai-provider-gateway.test.mjs +1 test (7/7), ai-agent-service.test.mjs +1 test (6/6), ToolExecutor constructor gained an optional lookup override. Full suite 3095 tests, 3093 pass, 1 pre-existing skip, 0 fail.",
+    "d0672_chat_identity_2026-08-24": "VERIFIED this session: assistant-identity.test.mjs 22/22 (identity, four voice states, tool naming and honest absence, newline-forgery containment, conditional citation, live field names pinned against a real ProviderGateway record, partial-inspection tolerance, on-the-wire system message). Every oracle reproduced RED against git show HEAD: of the pre-change code. Full suite 3117 tests, 3115 pass, 0 fail, 1 pre-existing skip. ESLint 493 files/0 errors."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1165,7 +1166,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "None open. All D-0669/D-0670/D-0671 work is committed, pushed, and deployed live, verified with real evidence (curl + screenshots against the running installation, not inferred).",
+  "next_action": "Open docs/PLAN_11_DAYS_TO_DELIVERY.md section 4, phase P2. First thing to measure: whether parseSse() can surface tool_calls for all three apiStyles (openai-chat, openai-responses, anthropic-messages) without breaking the existing delta contract 3117 tests depend on.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

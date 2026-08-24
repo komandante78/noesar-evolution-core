@@ -15663,3 +15663,49 @@ browser-e2e: `RETENTION=delete only-declared-gaps-failed` (only `F-I18N-002`, 0
 undeclared).
 **Reversal cost.** None — pure CSS, no migration, no schema.
 **Status.** applied and installed (deploy in this same phase, see `D-0672`).
+
+## D-0672 · the chat is given an identity and the installation it lives in — 2026-08-24
+**Decision.** `ai-workspace/assistant-identity.mjs`: the system message is composed from live
+state (product, which model and whether it is local, voice configured or not, workspace counts,
+enabled tools by name) plus an answering register, replacing the three-sentence
+`instructionForMode()` that was the entire prompt. The citation instruction is now conditional on
+evidence actually being retrieved. `installationFromState()` is pure and exported so the field
+names can be pinned against a record the real `ProviderGateway` produced.
+**Why.** Owner: *"la chat non risponde come una vera chat tipo claude o chat gpt"*. Measured A/B
+against the live phi-4: asked *"chi sei?"* the OLD prompt answered **"Sono un modello di
+linguaggio sviluppato da Microsoft"**; asked *"PERCHE NON FUNZIONI?"* it replied **in English**
+with a generic tutorial about checking the power supply. The new prompt names the product, the
+real model and the real counts, and answers in Italian.
+**Rejected.** Pointing the chat at a frontier API instead — it buys felt quality with a vendor
+dependency the core must never require (`CLAUDE10.md` §14), and leaves the identity gap intact on
+every self-hosted installation.
+**Evidence.** `assistant-identity.test.mjs` 22/22; the citation/identity/voice/no-tools oracles
+each reproduced red against `git show HEAD:` of the old code. Full suite **3117 tests, 3115 pass,
+0 fail, 1 pre-existing skip** (+22 over `D-0665`). ESLint 493/0. Deploy preflight **487/487
+byte-equal to tree, 0 differing**. `EVIDENCE/chat_identity_ab_20260824T041426Z.txt`.
+**Two live defects found by looking, not by review.** Composing the prompt inside the RUNNING
+container against the REAL profile showed *"served by via Local OpenAI-compatible, running on an
+external service"* — the snapshot read `profile.model`/`profile.kind` while the record carries
+`defaultModel`/`external`, so the model was nameless and its locality backwards. A hand-written
+fixture would have carried the same wrong names and agreed with the bug; the regression test
+therefore builds its profile with the real gateway. Also fixed: `#buildContext` read
+`inspection.sources.length` unguarded and took a whole turn down on a partial inspection —
+caught by CE-007's containment fixture. Grounding is decoration on the answer and must never be
+able to remove the answer.
+**Reversal cost.** None. Prompt composition only; no schema, no migration, no stored data.
+**Status.** applied, DEPLOYED and verified live (`d0672b-chat-identity-20260824T054848Z`).
+
+## D-0673 · the kept rollback is the last PUBLISHED predecessor, not the literal newest — 2026-08-24
+**Decision.** §5a's single surviving rollback for this phase is
+`noesar-evolution-pre-20260824T053620Z` (`d0671`), not the literally-newer
+`…-pre-20260824T055146Z`, which was removed with its image tag.
+**Why.** The newer one carried `d0672`, an intra-phase build that existed for ~70 seconds and
+held the two defects found and fixed in this same phase. §21b's purpose is "the parachute for
+what is running now"; a parachute onto known-broken code is not one. §21a already names an
+intra-phase container as litter this phase must remove.
+**Rejected.** Keeping both — §21b permits exactly two containers at phase close.
+**Evidence.** Post-cleanup: 2 project containers, non-project containers 50 → 50, networks
+10 → 10, volumes unchanged, `/livez` `/readyz` 200, health `healthy`.
+**Reversal cost.** None — `d0669`'s and `d0671`'s images both remain on disk, so every rollback
+path documented in the ledger still works.
+**Status.** applied.

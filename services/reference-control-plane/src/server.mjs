@@ -107,6 +107,7 @@ import { MemoryService } from './memory-service.mjs';
 import { compactRun } from './memory-compaction.mjs';
 import { ClosureRegister, ProductMetric } from './product-metric.mjs';
 import { ChatOrchestrator } from './ai-workspace/chat-orchestrator.mjs';
+import { installationFromState } from './ai-workspace/assistant-identity.mjs';
 import { FileExtractor, extractorCapabilities } from './ai-workspace/file-extractors.mjs';
 import { captionImage, visionCapableProfiles } from './ai-workspace/vision-caption.mjs';
 import { ToolExecutor } from './ai-workspace/tool-executor.mjs';
@@ -405,7 +406,23 @@ const remoteTargetRegistry = new RemoteTargetRegistry({ store:aiStore, vault:cre
 // third place to keep one.
 const apiTargetRegistry = new ApiTargetRegistry({ store:aiStore, vault:credentialVault, ledger });
 const workflowService = new WorkflowService({ store:aiStore, ledger, executor:toolExecutor });
-const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService });
+/** Who this product says it is — in ONE place. `/api/v1/bootstrap` carried these three strings as
+ *  a literal and the assistant now has to state the same three; two copies of a product's own name
+ *  is exactly the drift this project has been burned by before. */
+const PRODUCT_IDENTITY = Object.freeze({ name:'NOESAR Evolution', edition:'Open Core Source Implementation', version:'1.0.0' });
+
+/**
+ * What the assistant is told about the installation it lives in.
+ *
+ * Read fresh on every turn (see `ChatOrchestrator`'s `installationSnapshot`), and deliberately
+ * cheap: store reads and an environment lookup, no network. Voice readiness here is *configured*,
+ * not *reachable* — probing two endpoints to compose a system message would put a network timeout
+ * in the path of every chat turn, and "the operator set this up" is the fact the assistant needs
+ * in order not to offer what was never configured. Reachability is what `/api/v1/voice/state`
+ * is for, and it is the surface that already reports it.
+ */
+const installationSnapshotForChat = () => installationFromState(aiStore.read(), process.env, PRODUCT_IDENTITY);
+const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat });
 const hardware = discoverHardware();
 // The bootstrap token is resolved from a 0600 runtime file, not from the
 // environment: an environment variable is visible in `docker inspect` and in
@@ -4772,7 +4789,7 @@ const requestListener = async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/v1/bootstrap') {
       const authenticated = requireSession(req, res, 'user.read'); if (!authenticated) return;
       return json(res, 200, {
-        product:{ name:'NOESAR Evolution', edition:'Open Core Source Implementation', version:'1.0.0' },
+        product:PRODUCT_IDENTITY,
         authority,
         dataPlane,
         user:authenticated.user,

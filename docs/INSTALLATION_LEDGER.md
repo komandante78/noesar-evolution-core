@@ -6132,3 +6132,29 @@ sparito.
 **Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260823T153622Z`
 rimosso (`Exited (0)` confermato). Container non di progetto: 50, invariati.
 Superstiti di progetto: **due**.
+
+## `d0672b-chat-identity-20260824T054848Z` — DEPLOYATO e verificato — 2026-08-24
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0),
+installato con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `D-0672`: il messaggio di sistema della chat è composto dallo stato
+live (`assistant-identity.mjs`) invece delle tre frasi di `instructionForMode()`.
+Nomina prodotto, modello in uso e se è locale, stato della voce, contenuti del
+workspace e strumenti abilitati; l'istruzione di citazione diventa condizionata
+all'evidenza davvero recuperata. `PRODUCT_IDENTITY` centralizzato (era un letterale
+duplicato in `/api/v1/bootstrap`).
+**Verifica.** Preflight: byte-uguale albero↔immagine **487/487**, differing **0**.
+Unit **3117/3117** eseguibili (3115 pass, 1 skip preesistente, 0 fail). ESLint 493/0.
+A/B contro il phi-4 live: col vecchio prompt il prodotto rispondeva *"Sono un modello
+di linguaggio sviluppato da Microsoft"* e in inglese; col nuovo nomina sé stesso e
+risponde in italiano (`EVIDENCE/chat_identity_ab_20260824T041426Z.txt`).
+Live: prompt ricomposto **dentro il container in esecuzione** dallo stato reale —
+4 asserzioni verdi (nessun *"by via"*, modello nominato, dichiarato locale, mai
+dichiarato esterno).
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 4 figli, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260824T053620Z` (`d0671`) — non
+il più recente in senso letterale: vedi `D-0673`.
+**Costo di rollback — nessuno.** Sola composizione del prompt, nessuna migrazione.
+**Pulizia (§5a).** Rimossi il rollback intra-fase `…-pre-20260824T055146Z` col suo tag
+`d0672-…` (mai pubblicato, difettoso) e il rollback vecchio `…-pre-20260823T160333Z`.
+Container non di progetto **50 → 50**, reti **10 → 10**, volumi invariati.
+Superstiti di progetto: **due**.

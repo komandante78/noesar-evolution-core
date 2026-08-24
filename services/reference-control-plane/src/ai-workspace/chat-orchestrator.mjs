@@ -2,19 +2,25 @@
 import { randomUUID } from 'node:crypto';
 import { wrapUntrusted, enforceToolScope } from './untrusted-content.mjs';
 import { AGENT_DIRECTIVE_INSTRUCTION, extractAgentDirective } from './agent-directive.mjs';
+import { composeSystemPrompt } from './assistant-identity.mjs';
 
-function instructionForMode(mode){
-  if(mode==='CREATE')return 'You are in CREATE mode. Produce a concrete editable artifact. State assumptions. Cite retrieved passages using their exact [source:<id>#<passage>] labels.';
-  if(mode==='ACT')return 'You are in ACT mode. Plan actions first. Never execute mutative tools without an explicit approval token. Report each step and result. Cite retrieved passages when used.';
-  return 'You are in ASK mode. Answer precisely. Distinguish provided context, retrieved evidence and uncertainty. Cite retrieved passages using their exact [source:<id>#<passage>] labels. Never present retrieval as independent fact verification.';
-}
 function sse(res,event,data){res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);}
 function dataClassesFor({history,projectInstructions,memoryText,evidence,tools}){
   return ['prompt',history&&'selected messages',projectInstructions&&'project instructions',memoryText&&'selected memory',evidence.length&&'selected sources',tools.length&&'tool schemas'].filter(Boolean);
 }
 
 export class ChatOrchestrator{
-  constructor({graph,workspace,providers,store,ledger,agentService=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.active=new Map();}
+  // `installationSnapshot` is a function, not a value: what the assistant is told about this
+  // installation has to be true at the moment of the turn, not at the moment the server booted.
+  // A model started with `/model` after start-up is the case that makes this concrete — a value
+  // captured in the constructor would still name the one that was default at boot.
+  constructor({graph,workspace,providers,store,ledger,agentService=null,installationSnapshot=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.installationSnapshot=installationSnapshot;this.active=new Map();}
+  // A snapshot that throws must never take the turn down with it: the assistant is worse without
+  // its grounding, but it still answers, and an installation fact is not worth a 500.
+  #installationFacts(){
+    try{return this.installationSnapshot?.()??{};}
+    catch(error){this.ledger?.append({actor:'system',action:'chat.identity',result:'degraded',details:{message:error.message}});return{};}
+  }
   stop(runId,actorId='system'){const active=this.active.get(runId);if(!active)return false;active.controller.abort();this.ledger?.append({actor:actorId,action:'chat.stop',result:'stopped',details:{runId}});return true;}
   #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[]}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
@@ -27,17 +33,42 @@ export class ChatOrchestrator{
     // their own non-system message: text a third party wrote must never sit in
     // the role that carries this runtime's own instructions.
     const untrusted=wrapUntrusted(evidence,{label:'retrieved source passages'});
+    // Tool scope is an intersection of what the caller selected with what is
+    // enabled. Nothing inside the retrieved content can widen it.
+    //
+    // Resolved BEFORE the system message now, not after: the assistant is told which tools it has
+    // by name, and it can only be told that once the scope has decided. The order used to be the
+    // other way round because the system message named nothing.
+    const enabledToolIds=this.store.read().tools.filter((item)=>!item.disabled).map((item)=>item.id);
+    const scope=enforceToolScope({grantedToolIds:enabledToolIds,requestedToolIds:toolIds});
+    const granted=this.store.read().tools.filter((item)=>scope.allowedToolIds.includes(item.id));
+    const tools=granted.map((item)=>({type:'function',function:{name:item.name,description:item.description,parameters:item.inputSchema}}));
+    const system=composeSystemPrompt({
+      mode:selectedMode,
+      installation:{...this.#installationFacts(),
+        // Counts come from the inspection rather than the snapshot: they are facts about the
+        // conversation's own project, which the snapshot has no way to know.
+        //
+        // Read defensively, and not as a style preference. The grounding is DECORATION on the
+        // turn: it makes the answer better and it must never be able to take the answer away.
+        // `#installationFacts()` already refuses to throw for that reason, and a field read that
+        // can throw right next to it would have made that guard pointless — which is exactly what
+        // happened, caught by CE-007's own containment fixture on the first full run.
+        sourceCount:(inspection.sources??[]).length,memoryCount:(inspection.memories??[]).length},
+      tools:granted.map((item)=>({name:item.name,description:item.description})),
+      // Conditional, and this is the point: the citation instruction used to be emitted on every
+      // turn including the ones with nothing retrieved — which is every turn on an installation
+      // with no sources.
+      hasEvidence:evidence.length>0,
+      projectInstructions,memoryText,
+      extraInstructions:[this.agentService&&AGENT_DIRECTIVE_INSTRUCTION],
+    });
     const messages=[
-      {role:'system',content:[instructionForMode(selectedMode),this.agentService&&AGENT_DIRECTIVE_INSTRUCTION,projectInstructions,memoryText].filter(Boolean).join('\n\n')},
+      {role:'system',content:system},
       ...(untrusted?[{role:'user',content:untrusted.text,untrusted:true}]:[]),
       ...inspection.messages.map((item)=>({role:item.role,content:item.content})),
       {role:'user',content:String(content)}
     ];
-    // Tool scope is an intersection of what the caller selected with what is
-    // enabled. Nothing inside the retrieved content can widen it.
-    const enabledToolIds=this.store.read().tools.filter((item)=>!item.disabled).map((item)=>item.id);
-    const scope=enforceToolScope({grantedToolIds:enabledToolIds,requestedToolIds:toolIds});
-    const tools=this.store.read().tools.filter((item)=>scope.allowedToolIds.includes(item.id)).map((item)=>({type:'function',function:{name:item.name,description:item.description,parameters:item.inputSchema}}));
     if(untrusted?.detections.length){
       this.ledger?.append({actor:'system',action:'prompt-injection.detected',result:'contained',details:{conversationId,passages:untrusted.detections.length,signals:untrusted.detections.flatMap((item)=>item.signals.map((signal)=>signal.signal))}});
     }

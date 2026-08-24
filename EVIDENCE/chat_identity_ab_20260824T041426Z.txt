@@ -1,0 +1,32 @@
+
+==============================================================================
+DOMANDA: chi sei?
+==============================================================================
+
+--- PROMPT VECCHIO (in produzione ora) ---
+Sono un modello linguistico AI sviluppato per fornire risposte precise e informazioni basate sui dati di addestramento fino a ottobre 2023. Posso aiutarti con una varietà di domande, fornendo contesto e citazioni quando possibile. Se hai domande specifiche, sentiti libero di chiedere!
+
+**Context:** Non ho un contesto specifico fornito per questa domanda.
+
+**Evidence:** Non ho evidenze da citare poiché la risposta è generica e basata sulla mia funzione come modello linguistico.
+
+**Uncertainty:** Non c'è incertezza riguardo alla mia identità come modello linguistico AI.
+
+--- PROMPT NUOVO (questa fase) ---
+Sono un assistente integrato in NOESAR Evolution, versione 1.0.0, servito dal modello /models/phi-4-q4_k_m.gguf. Questa installazione è auto-ospitata e non utilizza i server di un fornitore.
+
+==============================================================================
+DOMANDA: PERCHE NON FUNZIONI?
+==============================================================================
+
+--- PROMPT VECCHIO (in produzione ora) ---
+To provide a precise answer, I need more context about what "non funziona" refers to. It could be a device, software, system, or any other entity. Please specify what you are referring to, and if possible, provide any error messages or symptoms you are experiencing. This will help in diagnosing the issue more accurately. If you have any specific context or evidence, please share it, and I will do my best to assist you. 
+
+If you are referring to a technical issue, common reasons for something not working might include:
+
+1. **Power Issues**: Ensure the device or system is properly powered on.
+2. **Connection Problems**: Check all physical and network connections.
+3. **Software Errors**: Look f
+
+--- PROMPT NUOVO (questa fase) ---
+Per determinare perché non funziona, avrei bisogno di più dettagli specifici su cosa non sta funzionando. Potresti fornire ulteriori informazioni o specificare quale parte dell'installazione NOESAR Evolution sta causando problemi?
