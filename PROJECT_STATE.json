@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "5e04f7a",
-  "last_updated_utc": "2026-08-24T12:57:56Z",
+  "last_commit": "a375b3e",
+  "last_updated_utc": "2026-08-24T12:59:09Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
