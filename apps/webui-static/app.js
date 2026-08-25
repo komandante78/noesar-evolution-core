@@ -4,19 +4,10 @@ import { PAGE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-// What an utterance MEANS — resolved against the same entries typing resolves against, so the
-// microphone reaches everything the prompt reaches and nothing else (s336, voice stage 2).
-import {
-  resolveUtterance, resolveCompound, addressedToProduct, utteranceReply, VoiceIntent, VoiceDisposition, RANK,
-} from './voice-intent.js';
-// The lifecycle of a spoken turn — states, generations, cancellation. Everything below this
-// import is an ADAPTER: the browser parts the machine deliberately does not know about, so the
-// ordering that used to live tangled through three callbacks can be proven without a microphone.
-import { VoiceSession, VoiceTurn } from './voice-session.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
-  AGENT_COMMANDS, MENU_GROUPS, matchCommands, parseCommandPrompt, resolveCommand,
+  AGENT_COMMANDS, matchCommands, parseCommandPrompt, resolveCommand,
   menuFor, groupMenu, hiddenNote, accountFromUser, ROUTE_ACCESS, SECTION_ACCESS,
 } from '../shared/coden/agent-commands.js';
 // What a session LOOKS like, and what a typed line MEANS — phase 2 put it where both shells
@@ -761,15 +752,7 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // Owner modules join the same permanent-strip reasoning: an ACTIVE module must be
   // reachable from the sidebar on sign-in, not only after visiting Settings.
   // GET /api/v1/sector-modules/catalog is workspace.read, open to every account.
-  // The voice state joins this list for a reason measured, not guessed: `initChatVoice()` runs
-  // at module boot — two statements BEFORE `initializeAuth()`, so not a race but an order — and
-  // `/api/v1/voice/state` therefore answered 401 on every cold load. The catch turned that into
-  // `{canHear:false,canSpeak:false}`, which disables the microphone and the read-aloud button
-  // and makes `speakReply` return before it asks for anything. Nothing ever fetched it again,
-  // so the whole of voice was dead from sign-in until a manual reload. Same shape as `D-0353`
-  // («pagine con dati veri ma ferme al login»); the page census could not see it because voice
-  // is a widget inside the chat page, not a page with a loader.
-  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets(),refreshVoiceState()]);}
+  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets()]);}
 $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;renderSetupQr(result.otpauthUri);showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];showFirstRunRecoveryCodes(result.recoveryCodes);await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
@@ -852,7 +835,7 @@ $('#loginPasskeyButton').addEventListener('click',()=>withBusy($('#loginPasskeyB
     await enterApplication();
   }catch(error){authError(error.message==='The operation either timed out or was not allowed.'?'Passkey sign-in was cancelled.':error.message);}
 },{busyLabel:'Waiting for passkey…'}));
-$('#logoutButton').addEventListener('click',async()=>{try{await api('/api/v1/auth/logout',{method:'POST',body:'{}'});}catch{}csrfToken='';currentUser=null;forgetVoiceState();$('#authGate').classList.remove('hidden');showOnly('#loginForm');});
+$('#logoutButton').addEventListener('click',async()=>{try{await api('/api/v1/auth/logout',{method:'POST',body:'{}'});}catch{}csrfToken='';currentUser=null;$('#authGate').classList.remove('hidden');showOnly('#loginForm');});
 // One entry point for every in-app link, so a link written as "settings/audit" and a link
 // written with a name that has since been demoted both land in the same place. In-page
 // links were the easiest thing to leave pointing at a page that no longer exists.
@@ -1257,22 +1240,12 @@ $('#startWorkFromChat')?.addEventListener('click',()=>{
   jumpTo('coden/agent/plan');
 });
 /**
- * Send one turn.
+ * One chat turn. Returns the assistant's text so a caller with its own plans for it does not
+ * have to scrape it back out of the DOM.
  *
- * `spoken` is set when the turn came from the microphone (`D-0373`). Owner: «non deve crearmi
- * il prompt per scrivere non mi serve a nulla ma deve parlare ed essere connesso con il modello».
- * A spoken turn therefore never touches the composer — it is not dictation waiting to be sent,
- * it IS the message — and its reply is always spoken back, whatever the read-aloud toggle says,
- * because in a spoken conversation the reply not being read is the reply not arriving.
- */
-/**
- * One chat turn. Returns the assistant's text so a caller that has its own plans for it — the
- * voice session, which synthesises and plays it under a cancellable generation — does not have
- * to scrape it back out of the DOM.
- *
- * `signal` is the turn's own, from `VoiceSession`. It reaches the `fetch` AND, on abort, the
- * server-side run: a stream the browser stopped reading is not a run the model stopped
- * producing, and leaving it going would burn a GPU on an answer nobody will ever hear.
+ * `signal` is the turn's own. It reaches the `fetch` AND, on abort, the server-side run: a
+ * stream the browser stopped reading is not a run the model stopped producing, and leaving it
+ * going would burn a GPU on an answer nobody will ever read.
  */
 /**
  * Show that a tool is running, and then how it ended.
@@ -1314,12 +1287,12 @@ function resolveToolActivity(row,data){
   row.querySelector('.tool-activity-state').textContent=data.ok?t('done'):`${t('not run')} — ${data.detail??t('failed')}`;
 }
 
-async function sendChat(spoken=null,{signal=null,onDelta=null}={}){
+async function sendChat({signal=null,onDelta=null}={}){
   if(!state.activeConversationId){setStatus('Create a conversation first.',true);return '';}
-  const content=typeof spoken==='string'&&spoken.trim()?spoken.trim():$('#chatInput').value.trim();
+  const content=$('#chatInput').value.trim();
   if(!content)return '';
   const providerId=$('#chatProvider').value||null;
-  if(!spoken)$('#chatInput').value='';
+  $('#chatInput').value='';
   $('#stopGeneration').classList.remove('hidden');
   $('#sendMessage').disabled=true;
   let assistantText='';
@@ -1338,12 +1311,7 @@ async function sendChat(spoken=null,{signal=null,onDelta=null}={}){
         content,
         providerId,
         model:$('#chatModel').value.trim(),
-        mode:currentMode,
-        // An answer that will be SPOKEN is a different answer, not the same one delivered
-        // differently. Measured 2026-08-24: "chi sei e cosa sai fare" produced 562 characters —
-        // about 35 seconds of speech for a question a person asked in two. Reading is skimmable
-        // and interruptible by the eye; listening is neither.
-        spoken:Boolean(spoken)
+        mode:currentMode
       })
     });
     if(!response.ok){
@@ -1374,9 +1342,8 @@ async function sendChat(spoken=null,{signal=null,onDelta=null}={}){
           $('#messageList').append(article);
         }else if(event==='delta'){
           assistantText+=data.text;
-          // P5. The spoken turn gets each fragment as it lands, so `VoiceSession` can start
-          // speaking the first finished sentence instead of waiting for the last token. The
-          // written path is untouched: `onDelta` is null for it, and the reply still settles
+          // A caller that wants the answer as it is written passes `onDelta` and gets each
+          // fragment as it lands. The ordinary path leaves it null and the reply still settles
           // once, in one place, exactly as UI-043 requires.
           if(onDelta)onDelta(data.text);
           // UI-043: deliberately NOT announced. A live region fed per delta reads the
@@ -1414,10 +1381,6 @@ async function sendChat(spoken=null,{signal=null,onDelta=null}={}){
     // …and the reply itself, if the person asked for it. Here for the same reason the live
     // region is here: once, when the answer has settled. Reading per delta would read it twice.
     //
-    // A SPOKEN turn is deliberately not read here: its playback belongs to the voice session,
-    // which owns the generation that can cancel it. Reading it in both places was how one
-    // interruption could leave a second voice still talking.
-    if(!spoken)await speakReply(assistantText);
     return assistantText;
   }catch(error){
     if(error?.name==='AbortError'){
@@ -1506,7 +1469,7 @@ $('#chatInput').addEventListener('keydown',(event)=>{
   return undefined;
 });
 /**
- * A `/` line typed (or spoken) into the chat composer, run the same way CodeN's own prompt
+ * A `/` line typed into the chat composer, run the same way CodeN's own prompt
  * runs one — `planTurn` off the same registry, `codenCall` for the transport — because a
  * second command engine for this shell is the exact duplication `16` §4b.2 exists to prevent.
  * Chat has no local transcript to write into (CodeN's `codenView` is a client-side scratch
@@ -1866,7 +1829,7 @@ function renderNotes(){$('#noteList').innerHTML=state.memories.map((item)=>`<art
 $('#noteForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/memories',{method:'POST',body:JSON.stringify({projectId:$('#noteProject').value||null,conversationId:$('#noteScope').value==='conversation'?($('#noteConversation').value||state.activeConversationId):null,scope:$('#noteScope').value,title:$('#noteTitle').value,content:$('#noteContent').value,tags:$('#noteTags').value.split(',').map((v)=>v.trim()).filter(Boolean)})});event.target.reset();await refreshWorkspace();});
 function renderArtifacts(){$('#artifactList').innerHTML=state.artifacts.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><small>${escapeHtml(item.type)} · version ${item.versions.length}</small><pre>${escapeHtml(item.versions.at(-1)?.content??'')}</pre><button data-edit-artifact="${item.id}">New version</button></article>`).join('')||'No documents.';$$('[data-edit-artifact]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.artifacts.find((a)=>a.id===button.dataset.editArtifact);const content=prompt('New artifact version',item.versions.at(-1)?.content??'');if(content!==null){await api(`/api/v1/artifacts/${item.id}`,{method:'PATCH',body:JSON.stringify({content})});await refreshWorkspace();}}));}
 $('#artifactForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/artifacts',{method:'POST',body:JSON.stringify({projectId:$('#artifactProject').value||null,type:$('#artifactType').value,title:$('#artifactTitle').value,content:$('#artifactContent').value})});event.target.reset();await refreshWorkspace();});
-function renderSources(){$('#sourceList').innerHTML=state.sources.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.mimeType)}</p><small>${escapeHtml(item.extractionStatus)} · ${item.byteLength} bytes</small><button data-preview-source="${item.id}">Preview passages</button></article>`).join('')||'No sources indexed yet — add a file, paste text, or record voice above to make it searchable.';$$('[data-preview-source]').forEach((button)=>button.addEventListener('click',async()=>{const item=await api(`/api/v1/sources/${button.dataset.previewSource}`);$('#knowledgeResults').innerHTML=item.passages?.map((passage)=>`<article class="entity-card"><h3>Passage ${passage.index}</h3><p>${escapeHtml(passage.text)}</p></article>`).join('')||'<p>No extracted passages.</p>';}));}
+function renderSources(){$('#sourceList').innerHTML=state.sources.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.mimeType)}</p><small>${escapeHtml(item.extractionStatus)} · ${item.byteLength} bytes</small><button data-preview-source="${item.id}">Preview passages</button></article>`).join('')||'No sources indexed yet — add a file or paste text to make it searchable.';$$('[data-preview-source]').forEach((button)=>button.addEventListener('click',async()=>{const item=await api(`/api/v1/sources/${button.dataset.previewSource}`);$('#knowledgeResults').innerHTML=item.passages?.map((passage)=>`<article class="entity-card"><h3>Passage ${passage.index}</h3><p>${escapeHtml(passage.text)}</p></article>`).join('')||'<p>No extracted passages.</p>';}));}
 function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(reader.error);reader.onload=()=>resolve(String(reader.result).split(',')[1]??'');reader.readAsDataURL(file);});}
 $('#sourceBinary').addEventListener('change',()=>{const file=$('#sourceBinary').files[0];if(file){$('#sourceName').value=file.name;$('#sourceMime').value=file.type||'application/octet-stream';}});
 $('#sourceForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const file=$('#sourceBinary').files[0];if(file){setStatus(`Extracting ${file.name} locally…`);await api('/api/v1/sources/upload',{method:'POST',body:JSON.stringify({projectId:$('#sourceProject').value||null,name:file.name,mimeType:file.type||$('#sourceMime').value,bytesBase64:await fileToBase64(file)})});}else{await api('/api/v1/sources',{method:'POST',body:JSON.stringify({projectId:$('#sourceProject').value||null,name:$('#sourceName').value,mimeType:$('#sourceMime').value,text:$('#sourceText').value})});}event.target.reset();$('#sourceMime').value='text/plain';await refreshWorkspace();setStatus('Source ingested and indexed.');}catch(error){setStatus(error.message,true);}});
@@ -1918,7 +1881,6 @@ async function loadExtractorCapabilities(){try{const c=await api('/api/v1/source
 async function capturedBlobToInput(blob,name){const file=new File([blob],name,{type:blob.type||'application/octet-stream'});const dt=new DataTransfer();dt.items.add(file);$('#sourceBinary').files=dt.files;$('#sourceName').value=name;$('#sourceMime').value=file.type;activate('knowledge');}
 $('#captureCamera').addEventListener('click',async()=>{try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});const video=document.createElement('video');video.srcObject=stream;await video.play();await new Promise((r)=>setTimeout(r,500));const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);stream.getTracks().forEach((track)=>track.stop());canvas.toBlob((blob)=>capturedBlobToInput(blob,`camera-${Date.now()}.png`),'image/png');}catch(error){setStatus(error.message,true);}});
 $('#captureScreen').addEventListener('click',async()=>{try{const stream=await navigator.mediaDevices.getDisplayMedia({video:true});const video=document.createElement('video');video.srcObject=stream;await video.play();await new Promise((r)=>setTimeout(r,500));const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);stream.getTracks().forEach((track)=>track.stop());canvas.toBlob((blob)=>capturedBlobToInput(blob,`screen-${Date.now()}.png`),'image/png');}catch(error){setStatus(error.message,true);}});
-let voiceRecorder=null;let voiceChunks=[];$('#recordAudio').addEventListener('click',async()=>{try{if(voiceRecorder?.state==='recording'){voiceRecorder.stop();$('#recordAudio').textContent='Record voice';return;}const stream=await navigator.mediaDevices.getUserMedia({audio:true});voiceChunks=[];voiceRecorder=new MediaRecorder(stream);voiceRecorder.ondataavailable=(event)=>voiceChunks.push(event.data);voiceRecorder.onstop=async()=>{stream.getTracks().forEach((track)=>track.stop());await capturedBlobToInput(new Blob(voiceChunks,{type:voiceRecorder.mimeType}),`voice-${Date.now()}.webm`);};voiceRecorder.start();$('#recordAudio').textContent='Stop recording';}catch(error){setStatus(error.message,true);}});
 // §3#11, OWNER_REVIEW_2026-08-21: «non si capisce se sono davvero attivi/funzionanti». Archive
 // already removes an agent from every surface (D-0397, `!item.archived` filtered server-side) —
 // that half of the report was already answered before this session; what the card never showed
@@ -2210,7 +2172,7 @@ window.addEventListener('unhandledrejection',(event)=>{
   if(error?.status===401){
     // The session ended underneath us. Say so instead of failing mutely.
     toast('Your session ended. Please sign in again.',{kind:'error'});
-    currentUser=null;csrfToken='';forgetVoiceState();$('#authGate').classList.remove('hidden');showOnly('#loginForm');
+    currentUser=null;csrfToken='';$('#authGate').classList.remove('hidden');showOnly('#loginForm');
     event.preventDefault();return;
   }
   reportError(error,'Unexpected error');
@@ -3392,9 +3354,9 @@ async function runWorkspaceAction(kind,opts={}){
       currentWorkspaceRun.status=currentApproveResult.promoted?'PROMOTED':'REFUSED';
       toast(currentApproveResult.promoted?'Approved and promoted.':'Approved, but not promoted — see Shadow run.');
     }else if(kind==='reject'){
-      // 'reason' in opts distinguishes "caller supplied one, even null" (voice control:
-      // D-0123 is hands-free, a blocking native prompt() would defeat the entire point)
-      // from "no opts at all" (the button's own click handler, which still asks — reject
+      // 'reason' in opts distinguishes "caller supplied one, even null" — a caller that has
+      // already decided, and for which a blocking native prompt() would be wrong — from
+      // "no opts at all" (the button's own click handler, which still asks — reject
       // is the one action here a person is expected to explain).
       const reason='reason' in opts?opts.reason:(prompt('Reason for rejecting this plan (optional):')??null);
       await api(`/api/v1/workspace-actions/${runId}/reject`,{method:'POST',body:JSON.stringify({reason})});
@@ -3412,1043 +3374,6 @@ async function runWorkspaceAction(kind,opts={}){
   }
 }
 
-// ——— VOICE, s336 stage 3: the microphone beside the prompt ————————————————————————————
-//
-// What was here until now was `initVoiceControlUI` — the wiring for `D-0123`'s control tower:
-// a chip in the top bar that turned on the BROWSER's SpeechRecognition and listened for five
-// fixed words. The Owner's requirement retires it in two independent ways at once, so it is
-// gone from the interface rather than moved: «non deve essere statico» (five words), and «fai
-// un motore reale interno» (the browser did the hearing, which means the audio left the
-// installation for whoever built the browser).
-//
-// `voice-control.js` and its tests stay in the repository, headed as superseded. Deleting a
-// file is not something this session may decide on its own, and the module is still the clearest
-// statement of the one rule worth carrying forward — never guess between two outcomes.
-//
-// Everything below is thin wiring. The engine is `voice-engine.mjs` (server side, stage 1) and
-// the decision of what an utterance MEANS is `voice-intent.js` (stage 2), which resolves it
-// against the very arrays the `/` menu resolves typing against — `codenOffered()` and the served
-// address book, not a copy and not a vocabulary.
-let voiceState={canHear:false,canSpeak:false};
-let voiceRecorderChat=null;
-let readAloud=false;
-/* The lifecycle owner. Everything about ordering, generations and cancellation lives in
- * `voice-session.js`; what remains on this side is adapters and rendering. */
-let voiceSession=null;
-/* The microphone, held for the whole session rather than per turn — see `openVoiceStream`. */
-let voiceStream=null;
-/* What is playing, and the ONE function that undoes everything playback allocated. */
-let voiceAudio=null;
-let voiceAudioRelease=null;
-/* The barge-in watch: a second meter on the same stream, alive only while the product speaks. */
-let voiceBargeWatch=0;
-let voiceBargeMeter=null;
-/* A typed reply being read aloud has its own controller: it is not part of a spoken turn, and
- * the toggle that turns it off must be able to stop it mid-sentence. */
-let readAloudController=null;
-// Which of the product's two voices reads. Named, not the synthesis model's own string — see
-// `VOICES` in `voice-engine.mjs` for why the product owns these names.
-let chosenVoice=null;
-
-/** One line under the composer saying what the microphone just did. `translate="no"` because
- *  every sentence it can hold is composed around an address or a command name. */
-function voiceNote(text){
-  const note=$('#voiceNote');
-  if(!note)return;
-  note.textContent=text??'';
-  note.classList.toggle('hidden',!text);
-}
-
-/**
- * The two voices the product has, offered by NAME.
- *
- * A voice this installation has not bound is shown and DISABLED, with the reason on it, rather
- * than left out of the list. An absent option reads as a product that does not have the feature;
- * a disabled one reads as a setting somebody has not filled in — and only the second is true.
- * The same distinction `declared-empty` makes everywhere else in this interface.
- */
-function renderVoicePicker(){
-  const picker=$('#chatVoice');
-  if(!picker)return;
-  const roster=Array.isArray(voiceState.voices)?voiceState.voices:[];
-  picker.innerHTML=roster.map((voice)=>
-    `<option value="${escapeHtml(voice.id)}"${voice.available?'':' disabled'}>${escapeHtml(voice.label)}</option>`).join('');
-  const usable=roster.find((voice)=>voice.available)??null;
-  // Never leave a disabled voice selected: the request would be refused at the moment somebody
-  // finally turned reading on, which is the least useful time to discover a missing setting.
-  if(!chosenVoice||!roster.some((voice)=>voice.id===chosenVoice&&voice.available))chosenVoice=usable?.id??null;
-  if(chosenVoice)picker.value=chosenVoice;
-  picker.disabled=!usable;
-  picker.setAttribute('translate','no'); // Rune and Estrela are names, in every language.
-}
-
-/** What each direction can do, asked once and asked of the SERVER — the browser's own opinion
- *  about microphones is not the question. A direction that cannot work says why on the control
- *  itself, which is the whole of stage 4's honesty until stage 4 exists: an installation with no
- *  transcription model configured declares that it cannot hear, and that is true. */
-async function refreshVoiceState(){
-  const dictate=$('#chatDictate');const aloud=$('#chatReadAloud');
-  try{
-    voiceState=await api('/api/v1/voice/state');
-  }catch(error){
-    voiceState={canHear:false,canSpeak:false,transcribe:{reason:error.message},speak:{reason:error.message}};
-  }
-  // Two independent conditions, and the button is only usable when BOTH hold: the installation
-  // must have a transcription model, and this page must be allowed to open a microphone. Reading
-  // aloud needs only the first — audio playback works over plain HTTP — so the two controls are
-  // deliberately not gated on the same thing.
-  const pageCanRecord=microphoneReachable();
-  if(dictate)dictate.disabled=!voiceState.canHear||!pageCanRecord;
-  if(aloud)aloud.disabled=!voiceState.canSpeak;
-  renderVoicePicker();
-  // The REASON goes in the note line, not on the buttons — measured in the browser, where the
-  // first version put it in `title` and the sentence vanished. `title` is one of the three
-  // attributes `i18n.js` translates, and the translator caches each element's ORIGINAL value as
-  // the source it re-applies from; a title written by code is therefore overwritten by the
-  // markup's own the next time anything on the page changes. The note line is `translate="no"`
-  // and is already where every other sentence about voice goes, so it is the honest home for
-  // this one — and the check that caught it asserts the reason is READABLE, not where it lives.
-  // Most specific first. "No model configured" is the operator's to fix; "this page is not a
-  // secure context" is the deployment's; and saying the wrong one sends someone to the wrong file.
-  if(!voiceState.canHear){
-    voiceNote(voiceState.transcribe?.reason??t('This installation cannot hear.'));
-  }else if(!pageCanRecord){
-    // The installation is ready and the browser is not, so the useful sentence is not "voice is
-    // unavailable" — it is which address to use. The server works both out, because only it
-    // knows whether a certificate exists to hand out and what the client actually connected to.
-    renderVoiceAccess(voiceState.access);
-  }else if(!voiceState.canSpeak){
-    voiceNote(voiceState.speak?.reason??t('This installation cannot speak.'));
-  }
-}
-
-async function transcribeRecording(blob,{signal=null}={}){
-  if(!csrfToken)csrfToken=readCsrfCookie();
-  const response=await fetch('/api/v1/voice/transcribe',{
-    method:'POST',credentials:'same-origin',signal,
-    headers:{'content-type':blob.type||'audio/webm',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
-    body:blob,
-  });
-  const heard=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(heard.error??`Transcription failed (${response.status})`);
-  return heard;
-}
-
-/** Text in, audio bytes out. Split from playback so the two can be cancelled independently and
- *  so a synthesis that is still in flight when somebody cuts in never becomes a second voice. */
-async function synthesizeReply(text,{signal=null}={}){
-  if(!csrfToken)csrfToken=readCsrfCookie();
-  const response=await fetch('/api/v1/voice/speak',{
-    method:'POST',credentials:'same-origin',signal,
-    headers:{'content-type':'application/json',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
-    // The product's own voice name — `rune` or `estrela` — never the synthesis model's. The
-    // server resolves it, and refuses saying so if that voice is not bound here.
-    body:JSON.stringify({text,voice:chosenVoice}),
-  });
-  if(!response.ok){
-    const failure=await response.json().catch(()=>({}));
-    throw new Error(failure.error??`${t('The reply could not be read aloud')} (${response.status})`);
-  }
-  const bytes=new Uint8Array(await response.arrayBuffer());
-  return {audio:bytes,contentType:response.headers.get('content-type')||'audio/wav'};
-}
-
-/**
- * What to do with what was heard.
- *
- * The four outcomes of `resolveUtterance`, each answered in the way that keeps the microphone
- * from being able to do something a keyboard could not:
- *
- *   navigate → go. A destination is reversible by going back, and this is the gesture the Owner
- *              asked for: say where you want to be and be there.
- *   run      → the line goes INTO the box and stops. A microphone has no Enter key, so the click
- *              stands in for the moment a person commits — `D-0123`'s rule that voice may not
- *              mint authority, kept where it is visible rather than asserted in a comment.
- *   several  → the question, naming them. Never a pick.
- *   nothing  → it was not a command, so it was DICTATION. The words go into the box as a message.
- *              This is the case that makes the feature worth having: everything the product can
- *              be asked in prose is now sayable, and nothing had to be listed for it to be.
- */
-/** The group headings, as one expression. Extracted the moment a second caller appeared
- *  (`resolveCompound`): two copies of the same map is how two resolvers start disagreeing about
- *  what a room is called, which is the drift this file already keeps `codenOffered()` single for. */
-function codenGroupTitles(){return Object.fromEntries(MENU_GROUPS.map((group)=>[group.id,group.title]));}
-
-function heardResult(text){
-  // `codenOffered()` — literally the array the `/` menu is built from, permission filter and
-  // served address book included. Not a copy assembled for voice: the same call.
-  return resolveUtterance(text,{
-    entries:codenOffered(),translate:t,
-    // Speech may act only on an EXACT match. See `voice-intent.js` for the measurement: ten of
-    // 45 realistic transcription fragments used to act, and "ok" ran `/revoke`.
-    actFloor:RANK.PROSE,
-    groupTitles:codenGroupTitles(),
-  });
-}
-
-/**
- * Perform a resolved utterance. Split out from the resolving so the model-assisted path can
- * reach the SAME performance — the model names an entry, and the line is still written here by
- * the product. A model that could return a line would be a model that can run anything.
- */
-function performHeard(result){
-  const box=$('#chatInput');
-  if(result.kind===VoiceIntent.INTENT&&result.disposition===VoiceDisposition.NAVIGATE){
-    return jumpTo(result.entry.address??result.entry.name);
-  }
-  // Owner, s344: a spoken read-only question ("verifica se il modello è carico") only ever
-  // composed `/model` into the box and stopped — the chat composer had no run path at all
-  // until `submitChatPrompt` above gave it one. Now that it does, a command may run itself
-  // from voice ONLY when nothing it could do needs a second look: no declared `confirm` and a
-  // read-only (or unscoped) permission. A command that writes, or one the registry itself
-  // marks undoable-cost, still only fills the box — a misheard word must never reach `/sweep`.
-  if(result.kind===VoiceIntent.INTENT&&result.disposition===VoiceDisposition.RUN){
-    const entry=result.entry;
-    const safe=entry&&!entry.confirm&&(entry.permission==null||/\.read$/.test(entry.permission));
-    if(safe){void submitChatPrompt(result.line);return undefined;}
-  }
-  if(!box)return undefined;
-  if(result.kind===VoiceIntent.INTENT){box.value=result.line;box.focus();return undefined;}
-  if(result.kind===VoiceIntent.NOTHING){
-    // Dictation accumulates: a second sentence continues the first rather than replacing it.
-    box.value=box.value.trim()?`${box.value.trim()} ${result.heard}`:result.heard;
-    box.focus();
-  }
-  return undefined;
-}
-
-/**
- * What to do with what was heard — the ladder, in this order and for these reasons.
- *
- *   1. THE DETERMINISTIC RESOLVER. Free, instant, and incapable of being wrong about a name it
- *      matched exactly. Everything the interface paints, in English and in the language it is
- *      displayed in, lands here.
- *   2. THE MODEL, asked to CHOOSE. Only when step 1 placed nothing, and only ever to name one of
- *      the product's own entries. This is where a third language is understood without the
- *      product carrying a dictionary for it — Owner, s336: «altre lingue, qui dovrebbe aiutare
- *      il modello». What comes back is a NAME, which is then re-resolved through step 1, so the
- *      line that ends up in front of the person was written by the product either way.
- *   3. DICTATION. Not a fallback — the largest case. Prose that names nothing is a message.
- *
- * The order is the safety property. A model asked first would answer for utterances the product
- * already understands exactly, slower and occasionally differently, and a navigation gesture that
- * lands somewhere else on a second try is worse than one that fails.
- */
-async function applyHeardText(text,{signal=null,onDelta=null}={}){
-  const direct=heardResult(text);
-  // Step 0, and it comes FIRST because everything below it either acts or talks.
-  //
-  // The microphone stays open between turns — the Owner asked for that and it has not been
-  // withdrawn — so most of what arrives here was said in the room and not to the product. An
-  // utterance that neither resolves EXACTLY nor looks like a request ends the turn in silence:
-  // no navigation, no model round-trip, no chat turn, nothing spoken. `VoiceSession` re-arms on
-  // this path exactly as it does on every other, so listening is uninterrupted.
-  //
-  // Owner, 2026-08-24: «parla a caso senza chiedere nulla». Measured: of 45 realistic
-  // transcription fragments, ten used to ACT — "ok" ran /revoke, "no" ran /sweep — and the rest
-  // reached the chat and were answered aloud. With this gate and the resolver's `actFloor`, three
-  // produce any reaction at all, and none of 19 real requests is lost.
-  if(direct.kind===VoiceIntent.NOTHING&&!addressedToProduct(text)&&!resolveCompound(text,{entries:codenOffered(),translate:t,groupTitles:codenGroupTitles()})){
-    return {reply:'',reason:'not-addressed'};
-  }
-  if(direct.kind!==VoiceIntent.NOTHING){
-    const said=utteranceReply(direct,t);
-    voiceNote(said);
-    await performHeard(direct);
-    // SPOKEN, not only shown. This used to return `reply:''`, and `VoiceSession` treats an empty
-    // reply as "nothing to say" — so the product performed the action in total silence. The note
-    // it wrote was VISUAL, which is no use at all to the person this feature exists for: someone
-    // talking to the room, not reading the screen. Saying what it just did is the difference
-    // between an assistant and a remote control that beeps at nobody.
-    return {reply:said,reason:direct.kind===VoiceIntent.INTENT?'performed':'not-a-command'};
-  }
-  // "Apri la memoria E dimmi cosa c'è dentro" — one sentence, two things. Only reached because
-  // the whole utterance resolved to NOTHING above, so nothing that works today changes.
-  const compound=resolveCompound(text,{entries:codenOffered(),translate:t,groupTitles:codenGroupTitles()});
-  if(compound){
-    const said=utteranceReply(compound.intent,t);
-    voiceNote(said);
-    await performHeard(compound.intent);
-    if(!state.activeConversationId)return {reply:said,reason:'performed-no-conversation'};
-    // Both halves are spoken as one turn: the acknowledgement of what was DONE, then the answer
-    // to what was ASKED. Two separate spoken turns would let a barge-in cancel one and leave the
-    // other talking — the exact defect `D-0373` removed from the single-answer path.
-    // Streamed, and in the right order: the acknowledgement of what was DONE is pushed into the
-    // same sentence stream first, so "Ho aperto la memoria." is spoken while the answer to what
-    // was ASKED is still being written. Both halves stay one turn under one generation — which
-    // is the property `D-0373` exists to protect, unchanged by making the first half arrive
-    // sooner.
-    if(onDelta)onDelta(`${said}. `);
-    const answer=await sendChat(compound.tail,{signal,onDelta});
-    return {reply:`${said}. ${String(answer??'').trim()}`.trim()};
-  }
-  // Step 2. The sentence goes up alone: the candidate list is built server-side from this
-  // session's identity, so nothing here decides what the model is allowed to pick.
-  let chosen=null;
-  try{
-    voiceNote(t('Asking the model…'));
-    const answer=await api('/api/v1/voice/interpret',{method:'POST',signal,body:JSON.stringify({text})});
-    chosen=answer?.chosen??null;
-  }catch(error){
-    if(error?.name==='AbortError')throw error;
-    // A model that cannot be reached is not an error the person needs: the sentence is still
-    // perfectly good dictation, and saying "the model is down" about a message they meant to
-    // type would be noise about a failure that changed nothing for them.
-    chosen=null;
-  }
-  if(chosen){
-    // Re-resolved through the SAME resolver, by name. If the name no longer resolves — a stale
-    // model answer, an entry withdrawn between the two calls — this falls through to dictation
-    // rather than acting on a name nothing can place.
-    const viaModel=heardResult(chosen);
-    if(viaModel.kind===VoiceIntent.INTENT){
-      voiceNote(`${utteranceReply(viaModel,t)} ${t('(understood by the model)')}`);
-      await performHeard(viaModel);
-      return {reply:'',reason:'performed'};
-    }
-  }
-  // Not a command: it is something said TO the product, so it goes to the model and comes back
-  // spoken. Owner, s340: «non deve crearmi il prompt per scrivere non mi serve a nulla ma deve
-  // parlare ed essere connesso con il modello» (`D-0373`).
-  //
-  // The composer is deliberately not touched. Dictation-into-a-box was the old behaviour and it
-  // made the person do the last step by hand, which is exactly the step they asked to remove.
-  // Not a command: it is something said TO the product, so it goes to the model. The ANSWER is
-  // returned rather than spoken here — `VoiceSession` owns synthesis and playback, under the
-  // generation that can cancel both. Speaking it in two places is how one interruption used to
-  // leave a second voice still talking.
-  if(!state.activeConversationId){
-    const said=t('Open or create a chat first — I need somewhere to put the answer.');
-    voiceNote(said);
-    return {reply:'',reason:'no-conversation'};
-  }
-  voiceNote(text);
-  const reply=await sendChat(text,{signal,onDelta});
-  return {reply:String(reply??'')};
-}
-
-/**
- * Can this PAGE reach a microphone at all — a question about the page, not about the installation.
- *
- * Found by the pre-deploy check, not by a browser: this product is served over plain HTTP on a
- * LAN address, and browsers do not expose `navigator.mediaDevices` outside a secure context.
- * `localhost` counts as secure; `http://192.168.x.x:8100` does not. So on the address the Owner
- * actually uses, the object is UNDEFINED and the first version of this function would have
- * thrown a TypeError and shown "Cannot read properties of undefined" under the composer.
- *
- * Stated as its own condition rather than folded into the catch, because it is a different fact
- * with a different remedy: the installation is configured correctly and can hear perfectly well;
- * it is the BROWSER that will not hand over the audio until the page arrives over TLS. Telling
- * someone to check their voice model when they need a certificate is the kind of wrong answer
- * that costs an afternoon.
- */
-/* The two free answers first, the one that costs something last — see src/voice-access.mjs.
- * Until this existed the product named only the expensive one, so every person met a
- * certificate before learning that the machine running the engine needs none. */
-function renderVoiceAccess(access){
-  const help=$('#voiceAccessHelp');
-  const sameMachine=access?.alternatives?.find((a)=>a.kind==='SAME_MACHINE');
-  const certificate=access?.alternatives?.find((a)=>a.kind==='INSTALL_CERTIFICATE');
-  voiceNote(sameMachine
-    ? `${t('This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.')} ${t('On this machine, open')} ${sameMachine.url}`
-    : t('This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.'));
-  if(!help)return;
-  if(!certificate){help.classList.add('hidden');return;}
-  const target=$('#voiceAccessQr');
-  // qrSvg throws on input it cannot encode rather than drawing something unscannable; a failed
-  // QR must not take the addresses down with it, so the text stays and only the picture goes.
-  if(target){
-    try{target.innerHTML=qrSvg(certificate.certificateUrl,{title:t('Certificate page')});}
-    catch{target.textContent=certificate.certificateUrl;}
-  }
-  const fingerprint=$('#voiceAccessFingerprint');
-  if(fingerprint)fingerprint.textContent=certificate.fingerprintSha256??'';
-  const secure=$('#voiceAccessSecure');
-  if(secure){secure.href=certificate.secureUrl;secure.textContent=certificate.secureUrl;}
-  help.classList.remove('hidden');
-}
-
-function microphoneReachable(){
-  return typeof navigator!=='undefined'&&Boolean(navigator.mediaDevices?.getUserMedia);
-}
-
-/* ——— The face, and knowing when you stopped talking — s340, `D-0372` ————————————————————
- *
- * Owner: «devo chiudere microfono per inviare messaggio? dovrebbe essere tutto automatico», and
- * «meglio creare un popup quando si attiva il microfono con la finestrina che possiamo spostare
- * … con immagine interattiva che quando riceve il comando e parla si muove».
- *
- * The two are one mechanism. A microphone that stays open until you press it again recorded
- * **23 seconds** for two words, and Whisper on twenty seconds of silence invents text and repeats
- * it — measured, and it is what the Owner was shown. Knowing when speech ended is therefore not
- * a convenience: it is what stops the engine being handed silence to hallucinate over. The
- * server-side refusal (`assessTranscription`) is the second line, for what still gets through.
- *
- * The same number does both jobs. `level` is the RMS of the live microphone, sampled here; it
- * decides when you stopped, AND it is what moves the mouth. So the face is showing the sound in
- * the room, not playing an animation next to it — which is the difference between an interactive
- * image and a decoration.
- */
-const VOICE_FACE_POS_KEY='noesar.voiceFace.position';
-/* Chosen so a normal pause inside a sentence does not end the turn. Below ~800ms it cuts people
- * off mid-thought; above ~2s the wait reads as a hang. */
-const SILENCE_AFTER_SPEECH_MS=1200;
-const NO_SPEECH_GIVE_UP_MS=6000;
-const MAX_UTTERANCE_MS=30000;
-/* A floor, so a dead-silent room cannot make its own noise look like speech: the adaptive
- * threshold is a multiple of the measured room, and a multiple of nearly zero is nearly zero. */
-const MIN_SPEECH_LEVEL=0.02;
-
-let voiceMeter=null;      // {ctx, analyser, data, source}
-let voiceFacePaint=0;     // requestAnimationFrame handle
-/* What the face is drawn from: the spectrum of the REPLY, and nothing else.
- *
- * Owner, s340: «l'animazione non deve riprendere la mia voce ma quella del programma». The
- * microphone's amplitude is still measured — it is how the turn knows it ended — but it is a
- * CONTROL signal and is never drawn. There is deliberately no variable holding it beyond the loop
- * that uses it, so nothing can quietly start drawing your voice again. */
-let voiceFaceSpectrum=null;
-let voiceFacePositions=(()=>{try{return JSON.parse(localStorage.getItem(VOICE_FACE_POS_KEY)??'null');}catch{return null;}})();
-
-/**
- * Every state the machine can be in, said in one word and drawn as one shape.
- *
- * The four words it used to have described four of the ten states the turn actually passed
- * through, so `ENDPOINTING` was drawn as "Listening" (it is not — you have stopped and the
- * product knows) and every failure was drawn as "Ready to listen" (it is not — nothing is ready).
- * A window that cannot say "something went wrong" leaves the person waiting for an answer that
- * is never coming.
- */
-const VOICE_FACE_WORDS={
-  [VoiceTurn.IDLE]:'Ready to listen',
-  [VoiceTurn.LISTENING]:'Listening',
-  [VoiceTurn.ENDPOINTING]:'Got it',
-  [VoiceTurn.TRANSCRIBING]:'Transcribing',
-  [VoiceTurn.THINKING]:'Thinking',
-  [VoiceTurn.SPEAKING]:'Speaking',
-  [VoiceTurn.INTERRUPTING]:'Stopping',
-  [VoiceTurn.CANCELLING]:'Stopping',
-  [VoiceTurn.ERROR]:'Something went wrong',
-  // `CLOSED` deliberately has no word: the window is hidden by then, and the catalogue already
-  // uses "Closed" for something else on another screen. Translating one word into two meanings
-  // is how a catalogue starts lying — the repository's own language check caught it here.
-};
-function voiceFaceState(state,caption){
-  const face=$('#voiceFace');if(!face)return;
-  face.dataset.state=state;
-  const said=$('#voiceFaceState');
-  const word=VOICE_FACE_WORDS[state];
-  if(said)said.textContent=word?t(word):'';
-  const line=$('#voiceFaceCaption');
-  if(line&&caption!==undefined)line.textContent=caption??'';
-}
-
-/** The caption ALONE, without touching the state machine.
- *
- * A turn that heard nothing must not leave the window showing the last thing it did hear: the
- * Owner saw "Sì, sì, sì, sì, sì, sì, sì." sitting under the face while the chat said "I did not
- * hear anything" — the product contradicting itself in two places on screen at once. Clearing the
- * caption is not the state machine's business, though, so this touches the line and nothing else.
- */
-function voiceFaceCaption(text){
-  const line=$('#voiceFaceCaption');
-  if(line)line.textContent=text??'';
-}
-
-function voiceFaceShow(on){
-  const face=$('#voiceFace');if(!face)return;
-  face.classList.toggle('hidden',!on);
-  if(on){
-    // The product's own name for the voice that answers, never the synthesis model's string.
-    const name=$('#voiceFaceName');
-    const chosen=(voiceState.voices??[]).find((voice)=>voice.id===chosenVoice);
-    if(name)name.textContent=chosen?.label??t('Voice');
-    applyVoiceFacePosition();
-    if(!voiceFacePaint)voiceFacePaint=requestAnimationFrame(paintVoiceFace);
-  }else{
-    cancelAnimationFrame(voiceFacePaint);voiceFacePaint=0;
-    voiceFaceSpectrum=null;
-  }
-}
-
-/**
- * Draw the product's voice.
- *
- * Twelve spokes around a full circle, not a left-right row: a bar chart borrowed the shape of a
- * media-player equaliser, which is why the first version read as decoration despite being driven
- * by real data underneath. A spectrum has SHAPE — vowels sit low and wide, consonants flick the
- * high bands — so arranging the same twelve bands radially, tips traced by one soft aura, reads
- * as a single living thing reacting from its centre, not a chart glued to a circle.
- *
- * The aura is the same twelve numbers, not a second signal: a closed Catmull-Rom spline through
- * the bar tips, so the organic silhouette can never show something the bars themselves do not.
- * Bars settle back with a fall-off rather than snapping, because audio frames are noisy and an
- * unsmoothed bar jitters in a way that looks broken.
- *
- * Nothing here is animated on a timer. A still figure means silence — never "the animation
- * stopped" — which is the only reason it can be trusted to report anything at all. (The breathing
- * ring on `listening`/`thinking` is a separate, deliberate exception: CSS-timed, and it exists
- * precisely because there is no amplitude to show in those states — see styles.css.)
- */
-const VOICE_FACE_BARS=12;
-const voiceBarHeights=new Float32Array(VOICE_FACE_BARS);
-const VOICE_FACE_INNER_RADIUS=32;
-/** A closed Catmull-Rom spline through N points spaced evenly on a circle, as cubic beziers. */
-function voiceFaceAuraPath(radii){
-  const n=radii.length;
-  const points=radii.map((radius,index)=>{
-    const angle=(index/n)*Math.PI*2-Math.PI/2;
-    return[60+radius*Math.cos(angle),60+radius*Math.sin(angle)];
-  });
-  let d=`M${points[0][0].toFixed(1)},${points[0][1].toFixed(1)}`;
-  for(let index=0;index<n;index+=1){
-    const p0=points[(index-1+n)%n],p1=points[index],p2=points[(index+1)%n],p3=points[(index+2)%n];
-    const c1x=p1[0]+(p2[0]-p0[0])/6,c1y=p1[1]+(p2[1]-p0[1])/6;
-    const c2x=p2[0]-(p3[0]-p1[0])/6,c2y=p2[1]-(p3[1]-p1[1])/6;
-    d+=`C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
-  }
-  return`${d}Z`;
-}
-function paintVoiceFace(){
-  const spectrum=voiceFaceSpectrum;
-  for(let index=0;index<VOICE_FACE_BARS;index+=1){
-    let target=0;
-    if(spectrum&&spectrum.length){
-      // Logarithmic bands: linear FFT bins put almost everything a voice does into the first
-      // eighth of the display, which is why linear spectrum displays always look dead.
-      const from=Math.floor((spectrum.length/2)*((index/VOICE_FACE_BARS)**2));
-      const to=Math.max(from+1,Math.floor((spectrum.length/2)*(((index+1)/VOICE_FACE_BARS)**2)));
-      let sum=0;for(let bin=from;bin<to;bin+=1)sum+=spectrum[bin];
-      target=Math.min(1,(sum/(to-from))/170);
-    }
-    // Rise fast, fall slow: speech onsets are what the eye reads, and a symmetric filter blurs them.
-    const previous=voiceBarHeights[index];
-    voiceBarHeights[index]=target>previous?target:previous*0.86+target*0.14;
-  }
-  // Rounded to whole pixels so identical frames do not rewrite attributes sixty times a second.
-  const lengths=Array.from(voiceBarHeights,(value)=>Math.max(3,Math.round(value*24)));
-  const bars=$$('.voice-face-bar');
-  bars.forEach((bar,index)=>{
-    const length=lengths[index%VOICE_FACE_BARS]??3;
-    bar.setAttribute('height',String(length));
-    bar.setAttribute('y',String(60-VOICE_FACE_INNER_RADIUS-length));
-  });
-  const aura=$('#voiceFaceAura');
-  if(aura){
-    aura.setAttribute('d',voiceFaceAuraPath(lengths.map((length)=>VOICE_FACE_INNER_RADIUS+length)));
-  }
-  const halo=$('#voiceFaceHalo');
-  if(halo){
-    const loudest=voiceBarHeights.reduce((a,b)=>a>b?a:b,0);
-    halo.setAttribute('r',String(Math.round((52+loudest*8)*10)/10));
-    halo.setAttribute('opacity',String(Math.round((0.18+loudest*0.5)*100)/100));
-  }
-  voiceFacePaint=requestAnimationFrame(paintVoiceFace);
-}
-
-function applyVoiceFacePosition(){
-  const face=$('#voiceFace');if(!face)return;
-  const saved=voiceFacePositions;
-  if(saved&&Number.isFinite(saved.left)&&Number.isFinite(saved.top)){
-    // Same order as the context panel (`applyPanelPosition`): the logical properties are cleared
-    // FIRST, because assigning both forms to one inline style silently keeps whichever was last.
-    const {left,top}=clampPanelPosition(face,saved.left,saved.top);
-    face.style.insetInlineEnd='auto';face.style.insetBlockStart='auto';
-    face.style.left=`${left}px`;face.style.top=`${top}px`;
-  }else{
-    face.style.left='';face.style.top='';face.style.insetInlineEnd='';face.style.insetBlockStart='';
-  }
-}
-
-function initVoiceFaceDrag(){
-  const face=$('#voiceFace');const handle=$('#voiceFaceHandle');
-  if(!face||!handle)return;
-  let dragging=null;
-  handle.addEventListener('pointerdown',(event)=>{
-    if(event.target.closest('button'))return; // the close button is a button, not a grip
-    const rect=face.getBoundingClientRect();
-    dragging={startX:event.clientX,startY:event.clientY,startLeft:rect.left,startTop:rect.top};
-    handle.setPointerCapture(event.pointerId);handle.classList.add('dragging');
-  });
-  handle.addEventListener('pointermove',(event)=>{
-    if(!dragging)return;
-    const {left,top}=clampPanelPosition(face,dragging.startLeft+(event.clientX-dragging.startX),dragging.startTop+(event.clientY-dragging.startY));
-    face.style.insetInlineEnd='auto';face.style.insetBlockStart='auto';
-    face.style.left=`${left}px`;face.style.top=`${top}px`;
-  });
-  const stop=(event)=>{
-    if(!dragging)return;
-    handle.classList.remove('dragging');
-    try{handle.releasePointerCapture(event.pointerId);}catch{}
-    const rect=face.getBoundingClientRect();
-    voiceFacePositions={left:rect.left,top:rect.top};
-    try{localStorage.setItem(VOICE_FACE_POS_KEY,JSON.stringify(voiceFacePositions));}catch{}
-    dragging=null;
-  };
-  handle.addEventListener('pointerup',stop);
-  handle.addEventListener('pointercancel',stop);
-  // Closing the window ENDS the session: every request in flight is aborted, playback stops, the
-  // microphone is handed back. It used to set a flag and stop the recorder, which left the
-  // transcription, the chat run and the synthesis running — and the answer still spoke, into a
-  // window that was no longer there.
-  $('#voiceFaceClose')?.addEventListener('click',()=>{
-    voiceSession?.close('window closed');
-    voiceFaceShow(false);
-  });
-  // The guaranteed way to cut in, because it cannot mishear anything. Acoustic barge-in is best
-  // effort by nature; a key and a button are not.
-  $('#voiceFaceStop')?.addEventListener('click',()=>{voiceSession?.interrupt('stop control');});
-  document.addEventListener('keydown',(event)=>{
-    if(event.key!=='Escape')return;
-    if(!voiceSession||!voiceSession.busy)return;
-    if($('#voiceFace')?.classList.contains('hidden'))return;
-    voiceSession.interrupt('escape');
-  });
-  window.addEventListener('resize',()=>{if(!$('#voiceFace')?.classList.contains('hidden'))applyVoiceFacePosition();});
-}
-
-/** Open a meter on a live stream. Returns null when the browser has no Web Audio: the recording
- *  then behaves exactly as it did before — a missing meter must not cost you the microphone. */
-function openVoiceMeter(stream){
-  const Ctx=window.AudioContext??window.webkitAudioContext;
-  if(!Ctx)return null;
-  try{
-    const ctx=new Ctx();
-    const source=ctx.createMediaStreamSource(stream);
-    const analyser=ctx.createAnalyser();
-    analyser.fftSize=1024;
-    source.connect(analyser); // NOT to destination: monitoring your own microphone is feedback
-    return {ctx,analyser,source,data:new Uint8Array(analyser.fftSize)};
-  }catch{return null;}
-}
-function meterLevel(meter){
-  meter.analyser.getByteTimeDomainData(meter.data);
-  let sum=0;
-  for(const sample of meter.data){const centred=(sample-128)/128;sum+=centred*centred;}
-  return Math.sqrt(sum/meter.data.length);
-}
-function closeVoiceMeter(){
-  if(!voiceMeter)return;
-  try{voiceMeter.source.disconnect();}catch{}
-  try{voiceMeter.ctx.close();}catch{}
-  voiceMeter=null;
-}
-
-/** An abort that looks exactly like the one `fetch` raises, so every consumer has ONE shape to
- *  recognise instead of a special case per source. */
-function voiceAbortError(){
-  const error=new Error('the voice turn was interrupted');
-  error.name='AbortError';
-  return error;
-}
-
-/**
- * The microphone, opened ONCE per session and kept until the session closes.
- *
- * It used to be opened and torn down per turn. Keeping it has three consequences, and the third
- * is the one this phase needs: no repeated device acquisition between turns, no `AudioContext`
- * churn, and — the point — an analyser that is still alive WHILE the product speaks, which is
- * what makes local barge-in possible at all.
- *
- * The three constraints are asked for explicitly rather than left to the browser's defaults:
- * with the microphone open during playback, echo cancellation stops being a nicety and becomes
- * the thing that keeps the product from interrupting itself.
- */
-async function openVoiceStream(){
-  if(voiceStream)return voiceStream;
-  if(!microphoneReachable()){
-    throw new Error(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
-  }
-  try{
-    voiceStream=await navigator.mediaDevices.getUserMedia({
-      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},
-    });
-  }catch(error){
-    // A refused microphone is the person's decision, not a fault. Said plainly and once.
-    throw new Error(`${t('The microphone is not available:')} ${error.message}`);
-  }
-  return voiceStream;
-}
-
-/**
- * Capture one utterance. Resolves with the audio, or with `{spoke:false}` when the room stayed
- * quiet — silence is a result, not an error, and sending it to the engine is what made the
- * product invent Welsh at the Owner (`D-0372`).
- *
- * The endpointing is unchanged from what shipped and is deliberately so: the measured floor over
- * the first 400 ms, a threshold of three times it with a hard minimum, 1 200 ms of quiet to end
- * the turn, 6 s of nothing to give up, and a 30 s ceiling that holds even where Web Audio does
- * not exist. What is NEW is that it is abortable and that it reports the moment it decides you
- * have stopped, so the interface can say `ENDPOINTING` instead of pretending it is still hearing.
- */
-function captureUtterance({signal=null,onSpeechEnd=null}={}){
-  return new Promise((resolve,reject)=>{
-    if(signal?.aborted){reject(voiceAbortError());return;}
-    openVoiceStream().then((stream)=>{
-      if(signal?.aborted){reject(voiceAbortError());return;}
-      const chunks=[];
-      const recorder=new MediaRecorder(stream);
-      voiceRecorderChat=recorder;
-      recorder.ondataavailable=(event)=>{if(event.data?.size)chunks.push(event.data);};
-      voiceMeter=openVoiceMeter(stream);
-      let watching=0;
-      let spoke=false;
-      let nothingHeard=false;
-      let settled=false;
-      let quietSince=0;
-      const startedAt=Date.now();
-      // The room is measured, not assumed: a laptop fan, a street outside and a padded study are
-      // three different silences, and one fixed threshold is wrong in at least two of them.
-      let floor=null;const floorSamples=[];
-      const stopRecording=()=>{
-        if(recorder.state!=='recording')return;
-        if(spoke)onSpeechEnd?.();
-        recorder.stop();
-      };
-      const release=()=>{
-        clearInterval(watching);clearTimeout(ceiling);
-        closeVoiceMeter();
-        signal?.removeEventListener('abort',onAbort);
-        // The STREAM is deliberately NOT stopped here: it belongs to the session, not to the
-        // turn, and stopping it would close the microphone the barge-in monitor is about to use.
-        if(voiceRecorderChat===recorder)voiceRecorderChat=null;
-      };
-      const onAbort=()=>{
-        if(settled)return;settled=true;
-        try{if(recorder.state==='recording')recorder.stop();}catch{ /* already stopped */ }
-        release();
-        reject(voiceAbortError());
-      };
-      if(voiceMeter){
-        watching=setInterval(()=>{
-          // Never drawn: this number decides when you stopped talking and nothing else. The face
-          // follows the product's voice, never yours.
-          const level=meterLevel(voiceMeter);
-          const elapsed=Date.now()-startedAt;
-          if(floor===null){
-            // First 400ms is the room, not you. Nothing is judged during it.
-            floorSamples.push(level);
-            if(elapsed>=400){floor=floorSamples.reduce((a,b)=>a+b,0)/floorSamples.length;}
-            return;
-          }
-          const threshold=Math.max(floor*3,MIN_SPEECH_LEVEL);
-          if(level>threshold){spoke=true;quietSince=0;return;}
-          if(!spoke){
-            // Nobody started. Give up rather than record a minute of room tone for the engine to
-            // invent over — which is the exact input that produced the Owner's "No, no, no…".
-            if(elapsed>NO_SPEECH_GIVE_UP_MS){nothingHeard=true;stopRecording();}
-            return;
-          }
-          if(!quietSince)quietSince=Date.now();
-          if(Date.now()-quietSince>=SILENCE_AFTER_SPEECH_MS)stopRecording();
-        },50);
-      }
-      // A cap that holds even with no meter at all, so the old unbounded recording cannot come
-      // back through a browser without Web Audio.
-      const ceiling=setTimeout(stopRecording,MAX_UTTERANCE_MS);
-      recorder.onstop=()=>{
-        if(settled)return;settled=true;
-        release();
-        if(nothingHeard||!chunks.length){resolve({spoke:false});return;}
-        const type=recorder.mimeType||'audio/webm';
-        resolve({audio:new Blob(chunks,{type}),mimeType:type,spoke:true});
-      };
-      recorder.onerror=(event)=>{
-        if(settled)return;settled=true;
-        release();
-        reject(new Error(event?.error?.message??'the recorder failed'));
-      };
-      signal?.addEventListener('abort',onAbort,{once:true});
-      recorder.start();
-    }).catch(reject);
-  });
-}
-
-/**
- * Play one reply, and resolve WHEN IT HAS ENDED.
- *
- * This contract is the whole of the V-001 repair. `HTMLMediaElement.play()` resolves when
- * playback BEGINS; the shipped code awaited that and reopened the microphone, so the product
- * listened to itself and calibrated its own noise floor on its own voice. Here the promise
- * settles on `ended`, on `error`, or on the turn's abort — never on the start.
- *
- * Everything allocated is undone by ONE function, called exactly once whichever way playback
- * finishes: the element, its listeners, the object URL, and the analyser graph. A blob URL that
- * survives is a second address for a private answer; an `AudioContext` that survives is a device
- * handle the browser will eventually refuse to give again.
- */
-function playSpokenAudio({audio,contentType,signal=null,onPlaybackStart=null}={}){
-  return new Promise((resolve,reject)=>{
-    if(signal?.aborted){reject(voiceAbortError());return;}
-    const url=URL.createObjectURL(new Blob([audio],{type:contentType||'audio/wav'}));
-    const element=new Audio(url);
-    let settled=false;
-    let follow=0;
-    let graph=null;
-    const release=()=>{
-      clearInterval(follow);
-      stopBargeInWatch();
-      element.removeEventListener('ended',onEnded);
-      element.removeEventListener('error',onFailed);
-      signal?.removeEventListener('abort',onAbort);
-      try{element.pause();}catch{ /* pausing a finished element is not an error */ }
-      // Detach the source before revoking: an element still pointing at a revoked URL is what
-      // makes some browsers log a network error for audio that played perfectly.
-      try{element.removeAttribute('src');element.load();}catch{ /* nothing to detach */ }
-      try{URL.revokeObjectURL(url);}catch{ /* already revoked */ }
-      try{graph?.close();}catch{ /* already closed */ }
-      voiceFaceSpectrum=null;
-      if(voiceAudio===element)voiceAudio=null;
-      voiceAudioRelease=null;
-    };
-    const onEnded=()=>{if(settled)return;settled=true;release();resolve({ended:true});};
-    const onFailed=()=>{if(settled)return;settled=true;release();reject(new Error(t('The reply could not be read aloud')));};
-    const onAbort=()=>{if(settled)return;settled=true;release();reject(voiceAbortError());};
-    element.addEventListener('ended',onEnded,{once:true});
-    element.addEventListener('error',onFailed,{once:true});
-    signal?.addEventListener('abort',onAbort,{once:true});
-    voiceAudio=element;
-    voiceAudioRelease=()=>{if(!settled){settled=true;release();reject(voiceAbortError());}};
-
-    // The mouth moves on the REPLY's own amplitude (`D-0372`), so the face is reading the audio
-    // rather than running a loop beside it. Without Web Audio the reply still plays and the face
-    // stays still, which is the truth.
-    const Ctx=window.AudioContext??window.webkitAudioContext;
-    if(Ctx&&$('#voiceFace')){
-      try{
-        graph=new Ctx();
-        const source=graph.createMediaElementSource(element);
-        const analyser=graph.createAnalyser();analyser.fftSize=1024;
-        // Through the analyser AND on to the speakers: a graph that stops at the analyser is a
-        // reply nobody hears.
-        source.connect(analyser);analyser.connect(graph.destination);
-        const spectrum=new Uint8Array(analyser.frequencyBinCount);
-        follow=setInterval(()=>{analyser.getByteFrequencyData(spectrum);voiceFaceSpectrum=spectrum;},25);
-      }catch{ graph=null; /* no graph available: play it plainly */ }
-    }
-
-    element.play().then(()=>{
-      if(settled)return;
-      onPlaybackStart?.();
-      startBargeInWatch();
-    }).catch((error)=>{
-      if(settled)return;settled=true;release();
-      // A refused autoplay is a real, common, recoverable condition — the browser wants a
-      // gesture first. It must reach the person as itself, and it must NOT reopen the
-      // microphone: they would be talking to something that cannot answer.
-      reject(error);
-    });
-  });
-}
-
-/* ——— Barge-in, and the honest limits of doing it locally ———————————————————————————————
- *
- * The microphone stays open while the product speaks, so cutting in is detected here rather
- * than waiting for a persistent transport (that is V3). Three guards, because a microphone
- * beside a speaker hears the speaker:
- *
- *   1. `echoCancellation` is requested explicitly when the stream is opened.
- *   2. A grace period after playback starts, so the first syllable of the product's own reply
- *      cannot trip it.
- *   3. A LOUDER threshold than endpointing, sustained — a single frame above it is a door, a
- *      cough or the product's own consonant.
- *
- * Stated plainly rather than claimed away: on a host whose browser does no echo cancellation
- * this can still self-trigger. That is why the guaranteed way to interrupt is not acoustic at
- * all — the Stop control and the Escape key are always there and cannot mishear anything.
- */
-const BARGE_IN_GRACE_MS=700;
-const BARGE_IN_SUSTAIN_MS=300;
-const BARGE_IN_MIN_LEVEL=0.08;
-
-function startBargeInWatch(){
-  stopBargeInWatch();
-  if(!voiceStream)return;
-  const meter=openVoiceMeter(voiceStream);
-  if(!meter)return;
-  const startedAt=Date.now();
-  let above=0;
-  voiceBargeMeter=meter;
-  voiceBargeWatch=setInterval(()=>{
-    if(Date.now()-startedAt<BARGE_IN_GRACE_MS)return;
-    const level=meterLevel(meter);
-    if(level<=BARGE_IN_MIN_LEVEL){above=0;return;}
-    if(!above)above=Date.now();
-    if(Date.now()-above>=BARGE_IN_SUSTAIN_MS){
-      stopBargeInWatch();
-      voiceSession?.interrupt('barge-in');
-    }
-  },50);
-}
-
-function stopBargeInWatch(){
-  if(voiceBargeWatch){clearInterval(voiceBargeWatch);voiceBargeWatch=0;}
-  if(voiceBargeMeter){
-    try{voiceBargeMeter.source.disconnect();}catch{ /* already disconnected */ }
-    try{voiceBargeMeter.ctx.close();}catch{ /* already closed */ }
-    voiceBargeMeter=null;
-  }
-}
-
-/** Everything the SESSION owns, released once when it closes. The turn's own resources are
- *  released by the turn; this is the microphone and whatever is still playing. */
-function releaseVoiceResources(){
-  stopBargeInWatch();
-  voiceAudioRelease?.();
-  try{voiceRecorderChat?.state==='recording'&&voiceRecorderChat.stop();}catch{ /* already stopped */ }
-  voiceRecorderChat=null;
-  closeVoiceMeter();
-  voiceStream?.getTracks().forEach((track)=>track.stop());
-  voiceStream=null;
-  voiceFaceSpectrum=null;
-}
-
-/** The one session. Rebuilt after a close, because `CLOSED` is terminal by design. */
-function ensureVoiceSession(){
-  if(voiceSession&&voiceSession.state!==VoiceTurn.CLOSED)return voiceSession;
-  voiceSession=new VoiceSession({
-    continuous:true,
-    adapters:{
-      listen:captureUtterance,
-      transcribe:({audio,signal})=>transcribeRecording(audio,{signal}),
-      converse:({text,signal})=>applyHeardText(text,{signal}),
-      // P5. Same function, same turn, same signal — the only difference is that the answer is
-      // handed over as it is written. Declared as its own adapter rather than as a flag on
-      // `converse` so `VoiceSession` can DETECT the capability instead of presuming it: an
-      // installation reached through a path with no streaming keeps the whole-answer behaviour.
-      converseStream:({text,signal,onDelta})=>applyHeardText(text,{signal,onDelta}),
-      synthesize:({text,signal})=>synthesizeReply(text,{signal}),
-      play:playSpokenAudio,
-      release:releaseVoiceResources,
-    },
-    onState:renderVoiceTurn,
-    onNote:renderVoiceNote,
-  });
-  return voiceSession;
-}
-
-/** What each state says and whether it can be interrupted. One table, so the window, the button
- *  and the stop control cannot disagree about what the product is doing. */
-function renderVoiceTurn(state,detail){
-  const button=$('#chatDictate');const label=$('#chatDictateLabel');const icon=$('#chatDictateIcon');
-  const stop=$('#voiceFaceStop');
-  const listening=state===VoiceTurn.LISTENING;
-  const speaking=state===VoiceTurn.SPEAKING;
-  const working=[VoiceTurn.ENDPOINTING,VoiceTurn.TRANSCRIBING,VoiceTurn.THINKING].includes(state);
-  voiceFaceState(state,detail?.caption);
-  button?.setAttribute('aria-pressed',String(listening||working||speaking));
-  if(label)label.textContent=listening||working||speaking?t('Stop'):t('Speak');
-  if(icon)icon.textContent=listening||working||speaking?'⏹':'🎙';
-  // Interruptible exactly while the product holds the turn. Offering it at other times would be
-  // a control that does nothing, which is indistinguishable from a broken one.
-  if(stop)stop.disabled=!(speaking||working);
-  if(state===VoiceTurn.IDLE&&detail?.reason==='nothing-heard')voiceNote(t('I did not hear anything.'));
-}
-
-/** What the machine reports, in the language in effect. Errors included: a turn that failed
- *  says so here rather than leaving the window sitting on a stale caption. */
-function renderVoiceNote(note){
-  if(!note)return;
-  if(note.kind==='heard'){voiceFaceState(VoiceTurn.TRANSCRIBING,note.text);voiceNote(note.text);return;}
-  if(note.kind==='nothing-heard'){
-    const said=t('I did not hear anything.');
-    voiceFaceCaption(said);voiceNote(said);return;
-  }
-  if(note.kind==='not-understood'){
-    const said=note.reason==='repetition'
-      ? t('I only heard noise, so I ignored it.')
-      : t('I did not catch that.');
-    voiceFaceCaption(said);voiceNote(said);return;
-  }
-  if(note.kind==='error')voiceNote(note.message||String(note.error));
-}
-
-/** The microphone button: start a turn, or stop the one running. */
-async function toggleDictation(){
-  if(!microphoneReachable()){
-    voiceNote(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
-    return;
-  }
-  const session=ensureVoiceSession();
-  if(session.busy){session.cancel('owner stopped the turn');return;}
-  voiceFaceShow(true);
-  voiceNote(t('Listening…'));
-  session.start('owner');
-}
-
-/**
- * Read one TYPED reply aloud, when the toggle asks for it.
- *
- * Spoken turns do not come through here: their playback belongs to `VoiceSession`, which owns
- * the generation that can cancel it. Reading in two places is how one interruption could leave a
- * second voice still talking.
- *
- * It shares the SAME synthesis and playback helpers as a spoken turn — one code path for
- * allocating and releasing an audio element, one place where an object URL is revoked. Its own
- * controller means the Stop control can silence a read-aloud too.
- */
-async function speakReply(text){
-  if(!readAloud||!voiceState.canSpeak||!String(text??'').trim())return;
-  readAloudController?.abort();
-  readAloudController=new AbortController();
-  const {signal}=readAloudController;
-  try{
-    const spoken=await synthesizeReply(text,{signal});
-    voiceFaceShow(true);
-    voiceFaceState(VoiceTurn.SPEAKING,String(text).slice(0,240));
-    await playSpokenAudio({...spoken,signal});
-    voiceFaceState(VoiceTurn.IDLE,'');
-  }catch(error){
-    if(error?.name==='AbortError')return;
-    voiceNote(error.message);
-    voiceFaceState(VoiceTurn.IDLE,'');
-  }
-}
-function initChatVoice(){
-  $('#chatDictate')?.addEventListener('click',toggleDictation);
-  $('#chatVoice')?.addEventListener('change',(event)=>{chosenVoice=event.target.value||null;});
-  const aloud=$('#chatReadAloud');
-  aloud?.addEventListener('click',()=>{
-    readAloud=!readAloud;
-    aloud.setAttribute('aria-pressed',String(readAloud));
-    const label=$('#chatReadAloudLabel');
-    if(label)label.textContent=readAloud?t('Read aloud: on'):t('Read aloud: off');
-    const icon=$('#chatReadAloudIcon');
-    if(icon)icon.textContent=readAloud?'🔊':'🔇';
-    // Turning it off stops what is being read RIGHT NOW — through the controller, so the
-    // synthesis still in flight is abandoned too rather than arriving and speaking anyway.
-    if(!readAloud){readAloudController?.abort();readAloudController=null;}
-  });
-  initVoiceFaceDrag();
-  // Wiring only. Asking the server what this installation can do is `enterApplication()`'s job,
-  // because this function runs before anybody is signed in and the answer would be 401. The
-  // controls stay disabled until that answer arrives — which is what the markup already says.
-}
-/** Sign-out must forget what the installation could do, not just hide the page. Leaving
- *  `canSpeak` true across a sign-out would let the next person's first reply be read aloud on a
- *  session that no longer exists, and the request would fail somewhere further away from the
- *  cause. Cheap to reset, and it puts the controls back exactly where a cold load leaves them. */
-function forgetVoiceState(){
-  voiceState={canHear:false,canSpeak:false};
-  // Signing out ENDS the session — abort, stop, hand the microphone back. A device left open
-  // across a sign-out is the clearest privacy defect this file could have.
-  voiceSession?.close('signed out');
-  voiceSession=null;
-  readAloudController?.abort();
-  readAloudController=null;
-  voiceFaceSpectrum=null;voiceFaceShow(false);
-  readAloud=false;
-  chosenVoice=null;
-  const dictate=$('#chatDictate');const aloud=$('#chatReadAloud');
-  if(dictate)dictate.disabled=true;
-  if(aloud){aloud.disabled=true;aloud.setAttribute('aria-pressed','false');}
-  const label=$('#chatReadAloudLabel');
-  if(label)label.textContent=t('Read aloud: off');
-  const readAloudIcon=$('#chatReadAloudIcon');
-  if(readAloudIcon)readAloudIcon.textContent='🔇';
-  const dictateIcon=$('#chatDictateIcon');
-  if(dictateIcon)dictateIcon.textContent='🎙';
-}
 function initWorkspaceActions(){
   addPlanFileRow();
   $('#planAddFile')?.addEventListener('click',addPlanFileRow);
@@ -7007,7 +5932,6 @@ initAttachCode();
 initSessions();
 initChatNav();
 initBench();
-initChatVoice();
 // --- D-0404 slice 3 · attaching the CodeN terminal ------------------------------------------
 //
 // Dynamic import, and the reason is measured rather than stylistic: `xterm.mjs` is 345 KB, and

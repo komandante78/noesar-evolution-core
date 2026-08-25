@@ -26,8 +26,6 @@ import { verifyModelDescriptor, authenticitySummary } from './model-descriptor-a
 import { previewRemoval, removeModel } from './model-removal.mjs';
 import { fetchDocument, checkSource as checkTransportSource } from './model-transport.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
-import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
-import { chooseDestination, VoiceChoice } from './voice-interpreter.mjs';
 import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDetail } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
@@ -125,8 +123,7 @@ import { resolveTls } from './tls.mjs';
 import {
   resolveTrustAnchor, renderTrustAnchorIndex, TRUST_ANCHOR_BASENAME, TRUST_ANCHOR_CONTENT_TYPE,
 } from './trust-anchor.mjs';
-import { browserSignIn, shouldRedirectToSecure, normaliseHttpsUrl } from './secure-address.mjs';
-import { voiceAccess } from './voice-access.mjs';
+import { browserSignIn, shouldRedirectToSecure } from './secure-address.mjs';
 import { mintProof, verifyProof } from './owner-recovery.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
@@ -134,7 +131,6 @@ import { buildCodenAddressBook } from './coden-address-book.mjs';
 // model is allowed to choose from is built from this session's identity rather than proposed by
 // whoever is calling — see `/api/v1/voice/interpret`. It imports nothing itself, so a server-side
 // import of a file that also runs in the browser costs nothing and buys one list instead of two.
-import { menuFor, accountFromUser } from '../../../apps/shared/coden/agent-commands.js';
 import { requestOrigin } from './request-origin.mjs';
 import { resolveCliDownload, readCliArtifact, renderCliIndex } from './cli-downloads.mjs';
 // `D-0404` slice 2: the browser's transport onto the same session the terminal reaches.
@@ -1408,24 +1404,6 @@ async function body(req) {
   catch { throw Object.assign(new Error('Invalid JSON request body.'), { status:400 }); }
 }
 
-/**
- * The body as BYTES — for audio, which is not text and must not be round-tripped through one.
- *
- * A separate limit from `body()`'s 64 MiB, and a much smaller one: this is a spoken phrase, not
- * a file upload. A microphone that is left running is the ordinary way this route gets abused,
- * and it is abused by an authenticated user, so the ceiling is the control, not the credential.
- */
-async function bytesBody(req, { limitBytes = 16 * 1024 * 1024 } = {}) {
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > limitBytes) throw Object.assign(new Error('Audio too large.'), { status:413 });
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
-}
-
 function serveStatic(pathname, res) {
   const requested = pathname === '/' ? '/index.html' : pathname;
   // Two roots, one guard. `/shared/…` is served out of `apps/shared/`; everything else out of
@@ -2062,118 +2040,6 @@ const requestListener = async (req, res) => {
       } catch (error) {
         return json(res, 400, { error: error.reason ?? error.message, kind: error.kind ?? 'INVALID_REQUEST' });
       }
-    }
-    // ---- Voice. Owner, s336: «fai un motore reale interno con voce naturale». ----------------
-    //
-    // `model.read` for the state and `provider.use` for the two verbs — the same permissions the
-    // rest of the product uses for "which model is there" and "run a turn on it". Every role
-    // holds `provider.use`, so voice is available to anyone who can hold a conversation at all,
-    // which is the only posture that makes sense for a microphone.
-    if (req.method === 'GET' && url.pathname === '/api/v1/voice/state') {
-      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
-      const readiness = await voiceReadiness({
-        routing: voiceRoutingFrom(process.env),
-        fetchImpl: typeof fetch === 'function' ? fetch : undefined,
-      });
-      // Readiness is about this host; `access` is about the person asking. The first can say
-      // READY while the second says the browser has no microphone at all, and reporting only
-      // the first is how the interface came to offer a button that cannot work.
-      return json(res, 200, {
-        ...readiness,
-        access: voiceAccess({
-          encrypted: Boolean(req.socket?.encrypted), host: req.headers.host,
-          // Read straight from the declaration rather than from browserSignInAdvice(), whose
-          // secureAddress is deliberately null on an already-encrypted connection: here the
-          // address is wanted for a DIFFERENT device, so it is needed on both transports.
-          trustAnchor, secureAddress: normaliseHttpsUrl(process.env.NOESAR_PUBLIC_TLS_URL),
-        }),
-      });
-    }
-    // Raw audio in, text out. The bytes arrive as the body with `content-type` naming the format
-    // the browser recorded — the multipart assembly the model server expects happens in
-    // `voice-engine.mjs`, once, rather than being a shape the client has to get right.
-    if (req.method === 'POST' && url.pathname === '/api/v1/voice/transcribe') {
-      const authenticated = requireSession(req, res, 'provider.use');
-      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
-      const audio = await bytesBody(req);
-      try {
-        const heard = await transcribe({
-          audio: new Uint8Array(audio),
-          mimeType: String(req.headers['content-type'] ?? 'audio/webm').split(';')[0].trim(),
-          routing: voiceRoutingFrom(process.env),
-          fetchImpl: typeof fetch === 'function' ? fetch : undefined,
-        });
-        return json(res, 200, heard);
-      } catch (error) {
-        if (!(error instanceof VoiceEngineError)) throw error;
-        return json(res, error.status, { error: error.reason, kind: error.kind });
-      }
-    }
-    // Text in, AUDIO out — the bytes themselves, in the response. Not a URL: audio generated from
-    // a conversation this product holds must not become a second address that outlives the
-    // request and can be fetched by anyone who guesses it.
-    if (req.method === 'POST' && url.pathname === '/api/v1/voice/speak') {
-      const authenticated = requireSession(req, res, 'provider.use');
-      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
-      const request = await body(req);
-      try {
-        const said = await speak({
-          text: request?.text,
-          voice: request?.voice ?? null,
-          routing: voiceRoutingFrom(process.env),
-          fetchImpl: typeof fetch === 'function' ? fetch : undefined,
-        });
-        res.writeHead(200, {
-          ...securityHeaders({ secureTransport:secureCookies }),
-          'content-type': said.contentType,
-          'content-length': said.audio.length,
-          // Spoken answers are about a live conversation. A cached one is yesterday's answer
-          // read aloud in today's voice.
-          'cache-control': 'no-store',
-        });
-        return res.end(Buffer.from(said.audio));
-      } catch (error) {
-        if (!(error instanceof VoiceEngineError)) throw error;
-        return json(res, error.status, { error: error.reason, kind: error.kind });
-      }
-    }
-    // Asked ONLY when the deterministic resolver could not place what was heard. The model is
-    // given the product's own entries and told to name one of them or NONE; the reply is
-    // accepted only if it names one, so a model that invents can only ever pick the wrong door
-    // of this product's own doors, never a door that does not exist.
-    //
-    // THE CLIENT DOES NOT PROPOSE THE LIST. It sends the sentence and nothing else; the
-    // candidates are built here, from this session's own identity — the commands this account
-    // may use plus the addresses this installation serves. A first draft took the list from the
-    // request body and intersected it, which is weaker for no benefit: a client that can name
-    // the candidates is a client that decides what the model is allowed to pick, and the whole
-    // guarantee of this route is that voice cannot reach past what this account could type.
-    if (req.method === 'POST' && url.pathname === '/api/v1/voice/interpret') {
-      const authenticated = requireSession(req, res, 'provider.use');
-      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
-      const request = await body(req);
-      // `permissionsFor` takes a ROLE, not a user — the same matrix `/api/v1/auth/me` hands the
-      // browser, so the list the model chooses from is exactly the menu that account sees.
-      const account = accountFromUser({
-        permissions: auth.permissionsFor(authenticated.user?.role),
-        role: authenticated.user?.role ?? null,
-      });
-      const candidates = [
-        ...menuFor(account).entries.map((entry) => ({ name: entry.name, summary: entry.summary ?? '' })),
-        ...buildCodenAddressBook(webRoot).map((entry) => ({ name: entry.address, summary: entry.label ?? entry.address })),
-      ];
-      const decision = await chooseDestination({
-        utterance: request?.text,
-        entries: candidates,
-        endpoint: process.env.NOESAR_AUTHORING_ENDPOINT ?? null,
-        model: process.env.NOESAR_AUTHORING_MODEL ?? null,
-        fetchImpl: typeof fetch === 'function' ? fetch : undefined,
-      });
-      // 200 in every case: "the model found nothing that fits" is an ANSWER, and a 4xx would make
-      // the surface treat an honest refusal as a fault it should complain about.
-      return json(res, 200, decision.kind === VoiceChoice.CHOSEN
-        ? { chosen: decision.name }
-        : { chosen: null, kind: decision.kind, reason: decision.reason });
     }
     // The only mutating verb of this panel, and the only one that spends authority. It PLANS
     // and refuses; it does not download here. Acquisition is egress plus a write to disk plus

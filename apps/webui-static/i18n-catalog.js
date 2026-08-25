@@ -94,10 +94,8 @@ export const RUNTIME_ONLY = Object.freeze([
   // markup because it is composed and assigned at runtime, the same reason the status line
   // above it is listed here rather than found by the scanner.
   'CodeN Evolution — bench command line, same session as the terminal above. Type / to jump to a panel below.',
-  // Painted by renderVoiceAccess() in app.js when this connection cannot open a microphone
   // (D-0367). They appear in no markup because the addresses come from the server, which is
   // the only side that knows what the client connected to and whether a certificate exists.
-  "This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.",
   "On this machine, open",
   "Certificate page",
   "Authenticator setup code",
@@ -339,40 +337,17 @@ export const RUNTIME_ONLY = Object.freeze([
   '…or type to filter',
   'in',
   'backspace leaves it',
-  // The microphone beside the composer, s336 stage 3 — written by app.js, never in the markup.
-  'Read aloud: on',
-  'Listening…',
-  'This installation cannot hear.',
-  'This installation cannot speak.',
-  'The microphone is not available:',
-  'This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.',
-  'The reply could not be read aloud',
   'Asking the model…',
-  // The voice window and the automatic end of speech, s340 (D-0372) — all written by app.js.
-  'Listening',
   'Thinking',
-  'Speaking',
-  'Ready to listen',
   // The states the window gained with the turn state machine (V1) — `endpointing` and
   // `transcribing` used to be drawn as "Listening", which told the person to keep talking after
   // the product had stopped hearing, and every failure was drawn as "Ready to listen".
   'Got it',
-  'Transcribing',
   'Stopping',
   'Something went wrong',
-  // The Stop control's own label and title are written by the MARKUP, not by JavaScript, so they
   // are covered by the ordinary extractor and must NOT be declared runtime-only — declaring them
   // would exempt from measurement two strings the measurement can actually see.
-  'Open or create a chat first — I need somewhere to put the answer.',
-  'Speak now — I will stop on my own when you finish.',
-  'I did not hear anything.',
-  'I only heard noise, so I ignored it.',
   '(understood by the model)',
-  // The two voice names are written by `renderVoicePicker` into <option> elements.
-  'Rune',
-  'Estrela',
-  // What the product says back to speech — `voice-intent.js`, never in the markup.
-  'I did not catch that.',
   'Nothing here is called that:',
   'That matches several — say which:',
   'Going to',
@@ -428,11 +403,6 @@ const it = {
   "No camera on this device? Type this secret into the app by hand instead:": "Nessuna fotocamera su questo dispositivo? Allora scrivi a mano questo segreto nell’app:",
   // Le due strade gratuite prima di quella che costa (D-0367): la macchina stessa non ha
   // bisogno di alcun certificato, ed e' la risposta che il prodotto non nominava mai.
-  'To speak from a phone or another device': 'Per parlare da un telefono o da un altro dispositivo',
-  'Scan this with that device. It opens this installation\'s certificate page.': 'Inquadra questo con quel dispositivo. Apre la pagina del certificato di questa installazione.',
-  'Before you install it, the device shows a SHA-256. It must match this one, which you are reading over your own signed-in session:': 'Prima di installarlo, il dispositivo mostra un SHA-256. Deve coincidere con questo, che stai leggendo dalla tua sessione autenticata:',
-  'Then open NOESAR on that device at:': 'Poi apri NOESAR su quel dispositivo a:',
-  'This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.': 'Questa pagina non puo\' aprire un microfono: un browser lo consente solo su HTTPS, o dalla macchina stessa.',
   'On this machine, open': 'Su questa macchina, apri',
   'Certificate page': 'Pagina del certificato',
   'Authenticator setup code': 'Codice di configurazione dell’autenticatore',
@@ -855,7 +825,6 @@ const it = {
   'Upload PDF, Office, image, audio, video, ZIP, dataset or code': 'Carica PDF, Office, immagine, audio, video, ZIP, dataset o codice',
   'Camera': 'Fotocamera',
   'Screen': 'Schermo',
-  'Record voice': 'Registra la voce',
   'Source name': 'Nome della fonte',
   'MIME type': 'Tipo MIME',
   'Text or extracted content': 'Testo o contenuto estratto',
@@ -863,7 +832,6 @@ const it = {
   'Extraction capabilities loading…': 'Caricamento delle capacità di estrazione…',
   'Search': 'Cerca',
   'Search your sources once you have added one.': 'Cerca nelle tue fonti dopo averne aggiunta una.',
-  'No sources indexed yet — add a file, paste text, or record voice above to make it searchable.': 'Nessuna fonte indicizzata ancora — aggiungi un file, incolla testo o registra la voce qui sopra per renderla cercabile.',
   'VISIBLE AND REVOCABLE': 'VISIBILE E REVOCABILE',
   'Notes': 'Note',
   'Notes you write by hand and pin to a project or conversation — separate from Memory, which the product writes for you.': 'Note che scrivi a mano e fissi a un progetto o a una conversazione — distinte dalla Memoria, che il prodotto scrive per te.',
@@ -876,6 +844,7 @@ const it = {
   'No notes yet — pin one to a project or conversation above.': 'Ancora nessuna nota — fissane una a un progetto o a una conversazione qui sopra.',
   'Paste text directly, or select a binary file for secure local extraction': 'Incolla il testo direttamente, oppure scegli un file binario per un’estrazione locale sicura',
   'Search knowledge…': 'Cerca nella conoscenza…',
+  'No sources indexed yet — add a file or paste text to make it searchable.': 'Nessuna fonte indicizzata — aggiungi un file o incolla del testo per renderlo cercabile.',
 
   // ——— Memory ———
   'WRITTEN FOR YOU, AT THE END OF EACH SESSION': 'SCRITTA PER TE, ALLA FINE DI OGNI SESSIONE',
@@ -1608,56 +1577,26 @@ const it = {
   '…or type to filter': '…oppure scrivi per filtrare',
   'backspace leaves it': 'backspace ne esce',
   //
-  // What the product says back to something it heard (`voice-intent.js`). Fragments again where
   // a name follows: what follows is an address or a command name, and a translated one names
   // nothing. Every one of these is a case where voice DID NOT act — three of the four are the
   // product declining to guess, which is the behaviour worth being clear in.
-  'I did not catch that.': 'Non ho capito.',
   'Nothing here is called that:': 'Qui non si chiama così niente:',
   'That matches several — say which:': 'Corrisponde a più cose — dimmi quale:',
   'Going to': 'Vado a',
   'Ready to send:': 'Pronto da mandare:',
   //
-  // The microphone beside the composer, s336 stage 3. Note what the two "cannot" sentences are
   // for: until a transcription or a speech model is configured, this installation declares that
-  // it cannot hear or cannot speak — and that is TRUE, which is the only reason these controls
   // are allowed to exist before stage 4 does.
-  'Speak': 'Parla',
-  'Speak instead of typing — heard by this installation, never by the browser.': 'Parla invece di scrivere — ti sente questa installazione, mai il browser.',
-  'Read each reply aloud when it is complete.': 'Leggi ad alta voce ogni risposta quando è completa.',
-  'Read aloud: off': 'Lettura: spenta',
-  'Read aloud: on': 'Lettura: accesa',
-  'Listening…': 'Ti ascolto…',
   //
   // La finestra della voce e la chiusura automatica, s340 (D-0372). 'Ready' qui è lo stato della
   // faccia, non lo stato del prodotto in basso: 'Pronta' concorda con 'la voce', che è ciò che
   // quella finestra è.
-  'Listening': 'Ti ascolto',
   'Thinking': 'Sto pensando',
-  'Speaking': 'Sto parlando',
-  'Ready to listen': 'Pronta ad ascoltare',
   'Got it': 'Ho capito',
-  'Transcribing': 'Sto trascrivendo',
   'Stopping': 'Mi sto fermando',
   'Something went wrong': 'Qualcosa non ha funzionato',
-  'Stop the reply and speak now (Escape)': 'Ferma la risposta e parla adesso (Esc)',
-  'Stop the reply and speak now — Escape does the same': 'Ferma la risposta e parla adesso — anche Esc fa lo stesso',
-  'Open or create a chat first — I need somewhere to put the answer.': 'Apri o crea prima una chat — mi serve un posto dove mettere la risposta.',
-  'Speak now — I will stop on my own when you finish.': 'Parla pure — mi fermo da solo quando hai finito.',
-  'I did not hear anything.': 'Non ho sentito niente.',
-  'I only heard noise, so I ignored it.': 'Ho sentito solo rumore, quindi l\'ho ignorato.',
-  'Close the voice window': 'Chiudi la finestra della voce',
-  'This installation cannot hear.': 'Questa installazione non può sentire.',
-  'This installation cannot speak.': 'Questa installazione non può parlare.',
-  'The microphone is not available:': 'Il microfono non è disponibile:',
-  'This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.': 'Questa pagina non può aprire un microfono: il browser lo consente solo via HTTPS, oppure da localhost. Questa installazione, di suo, è pronta.',
-  'The reply could not be read aloud': 'La risposta non è stata letta ad alta voce',
   //
-  // Choosing a voice, and the model-assisted step. `Rune` and `Estrela` are NOT here: they are
-  // names, and a name is the same word in every language — they sit under "deliberately
-  // unchanged" below, where an entry that says "we looked at this and it stays" is a decision.
-  'Voice': 'Voce',
-  'Which voice reads the replies. Rune and Estrela are this product\'s own names, bound to voices of whatever speech model is installed.': 'Quale voce legge le risposte. Rune ed Estrela sono nomi propri di questo prodotto, legati alle voci di qualunque modello di sintesi sia installato.',
+  // The model-assisted step.
   'Asking the model…': 'Sto chiedendo al modello…',
   '(understood by the model)': '(capito dal modello)',
   // ——— deliberately unchanged ———
@@ -1696,8 +1635,6 @@ const it = {
   'en-GB': 'en-GB',                           // an example locale tag
   'deploy': 'deploy',                         // example SSH username
   '/srv/app': '/srv/app',                     // example path
-  'Rune': 'Rune',                             // the product's masculine voice — a name, s336
-  'Estrela': 'Estrela',                       // the product's feminine voice — a name, s336
   'in': 'in',                                 // the preposition is the same word in Italian
   '<id>': '<id>',                             // an identifier is not a word
   '[id]': '[id]',                             // same identifier, now optional — /model with none lists

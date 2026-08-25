@@ -269,8 +269,8 @@ page.on('response', (response) => {
 });
 
 // Every request the page makes, not only the ones that failed. A defect can be an ABSENCE:
-// the voice failure repaired in s340 was a request the product stopped making after sign-in,
-// and a recorder that only keeps failures cannot see a call that was never attempted.
+// a call the product stopped making after sign-in is invisible to a recorder that only keeps
+// failures, because the request was never attempted at all.
 const requestLog = [];
 page.on('request', (request) => { requestLog.push(`${request.method()} ${request.url()}`); });
 function requestWasMade(pathFragment) {
@@ -653,87 +653,6 @@ try {
   await page.click('#setupMfaForm button[type="submit"]');
   await page.waitForSelector('#authGate.hidden', { timeout: 25000 });
   check('owner bootstrap signs the browser in', true);
-
-  at('voice-after-sign-in');
-  // --- what this installation can hear and say is asked AFTER sign-in ------
-  //
-  // s340, reported by the Owner as «per la voce non funziona nulla»: `initChatVoice()` ran at
-  // module boot, two statements before `initializeAuth()` — an order, not a race — so
-  // `/api/v1/voice/state` was answered 401 every cold load. The catch turned that into
-  // `{canHear:false,canSpeak:false}`, which disables the microphone and the read-aloud button
-  // and makes `speakReply` return before it asks for anything. Nothing refetched it, so voice
-  // was dead from sign-in until a manual reload — and a reload made it work, which is why it
-  // never looked reproducible.
-  //
-  // The assertion is on the REQUEST, not on the buttons. Asserting `#chatReadAloud.disabled`
-  // agrees with `canSpeak` would pass vacuously on any installation with no speech model
-  // bound: false === false, defect intact. That an installation was ASKED is not vacuous.
-  await page.waitForNetworkIdle({ idleTime: 800, timeout: 15000 }).catch(() => {});
-  check('signing in asks what this installation can hear and say',
-    requestWasMade('/api/v1/voice/state'),
-    `requests after sign-in: ${requestLog.length}`);
-  // The complementary direction: it must not be asked while nobody is signed in, which is what
-  // produced a 401 on every load. Together these pin WHEN the question is asked, from both sides.
-  const voiceWhileSignedOut = failedRequests.filter((entry) => entry.includes('/api/v1/voice/state'));
-  check('the voice state is never requested from a signed-out page',
-    voiceWhileSignedOut.length === 0, voiceWhileSignedOut.join(' | '));
-  // And the answer must reach the controls: asked-and-ignored is the other way to be dead.
-  const voiceControls = await page.evaluate(async () => {
-    const state = await fetch('/api/v1/voice/state', { credentials: 'same-origin' }).then((r) => r.json());
-    return {
-      canSpeak: state.canSpeak === true,
-      aloudDisabled: document.querySelector('#chatReadAloud')?.disabled ?? null,
-    };
-  });
-  check('the read-aloud control agrees with what the installation says it can do',
-    voiceControls.aloudDisabled === !voiceControls.canSpeak, JSON.stringify(voiceControls));
-
-  at('voice-window');
-  // --- the voice window: present, closed, movable, remembered (D-0372) ----
-  //
-  // Owner: «meglio creare un popup … con la finestrina che possiamo spostare e mettere dove
-  // vogliamo». What this probe CAN exercise is the window itself; what it cannot is the
-  // microphone, because there is no audio device here and no speech model bound. That half is
-  // stated rather than faked — a check driving a synthetic stream would assert this harness's
-  // idea of a microphone, not a microphone.
-  const windowBefore = await page.evaluate(() => {
-    const face = document.querySelector('#voiceFace');
-    return {
-      exists: Boolean(face),
-      hidden: face?.classList.contains('hidden') ?? null,
-      hasHandle: Boolean(document.querySelector('#voiceFaceHandle')),
-      bars: document.querySelectorAll('.voice-face-bar').length,
-    };
-  });
-  check('the voice window exists and stays closed until the microphone is used',
-    windowBefore.exists && windowBefore.hidden === true
-    && windowBefore.hasHandle && windowBefore.bars > 0, JSON.stringify(windowBefore));
-
-  // Dragged through real pointer events on the real handle, not by assigning style.left: the
-  // thing being checked is the drag wiring, and setting the position directly would pass with
-  // no wiring at all.
-  const dragged = await page.evaluate(async () => {
-    const face = document.querySelector('#voiceFace');
-    const handle = document.querySelector('#voiceFaceHandle');
-    face.classList.remove('hidden');
-    const start = face.getBoundingClientRect();
-    const send = (type, x, y) => handle.dispatchEvent(new PointerEvent(type, {
-      pointerId: 1, clientX: x, clientY: y, bubbles: true,
-    }));
-    send('pointerdown', start.left + 10, start.top + 6);
-    send('pointermove', start.left + 10 - 120, start.top + 6 - 90);
-    send('pointerup', start.left + 10 - 120, start.top + 6 - 90);
-    const moved = face.getBoundingClientRect();
-    let stored = null;
-    try { stored = JSON.parse(localStorage.getItem('noesar.voiceFace.position') ?? 'null'); } catch { /* none */ }
-    face.classList.add('hidden');
-    return { movedX: Math.round(start.left - moved.left), movedY: Math.round(start.top - moved.top), stored };
-  });
-  check('the voice window can be dragged where the person wants it',
-    dragged.movedX > 60 && dragged.movedY > 40, JSON.stringify(dragged));
-  check('where it was put is remembered, not reset on the next use',
-    Boolean(dragged.stored) && Number.isFinite(dragged.stored.left)
-    && Number.isFinite(dragged.stored.top), JSON.stringify(dragged.stored));
 
   at('csrf');
   // --- the CSRF regression, which is the reason any of this is here --------
@@ -1991,74 +1910,6 @@ try {
   }));
   check('`/` typed into a message stays in the message and opens nothing',
     !slashWhileTyping.open && slashWhileTyping.typed === 'and/or', JSON.stringify(slashWhileTyping));
-
-  // ——— VOICE, s336 stage 3 ————————————————————————————————————————————————————————————
-  //
-  // What is checked here is HONESTY, and it can only be checked in a browser. This installation
-  // has no transcription or speech model configured — stage 4 is the stage that changes that —
-  // so the only correct behaviour for the two controls is to be present, refuse, and say which
-  // piece is missing. A control that looked available and then did nothing would be the s316
-  // complaint again: a feature indistinguishable from a broken one.
-  //
-  // It also catches what `npm test` structurally cannot. That suite reads `app.js` as TEXT and
-  // never executes it, so a bad import — or a leftover reference to the chip just deleted from
-  // the top bar — would pass every unit test and blank the page. If `#chatDictate` carries a
-  // title at all, `app.js` ran all the way through its wiring.
-  const voiceFace = await page.evaluate(async () => {
-    const dictate = document.querySelector('#chatDictate');
-    const aloud = document.querySelector('#chatReadAloud');
-    const state = await fetch('/api/v1/voice/state', { credentials: 'same-origin' })
-      .then((response) => response.json()).catch(() => null);
-    return {
-      dictatePresent: Boolean(dictate),
-      aloudPresent: Boolean(aloud),
-      dictateDisabled: dictate?.disabled ?? null,
-      aloudDisabled: aloud?.disabled ?? null,
-      // The reason is read off the note line, not off `title`: `title` is translated from a
-      // cached source, so a reason written there is overwritten by the markup's own the next
-      // time anything changes. Found here, by this check, against the first build of it.
-      note: document.querySelector('#voiceNote')?.textContent ?? '',
-      noteHidden: document.querySelector('#voiceNote')?.classList.contains('hidden') ?? null,
-      towerGone: !document.querySelector('#voiceToggle') && !document.querySelector('#voicePopover'),
-      canHear: state?.canHear ?? null,
-      canSpeak: state?.canSpeak ?? null,
-    };
-  });
-  check('the microphone and the read-aloud control are beside the composer',
-    voiceFace.dictatePresent && voiceFace.aloudPresent, JSON.stringify(voiceFace));
-  check('the five-word control tower is gone from the top bar (point 6a)',
-    voiceFace.towerGone, JSON.stringify(voiceFace));
-  check('the server, not the browser, decides whether this installation can hear',
-    voiceFace.canHear === false && voiceFace.canSpeak === false, JSON.stringify(voiceFace));
-  check('with no model configured the controls refuse, and say which piece is missing',
-    voiceFace.dictateDisabled === true && voiceFace.aloudDisabled === true
-      && voiceFace.noteHidden === false && /cannot hear|transcription/i.test(voiceFace.note),
-    JSON.stringify(voiceFace));
-
-  // The resolver is the same module the unit suite drives — but this asserts it is the one the
-  // PAGE loaded. A build that shipped a stale copy of it would pass every test in that suite.
-  const voiceHeard = await page.evaluate(async () => {
-    const intent = await import('/voice-intent.js');
-    const commands = await import('/shared/coden/agent-commands.js');
-    // F-INTENT-001: `[...commands.AGENT_COMMANDS]` alone is not what the page hands the
-    // resolver — `heardResult()` (app.js) passes `codenOffered()`, commands PLUS the served
-    // address book. 'memory' lives only in the address book, so the AGENT_COMMANDS-only list
-    // could never match it: not a resolver defect, a reconstructed-input defect in this check.
-    const entries = window.__noesarCodenOffered();
-    const groupTitles = Object.fromEntries(commands.MENU_GROUPS.map((group) => [group.id, group.title]));
-    const say = (text) => intent.resolveUtterance(text, { entries, groupTitles });
-    return {
-      navigate: say('memory'),
-      run: say('plan fix the login'),
-      prose: say('spiegami come funziona il login'),
-    };
-  });
-  check('in the page, a destination navigates and a capability only waits to be sent',
-    voiceHeard.navigate.disposition === 'navigate' && voiceHeard.run.disposition === 'run'
-      && voiceHeard.run.line === '/plan fix the login',
-    JSON.stringify(voiceHeard));
-  check('in the page, prose that names nothing stays prose — that is the dictation path',
-    voiceHeard.prose.kind === 'nothing', JSON.stringify(voiceHeard.prose));
 
   // Ctrl K is not taken away because a better key arrived.
   await page.keyboard.down('Control');

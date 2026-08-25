@@ -3,7 +3,6 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { randomUUID, createHash } from 'node:crypto';
-import { transcribe, voiceRoutingFrom, VoiceJob, VoiceEngineError } from '../voice-engine.mjs';
 
 const MAX_INPUT = 48 * 1024 * 1024;
 const MAX_TEXT = 32 * 1024 * 1024;
@@ -110,7 +109,7 @@ export function extractorCapabilities({visionCapableProviderCount=0}={}){
   const command=(name)=>run('sh',['-c',`command -v ${name}`],{maxBuffer:4096}).ok;
   return{
     text:true,archives:command('unzip'),pdf:command('pdftotext'),ocr:command('tesseract'),mediaMetadata:command('ffprobe'),
-    officeXml:command('unzip'),audioVideoTranscription:voiceRoutingFrom()[VoiceJob.TRANSCRIBE]?.endpoint?'configured':'not-configured',
+    officeXml:command('unzip'),audioVideoTranscription:'not-available',
     // `D-0651`: declared, from the operator's own provider profiles — see `visionCapable` on
     // `provider-gateway.mjs`'s profile shape. Passed in rather than read here: this function has
     // no store, and reading one just to count a field would be a second, narrower store reader.
@@ -120,17 +119,16 @@ export function extractorCapabilities({visionCapableProviderCount=0}={}){
 }
 
 export class FileExtractor{
-  // `transcribeImpl`/`routingImpl`/`runImpl` are injectable so a test can prove the wiring
-  // below without a real speech server or `ffprobe` on the runner — every production call
-  // site constructs this with no overrides and gets the real `voice-engine.mjs` and `spawnSync`.
-  // `captionImpl` has no module-level default: unlike voice routing (read from `process.env`),
-  // a vision-capable provider lives in the operator's provider profiles behind a `ProviderGateway`
+  // `runImpl` is injectable so a test can prove the wiring below without `ffprobe` on the
+  // runner — every production call site constructs this with no overrides and gets `spawnSync`.
+  // `captionImpl` has no module-level default: a vision-capable provider lives in the operator's
+  // provider profiles behind a `ProviderGateway`
   // instance this file never holds — `server.mjs` is the one place both exist, so it is the one
   // place that builds the bound function (`vision-caption.mjs`'s `captionImage`). `null` means
   // "no captioning wired", handled the same as "no provider configured" — a declared gap, not a
   // silent skip.
-  constructor({blobRoot,transcribeImpl=transcribe,routingImpl=voiceRoutingFrom,runImpl=run,fetchImpl,captionImpl=null}){
-    this.blobRoot=blobRoot;this.transcribeImpl=transcribeImpl;this.routingImpl=routingImpl;this.run=runImpl;this.fetchImpl=fetchImpl;this.captionImpl=captionImpl;
+  constructor({blobRoot,runImpl=run,fetchImpl,captionImpl=null}){
+    this.blobRoot=blobRoot;this.run=runImpl;this.fetchImpl=fetchImpl;this.captionImpl=captionImpl;
     mkdirSync(blobRoot,{recursive:true,mode:0o700});
   }
   delete(blobId){if(!/^[0-9a-f-]{36}$/i.test(String(blobId)))return false;rmSync(join(this.blobRoot,String(blobId)),{recursive:true,force:true});return true;}
@@ -232,32 +230,11 @@ export class FileExtractor{
       extractor='ffprobe';const result=this.run('ffprobe',['-v','error','-show_format','-show_streams','-of','json',path]);
       if(result.ok){
         metadata.media=JSON.parse(result.stdout);
-        // Same product this metadata step already trusts: `noesar-voice-hear`, reached the
-        // identical way the live microphone reaches it (`voice-engine.mjs`'s own `transcribe`),
-        // so a second transcription path with its own quality judgment never has to exist.
-        const routing=this.routingImpl();
-        const configured=routing?.[VoiceJob.TRANSCRIBE];
-        if(!configured?.endpoint){
-          status='transcription_required';
-          warning='Media metadata indexed. Configure a local speech tool or explicitly approved multimodal provider for transcription.';
-        }else{
-          try{
-            const heard=await this.transcribeImpl({audio:bytes,filename:safeName,mimeType,routing,fetchImpl:this.fetchImpl});
-            metadata.transcription={model:heard.model,dropped:Boolean(heard.reason)};
-            if(heard.heardSomething){
-              text=heard.text;extractor='ffprobe+voice-engine';status='complete';
-            }else{
-              status='transcription_empty';
-              warning=heard.reason==='repetition'
-                ?'Media metadata indexed. The transcription model produced only a repetition loop; discarded.'
-                :'Media metadata indexed. No speech was detected.';
-            }
-          }catch(error){
-            if(!(error instanceof VoiceEngineError))throw error;
-            status='transcription_failed';
-            warning=`Media metadata indexed. Transcription failed: ${error.reason}`;
-          }
-        }
+        // Metadata only. Transcription left with the voice layer when it was removed: this
+        // installation no longer has speech-to-text of its own, and rebuilding one here to serve
+        // uploads would quietly restore the part that was deliberately taken out.
+        status='transcription_required';
+        warning='Media metadata indexed. This build has no transcription: audio and video are stored and described, not read.';
       }else{status=result.available?'metadata_failed':'extractor_unavailable';warning=result.error;}
     }else{status='extractor_required';warning='No extractor is registered for this file type.';}
     if(Buffer.byteLength(text)>MAX_TEXT)text=Buffer.from(text).subarray(0,MAX_TEXT).toString('utf8');

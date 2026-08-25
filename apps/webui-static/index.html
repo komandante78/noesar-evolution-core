@@ -306,7 +306,7 @@
             <div class="composer chat-composer">
               <div class="composer-commands hidden" id="chatCommands" role="listbox" aria-label="Slash commands"></div>
               <textarea id="chatInput" placeholder="Ask, or type / for commands…" aria-describedby="chatCommands"></textarea>
-              <div class="composer-row"><span id="chatContextSummary">No context selected</span><button id="inspectContext" class="secondary icon-btn" type="button" title="Context" aria-label="Context">🗂</button><button id="undoHead" class="secondary icon-btn" type="button" title="Undo" aria-label="Undo">↩</button><button id="stopGeneration" class="danger icon-btn hidden" type="button" title="Stop" aria-label="Stop">⏹</button><button id="chatDictate" class="secondary icon-btn" type="button" aria-pressed="false" title="Speak instead of typing — heard by this installation, never by the browser."><span id="chatDictateIcon" aria-hidden="true">🎙</span><span id="chatDictateLabel" class="visually-hidden">Speak</span></button><label class="voice-pick" title="Which voice reads the replies. Rune and Estrela are this product's own names, bound to voices of whatever speech model is installed."><span class="visually-hidden">Voice</span><span aria-hidden="true">🗣</span><select id="chatVoice" aria-label="Voice"></select></label><button type="button" class="secondary icon-btn" id="chatModelPickerOpen" aria-expanded="false" aria-controls="chatModelPicker" aria-label="Choose the model this installation uses" title="Choose the model this installation uses">🧠</button><button id="chatReadAloud" class="secondary icon-btn" type="button" aria-pressed="false" title="Read each reply aloud when it is complete."><span id="chatReadAloudIcon" aria-hidden="true">🔇</span><span id="chatReadAloudLabel" class="visually-hidden">Read aloud: off</span></button><button id="sendMessage" class="primary icon-btn" type="button" title="Send" aria-label="Send">➤</button></div>
+              <div class="composer-row"><span id="chatContextSummary">No context selected</span><button id="inspectContext" class="secondary icon-btn" type="button" title="Context" aria-label="Context">🗂</button><button id="undoHead" class="secondary icon-btn" type="button" title="Undo" aria-label="Undo">↩</button><button id="stopGeneration" class="danger icon-btn hidden" type="button" title="Stop" aria-label="Stop">⏹</button><button type="button" class="secondary icon-btn" id="chatModelPickerOpen" aria-expanded="false" aria-controls="chatModelPicker" aria-label="Choose the model this installation uses" title="Choose the model this installation uses">🧠</button><button id="sendMessage" class="primary icon-btn" type="button" title="Send" aria-label="Send">➤</button></div>
               <!-- Owner, 2026-08-21: "devi mettere una finestra con i modelli che sono scaricati
                    in modo da poter caricare e cambiare subito" — reachable from chat, not only
                    from #/coden. Deliberately NOT a second catalogue or a second decision: same
@@ -324,20 +324,6 @@
                   <p class="empty-state">Reading what is present…</p>
                 </div>
                 <p class="model-picker-foot"><button type="button" class="text-button" data-view-link="models">All models, and how to get more</button></p>
-              </div>
-              <p class="hint hidden" id="voiceNote" role="status" aria-live="polite" translate="no"></p>
-              <!-- Shown only when this connection cannot open a microphone AND this installation
-                   has a certificate to hand out. The fingerprint is delivered here, inside an
-                   authenticated session, which is what makes comparing it on the phone worth
-                   anything — the /ca page can only ask the reader to check the server's log. -->
-              <div class="notice hidden" id="voiceAccessHelp">
-                <b>To speak from a phone or another device</b>
-                <p>Scan this with that device. It opens this installation's certificate page.</p>
-                <div id="voiceAccessQr"></div>
-                <p>Before you install it, the device shows a SHA-256. It must match this one, which you are reading over your own signed-in session:</p>
-                <code id="voiceAccessFingerprint" translate="no"></code>
-                <p>Then open NOESAR on that device at:</p>
-                <a id="voiceAccessSecure" href="#" translate="no"></a>
               </div>
             </div>
             <p class="hint chat-disclaimer">NOESAR EVOLUTION is an AI and can make mistakes.</p>
@@ -787,7 +773,7 @@
 
       <section class="view" id="view-knowledge">
         <div class="section-header"><span class="section-icon" aria-hidden="true">◈</span><div><p class="eyebrow">HYBRID RETRIEVAL</p><h1>Knowledge</h1><p>What you feed the model as evidence: files, pasted text, recordings — ingested, indexed, and searched lexically and semantically before an answer cites it.</p></div></div>
-        <div class="two-col"><form class="panel form-stack" id="sourceForm"><h2>Add source</h2><label>Project<select id="sourceProject"></select></label><label>Upload PDF, Office, image, audio, video, ZIP, dataset or code<input id="sourceBinary" type="file"></label><div class="inline-form"><button type="button" id="captureCamera">Camera</button><button type="button" id="captureScreen">Screen</button><button type="button" id="recordAudio">Record voice</button></div><label>Source name<input id="sourceName" required></label><label>MIME type<input id="sourceMime" value="text/plain"></label><label>Text or extracted content<textarea id="sourceText" class="large-text" placeholder="Paste text directly, or select a binary file for secure local extraction"></textarea></label><button class="primary">Ingest and index</button><small id="extractorStatus">Extraction capabilities loading…</small></form><section class="panel"><div class="search-row"><input id="knowledgeQuery" placeholder="Search knowledge…"><button id="knowledgeSearch">Search</button></div><div id="knowledgeResults" class="card-list empty-state">Search your sources once you have added one.</div><hr><div id="sourceList" class="card-list empty-state">No sources indexed yet — add a file, paste text, or record voice above to make it searchable.</div></section></div>
+        <div class="two-col"><form class="panel form-stack" id="sourceForm"><h2>Add source</h2><label>Project<select id="sourceProject"></select></label><label>Upload PDF, Office, image, audio, video, ZIP, dataset or code<input id="sourceBinary" type="file"></label><div class="inline-form"><button type="button" id="captureCamera">Camera</button><button type="button" id="captureScreen">Screen</button></div><label>Source name<input id="sourceName" required></label><label>MIME type<input id="sourceMime" value="text/plain"></label><label>Text or extracted content<textarea id="sourceText" class="large-text" placeholder="Paste text directly, or select a binary file for secure local extraction"></textarea></label><button class="primary">Ingest and index</button><small id="extractorStatus">Extraction capabilities loading…</small></form><section class="panel"><div class="search-row"><input id="knowledgeQuery" placeholder="Search knowledge…"><button id="knowledgeSearch">Search</button></div><div id="knowledgeResults" class="card-list empty-state">Search your sources once you have added one.</div><hr><div id="sourceList" class="card-list empty-state">No sources indexed yet — add a file or paste text to make it searchable.</div></section></div>
 
         <section class="work-block" id="notes-block">
         <div class="section-header"><div><p class="eyebrow">VISIBLE AND REVOCABLE</p><h2 class="page-title">Notes</h2><p>Notes you write by hand and pin to a project or conversation — separate from Memory, which the product writes for you.</p></div></div>
@@ -1384,59 +1370,6 @@
       <span id="statusMessage">Ready</span>
     </footer>
   </div>
-  <!-- The voice window, s340 (D-0372). Owner: «meglio creare un popup quando si attiva il
-       microfono con la finestrina che possiamo spostare e mettere dove vogliamo con immagine
-       interattiva che quando riceve il comando e parla si muove».
-       Outside the shell on purpose: it is positioned against the viewport and must survive
-       changing destination, which a child of the active view would not. The mouth and the ring
-       are driven by the MEASURED amplitude — of your microphone while listening, of the reply
-       while speaking — so a still face means silence, not a stopped animation. -->
-  <section id="voiceFace" class="voice-face hidden" data-state="idle" aria-label="Voice">
-    <header id="voiceFaceHandle" class="voice-face-handle">
-      <span id="voiceFaceName" translate="no">Voice</span>
-      <span id="voiceFaceState" class="voice-face-status">Ready</span>
-      <button id="voiceFaceStop" class="voice-face-stop" type="button" disabled aria-label="Stop the reply and speak now (Escape)" title="Stop the reply and speak now — Escape does the same">⏹ <span id="voiceFaceStopLabel">Stop</span></button>
-      <button id="voiceFaceClose" class="voice-face-close" type="button" aria-label="Close the voice window">×</button>
-    </header>
-    <svg class="voice-face-art" viewBox="0 0 120 120" role="img" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="voiceFaceGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" class="voice-face-grad-from" />
-          <stop offset="100%" class="voice-face-grad-to" />
-        </linearGradient>
-        <radialGradient id="voiceFaceHaloGrad">
-          <stop offset="55%" stop-color="currentColor" stop-opacity="0" />
-          <stop offset="100%" stop-color="currentColor" stop-opacity="0.55" />
-        </radialGradient>
-        <radialGradient id="voiceFaceAuraGrad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="currentColor" stop-opacity=".45" />
-          <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
-        </radialGradient>
-        <filter id="voiceFaceGlow" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="2.2" />
-        </filter>
-      </defs>
-      <circle id="voiceFaceHalo" cx="60" cy="60" r="52" class="voice-face-halo" opacity="0.18" />
-      <path id="voiceFaceAura" class="voice-face-aura" />
-      <circle cx="60" cy="60" r="30" class="voice-face-disc" />
-      <circle id="voiceFacePulse" cx="60" cy="60" r="34" class="voice-face-pulse" />
-      <g class="voice-face-bars">
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(0 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(30 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(60 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(90 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(120 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(150 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(180 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(210 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(240 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(270 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(300 60 60)" />
-        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(330 60 60)" />
-      </g>
-    </svg>
-    <p id="voiceFaceCaption" class="voice-face-caption" translate="no" aria-live="polite"></p>
-  </section>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
