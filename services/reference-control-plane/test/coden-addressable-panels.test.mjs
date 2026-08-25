@@ -237,6 +237,28 @@ describe('phase 3: the switchers are gone and nothing they reached went with the
     assert.doesNotMatch(demotedEnd > 0 ? demoted.slice(0, demotedEnd) : demoted, /id="toolForm"|id="toolList"/,
       'the demoted page still carries the controls: two copies, one of them unreachable');
   });
+
+  test('the controls that promise tool management arrive where tools are managed', () => {
+    // The other half of F-NAV-001, and the half that is easy to miss: while the form had no
+    // home, the things POINTING at it pointed at the nearest tool-shaped page instead. Research
+    // said "A research provider is registered the same way any other external tool is. Register
+    // one in Agents" — and #view-agents has #agentForm and #agentTools, which ATTACH tools that
+    // already exist. Registering one there was never possible, so the one instruction the
+    // product gave for connecting a search provider led somewhere it could not be followed.
+    // That is why the audit read "no provider onboarding" as a separate gap: it was this one.
+    const agents = html.slice(html.indexOf('id="view-agents"'));
+    const agentsEnd = agents.indexOf('<section class="view"', 1);
+    assert.doesNotMatch(agentsEnd > 0 ? agents.slice(0, agentsEnd) : agents, /id="toolForm"/,
+      'Agents has a tool-registration form: then the hint this test guards was right all along');
+    const hint = html.match(/id="researchProviderRegisterHint"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? '';
+    assert.ok(hint.length > 0, 'the research provider hint is gone');
+    assert.match(hint, /href="#\/coden\/bench\/tools"/,
+      'the research hint sends you somewhere other than the panel that registers tools');
+    // Home's "Manage" used the demoted name 'tools', which forwards to the bench's DEFAULT panel:
+    // CodeN, but not the tools in it. Landing near the thing is not landing on it.
+    const manage = html.match(/homeToolsTitle">Installed tools<\/h2><button class="text-button" data-view-link="([^"]+)"/)?.[1];
+    assert.equal(manage, 'coden/bench/tools', 'Home\'s Installed-tools Manage does not name the tools panel');
+  });
 });
 
 describe('the interface does not claim what the code contradicts', () => {

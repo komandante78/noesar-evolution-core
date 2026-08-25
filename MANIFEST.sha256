@@ -401,9 +401,9 @@ b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-s
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
 3d56485d335697e35578566aac1b0a43e65be58547460765ecc564d27659714b  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-864386d3f5039afe7e8cc38e287f782ffbb70ea0711fd2e764288f6c32dec247  ./apps/webui-static/i18n-catalog.js
+aad3cc96f464dbe941fc74fd4ae25884709fc9fc5d620491dfc55aad9954703a  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
-2db4f261f73fba853c08310830e94c7c569ea9a7a03fa7a45ff79e0856848f0b  ./apps/webui-static/index.html
+cc94048af7abc1c8d01d1e06ab0abcc92247b0e743e908758ff1d609117c2582  ./apps/webui-static/index.html
 13debbf6c3f51d659d61875c1c5d2186e1fe399c9d4d21ccbc35819ef1209098  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
@@ -6483,7 +6483,7 @@ fd454a8d0d6770e7a7a27827031062dbfddd2c1d2287c7b3674ead778fd9762b  ./services/ref
 d8898d3ec08689523925f08f651d11ae7bcc3d507205398ff1d10235b1bb127c  ./services/reference-control-plane/test/cli-downloads.test.mjs
 cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/reference-control-plane/test/coden-address-book.test.mjs
 144b3197052d67a900025439a5442746f4de9f70c9eef48b06ed5e5dc1fe2591  ./services/reference-control-plane/test/coden-address-declaration.test.mjs
-13b77c86906881fd61875b51f2a960110e6caf7e3075ac1958047c42c8a7ad31  ./services/reference-control-plane/test/coden-addressable-panels.test.mjs
+7e0ca478d292865615b38266c5fbac87bbec203f3694959c104a871d4ca63fcb  ./services/reference-control-plane/test/coden-addressable-panels.test.mjs
 67ba4a154d0548d659e054f49aaae7025579714f063d811e2fccf3a97105c3c7  ./services/reference-control-plane/test/coden-bridge.test.mjs
 3972b353836d12f87c71aa06168536bdf2d33b71648152df4928df3bcd04e92c  ./services/reference-control-plane/test/coden-fullscreen-input-flow.test.mjs
 dec199937169e8670e1492177ffc39ba6a267b748a406c374b6afa6d85c68d3d  ./services/reference-control-plane/test/coden-invariant-adversarial.test.mjs

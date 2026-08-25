@@ -1340,7 +1340,7 @@ const it = {
   'No external tools registered yet': 'Nessuno strumento esterno ancora registrato',
   'Could not read provider status': 'Non è stato possibile leggere lo stato del fornitore',
   'A research provider is registered the same way any other external tool is.': 'Un fornitore di ricerca si registra allo stesso modo di qualunque altro strumento esterno.',
-  'Register one in Agents': 'Registrane uno in Agenti',
+  'Register one in CodeN Evolution': 'Registrane uno in CodeN Evolution',
   ', then come back here to pick it.': ', poi torna qui per sceglierlo.',
   'on this installation': 'su questa installazione',
   'known': 'conosciuti',
