@@ -1474,10 +1474,6 @@ const it = {
   // pages, and the menu is not a page. So the guard for these lives in the unit suite, next to
   // the list itself (`ui-language-coverage.test.mjs`), where adding a command without its
   // translation turns something red before it can reach an operator.
-  //
-  // Voice stage 2 is what made the gap load-bearing rather than merely untidy: an utterance is
-  // resolved against these same summaries, so a summary with no Italian is a command Italian
-  // speech cannot reach by describing it.
   'Start a plan from a goal — the repository decides which files it may touch': 'Avvia un piano da un obiettivo — è il repository a decidere quali file può toccare',
   'Ask what a pending plan would do, executing nothing': 'Chiedi che cosa farebbe un piano in attesa, senza eseguire nulla',
   'Run a plan in the shadow and show what it does — nothing reaches the workspace': 'Esegui un piano nell\'ombra e mostra che cosa fa — nulla raggiunge il workspace',

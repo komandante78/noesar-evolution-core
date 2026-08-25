@@ -401,13 +401,12 @@ b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-s
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
 3d56485d335697e35578566aac1b0a43e65be58547460765ecc564d27659714b  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-a9f2afca8701c0336e1dbf7ae66ea90d6b66acf4acc3aa09e7222c414f4e4efd  ./apps/webui-static/i18n-catalog.js
+864386d3f5039afe7e8cc38e287f782ffbb70ea0711fd2e764288f6c32dec247  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 420039e09356fbd56737b2513489d442eb10c77b5c8ae544a3533a3f3b2036db  ./apps/webui-static/index.html
 13debbf6c3f51d659d61875c1c5d2186e1fe399c9d4d21ccbc35819ef1209098  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
-9d7af7433de35ee807854c0198901b6bc13bac444cd753f5792190f8bb1e7ad7  ./apps/webui-static/sentence-stream.js
 1bbe539af1fe92391a1ef5394fa63e667581535b264cf5faf12d46f97a937ae2  ./apps/webui-static/styles.css
 b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd  ./apps/webui-static/vendor/xterm/LICENSE
 70cf8efd07e7e8a60fdcb4ba09f142f7ba8ac53f0f54cd4317bde25fe8730851  ./apps/webui-static/vendor/xterm/PROVENANCE.md
