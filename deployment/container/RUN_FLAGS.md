@@ -56,56 +56,29 @@ checkpoint is killed mid-write, and the cluster comes back with an unreadable ch
 so 10s was not the binding constraint for an ordinary stop, and this flag is **not** proven to be
 what corrupted the cluster. It closes a real and measurable hazard; it is not a diagnosis.
 
-## 3. `--ip 172.22.0.5` on `noesar-evolution-net`, and 44 environment variables
+## 3. `--ip 172.22.0.5` on `noesar-evolution-net`, and 36 environment variables
+
+**The pin is not decoration.** The leaf certificate carries a SAN for this address (§5), the
+independent pentest scope names it as the target, and `NOESAR_ALLOWED_HOSTS` allows it (§6) —
+three statements that go false together the moment the container moves. It moved: until
+`1b5ddec`, `tools/deploy/redeploy.sh` read the image, network, binds, ports, tmpfs, environment
+and log options back from the container it replaced but **not the address**, and `docker run`
+without `--ip` does not complain, it just takes what the bridge offers. Every redeploy silently
+relocated the installation while all three documents went on naming `172.22.0.5`; the drift was
+filed as a stale allowlist (`F-ROT-001`) rather than as the dropped pin it was. The address is
+now read back and carried like every other container-level setting, and `--ip` re-establishes it
+if it is ever lost again.
 
 **18 come from the image and must not be repeated** — in particular
 **`NOESAR_TUI_SOCKET_PATH`**, which comes from the image as `/run/codev-tui.sock`. Setting it
 explicitly to the supervisor's internal path left the terminal transport unserved (`D-0339`).
-The other **26 are explicit** and exist nowhere but the run command.
+The other **18 are explicit** and exist nowhere but the run command. It was 26 until the voice
+layer was removed: the eight `NOESAR_VOICE_*` variables and the two containers they pointed at
+(`noesar-voice-hear`, `noesar-voice-speak`) are gone, and this section documented how to
+recreate them for a day after they stopped existing.
 
 **Count them with `grep -c .`, never `wc -l`** — a trailing blank line made an earlier session
 report one variable too many and call a correct note wrong.
-
-## 3b. The eight voice variables, and the two containers they point at (s337)
-
-`docs/VOICE.md` says voice is "environment variables and no code". Those variables live **only in
-this run command**, so a container recreated without them is an installation that has silently
-stopped being able to hear or speak — and the interface will report that honestly, which makes the
-symptom look like a deliberate configuration rather than an omission.
-
-```
--e NOESAR_VOICE_TRANSCRIBE_ENDPOINT=http://172.22.0.8:8000
--e NOESAR_VOICE_TRANSCRIBE_MODEL=Systran/faster-whisper-small
--e NOESAR_VOICE_LANGUAGE=it
--e NOESAR_VOICE_SPEAK_ENDPOINT=http://172.22.0.7:8880
--e NOESAR_VOICE_SPEAK_MODEL=kokoro
--e NOESAR_VOICE_SPEAK_VOICE=if_sara
--e NOESAR_VOICE_RUNE=im_nicola
--e NOESAR_VOICE_ESTRELA=if_sara
-```
-
-They point at **two containers that are in no image of this product** and must exist beside it:
-
-| container | image | address | serves |
-|---|---|---|---|
-| `noesar-voice-hear` | `ghcr.io/speaches-ai/speaches:latest-cuda` | 172.22.0.8:8000 | `/v1/audio/transcriptions` |
-| `noesar-voice-speak` | `ghcr.io/remsky/kokoro-fastapi-cpu:latest` | 172.22.0.7:8880 | `/v1/audio/speech` |
-
-⚠️ **`speaches` will not serve a model it was never told to install.** A fresh cache answers
-`404 "Model … is not installed locally"` to every transcription until
-`POST /v1/models/Systran/faster-whisper-small` has been called **once**. The cache is the named
-volume `noesar_voice_hear_cache`; destroy it and that call must be repeated.
-
-⚠️ **Telemetry is off by explicit variable, not by default.** The first run of `speaches` opened
-connections to `huggingface.co` and `api.gradio.app` at startup. `HF_HUB_DISABLE_TELEMETRY=1`,
-`GRADIO_ANALYTICS_ENABLED=False` and `DO_NOT_TRACK=1` are set for that reason: in a product whose
-whole argument is that no vendor sees what you say, a voice server phoning home is not a detail.
-
-**Speech runs on CPU deliberately.** phi-4 holds 10 353 MiB of a 12 288 MiB card, so Kokoro on the
-GPU would compete with the model that answers. Whisper `small` fits in what is left — 412 MiB,
-measured, 1.8 s for a short utterance. `Systran/faster-whisper-medium` was tried and **hangs
-without ever loading** (VRAM never moves), so `small` is what is configured. The model is a
-variable, not a rebuild: a card with more headroom changes one string.
 
 ## 4. `--read-only`, `--tmpfs /run:mode=1777`, `--tmpfs /tmp`, `--restart unless-stopped`
 
@@ -186,9 +159,11 @@ fuorviante. E `nous_model` è **settimanale di domenica**, non fermo.
 
 # 5. TLS — `NOESAR_TLS_PORT`, and the two things it would break without it (s336)
 
-The microphone is the reason this exists, not hardening: `navigator.mediaDevices` does not exist
-outside a secure context, so a product on `http://192.168.178.100:8100` cannot open one however
-well its voice engine is configured.
+The camera is the reason this exists, not hardening: `navigator.mediaDevices` does not exist
+outside a secure context, so a product on `http://192.168.178.100:8100` cannot open one — and
+Knowledge really does use the camera. The microphone was the original reason and is no longer one:
+the voice layer was removed from the product. The requirement did not change with it, which is
+why this section did not.
 
 ```
 -e NOESAR_TLS_CERT_FILE=/workspace/tls/leaf.crt
