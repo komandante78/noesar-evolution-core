@@ -43,22 +43,6 @@ test('an installation with no provider says nothing about a model rather than in
   assert.doesNotMatch(text, /served by/);
 });
 
-// Voice is the case the Owner met in person: the product must never offer to talk when nothing is
-// configured to talk with. All four states are pinned, including the two half-configured ones,
-// because the two endpoints are deliberately separate settings (docs/VOICE.md).
-for (const [canHear, canSpeak, expected, forbidden] of [
-  [true, true, /can hear the person and can speak back/, /not configured/],
-  [true, false, /hearing only/, /can speak back/],
-  [false, true, /speaking only/, /Do not offer to listen or to speak/],
-  [false, false, /Voice is not configured on this installation/, /can hear the person/],
-]) {
-  test(`voice state hear=${canHear} speak=${canSpeak} is stated honestly`, () => {
-    const text = describeInstallation({ canHear, canSpeak }).join('\n');
-    assert.match(text, expected);
-    assert.doesNotMatch(text, forbidden);
-  });
-}
-
 // Both of these were live defects, found by composing the prompt inside the RUNNING container
 // against the REAL provider record: the snapshot read `profile.model` and `profile.kind` while the
 // record carries `defaultModel` and `type`/`external`. The result on screen was "You are being
@@ -77,12 +61,10 @@ test('the snapshot reads the field names the real provider record actually uses'
   providers.update(profile.id, { enabled: true });
   store.transact((state) => { state.settings.defaultProviderId = profile.id; return {}; });
 
-  const snapshot = installationFromState(store.read(), { NOESAR_VOICE_TRANSCRIBE_ENDPOINT: 'http://x:1', NOESAR_VOICE_SPEAK_ENDPOINT: 'http://y:2' });
+  const snapshot = installationFromState(store.read(), {});
   assert.equal(snapshot.modelName, '/models/phi-4-q4_k_m.gguf', 'the model name must be read from defaultModel');
   assert.equal(snapshot.providerName, 'Local OpenAI-compatible');
   assert.equal(snapshot.providerIsLocal, true, 'external:false means the words do not leave the machine');
-  assert.equal(snapshot.canHear, true);
-  assert.equal(snapshot.canSpeak, true);
 
   const text = describeInstallation(snapshot).join('\n');
   assert.match(text, /model \/models\/phi-4-q4_k_m\.gguf via Local OpenAI-compatible, running inside this installation/);
@@ -93,13 +75,6 @@ test('the snapshot reads the field names the real provider record actually uses'
 test('an external provider is described as external, and a missing model does not break the sentence', () => {
   assert.match(describeInstallation({ providerName: 'OpenAI', providerIsLocal: false }).join('\n'), /served by OpenAI, running on an external service/);
   assert.doesNotMatch(describeInstallation({ providerName: 'OpenAI' }).join('\n'), /by via/);
-});
-
-test('no voice endpoints configured reads as no voice, not as absent information', () => {
-  const snapshot = installationFromState({ providerProfiles: [], settings: {}, projects: [], conversations: [], agents: [] }, {});
-  assert.equal(snapshot.canHear, false);
-  assert.equal(snapshot.canSpeak, false);
-  assert.match(describeInstallation(snapshot).join('\n'), /Voice is not configured/);
 });
 
 test('with no tools the assistant is told so, and told not to pretend otherwise', () => {
@@ -249,7 +224,7 @@ test('the composed identity actually reaches the provider, and reflects live sta
   const providers = new ProviderGateway({ store, vault, ledger });
   const orchestrator = new ChatOrchestrator({
     graph, workspace, providers, store, ledger,
-    installationSnapshot: () => ({ productName: 'NOESAR Evolution', modelName: 'phi-4', providerName: 'Local', providerIsLocal: true, canHear: true, canSpeak: false, projectCount: 1 }),
+    installationSnapshot: () => ({ productName: 'NOESAR Evolution', modelName: 'phi-4', providerName: 'Local', providerIsLocal: true, projectCount: 1 }),
   });
   const project = graph.createProject({ name: 'P', instructions: '' });
   const { conversation } = graph.createConversation({ projectId: project.id, title: 'c', mode: 'ASK' });
@@ -263,7 +238,6 @@ test('the composed identity actually reaches the provider, and reflects live sta
   const system = upstream.seen[0].messages.find((m) => m.role === 'system').content;
   assert.match(system, /You are the assistant built into NOESAR Evolution\./);
   assert.match(system, /model phi-4 via Local, running inside this installation/);
-  assert.match(system, /hearing only/, 'a half-configured voice must be reported as half-configured');
   assert.match(system, /You have no tools enabled/, 'this fixture registers no tools');
   assert.doesNotMatch(system, /source:/, 'no evidence was retrieved, so nothing should ask for citations');
 });

@@ -4,7 +4,7 @@
 //
 // WHY IT EXISTS. `NOESAR_TLS_PORT` (D-0358) gave this installation a TLS listener, and the
 // reason it was added was not hardening — it was that `navigator.mediaDevices` does not exist
-// outside a secure context, so without it the microphone cannot start at all. But a TLS
+// outside a secure context, so without it the camera cannot start at all. But a TLS
 // listener whose certificate no device trusts buys nothing: every browser refuses the page,
 // and a person clicking through the warning gets a connection the browser still classes as
 // insecure, which does NOT restore the secure context. The missing step was never code — it
@@ -184,7 +184,7 @@ export function renderTrustAnchorIndex(anchor, baseUrl) {
   }
 
   lines.push(
-    'A browser only exposes the microphone and the camera in a secure context. Until this',
+    'A browser only exposes the camera in a secure context. Until this',
     'device trusts the certificate below, this installation has no secure context on it —',
     'clicking through the browser warning does NOT create one.',
     '',

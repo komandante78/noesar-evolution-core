@@ -6299,7 +6299,7 @@ d81d7d9dd64e3f08bf65ecd874ec846be140bab30cae9b13693a78034bc43c69  ./services/ref
 a1fdcbc32182fef5a89f18b21cf3b0bee3db574f5356725d1b6bc5cdec1b1da9  ./services/reference-control-plane/src/ai-workspace/address-guard.mjs
 e7ef0cf8658aec40e2518dc8072c82b04bda13ddcea24ef6cdeb77a44e42f3f2  ./services/reference-control-plane/src/ai-workspace/agent-directive.mjs
 f370efff5022df4b9bb1683c21a29563612b9f2feb2ed97ca72e5eefd7fa9428  ./services/reference-control-plane/src/ai-workspace/agent-service.mjs
-81082265947418c9e65adc5840b0e0853f50958b8b400cfca3f32c3d53c7e5fc  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
+4202c1f21dc8aaa4ff73161075bbc6bc13be8895aedf5302aaef008b078b324f  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
 cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/reference-control-plane/src/ai-workspace/atomic-store.mjs
 c07f8c91149d3ca0073d960e12bb564c111c5dce55d4e26bf15ef1f99110c759  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
 0577b989a563d64e5e014f044ec9f2dc1bd14e4578b8566fd379ef62cb73ece5  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
@@ -6348,7 +6348,7 @@ c7dd219eb63e4fb58c3b8cd099d5a7f084f621de4ce76521c0e6f68b6cfeb9ab  ./services/ref
 7d8750228f2445bc64c73175624563c3ea93ce16c36525a7e54fda5767d6a9a8  ./services/reference-control-plane/src/git-status.mjs
 db6ad641629911060cb3b9d44b4f49978ee89322c9cd35342f65c8a640986499  ./services/reference-control-plane/src/hardware.mjs
 c92e8d917acbf8796901028a7280e6de212c1ec2afc5ba38dd51c1c9ba403691  ./services/reference-control-plane/src/home-overview.mjs
-dabc80897f8c0df850a7f8d15b7625314372aae0206b49fdd14b0ae6754d1fdd  ./services/reference-control-plane/src/http-security.mjs
+3e3e9c63c947f3dc5d62135d664ae54fd096f2f071c60ce6c3395976016a6547  ./services/reference-control-plane/src/http-security.mjs
 de9462d2d8b3f7a4e053d2a8f907c10e53c5564d78c8c6af5fe89a544d01cc9d  ./services/reference-control-plane/src/isolation.mjs
 9a8e5bea80c440cdec4ee907b9ed0f103291de838a0ad7ee40116c9cf4d45fb6  ./services/reference-control-plane/src/local-model-runtime.mjs
 0c6103875935810eb716231d5031a9d1bf495f857b44b46497ad9c5c2c260cf2  ./services/reference-control-plane/src/logging.mjs
@@ -6404,7 +6404,7 @@ afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  ./services/ref
 76ab59c1c24340ee58b9be610b9e4c88bbd19d24ae0a419b4e7477010fcedaa9  ./services/reference-control-plane/src/timezone.mjs
 1876919bf1827c97f04af73f98dbfbec0525a5dc8d6b6153cd3065421d41f4d6  ./services/reference-control-plane/src/tls.mjs
 fd184d27ad3c4208a6a5537c11ffdebc4a0245fc699683a817d4f01e1e98401a  ./services/reference-control-plane/src/tool-catalog.mjs
-f68d6f5199989db92e908e866f1c9e7bedf3244b75c3dcfe301a43dfcbd33124  ./services/reference-control-plane/src/trust-anchor.mjs
+4e0b2d4884583b992c3cfb752d1fdd4988dd3f7ab395e866c0ff2fde2cb925ec  ./services/reference-control-plane/src/trust-anchor.mjs
 14facbaad56c1ce47308f152d41287047d7d2067dba256380e87266d68a88533  ./services/reference-control-plane/src/update-manager.mjs
 b451006a09ef27508f5027952aa3133fc15877d8ba03eae4114f918f6692ec22  ./services/reference-control-plane/src/user-directory.mjs
 cdcad0237b79801a1e1c94d65405e8b5a80f50bb5b55bf711da395fc0025c208  ./services/reference-control-plane/src/verifiability.mjs
@@ -6430,7 +6430,7 @@ b788e43a4553068fc9db158e03e61a918368fada7b2af54137201e79ca100c41  ./services/ref
 fc1fb90903479d51017717de91437cc9bb72852caa64059284e3dce047b3b203  ./services/reference-control-plane/test/api-target-probe.test.mjs
 77fc7237231704711a97488e675f7a3c256862b229991b2bbaceea145c0e7004  ./services/reference-control-plane/test/api-target-registry.test.mjs
 cbcff58008da1946bf799829fcf177d48f1458edc57ffb192e259a963db3d491  ./services/reference-control-plane/test/approval-queue.test.mjs
-eba4aaa1a5101ca655eea382448f99dab84338a620a44533e750713f7265addb  ./services/reference-control-plane/test/assistant-identity.test.mjs
+c659d153f0d175c28a493928845ae505f7e4f43d90962c8c7022399ee0050509  ./services/reference-control-plane/test/assistant-identity.test.mjs
 9b06ef2c5e8da89964356a017d3f6a938560789618b8ea24921b5d651386eedb  ./services/reference-control-plane/test/atom-fallback-declared.test.mjs
 429425961dccd0ef458049902cb7ca7702c21e873e49d8654c3620c95016eadc  ./services/reference-control-plane/test/attach-code.test.mjs
 f453d0d696573a9e0a8ec9e9484635f6021ab5a38a000b4ed34359b1e545ca69  ./services/reference-control-plane/test/audit.test.mjs

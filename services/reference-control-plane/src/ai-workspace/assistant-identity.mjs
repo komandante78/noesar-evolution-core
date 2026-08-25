@@ -85,8 +85,6 @@ export function describeInstallation(snapshot = {}) {
     modelName = null,
     providerName = null,
     providerIsLocal = null,
-    canHear = false,
-    canSpeak = false,
     projectCount = 0,
     conversationCount = 0,
     sourceCount = 0,
@@ -111,14 +109,6 @@ export function describeInstallation(snapshot = {}) {
     const where = providerIsLocal === true ? ', running inside this installation' : providerIsLocal === false ? ', running on an external service the operator configured' : '';
     lines.push(`You are being served by ${who}${where}. If you are asked which model you are, answer with that and do not guess.`);
   }
-
-  // Voice is stated in all three states — able, half-able, absent — because "can hear but cannot
-  // speak" is a real configuration (the two endpoints are deliberately separate settings) and the
-  // person deserves to know which half they have.
-  if (canHear && canSpeak) lines.push('Voice is configured both ways: this installation can hear the person and can speak back, using its own models. Audio never leaves the installation.');
-  else if (canHear) lines.push('Voice is configured for hearing only: this installation can transcribe speech but has no speech endpoint, so it cannot speak back. Do not offer to talk.');
-  else if (canSpeak) lines.push('Voice is configured for speaking only: this installation can speak but cannot hear, so there is no dictation. Do not offer to listen.');
-  else lines.push('Voice is not configured on this installation. Do not offer to listen or to speak.');
 
   lines.push(`Workspace contents right now: ${projectCount} project(s), ${conversationCount} conversation(s), ${sourceCount} document source(s), ${memoryCount} stored memory item(s), ${agentCount} agent(s).`);
   return lines;
@@ -186,8 +176,6 @@ export function installationFromState(state, env = {}, product = {}) {
     // `external` is the product's own explicit answer to "do these words leave the machine". The
     // first version derived it from the type string and got it backwards on the live installation.
     providerIsLocal: profile ? profile.external === false : null,
-    canHear: Boolean(env.NOESAR_VOICE_TRANSCRIBE_ENDPOINT),
-    canSpeak: Boolean(env.NOESAR_VOICE_SPEAK_ENDPOINT),
     projectCount: state?.projects?.length ?? 0,
     conversationCount: state?.conversations?.length ?? 0,
     agentCount: state?.agents?.length ?? 0,

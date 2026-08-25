@@ -36,7 +36,7 @@ export function securityHeaders({ contentSecurityPolicy = false, secureTransport
     // must stand out. Dropped for the embedded document only; every other response keeps it.
     ...(embeddedTerminal ? {} : { 'cross-origin-opener-policy': 'same-origin' }),
     'cross-origin-resource-policy': 'same-origin',
-    'permissions-policy': 'camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()',
+    'permissions-policy': 'camera=(self), microphone=(), display-capture=(self), geolocation=(), payment=(), usb=()',
     'cache-control': 'no-store',
   };
   if (contentSecurityPolicy) headers['content-security-policy'] = embeddedTerminal ? EMBEDDED_TERMINAL_CSP : MAIN_CSP;
