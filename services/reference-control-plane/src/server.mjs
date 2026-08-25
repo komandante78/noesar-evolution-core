@@ -111,6 +111,7 @@ import { installationFromState } from './ai-workspace/assistant-identity.mjs';
 import { FileExtractor, extractorCapabilities } from './ai-workspace/file-extractors.mjs';
 import { captionImage, visionCapableProfiles } from './ai-workspace/vision-caption.mjs';
 import { ToolExecutor } from './ai-workspace/tool-executor.mjs';
+import { seedBuiltinTools } from './ai-workspace/builtin-tools.mjs';
 import { Logger } from './logging.mjs';
 import { Metrics } from './metrics.mjs';
 import { DebugMode } from './debug-mode.mjs';
@@ -390,7 +391,21 @@ const fileExtractor = new FileExtractor({
   captionImpl:({ bytes, mimeType }) => captionImage({ profiles:providerGateway.list(), complete:providerGateway.complete.bind(providerGateway), bytes, mimeType }),
 });
 const aiWorkspace = new WorkspaceService({ store:aiStore, graph:contextGraph, ledger, fileExtractor });
-const toolExecutor = new ToolExecutor({ vault:credentialVault, ledger });
+// P3. The engine's own read methods, registered as tools of this installation, so the chat can
+// look at the product it lives in instead of describing how one would. Idempotent and derived from
+// `SESSION_METHOD_POLICY` — it writes only when a record is missing or a product-owned field has
+// drifted, because this runs on the start-up path. `disabled` and `consent` are the operator's and
+// survive it. See `builtin-tools.mjs` for why only the reads are seeded.
+const builtinToolSeed = seedBuiltinTools(aiStore, { ledger });
+// P3. `engineDispatch` is a thunk, not `sessionDispatch` itself: that dispatch is built ~50 lines
+// below, because it closes over objects (the workspace orchestrator, the capability minter) that
+// need this executor first. The arrow resolves at CALL time, which is always long after start-up.
+// Same reason `createSessionDispatch` takes `getClosureRegister` and `activateInstalledModel` as
+// thunks rather than values.
+const toolExecutor = new ToolExecutor({
+  vault:credentialVault, ledger,
+  engineDispatch:(method, params, actor, can) => sessionDispatch(method, params, actor, can),
+});
 // UI-080…096 — ephemeral by design, see research.mjs's own module comment: a restart
 // revoking every live report link is the declared behaviour, not a gap.
 const researchReportStore = new ResearchReportStore();
@@ -4446,13 +4461,26 @@ const requestListener = async (req, res) => {
     }
     if(req.method==='POST'&&url.pathname==='/api/v1/models/compare'){
       const authenticated=requireSession(req,res,'provider.use');if(!authenticated||!requireCsrf(req,res,authenticated))return;
-      return json(res,200,await chatOrchestrator.compare({actorId:authenticated.user.id,...await body(req)}));
+      // `actorId` AFTER the spread, and this is a repair, not a style choice (P3). It used to come
+      // first, so `{"actorId":"someone-else"}` in the request body overrode the authenticated
+      // user's own id: every ledger line this route writes could be attributed to another account
+      // by any signed-in caller. Harmless-looking while `actorId` only labelled an audit entry —
+      // and a privilege escalation the moment authority started travelling with it, one line
+      // below. The identity a route establishes is never a field the body may set.
+      return json(res,200,await chatOrchestrator.compare({...await body(req),actorId:authenticated.user.id}));
     }
     if(req.method==='POST'&&url.pathname==='/api/v1/chat/stream'){
       const authenticated=requireSession(req,res,'provider.use');if(!authenticated||!requireCsrf(req,res,authenticated))return;
       // `await`, not a bare `return`: an un-awaited promise escapes the try/catch below,
       // becomes an unhandled rejection, and Node terminates the process for it.
-      return await chatOrchestrator.streamToResponse({res,actorId:authenticated.user.id,...await body(req)});
+      //
+      // `can` is this caller's OWN authority, and it is the whole reason a built-in engine tool
+      // can be executed at all: `ToolExecutor` hands it to the same `sessionDispatch` the terminal
+      // and the Terminal tab use, which gates every method on `SESSION_METHOD_POLICY`. So the chat
+      // reaches exactly what this person could reach by typing the command, never one permission
+      // wider — and it is passed after the body spread for the same reason `actorId` now is.
+      return await chatOrchestrator.streamToResponse({...await body(req),res,actorId:authenticated.user.id,
+        can:(permission)=>auth.hasPermission(authenticated.user,permission)});
     }
     match=url.pathname.match(/^\/api\/v1\/chat\/runs\/([^/]+)\/stop$/);
     if(match&&req.method==='POST'){
@@ -5171,6 +5199,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // has to be swept whether or not a second one ever attaches.
   codenBridge.start();
   logger.info('coden.bridge-ready', { component:'coden-bridge', path: BRIDGE_PATH });
+
+  // P3. Reported at start-up rather than left silent, because "the chat can look at this
+  // installation" is a claim an operator must be able to check without opening a chat: the counts
+  // say how many engine tools this build registered, and how many were already there. The seed
+  // itself ran with the store, long before this logger existed.
+  logger.info('tools.builtin-seeded', {
+    component:'ai-workspace', added: builtinToolSeed.added.length,
+    updated: builtinToolSeed.updated.length, unchanged: builtinToolSeed.unchanged,
+  });
 
   const codevPeerSocketPath = process.env.NOESAR_CODEV_PEER_SOCKET_PATH ?? '/run/codev-peer.sock';
   try {

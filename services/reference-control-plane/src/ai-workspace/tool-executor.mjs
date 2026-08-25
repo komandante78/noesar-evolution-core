@@ -34,12 +34,39 @@ export class ToolExecutor{
   // in production (guardedFetch's own default, real node:dns, applies), overridable only by a
   // test that needs to prove the "a name resolves inward at call time" refusal without a real
   // DNS record (F4-010, D-0665).
-  constructor({vault,ledger,lookup}={}){this.vault=vault;this.ledger=ledger;this.lookup=lookup;}
-  async execute(tool,input,{actorId='system',projectId=null,signal}={}){
+  // `engineDispatch` is the P3 seam and it is a FUNCTION, never a dispatch instance: `server.mjs`
+  // builds this executor before it builds `sessionDispatch` (the agent service and the workflow
+  // service both need the executor first), so a direct reference would read the temporal dead zone.
+  // Same thunk pattern `createSessionDispatch` itself already uses for `getClosureRegister`.
+  // Absent is a supported configuration — a deployment that wires no engine simply has no built-in
+  // tools to run, and the refusal below says that rather than throwing a TypeError.
+  constructor({vault,ledger,lookup,engineDispatch=null}={}){this.vault=vault;this.ledger=ledger;this.lookup=lookup;this.engineDispatch=engineDispatch;}
+  // `can(permission) => boolean` is the CALLER's own authority, supplied by whoever knows who is
+  // asking. It is required for a `builtin` tool and for that transport only: it is handed straight
+  // to the engine dispatch, which gates every method on `SESSION_METHOD_POLICY` exactly as it does
+  // for the terminal and the browser. A built-in call arriving without one is REFUSED, never run
+  // unchecked — an optional gate is how the socket transport went un-gated until `D-0302`, and how
+  // a new transport inherits the accident.
+  async execute(tool,input,{actorId='system',projectId=null,signal,can=null}={}){
     if(tool.disabled)throw err('Tool is disabled.',403);
     if(tool.external){if(!tool.consent?.granted)throw err('Explicit external-tool consent is required.',403);if(tool.consent.projectIds?.length&&(!projectId||!tool.consent.projectIds.includes(projectId)))throw err('Tool consent does not cover this project.',403);}
     const started=Date.now();let result;
-    if(tool.transport==='mcp-stdio')result=await stdioCall(tool,input,signal);
+    if(tool.transport==='builtin'){
+      const method=String(tool.config?.method??'');
+      if(!method)throw err('This built-in tool names no engine method.',500);
+      if(typeof this.engineDispatch!=='function')throw err('This deployment did not wire the engine, so its built-in tools cannot run.',503);
+      // Fail closed, and BEFORE the dispatch rather than relying on it: the dispatch refuses a
+      // missing `can` only for methods whose policy names a permission, so a `permission: null`
+      // method would otherwise run for a caller whose authority nobody established. Every
+      // built-in call is made on behalf of a person, and a call with no person is not one.
+      if(typeof can!=='function')throw err('A built-in tool runs with the caller\'s own authority, and this caller did not say what it may do.',403);
+      // No `signal` and no timeout wrapper: these handlers are in-process calls on objects this
+      // server already owns, and `AbortSignal.timeout` cannot interrupt one — a timeout here would
+      // report a cancellation that did not happen while the work carried on. What bounds them is
+      // the loop above (`MAX_TOOL_ROUNDS`) and the handlers' own limits.
+      result=await this.engineDispatch(method,input??{},actorId,can);
+    }
+    else if(tool.transport==='mcp-stdio')result=await stdioCall(tool,input,signal);
     else{
       const url=endpoint(tool.endpoint,Boolean(tool.external));const credential=this.vault.resolve({id:`tool:${tool.id}`,encryptedCredential:tool.encryptedCredential,credentialEphemeral:tool.credentialEphemeral});
       const headers={'content-type':'application/json','user-agent':'NOESAR-Evolution/1.0',...(tool.config?.headers??{})};if(credential)headers.authorization=`Bearer ${credential}`;

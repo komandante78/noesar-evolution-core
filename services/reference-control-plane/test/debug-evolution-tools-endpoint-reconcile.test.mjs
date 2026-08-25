@@ -88,6 +88,12 @@ describe('D-0281 — a Debug Evolution tool endpoint reconciles on boot when NOE
     assert.equal(byName['Debug Evolution — All Findings'].endpoint, `${NEW_URL}/api/v2/findings`);
     assert.equal(byName['Debug Evolution — SARIF Report'].endpoint, `${NEW_URL}/api/v2/sarif`);
     assert.equal(byName['Debug Evolution — List Projects'].id, 'tool-list-projects', 'reconcile must update in place, not create a new id');
-    assert.equal(raw.tools.length, 3, 'reconcile must not create duplicates');
+    // The three Debug Evolution tools specifically, not every tool in the store. It counted the
+    // whole store until P3 registered the engine's own read methods as built-in tools, and a total
+    // was never what this assertion meant: "reconcile must not create duplicates" is a claim about
+    // these three records, and a count that any other legitimate tool can break tests the wrong
+    // thing. Narrowed, not relaxed — a duplicate of any of the three still fails it.
+    const debugEvolution = raw.tools.filter((tool) => tool.name.startsWith('Debug Evolution — '));
+    assert.equal(debugEvolution.length, 3, 'reconcile must not create duplicates');
   });
 });

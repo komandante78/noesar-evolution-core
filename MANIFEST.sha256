@@ -395,7 +395,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 2b52b3bf08af80911e350a956dbba14b6f2d507add9c772a0871d77feab86e5a  ./apps/shared/coden/tui-screen.mjs
-8b8fe88ed30687454e887ad133a5e29ed59b581b5481609038e942a4b2b422eb  ./apps/webui-static/app.js
+4cb505562fed4fcf1159bc777e3b5ad55c206a3dc133dea759e504fcd9c1c2d7  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
@@ -6315,7 +6315,8 @@ e7ef0cf8658aec40e2518dc8072c82b04bda13ddcea24ef6cdeb77a44e42f3f2  ./services/ref
 f370efff5022df4b9bb1683c21a29563612b9f2feb2ed97ca72e5eefd7fa9428  ./services/reference-control-plane/src/ai-workspace/agent-service.mjs
 cff41b2f53cf39b510f942960f8087d8b312f5531b08e4882a28c4f5a823094e  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
 cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/reference-control-plane/src/ai-workspace/atomic-store.mjs
-2df9702664e8eb0263724b70781066c13ac34f96a5995116ccb88600acd4a309  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
+c07f8c91149d3ca0073d960e12bb564c111c5dce55d4e26bf15ef1f99110c759  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
+44acd9ddcf9012842e96747332286c2e3b2ee7cf540535fdf7c56bd13676d045  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
 dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/reference-control-plane/src/ai-workspace/context-graph.mjs
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
 76d056c72d2501f14804d66c66d4b86400d0b3395582d19c1e89bbcd43daf3ce  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
@@ -6323,7 +6324,7 @@ e9b8bb511a5f9f29a8f9f8267dc40d16d04c43034644d162aa64b5adab8fe16d  ./services/ref
 b80ad3a2d87451d2efba3e846542443078ff64f4a48f02343f703126a1989c6b  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
 0f8f4f23bed3fc681851fc647acacd24ad67de241dd9d44f428f2016ae109010  ./services/reference-control-plane/src/ai-workspace/search.mjs
 e3d905867839a527a995c86fbb711f26375c089d7e9e00407b0ab6baa841675c  ./services/reference-control-plane/src/ai-workspace/tool-call-stream.mjs
-c5df499627902797b76689b05cf3ac437060a531dbabb9990481327702ddc383  ./services/reference-control-plane/src/ai-workspace/tool-executor.mjs
+f013347cedd8d5c9b57bcd8c405ccb68a26b3183eca51ea7dddc05bc5c19dbbd  ./services/reference-control-plane/src/ai-workspace/tool-executor.mjs
 b6e4b823b8783fde1d3c96232d6fb9d4d0e63c43bca44b9045773de1dc0c3ab2  ./services/reference-control-plane/src/ai-workspace/untrusted-content.mjs
 913636b128b917bba9a6676edc032c704de8631701caa6c57daa92ebda587a76  ./services/reference-control-plane/src/ai-workspace/vision-caption.mjs
 0d188afd02c1614eb30f618337c37a97a58ebfe5f8da724a44608622e7724672  ./services/reference-control-plane/src/ai-workspace/workflow-service.mjs
@@ -6360,7 +6361,7 @@ baea1566bb76869a35528b61481de1e35e56d6b69d8c65b8c4ccdcaff83370b2  ./services/ref
 c7dd219eb63e4fb58c3b8cd099d5a7f084f621de4ce76521c0e6f68b6cfeb9ab  ./services/reference-control-plane/src/fixtures/adversarial-reasoning-provider.mjs
 7d8750228f2445bc64c73175624563c3ea93ce16c36525a7e54fda5767d6a9a8  ./services/reference-control-plane/src/git-status.mjs
 db6ad641629911060cb3b9d44b4f49978ee89322c9cd35342f65c8a640986499  ./services/reference-control-plane/src/hardware.mjs
-1e1f837aa9245842163d352ef482cfe0c7f8a04d017a957c60d2a8dad8f72f48  ./services/reference-control-plane/src/home-overview.mjs
+c92e8d917acbf8796901028a7280e6de212c1ec2afc5ba38dd51c1c9ba403691  ./services/reference-control-plane/src/home-overview.mjs
 dabc80897f8c0df850a7f8d15b7625314372aae0206b49fdd14b0ae6754d1fdd  ./services/reference-control-plane/src/http-security.mjs
 de9462d2d8b3f7a4e053d2a8f907c10e53c5564d78c8c6af5fe89a544d01cc9d  ./services/reference-control-plane/src/isolation.mjs
 9a8e5bea80c440cdec4ee907b9ed0f103291de838a0ad7ee40116c9cf4d45fb6  ./services/reference-control-plane/src/local-model-runtime.mjs
@@ -6405,7 +6406,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 536bbea9e3530530f58222f027d7215906f655a3f3ba1757ae0a9f8315eb5792  ./services/reference-control-plane/src/scim.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-1ca3661ceb16ad0358d0425e4e4084ce371962bba7725b672ec1fee0bada38c2  ./services/reference-control-plane/src/server.mjs
+ea06258dab3b19f04c59cefcd8e8c90f3f8c3fe3437aa34259f6b7d70ce47db4  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 6664621ee52e27eca618636107c5ec2a35c7138e7de1ee95a6be804647cfcd46  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6461,6 +6462,7 @@ a251900909efd5b7d2eec868a58a7b07221166d5ca9f4c6649cbe67696cce8d1  ./services/ref
 e0ad4ac9a964432baeaf0c1fba0f8d7f1774e50af29529d9ea92d644c3732744  ./services/reference-control-plane/test/authority.test.mjs
 c195ad5c0a2e7190c9daa0f261b27ae9c64ac8ad82fa7397a7deb3a938a7d3b1  ./services/reference-control-plane/test/bootstrap-feature-claims.test.mjs
 9565379d4fa99d1f8479053d18f95a417f7e54b3b2836491107855811782534e  ./services/reference-control-plane/test/build-provenance-signature.test.mjs
+effc78fa23137d134345fab1b93c614b72ff3902b741459bcda537dee5c8f674  ./services/reference-control-plane/test/builtin-tools.test.mjs
 adf8f804389293a33ee2ed70f515090e31e43907dee9ab4e6bb7d2266eed3d26  ./services/reference-control-plane/test/canonical-json.test.mjs
 a0b75b159bc4ec1b5ea62000f1120eabd35a121d13d9febbcb94b5fd76bcdda0  ./services/reference-control-plane/test/capability-http-adversarial.test.mjs
 f35aeb773da426a47b196075accbb37652d5b6f51154372dfbb5757b6e844989  ./services/reference-control-plane/test/capability-revocation.test.mjs
@@ -6514,7 +6516,7 @@ ea34124e0b3aaa180dc942e81b56051f302ae17f129a92c098eb397f1a22179d  ./services/ref
 3aecfd7780dcb07e89b4fdd526682ea890072d64a25913f10937fc9e39e82b95  ./services/reference-control-plane/test/context-projection.test.mjs
 c6f06674909e5afd4e73ce5c552d1471931c1fae9b95fa97baa7f76b8f7908db  ./services/reference-control-plane/test/data-plane.test.mjs
 7e0886587380d3ba93765d42e967968b13c8cd298f78947a30f7699d2d3ff418  ./services/reference-control-plane/test/debug-evolution-bridge.test.mjs
-fd7e2cb62e3d0e92a4e724c026fb17a4dbcaadd6fd808031e6be7872a7e60ba8  ./services/reference-control-plane/test/debug-evolution-tools-endpoint-reconcile.test.mjs
+b1dcf916a9b21fbdd5a178b0b8e3d9f76ccf2b961d86306cf018fd57f63c8e35  ./services/reference-control-plane/test/debug-evolution-tools-endpoint-reconcile.test.mjs
 a32080f4ca81b6727962691fd781c9d171793400754def6aede8af78426dcb34  ./services/reference-control-plane/test/debug-evolution-tools-http.test.mjs
 40ef4bfc21f5030c9de6a880598125b62e389facf09eca60a477c113a7f51c69  ./services/reference-control-plane/test/debug-evolution-triage-http.test.mjs
 ee9e02df8e302ff8cb8b7e16a580d43ea24c04298ae6cfd162679d861e1290ea  ./services/reference-control-plane/test/debug-evolution-triage-one.test.mjs
@@ -6534,7 +6536,7 @@ cecb7f53eec0e45faa34822f93556a9e0fd2d84f63b313828bf0c758026fe0fd  ./services/ref
 85c49d77ee0d578e1cec2e187b48d5f0c767690aa23121cac2cf93054f7ea8f4  ./services/reference-control-plane/test/gcm-tag-length.test.mjs
 06db1523d3266d2cea785688656eb26f3aac85456d834301ea6341a60deb87e4  ./services/reference-control-plane/test/git-status.test.mjs
 c662f8af3924621e343139e6ca802f0fc109f1af94bc45a3f8980634efa42a45  ./services/reference-control-plane/test/hardware.test.mjs
-bdc14829381a1d8822358d2e63bc793e4cf5d3687e710ca01a242463f92c18ce  ./services/reference-control-plane/test/home-overview.test.mjs
+30203d72e67ce6ac73c71ce3aaae99449e5d0c8150c31b03079dfd91576fae05  ./services/reference-control-plane/test/home-overview.test.mjs
 9111e210f12048e507a26fed9f1136ee33a488e8dfa2ba28d09344242d18d36e  ./services/reference-control-plane/test/http-security.test.mjs
 bab20e90e687dd7bd16b3dc91b53648e06c7c0f450fd4f3af0bdd0eea66c0791  ./services/reference-control-plane/test/isolation.test.mjs
 446f6b2e6821eb398489afb64ef142d44acde494969b0105ad30dcf5a7d71145  ./services/reference-control-plane/test/lan-exposure.test.mjs
@@ -6735,7 +6737,7 @@ f896911e4f82e8b71499a6007e89f6c1d0f84cf55917fa35464f342ec7e980c6  ./tools/measur
 3ce1e9aff38ea0c9077c3b5e56cbe4a124ae15873f31df1587a7b42c3cac75a6  ./tools/measure-ui-language-coverage.mjs
 cd382976bc32b31112ce2e9c485a0c1e37a1fb49bea8325f5e4a0eb4a4b8a2be  ./tools/mint-service-token.mjs
 5224ac53a75e4f01fdb7b03880bc07baf978b56a4d10ce5c7b8f2edfab9c8747  ./tools/model-acquisition-e2e.mjs
-1deb060efda3b7ccbfcc1491037d8b3ac5f1577483f612c2709b5fa5f85a5451  ./tools/page-screenshot.mjs
+314b6d42278673e355f8ff1b8152c1d221cef0165d6accccf735bb9395acec98  ./tools/page-screenshot.mjs
 9761fb189bcf64bd263f7ebf6776be24673123b4eecbe0f4697e6cef7849d80e  ./tools/release-signing.mjs
 860e91f7bc240696d1bf60fe659586084877fec9898edf450e40101402e87d7d  ./tools/restart-durability-smoke.mjs
 697a772b770630f8ce304b8d3f24776223529c7e838f386828ad82f7a7d58810  ./tools/run-browser-e2e.sh

@@ -16,7 +16,7 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   QUICK_ACTIONS, buildHomeOverview, describeModels, describeToolOrigin, describeTools,
-  entryActions, summariseServices,
+  entryActions, summariseServices, summariseComponentDetail, HOME_TOOLS_SHOWN,
 } from '../src/home-overview.mjs';
 
 const HEALTH = Object.freeze({
@@ -198,5 +198,43 @@ describe('the assembled payload', () => {
     const first = build();
     first.quickActions[0].goal = 'mutated';
     assert.notEqual(build().quickActions[0].goal, 'mutated');
+  });
+});
+
+// --- P3 -------------------------------------------------------------------------------
+//
+// Two defects found by SCREENSHOTTING this page rather than reading its markup, on the run that
+// registered twenty engine tools. Neither had a failing test before, and neither would have got
+// one from the markup: in both cases the template was correct and the VALUE was not what it
+// assumed.
+describe('P3 · the initial screen after the engine tools were registered', () => {
+  test('a watchdog detail is rendered as text, not as [object Object]', () => {
+    // Every subject `registerWatchdogSubjects` declares returns an OBJECT here. The panel showed
+    // `[object Object]` for all fifteen components on the product's front page.
+    assert.equal(summariseComponentDetail({ pid: 41, uptimeSeconds: 900 }), 'pid 41 · uptimeSeconds 900');
+    assert.equal(summariseComponentDetail({ mode: 'reference-node', externalDaemon: false }), 'mode reference-node · externalDaemon false');
+    assert.equal(summariseComponentDetail(null), '');
+    assert.equal(summariseComponentDetail({}), '');
+    assert.equal(summariseComponentDetail('already a string'), 'already a string');
+    assert.equal(summariseComponentDetail({ nested: { a: 1 } }), 'nested {"a":1}');
+    assert.equal(summariseComponentDetail({ missing: null }), 'missing —');
+    // The regression itself, stated as the thing that must never come back.
+    for (const value of [{ pid: 1 }, { a: 'b' }, {}]) {
+      assert.doesNotMatch(summariseComponentDetail(value), /\[object Object\]/);
+    }
+  });
+
+  test('the tools panel is capped, still reports the true total, and shows registered tools first', () => {
+    const builtins = Array.from({ length: 20 }, (_, index) => ({ id: `b${index}`, name: `engine_${index}`, transport: 'builtin', builtin: true }));
+    const registered = [{ id: 'r1', name: 'Mine', transport: 'local-http', endpoint: 'http://127.0.0.1:9/' }];
+    const block = describeTools({ tools: [...builtins, ...registered], permitted: true });
+    assert.equal(block.count, 21, 'the count must stay the TRUE total, or the panel disagrees with the Tools page');
+    assert.equal(block.items.length, HOME_TOOLS_SHOWN);
+    assert.equal(block.shown, HOME_TOOLS_SHOWN);
+    assert.equal(block.items[0].name, 'Mine', 'twenty built-ins pushed the operator\'s own tool off the panel');
+    // A small installation is not capped into saying something it should not.
+    const small = describeTools({ tools: registered, permitted: true });
+    assert.equal(small.count, 1);
+    assert.equal(small.shown, 1);
   });
 });

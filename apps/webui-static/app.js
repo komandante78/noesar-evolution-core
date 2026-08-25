@@ -1934,9 +1934,23 @@ function agentStatusBadge(agentId){
   return `<p><span class="badge">${escapeHtml(t('Run in progress'))}</span></p>`;
 }
 function renderAgents(){
-  $('#agentTools').innerHTML=state.tools.map((item)=>`<option value="${item.id}">${escapeHtml(item.name)}${item.mutative?' · mutative':''}</option>`).join('');
+  $('#agentTools').innerHTML=state.tools.map((item)=>`<option value="${item.id}" translate="no">${escapeHtml(item.name)}${item.mutative?' · mutative':''}</option>`).join('');
   $('#runAgent').innerHTML=optionList(state.agents,{empty:'Select agent'});
-  $('#toolList').innerHTML=state.tools.map((tool)=>`<article class="entity-card"><h3>${escapeHtml(tool.name)}</h3><p>${escapeHtml(tool.transport)} · ${escapeHtml(tool.endpoint??tool.config?.command??'not configured')}</p><small>${tool.external?'External':'Local'} · ${tool.mutative?'Mutative':'Read-only'} · consent ${tool.consent?.granted?'granted':'not granted'}</small><div class="inline-form"><input type="password" data-tool-key="${tool.id}" placeholder="Optional API/OAuth token"><button data-save-tool-key="${tool.id}">Save encrypted key</button>${tool.external?`<button data-tool-consent="${tool.id}">${tool.consent?.granted?'Revoke consent':'Grant for active project'}</button>`:''}</div></article>`).join('')||'No tools.';
+  // P3: a built-in engine tool has no endpoint and no `config.command` — it has a METHOD, run in
+  // this process. Reading `config.method` here is what stops twenty of them rendering as "not
+  // configured", which would read as broken and is the opposite of true. No credential input and
+  // no consent button either: there is nothing to authenticate to and no third party to consent
+  // about, and a password box that cannot mean anything is a control that teaches distrust.
+  const toolWhere=(tool)=>tool.endpoint??tool.config?.method??tool.config?.command??'not configured';
+  // `translate="no"` on the three nodes that carry DATA — the tool's name, where it points, and
+  // the permission identifiers. This is `i18n.js`'s own prescription for text a catalogue can
+  // never close (its comment names an untranslated project name as the case that makes the
+  // measurement lie), and it was missing here: every operator-registered tool name has always
+  // been counted as an untranslated interface string, and P3's twenty engine tools would have
+  // added twenty more. `engine_repoMap_search` is a function name a model calls — translating it
+  // would break the call, so it is not a gap and must not be measured as one. The prose around
+  // them is untouched and still measured.
+  $('#toolList').innerHTML=state.tools.map((tool)=>`<article class="entity-card"><h3 translate="no">${escapeHtml(tool.name)}</h3><p translate="no">${escapeHtml(tool.transport)} · ${escapeHtml(toolWhere(tool))}</p><small>${tool.builtin?'Built-in':tool.external?'External':'Local'} · ${tool.mutative?'Mutative':'Read-only'}${tool.builtin?'':` · consent ${tool.consent?.granted?'granted':'not granted'}`}</small>${tool.builtin&&tool.permissions?.length?`<small class="hint" translate="no">${escapeHtml(tool.permissions.join(', '))}</small>`:''}${tool.builtin?'':`<div class="inline-form"><input type="password" data-tool-key="${tool.id}" placeholder="Optional API/OAuth token"><button data-save-tool-key="${tool.id}">Save encrypted key</button>${tool.external?`<button data-tool-consent="${tool.id}">${tool.consent?.granted?'Revoke consent':'Grant for active project'}</button>`:''}</div>`}</article>`).join('')||'No tools.';
   // The agent list itself. Agents used to exist only as `<option>`s in two selectors: there was
   // no surface on which one could be looked at, tried or removed, which is exactly how an agent
   // created by mistake became permanent.
@@ -5380,7 +5394,7 @@ function renderServices(payload){
     ?`<p class="notice">Safe mode is active${block.safeMode.since?` since ${instantHtml(block.safeMode.since)}`:''}. Mutations are refused; reads still answer.</p>`
     :'';
   const detail=block.detailVisible
-    ?`<ul class="service-list">${(block.components??[]).map((component)=>`<li><span class="dot ${component.healthy?'ok':'bad'}" aria-hidden="true"></span><b>${escapeHtml(component.name)}</b>${component.essential?' <span class="tag">essential</span>':''}<small>${escapeHtml(component.detail??'')}</small></li>`).join('')}</ul>`
+    ?`<ul class="service-list">${(block.components??[]).map((component)=>`<li><span class="dot ${component.healthy?'ok':'bad'}" aria-hidden="true"></span><b>${escapeHtml(component.name)}</b>${component.essential?' <span class="tag">essential</span>':''}<small translate="no">${escapeHtml(component.detailSummary??'')}</small></li>`).join('')}</ul>`
     // The count without the names. Enough to know the installation is well, not enough to
     // enumerate it — the detail belongs to the owner-only Health section and this screen
     // must not become the way around that gate.
@@ -5397,9 +5411,19 @@ function renderTools(payload){
     host.innerHTML='<p class="declared-empty">No tool is registered. This is empty because nothing has been installed, not because something is hidden — a tool is registered disabled by policy and enabled deliberately.</p>';
     return;
   }
-  host.innerHTML=`<ul class="provenance-list">${block.items.map((tool)=>`<li><b>${escapeHtml(tool.name)}</b> <span class="tag">${escapeHtml(tool.transport)}</span>${tool.mutative?' <span class="tag tag-warn">mutative</span>':''}
+  // `translate="no"` on the name and the transport: both are DATA — an operator's own tool name,
+  // or an engine method identifier a model calls by that exact spelling. `i18n.js` prescribes this
+  // for text a catalogue can never close, and its absence here is what put twenty engine tool
+  // names into the runtime language gap (P3).
+  //
+  // The second line branches on `builtin` because "no consent · no credential" is true of a
+  // built-in and says nothing useful about it: there is no third party to consent to and nothing
+  // to authenticate to. What it needs is a PERMISSION, which is the fact an operator actually
+  // wants — and it is a description, never the gate (the gate is `can`, inside the dispatch).
+  host.innerHTML=`<ul class="provenance-list">${block.items.map((tool)=>`<li><b translate="no">${escapeHtml(tool.name)}</b> <span class="tag" translate="no">${escapeHtml(tool.transport)}</span>${tool.mutative?' <span class="tag tag-warn">mutative</span>':''}
     <small>Reaches ${escapeHtml(tool.origin.reach.replace('-',' '))}${tool.origin.host?` · ${escapeHtml(tool.origin.host)}`:''}${tool.origin.declaredExternal?' · declares itself external':''}</small>
-    <small>${tool.consentGranted?'consent granted':'no consent'} · ${tool.credentialConfigured?'credential configured':'no credential'} · registered ${tool.registeredAt?instantHtml(tool.registeredAt):'—'}</small></li>`).join('')}</ul>
+    <small>${tool.builtin?'part of this product':`${tool.consentGranted?'consent granted':'no consent'} · ${tool.credentialConfigured?'credential configured':'no credential'}`} · registered ${tool.registeredAt?instantHtml(tool.registeredAt):'—'}</small>${tool.builtin&&tool.permissions?.length?`<small translate="no">${escapeHtml(tool.permissions.join(', '))}</small>`:''}</li>`).join('')}</ul>
+    ${block.count>block.shown?`<p class="hint">Showing ${block.shown} of ${block.count} registered tools.</p>`:''}
     <p class="hint">Provenance here is where a tool points, not who added it: the record carries no registrar. That name is in the audit log under <code>tool.registered</code>.</p>`;
 }
 function renderModels(payload){

@@ -56,8 +56,32 @@ export function summariseServices({ health, mayReadDetail }) {
       healthy:component.healthy,
       essential:component.essential,
       detail:component.detail ?? null,
+      detailSummary:summariseComponentDetail(component.detail),
     })),
   };
+}
+
+/**
+ * A watchdog probe's `detail` is an OBJECT — `{pid, uptimeSeconds}`, `{freeBytes, totalBytes}` —
+ * for every subject `registerWatchdogSubjects` declares. The Home panel rendered it straight into
+ * the markup, so all fifteen components on the product's front page read `[object Object]`. Found
+ * by screenshotting the page in P3, which no test on this panel would have caught: the markup was
+ * correct, the value was not a string, and nothing asserted it ever had been one.
+ *
+ * Formatted here rather than in the browser so every shell says the same thing about one subject,
+ * and so it can be tested at all. The raw object stays on `detail` for anything that wants the
+ * numbers; `detailSummary` is what a person reads.
+ */
+export function summariseComponentDetail(detail) {
+  if (detail === null || detail === undefined) return '';
+  if (typeof detail === 'string') return detail;
+  if (typeof detail !== 'object') return String(detail);
+  return Object.entries(detail)
+    // An empty object is not "no detail" and must not silently read as one; `Object.entries`
+    // returning nothing is handled by the join below, which yields ''. That is the honest
+    // rendering of `{}` and matches what the null case shows.
+    .map(([key, value]) => `${key} ${value === null ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)}`)
+    .join(' · ');
 }
 
 /**
@@ -95,27 +119,57 @@ export function describeToolOrigin(tool) {
     host,
     // Three values, not two: "unknown" is what an endpoint-less record honestly is, and
     // calling it local because it has no host would be the friendlier of two lies.
-    reach:host || scheme === 'executable' ? (onThisMachine ? 'this-machine' : 'off-machine') : 'unknown',
+    // Four values since P3, and the fourth is not a softening of the third. `unknown` is the
+    // honest answer for a record that HAS an endpoint field and nothing usable in it. A built-in
+    // engine tool is a different thing entirely: it has no endpoint because it opens no
+    // connection, and reporting the best-known fact about it as "unknown" would be the friendlier
+    // of two lies in the other direction — it would put twenty tools that reach nothing at all in
+    // the same row as one whose destination could not be read.
+    reach:tool.transport === 'builtin' ? 'in-process'
+      : host || scheme === 'executable' ? (onThisMachine ? 'this-machine' : 'off-machine') : 'unknown',
     registrarRecorded:false,
     registrarNote:'The tool record carries no registrar. Who registered it is in the audit log, under tool.registered.',
   };
 }
 
+/** How many tools the Home panel lists before it stops and says how many there are.
+ *
+ *  Six, the same number `coden.benchLists` caps its seven panels at, and for the same reason:
+ *  Home is an overview, and a panel that grows without limit stops being one. It had no cap
+ *  because an installation had three tools; P3 registered twenty engine tools and the panel
+ *  became the longest thing on the page — seen rendered, not deduced.
+ *
+ *  `count` stays the TRUE total either way, so "6 of 23" can be said rather than implied. A cap
+ *  that also capped the number would be a panel quietly disagreeing with the Tools page about how
+ *  many tools this installation has. */
+export const HOME_TOOLS_SHOWN = 6;
+
 export function describeTools({ tools, permitted }) {
   if (!permitted) return withheld('workspace.read', 'Installed tools are part of the workspace.');
-  const items = (Array.isArray(tools) ? tools : []).map((tool) => ({
+  const all = (Array.isArray(tools) ? tools : []).map((tool) => ({
     id:tool.id,
     name:tool.name,
     transport:tool.transport,
     endpoint:tool.endpoint ?? null,
     origin:describeToolOrigin(tool),
     mutative:Boolean(tool.mutative),
+    // P3. Carried so the panel can say what a built-in NEEDS (a permission) instead of what it
+    // lacks (a credential and a consent it can never have). Reporting "no credential · no consent"
+    // for twenty tools that authenticate to nothing reads as twenty unfinished installations.
+    builtin:Boolean(tool.builtin),
+    permissions:Array.isArray(tool.permissions) ? tool.permissions : [],
     requiresApproval:tool.requiresApproval !== false,
     credentialConfigured:Boolean(tool.credentialConfigured),
     consentGranted:Boolean(tool.consent?.granted),
     registeredAt:tool.createdAt ?? null,
   }));
-  return { visible:true, count:items.length, items };
+  // Operator-registered tools first, then the product's own: what someone added is what they came
+  // to look at, and twenty built-ins must not push three registered tools off the panel.
+  const ordered = [...all.filter((item) => !item.builtin), ...all.filter((item) => item.builtin)];
+  return {
+    visible:true, count:ordered.length, items:ordered.slice(0, HOME_TOOLS_SHOWN),
+    shown:Math.min(ordered.length, HOME_TOOLS_SHOWN), cappedAt:HOME_TOOLS_SHOWN,
+  };
 }
 
 /**

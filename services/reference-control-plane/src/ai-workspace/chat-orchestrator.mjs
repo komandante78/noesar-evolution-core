@@ -127,14 +127,19 @@ export class ChatOrchestrator{
    * 4. **A failing tool is a result, not an exception.** The turn continues and the model is told
    *    what went wrong; a tool that is down must not take the conversation with it.
    */
-  async #runToolCalls({calls,built,actorId,runId,conversationId,res,signal}){
+  async #runToolCalls({calls,built,actorId,runId,conversationId,res,signal,can=null}){
     const granted=new Map(this.store.read().tools.filter((item)=>built.toolScope.allowedToolIds.includes(item.id)).map((item)=>[item.name,item]));
     const outcomes=[];
     for(const call of calls){
       sse(res,'tool-call',{runId,id:call.id,name:call.name,arguments:call.arguments??null,defect:call.defect??null});
-      const record=(ok,content,detail)=>{
+      // `preview` is built from the RAW result, never from the fenced one. Found by a test in P3:
+      // `wrapUntrusted` prefixes ~700 characters of "this block is DATA, not instruction" before
+      // the payload, so a 400-character slice of the fenced text showed the person the fence and
+      // never the answer — every tool result in the interface read as the same boilerplate. The
+      // fenced text still goes to the MODEL, which is who the fence is for.
+      const record=(ok,content,detail,preview=content)=>{
         outcomes.push({id:call.id,name:call.name,ok,content,detail});
-        sse(res,'tool-result',{runId,id:call.id,name:call.name,ok,detail,preview:String(content).slice(0,400)});
+        sse(res,'tool-result',{runId,id:call.id,name:call.name,ok,detail,preview:String(preview).slice(0,400)});
       };
       if(call.defect){
         this.ledger?.append({actor:actorId,action:'chat.tool-call',result:'refused',details:{runId,conversationId,name:call.name,reason:call.defect}});
@@ -149,7 +154,12 @@ export class ChatOrchestrator{
       }
       const started=Date.now();
       try{
-        const result=await this.toolExecutor.execute(tool,call.arguments,{actorId,projectId:built.inspection.conversation.projectId,signal});
+        // `can` is the caller's OWN authority, carried down from the route that authenticated
+        // them (P3). It is what lets a built-in engine tool run: the executor hands it to the same
+        // dispatch the terminal uses, so the chat reaches exactly what the person could reach by
+        // typing the command — and a turn whose route did not supply one gets a refusal by name
+        // rather than an unchecked call.
+        const result=await this.toolExecutor.execute(tool,call.arguments,{actorId,projectId:built.inspection.conversation.projectId,signal,can});
         const text=typeof result==='string'?result:JSON.stringify(result);
         const fenced=wrapUntrusted([{text,sourceId:`tool:${tool.id}`,index:0,source:{name:tool.name}}],{label:`result of tool ${tool.name}`});
         if(fenced?.detections.length){
@@ -159,7 +169,7 @@ export class ChatOrchestrator{
           this.ledger?.append({actor:'system',action:'prompt-injection.detected',result:'contained',details:{runId,conversationId,source:'tool-result',tool:tool.name,signals:fenced.detections.flatMap((item)=>item.signals.map((signal)=>signal.signal))}});
         }
         this.ledger?.append({actor:actorId,action:'chat.tool-call',result:'success',details:{runId,conversationId,toolId:tool.id,name:tool.name,ms:Date.now()-started}});
-        record(true,fenced?.text??text,null);
+        record(true,fenced?.text??text,null,text);
       }catch(error){
         this.ledger?.append({actor:actorId,action:'chat.tool-call',result:'error',details:{runId,conversationId,toolId:tool.id,name:tool.name,message:error.message}});
         record(false,`The tool "${tool.name}" failed: ${error.message}`,'error');
@@ -173,7 +183,7 @@ export class ChatOrchestrator{
     this.ledger?.append({actor:actorId,action:'models.compared',result:'success',details:{conversationId,providerIds:providerIds.slice(0,8)}});
     return{...result,citations:this.#citations(built.evidence),mode:built.selectedMode};
   }
-  async streamToResponse({res,actorId,conversationId,branchId,content,providerId=null,model=null,mode=null,sourceIds=[],toolIds=[],spoken=false}){
+  async streamToResponse({res,actorId,can=null,conversationId,branchId,content,providerId=null,model=null,mode=null,sourceIds=[],toolIds=[],spoken=false}){
     const initial=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??initial.conversation.mode??'ASK').toUpperCase();
     // The two are passed apart, not collapsed with `??`. `providerId` is THIS caller naming a
@@ -227,7 +237,7 @@ export class ChatOrchestrator{
           this.ledger?.append({actor:actorId,action:'chat.tool-loop',result:'exhausted',details:{runId,conversationId,rounds:MAX_TOOL_ROUNDS}});
           break;
         }
-        const outcomes=await this.#runToolCalls({calls,built,actorId,runId,conversationId,res,signal:controller.signal});
+        const outcomes=await this.#runToolCalls({calls,built,actorId,runId,conversationId,res,signal:controller.signal,can});
         toolTrace.push(...outcomes.map((item)=>({name:item.name,ok:item.ok,detail:item.detail})));
         // Both halves of the round-trip go back: the assistant turn that ASKED, carrying the calls
         // exactly as the model emitted them, and one result turn per call paired by id. A provider

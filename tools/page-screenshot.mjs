@@ -29,9 +29,9 @@ const SETUP_TOKEN = process.env.NOESAR_E2E_SETUP_TOKEN;
 // NOESAR_E2E_BASE_URL/SETUP_TOKEN to the runner container, and adding a third
 // pass-through to a shared script for a one-off list is exactly the coupling
 // CLAUDE10.md's no-overengineering guidance warns against. Edit this array directly.
-const VIEWS = ['#/chat'];
+const VIEWS = ['#/home'];
 /** route -> selector to click before taking a second shot. Same reason as VIEWS: edited here. */
-const AFTER_CLICK = { '#/chat': '#chatMore' };
+const AFTER_CLICK = {};
 const PASSWORD = 'e2e throwaway passphrase for a disposable probe';
 const USERNAME = 'e2eowner';
 
@@ -63,7 +63,23 @@ try {
 
   for (const route of VIEWS) {
     await page.goto(`${BASE}/${route}`, { waitUntil: 'networkidle2' });
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    // A fragment-only change is not a navigation: `goto` resolves without the router having run,
+    // and the capture came back showing whatever view was already open. Measured in P3 — a shot
+    // labelled `#/tools` was a picture of the CodeN bench. Set the hash explicitly, then WAIT for
+    // the view to be the visible one, so the file's name and its contents cannot disagree.
+    const view = route.replace(/^#\//, '');
+    // A RELOAD, not a second hash assignment. The `goto` above already put the fragment in the
+    // address bar without the router running, so writing the same value back fires no
+    // `hashchange` and nothing moves — which is why the first two attempts at this both produced
+    // a picture of the previous view. Reloading makes the app boot and read the hash it is on.
+    await page.reload({ waitUntil: 'networkidle2' });
+    await page.waitForFunction(
+      // `.active`, which is how `activate()` switches views — not `offsetParent`, which was the
+      // first guess and is null for more reasons than "hidden".
+      (id) => document.querySelector(`#view-${id}`)?.classList.contains('active') === true,
+      { timeout: 15000 }, view,
+    ).catch(() => { console.error(`SCREENSHOT_VIEW_NOT_VISIBLE=${view}`); });
+    await new Promise((resolve) => setTimeout(resolve, 600));
     const png = await page.screenshot({ encoding: 'base64', fullPage: true });
     console.log(`===SCREENSHOT ${route}===`);
     console.log(png);
