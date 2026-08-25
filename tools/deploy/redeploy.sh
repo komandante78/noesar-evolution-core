@@ -6,7 +6,7 @@
 #   tools/deploy/redeploy.sh --source <container> --check
 #   tools/deploy/redeploy.sh --source <container> --apply --authorized-by-owner \
 #                            [--rotate-secret VAR[,VAR…]] [--image TAG] \
-#                            [--set VAR=VALUE]… [--unset VAR[,VAR…]]
+#                            [--set VAR=VALUE]… [--unset VAR[,VAR…]] [--ip ADDR]
 #
 # # Why this exists, measured rather than argued
 #
@@ -61,7 +61,7 @@ HEALTH_TIMEOUT="${NOESAR_DEPLOY_HEALTH_TIMEOUT:-120}"
 HEALTH_INTERVAL="${NOESAR_DEPLOY_HEALTH_INTERVAL:-3}"
 STOP_GRACE="${NOESAR_DEPLOY_STOP_GRACE:-30}"
 
-SOURCE=""; MODE="check"; AUTHORIZED=0; ROTATE_VARS=""; NEW_IMAGE=""; UNSET_VARS=""; SET_PAIRS=()
+SOURCE=""; MODE="check"; AUTHORIZED=0; ROTATE_VARS=""; NEW_IMAGE=""; UNSET_VARS=""; SET_PAIRS=(); NEW_IP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --source) SOURCE="${2:?--source needs a container name}"; shift 2 ;;
@@ -89,6 +89,9 @@ while [ $# -gt 0 ]; do
       esac
       SET_PAIRS+=("$2"); shift 2 ;;
     --unset) UNSET_VARS="${2:?--unset needs VAR[,VAR…]}"; shift 2 ;;
+    # The address is READ BACK and carried like everything else below; this flag exists to
+    # RE-ESTABLISH a pin that was already lost, which is not a thing a read-back can do.
+    --ip) NEW_IP="${2:?--ip needs an address}"; shift 2 ;;
     --image) NEW_IMAGE="${2:?--image needs a tag}"; shift 2 ;;
     -h|--help) sed -n '3,10p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
@@ -131,7 +134,7 @@ preflight() {
   command -v shred >/dev/null 2>&1 && ok "shred present" || warn "shred absent — the env file will be removed with rm, which is weaker"
 
   docker inspect "$SOURCE" >/dev/null 2>&1 || { bad "no container named $SOURCE"; return; }
-  local image network restart ro state health workspace
+  local image network restart ro state health workspace pinned_ip
   image="$(docker inspect "$SOURCE" --format '{{.Config.Image}}')"
   network="$(docker inspect "$SOURCE" --format '{{.HostConfig.NetworkMode}}')"
   restart="$(docker inspect "$SOURCE" --format '{{.HostConfig.RestartPolicy.Name}}')"
@@ -178,6 +181,22 @@ preflight() {
   [ -n "$network" ] && docker network inspect "$network" >/dev/null 2>&1 \
     && ok "network exists: $network" || bad "network $network is missing"
   ok "restart=$restart · read-only rootfs=$ro"
+
+  # The address, said out loud, because losing it is silent and expensive. `F-ROT-001` was filed
+  # as a stale allowed-host: `NOESAR_ALLOWED_HOSTS` named `172.22.0.5` while the container
+  # answered elsewhere. The diagnosis was backwards. The allowlist was right — a recreate had
+  # dropped the STATIC ADDRESS, exactly as it once dropped `--stop-timeout` and `--log-opt`, and
+  # the leaf certificate's SAN list, the independent-pentest scope and the status page all still
+  # named an address the installation no longer held. Nothing said so, because nothing looked.
+  pinned_ip="$(docker inspect "$SOURCE" --format \
+    '{{range .NetworkSettings.Networks}}{{if .IPAMConfig}}{{.IPAMConfig.IPv4Address}}{{end}}{{end}}')"
+  if [ -n "${NEW_IP:-}" ]; then
+    ok "address: will be pinned to $NEW_IP${pinned_ip:+ (currently pinned to $pinned_ip)}"
+  elif [ -n "$pinned_ip" ]; then
+    ok "address: pinned to $pinned_ip, and the replacement will carry that pin"
+  else
+    warn "address: NOT pinned — the replacement takes whatever the network hands out, and anything naming a fixed address for this container is already wrong (--ip re-establishes one)"
+  fi
   [ "$state" = "running" ] && ok "state: running" || bad "state is '$state', not running"
   # `none` is accepted: an image with no HEALTHCHECK is a fact about that image, not a fault.
   case "$health" in
@@ -258,8 +277,8 @@ fi
 # ══ THE GATE. Everything past this point mutates the installation. ════════════════════════════
 [ "$FAIL" -eq 0 ] || { say "REFUSED: preflight failed — not deploying."; exit 1; }
 [ "$AUTHORIZED" -eq 1 ] || { say "REFUSED: --apply requires --authorized-by-owner."; exit 2; }
-[ -n "$ROTATE_VARS" ] || [ -n "$NEW_IMAGE" ] || [ "${#SET_PAIRS[@]}" -gt 0 ] || [ -n "$UNSET_VARS" ] \
-  || { say "REFUSED: --apply changes nothing — name --rotate-secret, --image, --set or --unset."; exit 2; }
+[ -n "$ROTATE_VARS" ] || [ -n "$NEW_IMAGE" ] || [ "${#SET_PAIRS[@]}" -gt 0 ] || [ -n "$UNSET_VARS" ] || [ -n "$NEW_IP" ] \
+  || { say "REFUSED: --apply changes nothing — name --rotate-secret, --image, --set, --unset or --ip."; exit 2; }
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 WORK="$(mktemp -d)"; ENVFILE="$WORK/env"
@@ -279,6 +298,17 @@ IMAGE="${NEW_IMAGE:-$IMAGE_NOW}"
 NETWORK="$(docker inspect "$SOURCE" --format '{{.HostConfig.NetworkMode}}')"
 RESTART="$(docker inspect "$SOURCE" --format '{{.HostConfig.RestartPolicy.Name}}')"
 RO_ROOTFS="$(docker inspect "$SOURCE" --format '{{.HostConfig.ReadonlyRootfs}}')"
+# The THIRD setting that lives on the container and not in the image — `--stop-timeout` and
+# `--log-opt` are the two this file already names below, and they were added for this same reason.
+# This one is the most expensive of the three to lose, because losing it invalidates statements
+# made elsewhere: the leaf certificate carries a SAN for the pinned address, the independent
+# pentest scope names it as the target, and `NOESAR_ALLOWED_HOSTS` allows it. `docker run` without
+# `--ip` does not fail — it quietly accepts whatever the bridge offers, so every one of those
+# became false silently, and `F-ROT-001` was filed against the allowlist instead of against here.
+# Empty when the source carries no pin, which stays the behaviour it has always had.
+IP_NOW="$(docker inspect "$SOURCE" --format \
+  '{{range .NetworkSettings.Networks}}{{if .IPAMConfig}}{{.IPAMConfig.IPv4Address}}{{end}}{{end}}')"
+IP="${NEW_IP:-$IP_NOW}"
 WORKSPACE="$(docker inspect "$SOURCE" --format '{{range .Mounts}}{{if eq .Destination "/workspace"}}{{.Source}}{{end}}{{end}}')"
 docker inspect "$SOURCE" --format '{{range .Config.Env}}{{println .}}{{end}}' > "$ENVFILE"
 chmod 0600 "$ENVFILE"
@@ -396,6 +426,7 @@ if [ "${#SET_PAIRS[@]}" -gt 0 ] || [ -n "$UNSET_VARS" ]; then
   say "  environment: $ENV_COUNT variables in, $(env_count "$ENVFILE") out"
 fi
 [ -n "$NEW_IMAGE" ] && ok "image will change: $IMAGE_NOW -> $IMAGE"
+[ -n "$NEW_IP" ] && ok "address will change: ${IP_NOW:-unpinned} -> $NEW_IP"
 
 # ── ROLLBACK, AUTOMATIC ───────────────────────────────────────────────────────────────────────
 # Printing rollback instructions and hoping somebody runs them is not a rollback.
@@ -455,8 +486,9 @@ trap 'fail_after_rename "an unexpected command failed after the rename"' ERR
 
 # ── STEP 7 · CREATE THE REPLACEMENT FROM THE RECIPE READ BACK ─────────────────────────────────
 RO_FLAG=(); [ "$RO_ROOTFS" = "true" ] && RO_FLAG=(--read-only)
+IP_FLAG=(); [ -n "$IP" ] && IP_FLAG=(--ip "$IP")
 docker run -d --name "$SOURCE" --env-file "$ENVFILE" --network "$NETWORK" --restart "$RESTART" \
-  "${RO_FLAG[@]}" "${STOP_FLAG[@]}" "${LOGDRIVER_FLAG[@]}" "${LOG_FLAGS[@]}" \
+  "${RO_FLAG[@]}" "${IP_FLAG[@]}" "${STOP_FLAG[@]}" "${LOGDRIVER_FLAG[@]}" "${LOG_FLAGS[@]}" \
   "${PORT_FLAGS[@]}" "${BIND_FLAGS[@]}" "${TMPFS_FLAGS[@]}" "$IMAGE" >/dev/null \
   || fail_after_rename "the replacement could not be created"
 ok "replacement created from $IMAGE"

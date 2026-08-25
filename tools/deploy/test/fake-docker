@@ -37,6 +37,9 @@ if [ "${1:-}" = "inspect" ]; then
   [ -z "$fmt" ] && { echo "[{}]"; exit 0; }
   case "$fmt" in
     *".Config.Image"*)                     get "$name" image ;;
+    # A container with no `ip` file answers EMPTY, which is what a real daemon answers for a
+    # container that was never pinned — the case the tool must keep handling unchanged.
+    *"IPAMConfig"*)                        get "$name" ip ;;
     *"NetworkMode"*)                       echo "fake-net" ;;
     *"RestartPolicy.Name"*)                echo "unless-stopped" ;;
     *"ReadonlyRootfs"*)                    echo "true" ;;

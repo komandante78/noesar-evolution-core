@@ -56,6 +56,9 @@ new_world() {
   : > "$FAKE_ROOT/img/fakeimage_v1"; : > "$FAKE_ROOT/img/fakeimage_v2"; : > "$FAKE_ROOT/net/fake-net"
   local c="$FAKE_ROOT/c/inst"
   printf 'fakeimage:v1' > "$c/image"; printf 'running' > "$c/status"
+  # The static address, present by default because the installation this models HAS one and a
+  # recreate silently dropping it is the defect being defended against (F-ROT-001).
+  printf '172.22.0.5' > "$c/ip"
   printf '0' > "$c/exit";            printf 'healthy' > "$c/health"
   { echo "PATH=/usr/bin"; echo "NODE_ENV=production"
     echo "SECRET_A=$OLD_SYNTH"; echo "SECRET_B=$OLD_SYNTH"
@@ -116,7 +119,7 @@ A="$(envof inst SECRET_A)"; B="$(envof inst SECRET_B)"
 [ "$(envof inst FILLER_7)" = "value7" ] && pass "rotate: untouched variables are untouched" || fail "rotate: others intact" "changed"
 pred >/dev/null && pass "rotate: predecessor preserved ($(pred))" || fail "rotate: predecessor" "absent"
 recipe="$(cat "$FAKE_ROOT/c/inst/recipe" 2>/dev/null)"
-for want in "--stop-timeout 60" "--log-driver json-file" "max-size=50m" "max-file=1" "--read-only" "18089" "/workspace" "/run:mode=1777"; do
+for want in "--stop-timeout 60" "--log-driver json-file" "max-size=50m" "max-file=1" "--read-only" "--ip 172.22.0.5" "18089" "/workspace" "/run:mode=1777"; do
   case "$recipe" in *"$want"*) pass "rotate: recipe carries $want" ;; *) fail "rotate: recipe carries $want" "absent" ;; esac
 done
 bk="$(find "$NOESAR_BACKUPS_DIR" -name workspace.tar 2>/dev/null | head -1)"
@@ -297,6 +300,41 @@ grep -q 'rotate-secret' "$FAKE_ROOT/stderr" && pass "set: the refusal names what
 new_world setmalformed
 run_tool -- --apply --authorized-by-owner --set NOEQUALSIGN
 [ "$(code)" = "2" ] && pass "set: refuses VAR without =VALUE" || fail "set: refuses malformed" "got $(code)"
+
+echo "=== 12. the static address survives a recreate, and can be re-established — F-ROT-001 ==="
+# Case 3 already proves the pin is CARRIED by an ordinary deploy (its recipe check names --ip).
+# What is left is the other two states: a container that never had one must not acquire one, and a
+# container that LOST one must be able to get it back — which is the state this installation is in
+# right now, because a recreate dropped the pin while the certificate SAN, the pentest scope and
+# NOESAR_ALLOWED_HOSTS all went on naming the address.
+new_world nopin
+rm -f "$FAKE_ROOT/c/inst/ip"
+run_tool -- --apply --authorized-by-owner --rotate-secret SECRET_A
+[ "$(code)" = "0" ] && pass "unpinned: exit 0" || fail "unpinned: exit 0" "got $(code)"
+case "$(cat "$FAKE_ROOT/c/inst/recipe" 2>/dev/null)" in
+  *--ip*) fail "unpinned: no address is invented" "the recipe carries --ip" ;;
+  *)      pass "unpinned: a container with no pin does not acquire one" ;;
+esac
+new_world repin
+rm -f "$FAKE_ROOT/c/inst/ip"
+run_tool -- --apply --authorized-by-owner --ip 172.22.0.5
+[ "$(code)" = "0" ] && pass "--ip alone is a change worth deploying" || fail "--ip alone deploys" "got $(code)"
+case "$(cat "$FAKE_ROOT/c/inst/recipe" 2>/dev/null)" in
+  *"--ip 172.22.0.5"*) pass "--ip re-establishes a pin the recreate had dropped" ;;
+  *)                   fail "--ip re-establishes the pin" "the recipe does not carry it" ;;
+esac
+new_world ipoverride
+run_tool -- --apply --authorized-by-owner --ip 172.22.0.9
+case "$(cat "$FAKE_ROOT/c/inst/recipe" 2>/dev/null)" in
+  *"--ip 172.22.0.9"*) pass "--ip overrides the address read back, as --image overrides the image" ;;
+  *)                   fail "--ip overrides the read-back address" "the old pin won" ;;
+esac
+# The read must happen in the one block before the first mutation, like every other read.
+ip_at="$(grep -n '^IP_NOW=' "$TOOL" | head -1 | cut -d: -f1)"
+rename_at="$(grep -n '^docker rename "\$SOURCE" "\$PREDECESSOR"' "$TOOL" | head -1 | cut -d: -f1)"
+[ -n "$ip_at" ] && [ -n "$rename_at" ] && [ "$ip_at" -lt "$rename_at" ] \
+  && pass "the address is read before the first mutation, with every other read" \
+  || fail "address read precedes the rename" "ip=$ip_at rename=$rename_at"
 
 echo
 echo "================================================================"
