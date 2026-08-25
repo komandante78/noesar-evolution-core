@@ -820,7 +820,7 @@ const it = {
 
   // ——— Knowledge ———
   'HYBRID RETRIEVAL': 'RECUPERO IBRIDO',
-  'What you feed the model as evidence: files, pasted text, recordings — ingested, indexed, and searched lexically and semantically before an answer cites it.': 'Ciò che dai in pasto al modello come prova: file, testo incollato, registrazioni — acquisiti, indicizzati e cercati lessicalmente e semanticamente prima che una risposta li citi.',
+  'What you feed the model as evidence: files, pasted text, media — ingested, indexed, and searched lexically and semantically before an answer cites it. Audio and video are indexed by their metadata, never transcribed: this build has no speech-to-text.': 'Ciò che dai in pasto al modello come prova: file, testo incollato, media — acquisiti, indicizzati e cercati lessicalmente e semanticamente prima che una risposta li citi. Audio e video sono indicizzati per i loro metadati, mai trascritti: questo build non ha riconoscimento vocale.',
   'Add source': 'Aggiungi fonte',
   'Upload PDF, Office, image, audio, video, ZIP, dataset or code': 'Carica PDF, Office, immagine, audio, video, ZIP, dataset o codice',
   'Camera': 'Fotocamera',

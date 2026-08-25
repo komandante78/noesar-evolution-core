@@ -262,6 +262,24 @@ describe('phase 3: the switchers are gone and nothing they reached went with the
 });
 
 describe('the interface does not claim what the code contradicts', () => {
+  test('Knowledge does not promise a transcription this build cannot do', () => {
+    // The voice layer took speech-to-text with it, and file-extractors.mjs says so to the user:
+    // audio and video are stored and described, not read. The Knowledge header went on offering
+    // "recordings — ingested, indexed, and searched", which is the same shape of untruth as the
+    // system message that kept telling the model this installation could hear: a sentence that
+    // outlived the code it described. The claim is checked against the extractor, not against a
+    // document, because documents are what were wrong.
+    const extractors = readFileSync(
+      join(here, '../src/ai-workspace/file-extractors.mjs'), 'utf8');
+    const noSpeech = /has no transcription/.test(extractors);
+    assert.ok(noSpeech, 'the extractor now transcribes: this test is the thing that is stale');
+    const header = html.match(/<h1>Knowledge<\/h1><p>([\s\S]*?)<\/p>/)?.[1] ?? '';
+    assert.ok(header.length > 0, 'the Knowledge identity line is gone');
+    assert.doesNotMatch(header, /recordings —/,
+      'Knowledge offers recordings as searchable evidence while the extractor refuses to read them');
+    assert.match(header, /never transcribed|no speech-to-text/,
+      'Knowledge does not say that audio and video are not transcribed');
+  });
   test('the TUI destination carries no "not built" flag, and the files it names exist', () => {
     const navEntry = html.match(/<button class="nav" data-view="coden-tui">[^<]*(?:<[^>]+>[^<]*)*?<\/button>/);
     assert.ok(navEntry, 'the coden-tui nav entry is gone');
