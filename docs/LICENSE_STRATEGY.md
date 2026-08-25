@@ -38,16 +38,17 @@ contributions are accepted.
 
 ## 3. ATOM
 
-**Amended by the Owner, 2026-08-15 (`D-0468`).** ATOM's implementation is **open and
-architecturally separate** — its own repository (`ATOM_EVOLUTION`), licensed
-AGPL-3.0-or-later, matching the open core. It is no longer proprietary, but it is
-still not merged into this repository: the split is what keeps "the core does not
-depend on ATOM" a checkable, structural fact rather than a promise. The open core
-defines public interfaces; any implementation, including ATOM's own, may satisfy
-them. `ATOM_EVOLUTION` is built from scratch against that contract — never from the
-old, separate, still-proprietary ATOM projects on this host (`ATOM`, `ATOM_MODEL`,
-`ATOM_INTERNAL`, `NOESAR-ATOM-PRIVATE`), whose closure is unaffected by this change.
-See `docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md`.
+**`D-0468` (2026-08-15, "ATOM diventa AGPL") is superseded by `D-0633` (2026-08-21).**
+ATOM's implementation is **proprietary**, its own repository (`ATOM_EVOLUTION`), architecturally
+separate from this one — the split is what keeps "the core does not depend on ATOM" a checkable,
+structural fact rather than a promise, independent of which side of the boundary ATOM sits on.
+The open core defines public interfaces; any implementation, including ATOM's own, may satisfy
+them. `ATOM_EVOLUTION` is built from scratch against that contract — never from the old,
+separate, still-proprietary ATOM projects on this host (`ATOM`, `ATOM_MODEL`, `ATOM_INTERNAL`,
+`NOESAR-ATOM-PRIVATE`), which remain unrelated to it. The Owner's stated reason
+(`docs/DECISION_LOG.md`, `D-0633`): ATOM is a direct commercial-monetisation candidate, and
+opening it for the same economic outcome was more work for no gain. See
+`docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md`.
 
 ## 3a. Product access control
 
