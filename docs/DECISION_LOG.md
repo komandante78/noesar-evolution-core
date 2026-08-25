@@ -16008,3 +16008,91 @@ provider rows). None of them came from this session's work.
 **`FAIL_UNDECLARED=0`**; the same single declared FAIL recorded since `D-0508`.
 **Reversal cost.** None — nothing changed.
 **Status.** recorded; closing the 47 is a phase of its own, not a line in this one.
+
+## D-0687 · P3 — the engine's own read methods become tools the chat can call — 2026-08-25
+**Decision.** `builtin-tools.mjs` derives a tool catalogue from `SESSION_METHOD_POLICY` (30
+methods, one row each, never a second hand-kept list) and registers the **20 whose effect is
+`read`** as tools of this installation at start-up, idempotently, with stable ids. A new
+`builtin` transport in `ToolExecutor` runs them through the **same `sessionDispatch`** the
+terminal and the browser use, with the **caller's own `can`** carried down from the chat route.
+**Why.** All three existing transports leave the process, so the chat could reach a stranger's
+API and not the installation it lives in. Asked "what is broken here" it could only describe
+methodology. No authority is created: the chat reaches exactly what the person could reach by
+typing the command, and a built-in call arriving with no `can` is refused, never defaulted.
+**Rejected.** A separate catalogue merged at read time — four touch points and a second shape
+for the Tools panel, the scope intersection and the search index to learn. Seeding into the
+store makes every existing surface work for free.
+**Not done, and it is an Owner decision, not a gap.** The 8 `write` and 2 `destroy` methods are
+classified and schema'd but **not registered**: letting a model approve a plan or purge a
+session changes what the product is. Turning one on is one word in `SEEDED_EFFECTS`; what is
+genuinely missing first is a mid-turn approval the person gives (`tool.mutative` is read by
+`AgentService` and ignored by `ChatOrchestrator`).
+**Evidence.** `builtin-tools.test.mjs` 17/17, incl. the whole path — scripted model → real
+orchestrator → real `ToolExecutor` → real `createSessionDispatch` → real handler. Full unit
+suite **3139/3138 pass/0 fail/1 pre-existing skip**. `scripts/test.sh` 22/22, 0 unavailable.
+ESLint 507/0/0. Oracle proven: with the authority gate removed, **2 of 17 fail**. Live:
+`tools.builtin-seeded added:20`, live state 23 tools / 20 builtin / 0 disabled / 0 mutative.
+**Reversal cost.** None — no schema, no migration. The records stay in the store if reverted
+and stop resolving, which `ToolExecutor` reports by name.
+**Status.** applied, DEPLOYED and verified live (`p3-engine-tools-20260825T030536Z`).
+
+## D-0688 · Five defects repaired in P3, four of them found by looking rather than reading — 2026-08-25
+**Decision.** Repaired in the same phase, each with a test.
+(1) **`actorId` overridable from the request body** — `POST /api/v1/chat/stream` and
+`/models/compare` spread the body AFTER `actorId`, so any signed-in caller could attribute a
+turn to another account. Audit-log forgery while `actorId` only labelled a ledger line; a
+privilege escalation the moment authority began travelling with it. `actorId`, `res` and `can`
+now come after the spread.
+(2) **`tool-result.preview` showed the fence, never the result** — a 400-char slice of
+`wrapUntrusted`'s ~700-char preamble, so every tool result in the interface read as the same
+boilerplate. Preview is now built from the raw text; the model still gets the fenced one.
+(3) **`[object Object]` on the product's front page** — every watchdog probe returns an OBJECT
+as `detail` and the Home panel rendered it straight into markup: all 15 components. Now
+`summariseComponentDetail()`, server-side so every shell says the same thing.
+(4) **The Home tools panel had no cap** — 20 engine tools made it the longest thing on the
+page (4258px → 3358px). Six shown, operator tools first, true total still reported.
+(5) **`describeToolOrigin` called a built-in's reach `unknown`** — it opens no connection at
+all. `in-process` is the fact; `unknown` belongs to a record whose destination could not be read.
+**Why they were invisible.** (3), (4) and (5) were found by SCREENSHOTTING the page. No test
+would have caught them: in each case the markup was correct and the VALUE was not what it
+assumed. (2) was found by a new test asserting on the preview.
+**Evidence.** `home-overview.test.mjs` 26/26 (2 new), `builtin-tools.test.mjs` 17/17.
+**Reversal cost.** None.
+**Status.** applied, DEPLOYED.
+
+## D-0689 · The i18n runtime ratchet, measured A/B instead of argued — 2026-08-25
+**Decision.** Operator tool names and engine method identifiers were being counted as
+untranslated interface strings. `translate="no"` added where `i18n.js` itself prescribes it —
+the tool name, the transport, the permission identifiers, the watchdog detail.
+**Why.** `engine_repoMap_search` is a function name a model calls by that exact spelling;
+translating it would break the call. It is not a gap and must not be measured as one.
+**Evidence — a controlled A/B in one session, which `D-0686` could not do.** Same probe, same
+run of the suite, only `app.js` differing: **680 closable → 659**, net **−21** (27 removed, 6
+added — six composed `<small>` variants of a line that was already of that kind).
+**What was NOT done.** The baseline stays **607** and was **not** re-taken. `F-I18N-002` stays
+red. Raising a ratchet to whatever the code does turns the defect into the requirement.
+**Reversal cost.** None.
+**Status.** applied.
+
+## D-0690 · `#view-tools` is orphaned markup — reported, not repaired — 2026-08-25
+**Decision.** Recorded as an open finding (`F-NAV-001`), not fixed in this phase.
+**What was measured.** `LEGACY_ROUTES` maps `tools → coden` (`8d8ce72`, "Tools into CodeN
+Evolution"), so `#/tools` and Home's own `data-view-link="tools"` **both** land on the CodeN
+bench — screenshotted, not deduced. But `#view-tools` still exists in `index.html` with its
+"Register tool" form and `#toolList`, and `renderAgents()` still writes into it. The demotion
+moved the address and left the page. **Registering a tool has no reachable UI today.**
+**Why not repaired here.** Where tools are managed is what `D-0137` decided deliberately;
+undoing it is a product decision, not a defect repair (`engineering-depth` §6). What P3 owed
+was not to point at it: the new Home hint reads "Showing 6 of 20 registered tools" and names
+no page.
+**Status.** open finding, for the Owner.
+
+## D-0691 · Improvement proposal — the built-in catalogue as a published tool-provider contract — 2026-08-25
+**Proposal.** Extract `builtin-tools.mjs`'s shape — a policy table → typed tool catalogue →
+authority-preserving in-process dispatch — into a small published package with a versioned
+contract, so any host application can expose its own gated API to a model without inventing the
+authority plumbing. Benefit: the hard part of agentic tool use (not creating authority) becomes
+reusable and testable outside this product. Cost: ~1 phase, plus a conformance suite.
+**Funding fit.** **Restack · traits 1, 2, 4** — a delimited, reusable component that works
+against any OpenAI-compatible endpoint and deepens no vendor lock-in.
+**Status.** proposed, not executed (`budget` §5).

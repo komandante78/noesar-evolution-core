@@ -6315,3 +6315,30 @@ creato da `Clear conversation` è un record in più nel grafo, che la versione
 precedente legge senza modifiche.
 **Pulizia (§5a).** Rimosso `…-pre-20260824T125603Z`. Container non di progetto
 **50 → 50**, reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**.
+
+## `p3-engine-tools-20260825T030536Z` — DEPLOYATO e verificato — 2026-08-25
+**Tag.** Costruito offline (`docker build --pull=false -f oci/Dockerfile`, exit 0), installato
+con `tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `P3` del piano a 11 giorni (`D-0687`): i **20 metodi di sola lettura** del
+motore diventano strumenti che la chat può chiamare, eseguiti attraverso lo **stesso**
+`sessionDispatch` del terminale e con il **`can` del chiamante** — nessuna autorità nuova. Gli
+8 metodi di scrittura e i 2 distruttivi sono classificati e **non** registrati (`D-0687`).
+Più cinque riparazioni (`D-0688`) e il cricchetto i18n misurato A/B (`D-0689`).
+**Verifica.** Byte-uguale albero↔immagine su 6 file (md5 identici) e il preflight del
+redeploy: **498 byte-equal, 0 differing, 0 absent**. Unit **3139 test, 3138 pass, 0 fail, 1
+skip preesistente**. `scripts/test.sh` **22/22, 0 unavailable**. ESLint **507/0/0**.
+Browser e2e **516 controlli, 515 pass, 1 FAIL dichiarato** (`F-I18N-002`),
+`BROWSER_E2E_FAIL_UNDECLARED=0`. **Oracolo con i denti**: tolto il cancello di autorità,
+**2 dei 17 test nuovi falliscono**. Pagina **vista renderizzata** su sonda usa-e-getta —
+è così che sono stati trovati tre dei cinque difetti.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` **200**, 0 auth-failure.
+**Prova viva della capacità.** Log di avvio `tools.builtin-seeded added:20`; stato vivo
+**23 strumenti, 20 builtin, 0 disabilitati, 0 mutativi, 0 write/destroy passati per errore**.
+**Predecessore conservato.** `noesar-evolution-pre-20260825T040829Z` (`d0685`).
+**Costo di rollback — nessuno.** Nessuna migrazione, nessuno schema. I record `builtin`
+restano nello stato e smettono di risolvere, e `ToolExecutor` lo dice per nome.
+**Pulizia (§5a).** Rimosso `…-pre-20260824T174123Z`. Container non di progetto **50 → 50**,
+reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**. Nessun tag usa-e-getta rimasto.
+**Non provato qui.** Un giro di chat vero da capo a fondo: `B-016` — il modello configurato
+non emette tool call (`atom-evolution-model` non ha `--jinja`, verificato con `docker inspect`,
+container di un altro progetto). Tutto ciò che sta **sotto** il modello è provato.

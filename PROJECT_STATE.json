@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0683 + D-0685 delivered AND DEPLOYED (d0685-streamed-voice-20260824T174106Z): the chat bar rebuilt, Clear conversation added, and the voice now speaks from the first sentence.",
-  "phase_status": "D-0680/D-0681/D-0682 CLOSED 2026-08-24. Host cache cleanup executed under the Owner-authorised fourth named exception to CLAUDE10.md rule 12. /mnt/cachec 224G->69G used (49%->15%); Docker build cache 168.3GB reclaimed; 21 named directories removed via tools/cache-cleanup.sh. Protected set verified present; non-project containers 38->38, volumes 75->75; installation /livez /readyz 200. Guard defect F-HOOK-008 (find -exec rm invisible) repaired. Governance 6/6 suites, rule-12 alignment 56/56, cache-cleanup 18/18, T0 3102 pass 0 fail, MANIFEST 6776 files.",
-  "next_phase": "P5 proper — sentence-level streamed synthesis. This is the 6.7x that is still on the table and it is now backed by numbers rather than by the plan text.",
+  "current_phase": "P3 delivered AND DEPLOYED (p3-engine-tools-20260825T030536Z): the chat can call the engine it lives in — 20 read-only engine methods registered as tools, executed through the same dispatch the terminal uses, with the caller's own authority.",
+  "phase_status": "delivered-and-deployed",
+  "next_phase": "P6 (re-measure, do not build) or P7 (closable open findings), unless the Owner names one of his OWNER_REVIEW §4 rows.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "ba85a64",
-  "last_updated_utc": "2026-08-24T17:45:03.987Z",
+  "last_commit": "fc216f4",
+  "last_updated_utc": "2026-08-25T04:11:49.872Z",
   "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
   "blockers": [
     {
@@ -527,6 +527,12 @@
       "status": "resolved",
       "summary": "Measured at session close 2026-08-24: docker build cache is 168.3 GB with 153 GB reclaimable, and this project holds 54 unique image layer-sets (~847 MB each) because every deploy keeps its image as a documented rollback point. Filesystem is at 54% with 117 GB free, so this is NOT urgent. Deliberately NOT acted on: `docker builder prune` and every other prune is host-wide and forbidden without exception (CLAUDE10.md 21d) -- it would destroy other projects build caches. The removable part is the OLDEST product images whose ledger entries are long superseded, and deciding which rollback points may be retired is an Owner decision under rule 12, not a cleanup. RESOLVED 2026-08-24 (D-0680): docker builder prune -af reclaimed the full 168.3 GB, and /mnt/cachec went 224G->69G used (49%->15%) after the Owner-authorised cleanup. The 54 image layer-sets were NOT touched: they are the documented rollback lineage, which CLAUDE10.md 5a keeps.",
       "opened_utc": "2026-08-24T13:32:47Z"
+    },
+    {
+      "id": "F-NAV-001",
+      "severity": "medium",
+      "summary": "#view-tools is orphaned markup: LEGACY_ROUTES maps tools->coden (8d8ce72), so both #/tools and Home's own data-view-link=\"tools\" land on the CodeN bench — screenshotted. But #view-tools still exists with its Register-tool form and #toolList, and renderAgents() still writes into it. Registering a tool has no reachable UI today. Where tools are managed is what D-0137 decided deliberately, so undoing it is an Owner decision, not a defect repair (D-0690).",
+      "status": "open"
     }
   ],
   "resolved_findings": [
@@ -1192,7 +1198,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "The Owner must LISTEN to the deployed voice and say whether OWNER_REVIEW §4#4/#5 are closed. What is measurably fixed is the WAIT (first sentence spoken while the rest is written). What is NOT touched is the TIMBRE — D-0645 left that as the Owner s runtime choice: move the running Kokoro container to the idle RTX 3060, or bind a larger open model. Open list rows: §4#4 timbre (Owner decision), §4#6/#7 knowledge/memory identity (delegated to me, D-0647), §4#10 multimodality video (three-phase, audio and images done). Also open: B-015 push (13 commits unpushed), B-016 tool calls, F-I18N-002 ratchet at 654 vs baseline 607 (D-0686).",
+  "next_action": "P3 is closed. What is NOT provable on this host is a real end-to-end chat turn: B-016 — the configured model emits no tool calls (atom-evolution-model has no --jinja; verified by docker inspect, another project's container, the Owner's to change). Everything below the model is proven. Remaining plan phases: P6 re-measure continuous voice, P7 closable findings (F-ROT-001, F-MODEL-001, F4-012), P8 full battery + block deploy, P9 VOICE.md + CodeSupply dossier for 2026-09-03. Owner list rows still open: §4#4 timbre (Owner), §4#5 voiceFace, §4#6/#7 Knowledge/Memory identity, §4#8 research providers, §4#9 agent creation, §4#10 video. Also open: B-015 push (19 commits), F-I18N-002 at 659 vs baseline 607, F-NAV-001 (#view-tools orphaned).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
