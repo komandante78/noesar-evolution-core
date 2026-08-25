@@ -4542,9 +4542,8 @@ function renderBenchNavigator(){
   $('#navSessions').innerHTML=list(state.conversations,(item)=>item.title,'No session yet.','chat');
   $('#navTasks').innerHTML=list(state.tasks??[],(item)=>item.title,'No task.','home');
   $('#navAgents').innerHTML=list(state.agents??[],(item)=>item.name,'No agent.','agents');
-  $('#navTools').innerHTML=list(state.tools??[],(item)=>item.name,'No tool registered.','coden');
   $('#navHistory').innerHTML=list(state.agentRuns??[],(item)=>`${item.goal??'run'} · ${item.status??''}`,'No run has happened.','agents');
-  for(const id of ['#navProjects','#navRecent','#navSessions','#navTasks','#navAgents','#navTools','#navHistory']){
+  for(const id of ['#navProjects','#navRecent','#navSessions','#navTasks','#navAgents','#navHistory']){
     const node=$(id);if(node)node.classList.toggle('empty-state',node.querySelector('span')!==null);
   }
 }

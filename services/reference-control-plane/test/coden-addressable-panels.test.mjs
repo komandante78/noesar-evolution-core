@@ -195,15 +195,47 @@ describe('phase 3: the switchers are gone and nothing they reached went with the
   });
 
   test("the Navigator's rows lead somewhere, like every other row does now", () => {
-    // Seven lists of up to six entries, each rendered as a <button> with no handler on it —
+    // Six lists of up to six entries, each rendered as a <button> with no handler on it —
     // the same dead control phase 2 found in the search results, in a second place.
+    //
+    // It was seven until F-NAV-001. The seventh was Tools, and its destination was 'coden' —
+    // the screen the row was already sitting on, because the page it should have opened had
+    // been demoted by D-0137 and nothing replaced it. The tools panel now holds the register
+    // form and the tool cards themselves, so a six-name preview of them, beside them, pointing
+    // at itself, is the second copy of one fact this bench exists to avoid. The count is not
+    // the invariant here — the loop below is. A list that renders rows going nowhere is the
+    // defect; how many lists there are is a fact about the markup, and it moved.
     const body = app.slice(app.indexOf('function renderBenchNavigator'), app.indexOf('async function renderBenchStatus'));
     assert.match(body, /data-jump="\$\{escapeHtml\(destination\)\}"/);
     assert.match(body, /opens \$\{escapeHtml\(destination\)\}/, 'and each row says which page it opens');
     // Every list passes a destination: a call left without one renders rows that go nowhere.
     const calls = [...body.matchAll(/=list\((.*?)\);/g)].map((match) => match[1]);
-    assert.equal(calls.length, 7, `expected seven rendered lists, found ${calls.length}`);
+    assert.equal(calls.length, 6, `expected six rendered lists, found ${calls.length}`);
     for (const call of calls) assert.match(call, /,'[a-z-]+'$/, `a list renders rows with no destination: ${call}`);
+  });
+
+  test('registering a tool is reachable: the controls live in the addressed panel', () => {
+    // F-NAV-001, and the property is REACHABILITY, not presence. The register form and the tool
+    // cards were in the markup the whole time, and app.js bound the submit and refilled the list
+    // on every render — live code, on #view-tools, which LEGACY_ROUTES has redirected away from
+    // since D-0137 put tools inside CodeN. Nothing was broken and nothing was missing; there was
+    // simply no address and no click that arrived there, so registering a tool, granting it
+    // consent or saving its key could not be done at all. A test that only asked whether the
+    // form existed would have stayed green through every day of that.
+    const panelAt = html.indexOf('data-bench-panel="tools"');
+    assert.ok(panelAt > 0, 'the bench has no tools panel');
+    const nextPanelAt = html.indexOf('data-bench-panel=', panelAt + 1);
+    const endsPanel = (at) => at > panelAt && (nextPanelAt < 0 || at < nextPanelAt);
+    for (const id of ['id="toolForm"', 'id="toolList"']) {
+      const at = html.indexOf(id);
+      assert.ok(at > 0, `${id} is gone`);
+      assert.ok(endsPanel(at), `${id} sits outside the tools panel, where no address reaches it`);
+    }
+    // And it must not have been left behind in the demoted page as a second copy.
+    const demoted = html.slice(html.indexOf('id="view-tools"'));
+    const demotedEnd = demoted.indexOf('<section class="view"', 1);
+    assert.doesNotMatch(demotedEnd > 0 ? demoted.slice(0, demotedEnd) : demoted, /id="toolForm"|id="toolList"/,
+      'the demoted page still carries the controls: two copies, one of them unreachable');
   });
 });
 

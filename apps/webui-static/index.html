@@ -548,7 +548,20 @@
               <section class="bench-panel" data-bench-panel="sessions"><h3>Sessions</h3><div id="navSessions" class="bench-nav-list empty-state">—</div></section>
               <section class="bench-panel" data-bench-panel="tasks"><h3>Tasks</h3><div id="navTasks" class="bench-nav-list empty-state">—</div></section>
               <section class="bench-panel" data-bench-panel="agents"><h3>Agents</h3><div id="navAgents" class="bench-nav-list empty-state">—</div></section>
-              <section class="bench-panel" data-bench-panel="tools"><h3>Tools</h3><div id="navTools" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="tools"><h3>Tools</h3>
+                <!-- F-NAV-001. D-0137 moved tools INTO CodeN and LEGACY_ROUTES has mapped
+                     `tools → coden` ever since, but the controls never followed: the register
+                     form and the tool cards stayed behind in #view-tools, which no address and
+                     no click can reach. They were live code on a dead page — app.js binds the
+                     submit and fills the list on every render, and nobody could see either. So
+                     registering a tool, granting it consent and saving its key had no reachable
+                     UI at all, which D-0690 recorded and did not repair.
+                     What stood here was #navTools: six tool names with data-jump="coden", a
+                     Navigator preview pointing at the screen you are already on, because the
+                     page it should have pointed at had been demoted. The panel now holds the
+                     thing itself, so a preview of it beside it would be the second copy this
+                     bench exists to avoid. -->
+                <div class="two-col"><form class="panel form-stack" id="toolForm"><h2>Register tool</h2><label>Name<input id="toolName" required></label><label>Description<textarea id="toolDescription"></textarea></label><label>Transport<select id="toolTransport"><option value="local-http">Local HTTP</option><option value="mcp-stdio">MCP stdio</option><option value="mcp-http">MCP Streamable HTTP</option><option value="openapi">OpenAPI HTTP</option></select></label><label>Endpoint or executable<input id="toolEndpoint" placeholder="http://127.0.0.1:8099/api or executable for stdio"></label><label>Remote tool name<input id="toolRemoteName" placeholder="Optional MCP tool name"></label><label class="check"><input id="toolExternal" type="checkbox"> External network tool</label><label class="check"><input id="toolMutative" type="checkbox"> Mutative</label><button class="primary">Register disabled-by-policy tool</button></form><section class="panel"><div class="panel-title"><h2>Installed tools</h2><span>Local · MCP · OpenAPI</span></div><div id="toolList" class="card-list empty-state">No tools.</div></section></div></section>
               <!-- Phase 3b. Plugins and Favourites were `bench-nav-list empty-state` divs —
                    the class the Navigator's DATA lists wear while waiting to be filled — and
                    nothing has ever filled them, because this build has no plugin registry and
@@ -708,7 +721,6 @@
            and the order this project has got wrong before. -->
       <section class="view" id="view-tools">
         <div class="section-header"><div><p class="eyebrow">LOCAL · MCP · OPENAPI</p><h1 class="page-title">Tools</h1><p>A registered tool stays disabled by policy until it is granted consent. Mutative tools are marked as such.</p></div></div>
-        <div class="two-col"><form class="panel form-stack" id="toolForm"><h2>Register tool</h2><label>Name<input id="toolName" required></label><label>Description<textarea id="toolDescription"></textarea></label><label>Transport<select id="toolTransport"><option value="local-http">Local HTTP</option><option value="mcp-stdio">MCP stdio</option><option value="mcp-http">MCP Streamable HTTP</option><option value="openapi">OpenAPI HTTP</option></select></label><label>Endpoint or executable<input id="toolEndpoint" placeholder="http://127.0.0.1:8099/api or executable for stdio"></label><label>Remote tool name<input id="toolRemoteName" placeholder="Optional MCP tool name"></label><label class="check"><input id="toolExternal" type="checkbox"> External network tool</label><label class="check"><input id="toolMutative" type="checkbox"> Mutative</label><button class="primary">Register disabled-by-policy tool</button></form><section class="panel"><div class="panel-title"><h2>Installed tools</h2><span>Local · MCP · OpenAPI</span></div><div id="toolList" class="card-list empty-state">No tools.</div></section></div>
         <!-- Card C, s313/s317 addendum: CE-016 ("at rest the program has zero tools loaded")
              plus the sector-modules framework already validated live for Debug Evolution
              (D-0283). The catalogue that used to sit here is NOT re-rendered on this page: it
