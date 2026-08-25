@@ -1390,7 +1390,17 @@ async function body(req) {
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 64 * 1024 * 1024) throw Object.assign(new Error('Request body too large'), { status:413 });
+    // F4-012. Both limits are deliberate and both stay. What was wrong is that the message hid
+    // the relationship between them: the size a person is shown belongs to the FILE, this cap
+    // belongs to the JSON envelope carrying it, and base64 makes the envelope about a third
+    // larger than the file. A 48 MiB attachment therefore arrives here as ~64 MiB and is refused
+    // by a number nobody ever quoted them — which reads as the declared limit being a lie.
+    if (size > 64 * 1024 * 1024) throw Object.assign(new Error(
+      'Request body too large: this endpoint accepts at most 64 MiB of JSON. An attachment sent '
+      + 'inside JSON is base64-encoded, which makes it about a third larger than the file on '
+      + 'disk, so a file above roughly 48 MiB exceeds this cap even when the file itself is '
+      + 'within the declared attachment limit.',
+    ), { status: 413 });
     chunks.push(chunk);
   }
   if (!chunks.length) return {};
