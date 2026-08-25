@@ -243,6 +243,18 @@ function requireFetch(fetchImpl) {
 const DEGENERATE_COMPRESSION_RATIO = 2.4;  // above: the text is a repetition loop
 const LOW_CONFIDENCE_AVG_LOGPROB = -1.0;   // below: the decoder had no idea
 const NO_SPEECH_PROBABILITY = 0.6;         // above: there was nothing being said
+// A second, stricter pair, added after the one above proved to have a corner it does not cover.
+// Measured 2026-08-25 against this installation: five seconds of pure digital silence came back
+// as "Sottotitoli e revisione a cura di QTSS" — the subtitle credit Whisper learned from its
+// training data — at compression_ratio 0.83, avg_logprob -0.86, no_speech_prob 0.85. It is not a
+// repetition loop, and it is not an unconfident decode, so it walked through BOTH checks above
+// and was shown in the voice panel as words the Owner had spoken. The pair below is the corner
+// those two numbers sit in: the engine near-certain that nobody spoke, AND a decode that is
+// merely adequate rather than confident. Real speech in a noisy room also scores high on
+// no_speech — but it decodes CONFIDENTLY (-0.3 or better, which is the `noisy` case the tests
+// pin down). That is why this is a pair too, and not a single higher line on no_speech alone.
+const NEAR_CERTAIN_SILENCE = 0.8;          // above: the engine is not hedging about it
+const MERELY_ADEQUATE_LOGPROB = -0.75;     // below: decoded, but not decoded with confidence
 
 /**
  * Decide what a transcription response actually heard.
@@ -286,6 +298,12 @@ export function assessTranscription(body) {
     // speech — which is a worse failure than showing one bad line, because it is invisible.
     if (Number.isFinite(logprob) && logprob < LOW_CONFIDENCE_AVG_LOGPROB
         && Number.isFinite(noSpeech) && noSpeech > NO_SPEECH_PROBABILITY) {
+      reasons.push('no-speech'); continue;
+    }
+    // The subtitle-credit corner: the engine says almost certainly nothing was said, and the
+    // decode backs it up by being unremarkable. Neither number alone would justify dropping.
+    if (Number.isFinite(noSpeech) && noSpeech > NEAR_CERTAIN_SILENCE
+        && Number.isFinite(logprob) && logprob < MERELY_ADEQUATE_LOGPROB) {
       reasons.push('no-speech'); continue;
     }
     kept.push(text);

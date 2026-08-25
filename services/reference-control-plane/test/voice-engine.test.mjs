@@ -362,6 +362,31 @@ test('low confidence ALONE does not reject, because quiet speech is still speech
   assert.equal(assessTranscription({ segments: [SILENT_SEGMENT] }).reason, 'no-speech');
 });
 
+// The body below is not invented either. It is the segment THIS installation's engine returned on
+// 2026-08-25 for five seconds of pure digital silence, copied verbatim from the response — the
+// shape the pair above cannot catch: short, unrepetitive, adequately decoded, and straight out of
+// the subtitle files Whisper was trained on. It reached the Owner as a caption in the voice panel
+// while the product was speaking, reading "Sottotitoli a cura di Sottotitoli" on screen.
+const SUBTITLE_CREDIT_SEGMENT = {
+  id: 1, text: ' Sottotitoli e revisione a cura di QTSS',
+  compression_ratio: 0.8260869565217391,
+  avg_logprob: -0.8593750033113692,
+  no_speech_prob: 0.8505859375,
+};
+
+test('the subtitle credit Whisper invents over silence is refused', () => {
+  const assessed = assessTranscription({
+    text: SUBTITLE_CREDIT_SEGMENT.text, segments: [SUBTITLE_CREDIT_SEGMENT],
+  });
+  assert.equal(assessed.heardSomething, false);
+  assert.equal(assessed.text, '');
+  assert.equal(assessed.reason, 'no-speech');
+  // Kept so the thresholds cannot quietly drift back to letting it through: the reason the first
+  // pair missed it is that it looks fine on both of that pair's axes.
+  assert.ok(SUBTITLE_CREDIT_SEGMENT.compression_ratio < 2.4);
+  assert.ok(SUBTITLE_CREDIT_SEGMENT.avg_logprob > -1.0);
+});
+
 test('an engine that reports no segments is taken at its word rather than silently unguarded', () => {
   const assessed = assessTranscription({ text: 'buongiorno' });
   assert.equal(assessed.heardSomething, true);
