@@ -50,11 +50,11 @@ declared gap**, `BROWSER_E2E_FAIL_UNDECLARED=0` · MANIFEST **6781 files**.
   deliberately left off (`D-0687`). Letting a model approve a plan or purge a session changes
   what the product is — an Owner decision. What is genuinely missing first is a mid-turn
   approval the person gives.
-- **`F-NAV-001` — `#view-tools` is orphaned markup** (`D-0690`). `LEGACY_ROUTES` maps
-  `tools → coden`, so `#/tools` *and* Home's own "Manage" both land on the CodeN bench —
-  screenshotted, not deduced — while the Register-tool form still exists and is written to.
-  **Registering a tool has no reachable UI today.** Not repaired: `D-0137` moved tools into
-  CodeN deliberately, so undoing it is the Owner's call.
+- **`F-NAV-001` — REPAIRED** (`D-0692`). The register form and the tool cards now live in
+  the bench panel at `coden/bench/tools`, which is where `D-0137` said tools live and where
+  the markup had never followed. `D-0137` is not undone. The six-name `#navTools` preview,
+  whose `data-jump` pointed at the screen it was already on, is gone — the panel holds the
+  thing itself. Registering a tool, granting it consent and saving its key are reachable.
 - **`F-I18N-002` stays red** at 659 against baseline 607, **not** re-baselined.
 - **Nothing was pushed.**
 - Owner list rows untouched this session: `§4#4` timbre (his), `§4#5` voiceFace, `§4#6`/`§4#7`

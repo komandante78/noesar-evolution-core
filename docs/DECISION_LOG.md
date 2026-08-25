@@ -16096,3 +16096,30 @@ reusable and testable outside this product. Cost: ~1 phase, plus a conformance s
 **Funding fit.** **Restack · traits 1, 2, 4** — a delimited, reusable component that works
 against any OpenAI-compatible endpoint and deepens no vendor lock-in.
 **Status.** proposed, not executed (`budget` §5).
+
+## D-0692 · `F-NAV-001` repaired: the tool controls moved to the panel `D-0137` named — 2026-08-25
+**Decision.** The register form and the tool cards move from `#view-tools` into the CodeN bench
+panel `coden/bench/tools`. `D-0690` reported this and did not repair it, on the grounds that
+undoing `D-0137` is the Owner's call. That is still true, and this does not undo it: `D-0137`
+said tools live inside CodeN, and the markup is what never went there.
+**What was measured.** `LEGACY_ROUTES` maps `tools → coden` in both copies of the redirect
+(`routeFromHash`, and `navigate()` for in-page links), so no address and no click reaches
+`#view-tools`. Meanwhile `app.js` binds `#toolForm` to `POST /api/v1/tools` and refills
+`#toolList` on every render: live code on a dead page. Registering a tool, granting a tool
+consent and saving a tool's key therefore could not be done **at all** — not degraded, absent.
+**The other end of the same finding.** The bench's tools panel held `#navTools`: six tool names
+rendered as jump buttons with `data-jump="coden"` — the screen the row was already on. Every
+other Navigator row opens a real destination. That one pointed at itself, because the page it
+should have opened had been demoted and nothing replaced it. The preview is removed rather than
+kept beside the real list: two copies of one fact, and the copy that survived would be the one
+that cannot act.
+**What was NOT done.** `#view-tools` keeps its id, its header and its catalogue hint —
+`webui-markup-structure` requires that a change of rank must not delete a page, and this is a
+move. No handler, renderer or API call was touched: the defect was never in them.
+**Evidence.** The new assertion is on reachability, not presence, and is proven able to fail —
+against the previous markup it reports `id="toolForm" sits outside the tools panel, where no
+address reaches it`. A test asking only whether the form existed would have stayed green
+throughout. The Navigator count moves 7→6 with the reason recorded beside it; the invariant it
+protects (every list renders rows with a destination) is unchanged.
+**Reversal cost.** None — the move is markup, and the id stays.
+**Status.** applied.
