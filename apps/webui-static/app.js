@@ -3843,6 +3843,18 @@ function voiceFaceState(state,caption){
   if(line&&caption!==undefined)line.textContent=caption??'';
 }
 
+/** The caption ALONE, without touching the state machine.
+ *
+ * A turn that heard nothing must not leave the window showing the last thing it did hear: the
+ * Owner saw "Sì, sì, sì, sì, sì, sì, sì." sitting under the face while the chat said "I did not
+ * hear anything" — the product contradicting itself in two places on screen at once. Clearing the
+ * caption is not the state machine's business, though, so this touches the line and nothing else.
+ */
+function voiceFaceCaption(text){
+  const line=$('#voiceFaceCaption');
+  if(line)line.textContent=text??'';
+}
+
 function voiceFaceShow(on){
   const face=$('#voiceFace');if(!face)return;
   face.classList.toggle('hidden',!on);
@@ -4338,12 +4350,15 @@ function renderVoiceTurn(state,detail){
 function renderVoiceNote(note){
   if(!note)return;
   if(note.kind==='heard'){voiceFaceState(VoiceTurn.TRANSCRIBING,note.text);voiceNote(note.text);return;}
-  if(note.kind==='nothing-heard'){voiceNote(t('I did not hear anything.'));return;}
+  if(note.kind==='nothing-heard'){
+    const said=t('I did not hear anything.');
+    voiceFaceCaption(said);voiceNote(said);return;
+  }
   if(note.kind==='not-understood'){
-    voiceNote(note.reason==='repetition'
+    const said=note.reason==='repetition'
       ? t('I only heard noise, so I ignored it.')
-      : t('I did not catch that.'));
-    return;
+      : t('I did not catch that.');
+    voiceFaceCaption(said);voiceNote(said);return;
   }
   if(note.kind==='error')voiceNote(note.message||String(note.error));
 }
