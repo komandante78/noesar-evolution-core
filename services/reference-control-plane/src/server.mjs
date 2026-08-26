@@ -937,11 +937,20 @@ function readModelDescriptors() {
   // installation did not start itself, which on a sidecar installation is all of them.
   const running = activeModelId();
   if (running && !descriptors.some((entry) => entry.id === running)) {
-    // `D-0535`: marked as OURS. Without this mark the synthesised record is indistinguishable
-    // from a descriptor a publisher placed and did not sign — and those two deserve opposite
-    // treatment. Nobody claimed anything about this one; the product wrote it from what the
-    // runtime reports. See `productAuthenticity` below.
-    descriptors.push({ id: running, workloads: [], hashes: {}, formats: [], resource_profiles: [], synthesised: true });
+    const localConfig = localModels.config();
+    // Carrying `launchCommand` here only when THIS runtime is the one that launched it — never
+    // guessed for a model reported active through a probed `NOESAR_AUTHORING_ENDPOINT` this
+    // runtime did not start. Without it, `/model` could show the model already running as
+    // "in use" and still refuse to (re)activate it — the exact click that did nothing, because
+    // `activateModel()` requires a `launchCommand` and a synthesised record never carried one.
+    // Re-activating a model already running with the same command is a no-op restart, not a new
+    // claim about what this installation is, so it stays inside the SYNTHESISED trust boundary
+    // rather than needing a publisher's signature the way switching to an unrelated file would.
+    const ownLaunch = localConfig.model === running ? localConfig.launchCommand : null;
+    descriptors.push({
+      id: running, workloads: [], hashes: {}, formats: [], resource_profiles: [], synthesised: true,
+      ...(ownLaunch ? { launchCommand: ownLaunch, endpoint: localConfig.endpoint } : {}),
+    });
   }
   // D-0521. Every descriptor carries its authenticity from here on, and the synthesised one for
   // a running model carries `NO_SIGNATURE` like any other unsigned document — which is the
@@ -2291,6 +2300,20 @@ const requestListener = async (req, res) => {
         });
         return json(res, Number.isInteger(error.status) ? error.status : 409, { error: error.message });
       }
+    }
+    // The other half `/model` never had: a way to give the GPU back without stopping the whole
+    // container. `release()` is already idempotent (`alreadyStopped` rather than an error when
+    // nothing is running) and already the shutdown path's own call — this is the same action,
+    // reachable while the product keeps running, gated the same way starting one is.
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/deactivate') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const released = await localModels.release();
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.deactivate', result: 'released', details: released,
+      });
+      await refreshActiveModel({ force: true });
+      return json(res, 200, released);
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/hardware') {
       const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;
