@@ -316,6 +316,25 @@ export async function runFullScreen({
           if (chosen) view.prompt = `/${chosen.name}${chosen.argument ? ' ' : ''}`;
           return refilter();
         }
+        // Enter, with the menu open, resolves the HIGHLIGHTED row — the third shell getting the
+        // fix the browser two got on 2026-08-26, because all three had it: Return went straight
+        // to `submit()` with whatever was typed, so arrowing down to `/model` from `/m` and
+        // pressing Enter answered "Nothing named `m`". Skipped when what is typed is already an
+        // exact name, so a fully typed command still runs on the first Return.
+        //
+        // A command that REQUIRES an argument (leading `<`) is completed rather than run, for
+        // the same reason as the other two shells: the prompt is the only place to type it.
+        if (name === 'return') {
+          const parsed = parseCommandPrompt(view.prompt);
+          const chosen = view.menu.hits[view.menu.selected];
+          if (chosen && !view.menu.hits.some((entry) => entry.name === parsed?.word)) {
+            const needsArgument = String(chosen.argument ?? '').startsWith('<');
+            view.prompt = `/${chosen.name}${needsArgument ? ' ' : ''}`;
+            if (needsArgument) return refilter();
+            view.menu = null;
+            return void submit();
+          }
+        }
       }
 
       if (name === 'return') return void submit();

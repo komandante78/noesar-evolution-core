@@ -1686,7 +1686,7 @@ function renderCodenMenu(){
     `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="${index===codenMenuIndex?'active':''}" data-coden-command="${escapeHtml(entry.name)}"><b translate="no">/${escapeHtml(entry.name)}</b><span>${escapeHtml(entry.summary)}</span><small>${escapeHtml(entry.argument??'')}</small></button>`
   ).join('')+note;
   box.querySelectorAll('[data-coden-command]').forEach((button)=>
-    button.addEventListener('click',()=>completeCodenCommand(button.dataset.codenCommand)));
+    button.addEventListener('click',()=>runOrCompleteCodenCommand(button.dataset.codenCommand)));
 }
 function completeCodenCommand(name){
   const entry=codenOffered().find((candidate)=>candidate.name===name);
@@ -1696,6 +1696,23 @@ function completeCodenCommand(name){
   $('#codenPrompt').value=`/${entry.name}${entry.argument?' ':''}`;
   $('#codenPrompt').focus();
   renderCodenMenu();
+}
+// The same rule the chat composer got (Owner, 2026-08-26), applied here because this shell had
+// the identical defect and fixing only the reported surface is how the pair keeps diverging:
+// picking a row only ever FILLED the prompt, so choosing `/status` still needed a second,
+// easy-to-miss Invio. "A click that ran the command would make the menu a minefield" was
+// written when the menu also held destinations — a row could move the page. It no longer
+// does (`menuEntriesFor`: commands only), so the minefield is gone and the caution with it.
+//
+// Still deferred to `completeCodenCommand` when the command REQUIRES an argument (a leading
+// `<`, e.g. `/plan <goal>`): the prompt is the only place to type it, and running it empty
+// would be a worse regression than the one being fixed.
+function runOrCompleteCodenCommand(name){
+  const entry=codenOffered().find((candidate)=>candidate.name===name);
+  if(!entry)return;
+  if(String(entry.argument??'').startsWith('<'))return completeCodenCommand(name);
+  $('#codenPrompt').value=`/${entry.name}`;
+  return submitCodenPrompt();
 }
 async function submitCodenPrompt(){
   const box=$('#codenPrompt');if(!box)return;
@@ -1787,6 +1804,14 @@ function wireCodenShell(){
       }
       if(event.key==='Tab'){event.preventDefault();return completeCodenCommand(hits[codenMenuIndex].name);}
       if(event.key==='Escape'){event.preventDefault();$('#codenMenu')?.classList.add('hidden');return undefined;}
+      // Owner-reported: typing a prefix (`/m`) and pressing Enter reached `submitCodenPrompt`
+      // with the raw prefix, which is not an exact command name, so it always answered
+      // "Nothing named `m`" — Enter never looked at the row the menu was already
+      // highlighting. Skipped when what is typed IS an exact name, so typing a command in
+      // full and pressing Enter still runs it at once rather than waiting for a second.
+      if(event.key==='Enter'&&!event.shiftKey&&!hits.some((entry)=>entry.name===parsed.word)){
+        event.preventDefault();return runOrCompleteCodenCommand(hits[codenMenuIndex].name);
+      }
     }
     if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void submitCodenPrompt();}
     return undefined;
