@@ -1398,7 +1398,7 @@ async function sendChat({signal=null,onDelta=null}={}){
     $('#sendMessage').disabled=false;
   }
 }
-$('#sendMessage').addEventListener('click',()=>sendChat());$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
+$('#sendMessage').addEventListener('click',()=>submitComposer());$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
 
 // The slash commands, in the composer — the same gesture as the terminal shell, off the same
 // list (`agent-commands.js`, imported by both). This is NOT the address box in the top bar:
@@ -1445,6 +1445,17 @@ function completeCommand(name){
   renderCommandMenu();
 }
 $('#chatInput').addEventListener('input',()=>{commandMenuIndex=0;renderCommandMenu();});
+// The composer has two ways to submit — Enter and the ➔ button — and only Enter used to
+// route a `/` line through submitChatPrompt(); the button always called sendChat(), so
+// clicking a command straight out of the menu (fill, then click Send instead of pressing
+// Enter) sent it as ordinary prose. One shared function so both paths agree, the same fix
+// already applied once for Enter alone.
+function submitComposer(){
+  $('#chatCommands')?.classList.add('hidden');
+  const typed=$('#chatInput').value.trim();
+  if(typed.startsWith('/')){$('#chatInput').value='';void submitChatPrompt(typed);}
+  else sendChat();
+}
 $('#chatInput').addEventListener('keydown',(event)=>{
   const menu=commandMenuState();
   if(menu&&menu.hits.length){
@@ -1456,16 +1467,7 @@ $('#chatInput').addEventListener('keydown',(event)=>{
     if(event.key==='Tab'){event.preventDefault();return completeCommand(menu.hits[commandMenuIndex].name);}
     if(event.key==='Escape'){event.preventDefault();$('#chatCommands')?.classList.add('hidden');return undefined;}
   }
-  if(event.key==='Enter'&&!event.shiftKey){
-    event.preventDefault();$('#chatCommands')?.classList.add('hidden');
-    const typed=$('#chatInput').value.trim();
-    // A line starting with `/` used to reach here and go straight into `sendChat()` — sent as
-    // ORDINARY PROSE to the model, which is not what typing `/model` means anywhere else in
-    // this product. The menu above already composes the same line CodeN's prompt would; this
-    // is the other half CodeN already has and chat never did: actually running it.
-    if(typed.startsWith('/')){$('#chatInput').value='';void submitChatPrompt(typed);}
-    else sendChat();
-  }
+  if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();return submitComposer();}
   return undefined;
 });
 /**

@@ -395,7 +395,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 2b52b3bf08af80911e350a956dbba14b6f2d507add9c772a0871d77feab86e5a  ./apps/shared/coden/tui-screen.mjs
-28046915d0e6f7eb7f824506ab0d3a5e72fc115105a9449f2e7993ef46a876b1  ./apps/webui-static/app.js
+0277514b8aa0a09ba29b4f425cfd261897cef13257e679084309892a9e85b218  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
@@ -6479,6 +6479,7 @@ fd454a8d0d6770e7a7a27827031062dbfddd2c1d2287c7b3674ead778fd9762b  ./services/ref
 64ae9ad2bf8f4f0fe84212e484c2efadd8af240dce0133033bfc399ff915d88a  ./services/reference-control-plane/test/ce-034-the-same-names-in-both-shells.test.mjs
 41ea9ce9471b7855c1555d52898ff62df147a9c2f7cfeb6f6605dea717a94e6d  ./services/reference-control-plane/test/ce-036-one-menu-filtered-by-permission.test.mjs
 460d3f81a9ada2d82f9eaa5bdd9bad84f3bd6303805c5705ea3a87be3863698b  ./services/reference-control-plane/test/chat-agent-directive.test.mjs
+6230cd8a0becb191d382c2b976adaaa859e17539a3802949467ab90c8da37117  ./services/reference-control-plane/test/chat-send-button-routes-commands.test.mjs
 57b3aea75cbfce186e85b28c7443a855c64d79ca175f514021bf9ce5467b08a4  ./services/reference-control-plane/test/chat-tool-loop.test.mjs
 d8898d3ec08689523925f08f651d11ae7bcc3d507205398ff1d10235b1bb127c  ./services/reference-control-plane/test/cli-downloads.test.mjs
 cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/reference-control-plane/test/coden-address-book.test.mjs
