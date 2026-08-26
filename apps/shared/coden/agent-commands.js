@@ -135,6 +135,11 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'diff', argument: '<run>', summary: 'What a run changed, against the shadow', group: 'work', kind: 'call', method: 'workspace.get', permission: null },
   { name: 'map', argument: '[path]', summary: 'Scan the workspace: languages, entry points, symbols', group: 'work', kind: 'call', method: 'repoMap.scan', permission: 'workspace.read' },
   { name: 'search', argument: '<text>', summary: 'Literal search across the workspace', group: 'work', kind: 'call', method: 'repoMap.search', permission: 'workspace.read' },
+  // `web` and not `search`: the line above searches the WORKSPACE, and two commands whose names
+  // differ by a qualifier nobody reads is how a person sends their code to a search engine by
+  // accident. `CE-020` is what required this to exist at all — a capability the engine exposes
+  // with no keyboard form fails that row, and `research.search` had none.
+  { name: 'web', argument: '<text>', summary: 'Search the web through the search instance this operator runs — results come back unverified', group: 'work', kind: 'call', method: 'research.search', permission: 'workspace.read' },
   { name: 'events', argument: '<id>', summary: 'The causal event trail of a piece of work', group: 'work', kind: 'call', method: 'events.correlation', permission: null },
   { name: 'status', argument: '', summary: 'Engine status, authority, shadow', group: 'work', kind: 'call', method: 'status', permission: null },
   // `D-0577`. Two verbs, not one, because listing and withdrawing are two permissions — see

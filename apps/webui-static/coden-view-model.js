@@ -71,6 +71,7 @@ export const RUN = {
   // `CE-024`. Argument-free for the same reason as the pair above, and present here so the two
   // shells answer `/review` identically — the standing rule this table exists to enforce.
   review: () => ['review.latency', {}],
+  web: (argument) => ['research.search', { objective: argument }],
   model: (argument) => ['model.activate', { id: argument }],
   // No params: there is one loaded model, and the confirmation the command already carries is
   // what stands between a typed line and the GPU being handed back.

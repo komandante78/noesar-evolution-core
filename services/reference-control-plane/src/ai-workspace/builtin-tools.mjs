@@ -49,9 +49,16 @@ export const BUILTIN_NAME_PREFIX = 'engine_';
  *  every time the process came back. */
 export const BUILTIN_ID_PREFIX = 'builtin:';
 /** The transport `ToolExecutor` dispatches in-process. Distinct from `local-http` on purpose: a
- *  built-in has no endpoint, no credential and no socket, and giving it a URL-shaped record would
- *  have put it through `endpoint()` — a validator whose whole job is to decide which networks may
- *  be reached, asked about a call that reaches none. */
+ *  built-in carries no endpoint, no credential and no socket IN ITS RECORD, and giving it a
+ *  URL-shaped one would have put it through `endpoint()` — a validator whose whole job is to
+ *  decide which networks may be reached, asked about a record that names none.
+ *
+ *  Amended 2026-08-26, because the stronger claim this said before — "a call that reaches none" —
+ *  stopped being true the day `research.search` was added. That method reaches the operator's own
+ *  search instance. What survives, and is the part that mattered, is that the address is not in
+ *  the tool record: it is configuration read by the handler, which passes it through the SAME
+ *  `endpoint()` this comment is about. A comment left describing the previous build is the defect
+ *  this project keeps finding; it is corrected here rather than quietly outgrown. */
 export const BUILTIN_TRANSPORT = 'builtin';
 
 /**
@@ -107,6 +114,8 @@ export const EFFECT = Object.freeze({
   // Freeing the loaded model stops the model that is answering, exactly as starting a different
   // one does — so it is classified where its sibling is, not lower because it takes no argument.
   'model.deactivate': 'write',
+  // Reaches the operator's own search instance and changes nothing on this installation.
+  'research.search': 'read',
 });
 
 /**
@@ -189,6 +198,10 @@ export const SCHEMA = Object.freeze({
   // No properties, and that is the contract: the handler frees whatever is loaded and accepts
   // nothing, so a parameter here would describe an argument the engine ignores.
   'model.deactivate': object({}),
+  'research.search': object({
+    objective: str('what is being looked for'),
+    criteria: strings('the specific things the answer must state'),
+  }, ['objective']),
 });
 
 /** The four methods no `/` command names, so no summary exists to derive. Written here rather than
@@ -198,6 +211,7 @@ const OWN_DESCRIPTION = Object.freeze({
   'coden.addresses': 'Every panel and destination this interface can reach, by address',
   'coden.benchLists': 'The workbench lists: projects, recent work, sessions, tasks, agents, tools, history',
   'closure.list': 'The closures recorded on this installation — what was closed, and what each one left undone',
+  'research.search': 'Search the web through the search instance this operator runs — results are returned unverified, as search results are',
 });
 
 /** Method → the `/` command that reaches it, so a tool description and a menu entry can never say

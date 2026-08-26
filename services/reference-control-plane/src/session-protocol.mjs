@@ -231,6 +231,12 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // has and the other does not. Same permission as activation, because giving the GPU back stops
   // the model that is answering just as surely as starting a different one does.
   'model.deactivate': { permission: 'model.manage', bridged: true },
+  // The research provider, as an engine method — the piece that had never existed on this
+  // installation, so `researchProviderToolId` was null and every search stopped at 503.
+  // `workspace.read`: it answers a question and changes nothing here. What it reaches is the
+  // operator's OWN search instance, at an address that is configuration and not code (§16), and
+  // the address is checked by the executor's own endpoint validator before anything is sent.
+  'research.search': { permission: 'workspace.read', bridged: true },
 });
 
 /** The methods the HTTP bridge exposes, and what each needs — derived, never re-typed. */
@@ -277,6 +283,7 @@ export function createSessionDispatch({
   // factory's own note on `getClosureRegister` for why this arrives as a function.
   activateInstalledModel,
   deactivateInstalledModel,
+  searchProvider,
   // Owner, 2026-08-15: `() => { models }` — the SAME catalogue `#/models` reads, filtered to
   // what `/model` with no id can actually answer. See `model.activate` below.
   listInstalledModels,
@@ -564,6 +571,21 @@ export function createSessionDispatch({
         return await activateInstalledModel(params?.id, actor);
       } catch (error) {
         throw new ProtocolError('MODEL_ACTIVATION_REFUSED', error.message);
+      }
+    },
+    'research.search': async ({ params }) => {
+      if (typeof searchProvider !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire a search provider');
+      }
+      try {
+        return await searchProvider({
+          objective: params?.objective ?? '',
+          criteria: Array.isArray(params?.criteria) ? params.criteria : [],
+        });
+      } catch (error) {
+        // The provider's own sentence, kept: "no search endpoint is configured" and "the provider
+        // answered 502" are different things to do next, and one word for both would hide which.
+        throw new ProtocolError(error.kind === 'UNCONFIGURED' ? 'UNAVAILABLE' : 'INTERNAL', error.message);
       }
     },
     'model.deactivate': async ({ actor }) => {

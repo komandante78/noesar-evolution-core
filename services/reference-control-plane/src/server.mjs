@@ -31,6 +31,8 @@ import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
 import { discoverHardware, recommendRuntime } from './hardware.mjs';
 import { buildScoutObjective, findingToEntry, mergeDiscovered } from './model-scout.mjs';
+import { searchWith } from './searxng-provider.mjs';
+import { endpoint as validateToolEndpoint } from './ai-workspace/tool-executor.mjs';
 import {
   securityHeaders, validHostHeader, isWildcardAddress,
   resolveBindScope, allowsUnauthenticatedMetrics, allowsUnauthenticatedHealthDetail,
@@ -495,6 +497,13 @@ const sessionDispatch = createSessionDispatch({
   // The same three steps the HTTP route performs, in the same order, because they are one act:
   // release the process, record it, and force the next read of "what is active" rather than
   // letting a cached answer outlive the model it describes.
+  // The address is CONFIGURATION, never code: §16 is that this product never bakes a vendor in,
+  // and an operator who runs their search instance somewhere else changes one variable. Absent,
+  // it stays undefined and the method answers "not configured" rather than guessing a default.
+  searchProvider: ({ objective, criteria }) => searchWith({
+    endpoint: process.env.NOESAR_SEARCH_ENDPOINT ?? null,
+    objective, criteria, validate: validateToolEndpoint,
+  }),
   deactivateInstalledModel: async (actor) => {
     const released = await localModels.release();
     ledger.append({ actor, action: 'model.deactivate', result: 'released', details: released });
