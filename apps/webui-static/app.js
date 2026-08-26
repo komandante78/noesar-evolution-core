@@ -15,7 +15,7 @@ import {
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
   createView, say, planTurn, callResult, reasoningSummary, frequencySummary,
-  divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuFrame, promptKeys,
+  divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuFrame, menuEntriesFor, promptKeys,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 // Phase 6 (`D-0312`): the reasoning chip of the `.coden-bar` status row. One writer, so a
@@ -1410,10 +1410,12 @@ let commandMenuIndex=0;
 function commandMenuState(){
   const typed=$('#chatInput')?.value??'';
   const parsed=parseCommandPrompt(typed);
-  // `codenOffered()`, not the bare command list: CodeN's own `/` menu already includes the
-  // served address book (F-INTENT-001 fixed the same gap there). Two menus off two different
-  // lists is the divergence this project keeps finding between the shells.
-  return parsed?{parsed,hits:matchCommands(parsed.word,codenOffered())}:null;
+  // `menuEntriesFor`, not `codenOffered()`: the menu offers only what RUNS (Owner, 2026-08-26
+  // — see the comment on `menuEntriesFor`), while `codenOffered()` stays the wider list that
+  // `resolveCommand` is given, so an address typed in full still works. Routed through the
+  // shared function rather than filtered here, so this shell and CodeN's cannot drift into two
+  // answers about what a `/` menu contains — the divergence this pair keeps rediscovering.
+  return parsed?{parsed,hits:matchCommands(parsed.word,menuEntriesFor(parsed.word,codenMenu().entries,[]))}:null;
 }
 function renderCommandMenu(){
   const box=$('#chatCommands');if(!box)return;

@@ -395,11 +395,11 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 2b52b3bf08af80911e350a956dbba14b6f2d507add9c772a0871d77feab86e5a  ./apps/shared/coden/tui-screen.mjs
-3a82ffa5284bf466e220ee992f4e23fb3a9b63a1ca2ff7250e24b84d3aa8d704  ./apps/webui-static/app.js
+8daf1024462e4a342df480c24d0200e6ea958aca32d7ae49a87bb0b4df9feb15  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
-3d56485d335697e35578566aac1b0a43e65be58547460765ecc564d27659714b  ./apps/webui-static/coden-view-model.js
+466b251be19669e82a923817a4231dfc6adbb58fdc084b837099f44cd2ebae99  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
 ad96ffea7cd42411acf2b8f47dade35533f0be971938a88e5a73042c05eb35ff  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
@@ -6490,7 +6490,7 @@ b63685e08f63e27712b9f247481493ae45af1e69e74d91c7839f039d44ece23b  ./services/ref
 dec199937169e8670e1492177ffc39ba6a267b748a406c374b6afa6d85c68d3d  ./services/reference-control-plane/test/coden-invariant-adversarial.test.mjs
 deb788e4a9b4122aac1423a56bd630dc9698b06b297c054d2e841ad789ee3cd5  ./services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs
 ea0a46122ad492f2f9eec5c9ed8175047cf9346ccfc84fec06de482d19288035  ./services/reference-control-plane/test/coden-path-authorization.test.mjs
-10d1b159cc4ff63aea16f52bc54e6398b8431563b1f00a4041b70fe1e4991723  ./services/reference-control-plane/test/coden-shell-parity.test.mjs
+3070a2fd0045885e242b04486cae154ed2cb7e1aa309a12fbe30b8514c8f125b  ./services/reference-control-plane/test/coden-shell-parity.test.mjs
 e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/reference-control-plane/test/coden-spa-catchall.test.mjs
 170021ec6f6f0213aebc62ba624470b1ca2f9ad6db979c21a98ed2298f7f9330  ./services/reference-control-plane/test/coden-terminal-client.test.mjs
 23658873e26139aa7b77b5699b9ce3aaf99b24df93510dc32532e4603dbb90d2  ./services/reference-control-plane/test/coden-view-model.test.mjs

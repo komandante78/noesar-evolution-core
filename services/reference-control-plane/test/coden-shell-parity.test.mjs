@@ -783,24 +783,31 @@ test('point 3 — the terminal menu cannot outgrow the height it was given, flat
   }
 });
 
-test('phase 3c — the menu offers the address space once something is typed, and not before', () => {
-  // Found by MUTATION, not by reading: replacing the whole rule with "commands only" broke no
-  // test. The bare-`/` half was covered by the budget row above; the half that matters for
-  // navigation — that typing reaches the panels — was measured only by a ten-minute browser
-  // run, which is not a guard anyone gets to feel on a normal edit.
+test('the / menu offers only what RUNS — never a destination (Owner, 2026-08-26)', () => {
+  // REPLACES 'phase 3c — the menu offers the address space once something is typed'. That rule
+  // folded the address book in the moment a query narrowed the list, which put `/models` (which
+  // leaves for the Models page) one row from `/model` (which loads a model), rendered
+  // identically. Reported live: arrowing toward the command and pressing Enter moved the page.
+  //
+  // It is the second report of the same collision — seventeen hand-written address entries were
+  // removed on 2026-08-14 for it, and phase 3c reintroduced it by DERIVING fifty-three. A menu
+  // whose rows do two different things cannot be used by picking a row, and picking a row is
+  // what a `/` palette is for.
   const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
-  const bare = menuEntriesFor('', AGENT_COMMANDS, book);
-  assert.deepEqual(bare, [...AGENT_COMMANDS], 'a bare / must be the product menu, not every address');
 
-  const typed = menuEntriesFor('coden', AGENT_COMMANDS, book);
-  assert.equal(typed.length, AGENT_COMMANDS.length + book.length);
-  const panels = typed.filter((entry) => String(entry.address ?? '').startsWith('coden/'));
-  assert.equal(panels.length, 25, 'the twenty-five panels are not offered by the menu');
+  for (const word of ['', 'coden', 'model', 'settings']) {
+    const entries = menuEntriesFor(word, AGENT_COMMANDS, book);
+    assert.deepEqual(entries, [...AGENT_COMMANDS], `\`/${word}\` offered something other than the commands`);
+    assert.ok(!entries.some((entry) => entry.kind === 'address'),
+      `\`/${word}\` offered a destination — selecting a row must always run something`);
+  }
 
-  // And what is offered is what the matcher can then find, which is the property a user has.
-  const hits = matchCommands('coden/bench/diff', typed);
-  assert.ok(hits.some((entry) => entry.name === 'coden/bench/diff'),
-    'the menu offers the address space but the matcher cannot reach it');
+  // The other half, and the reason removing them from the MENU is not removing them: an address
+  // typed in full still resolves, because `resolveCommand` is given the wider list. Nothing
+  // became unreachable; it stopped being offered where offering it was a trap.
+  const offered = [...AGENT_COMMANDS, ...addressEntries(book)];
+  assert.ok(resolveCommand('/coden/bench/diff', offered)?.command?.address === 'coden/bench/diff',
+    'an address typed in full must still resolve — the sidebar and the address box are not the only ways');
 });
 
 test('phase 3c — the menu SPENDS its budget: as many entries as the height allows, ranked', () => {

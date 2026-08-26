@@ -525,7 +525,25 @@ export function addressEntries(addresses) {
  * about what is worth painting, never about what the prompt accepts.
  */
 export function menuEntriesFor(word, commands, addresses) {
-  return String(word ?? '').trim() ? [...commands, ...addressEntries(addresses)] : [...commands];
+  // Owner instruction, 2026-08-26: the `/` menu offers ONLY things that run.
+  //
+  // Addresses were folded in here from the moment a query narrowed the list, which put
+  // `/models` (leaves for the Models page) one row from `/model` (loads a model), identical
+  // on screen. Arrowing toward the command and pressing Enter moved the page instead — the
+  // Owner reported exactly that, and it is the second time this has been reported: seventeen
+  // hand-written address entries were removed on 2026-08-14 for the same reason, and phase 3c
+  // reintroduced the same collision by deriving all fifty-three from the markup.
+  //
+  // A menu whose rows do two different things cannot be used by picking a row, and picking a
+  // row is what a `/` palette IS. So: commands only. Navigation keeps every path it had —
+  // the sidebar, the address box (this shell's Ctrl-K), and typing an address in full, which
+  // still resolves because `resolveCommand` is given the wider list. Nothing became
+  // unreachable; it stopped being OFFERED where offering it was a trap.
+  //
+  // `addresses` stays in the signature: the callers pass it, the tests pin it, and a
+  // parameter removed here would have to be removed in four call sites to say the same thing.
+  void addresses;
+  return [...commands];
 }
 
 /**
