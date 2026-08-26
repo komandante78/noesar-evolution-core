@@ -1916,7 +1916,19 @@ function bindProviderRoutingActions(){$$('[data-save-routing]').forEach((button)
 // local UI state, and asks the server to re-derive everything else.
 function updatePrivacyFromProvider(){
   const selected=state.providers.find((item)=>item.id===$('#chatProvider').value);
-  $('#modelChip').textContent=`Model: ${$('#chatModel').value||selected?.defaultModel||'none'}`;
+  // Owner-reported, 2026-08-26: this chip said «Modello: nessuno» with a model resident and
+  // answering. It read `#chatModel` — a per-conversation free-text override — and the selected
+  // provider's default, and on an installation that serves its own model with no provider
+  // configured BOTH are empty. The identical defect was found and fixed on the CodeN chip in
+  // s336, whose tooltip has claimed «same value as the global Model chip» ever since; this is
+  // that claim being made true rather than repeated.
+  //
+  // The override still wins when it is set, for the reason the CodeN chip states: it names what
+  // THIS conversation will use, which can differ from what the installation has resident. What
+  // changes is only the empty case, which now asks the installation instead of concluding none.
+  const override=$('#chatModel').value||selected?.defaultModel||'';
+  if(override)$('#modelChip').textContent=`Model: ${override}`;
+  else void refreshCodenModelChip();
   refreshPrivacy();
 }
 $('#chatProvider').addEventListener('change',updatePrivacyFromProvider);$('#chatModel').addEventListener('input',updatePrivacyFromProvider);
@@ -5790,8 +5802,16 @@ async function refreshCodenModelChip(){
   // written defensively rather than gated on the pair existing.
   const label=$('#codenModelChipLabel');
   const composer=$('#chatModelLabel');
-  if(!label&&!composer)return;
-  const write=(chip,short)=>{if(label)label.textContent=`model ${chip}`;if(composer)composer.textContent=short;};
+  if(!label&&!composer&&!$('#modelChip'))return;
+  const top=$('#modelChip');
+  const write=(chip,short)=>{
+    if(label)label.textContent=`model ${chip}`;
+    if(composer)composer.textContent=short;
+    // The global chip too — three surfaces naming the resident model, one request and one
+    // sentence. Skipped when a per-conversation override is set, which is the one case where the
+    // global chip is deliberately saying something else.
+    if(top&&!($('#chatModel')?.value))top.textContent=`Model: ${chip}`;
+  };
   try{
     const active=await api('/api/v1/models/active');
     const loaded=active?.state==='loaded'?(active.id||'loaded'):null;

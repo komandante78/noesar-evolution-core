@@ -890,7 +890,25 @@ async function refreshActiveModel({ force = false } = {}) {
 }
 /** The id the catalogue keys on, from whichever source spoke. Never a guess: `null` if neither. */
 function activeModelId() {
-  return localModels.config().model ?? (activeModelSnapshot.state === ActiveModelState.LOADED ? activeModelSnapshot.id : null);
+  // Owner-reported, 2026-08-26: pressing Free left the model still shown as "In use", and the
+  // model chooser kept offering to free something already freed.
+  //
+  // This read `config().model` first and unconditionally. That is the model this installation is
+  // CONFIGURED to launch, which `release()` deliberately does not touch — it stops the process
+  // and leaves the configuration, so the next start brings the same model back. So the answer to
+  // "what is loaded" was really the answer to "what would load", and the two are the same only
+  // until somebody frees one.
+  //
+  // `status().launched` is the runtime's own record of the child it started, set to null by
+  // `release()`. Asking that first makes the configured name an answer only while the process
+  // it names is alive.
+  //
+  // The fallback is unchanged and still matters: on an installation where the model is served by
+  // something this runtime did not start, `launched` is null and the PROBE
+  // (`activeModelSnapshot`) is the only witness there is.
+  const status = localModels.status();
+  const running = status.launched && !status.launched.exited ? status.model : null;
+  return running ?? (activeModelSnapshot.state === ActiveModelState.LOADED ? activeModelSnapshot.id : null);
 }
 
 /**
