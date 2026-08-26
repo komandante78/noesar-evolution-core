@@ -1621,3 +1621,12 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   font-size: calc(var(--text-scale) * 10px);
 }
 .model-chip.selected .model-chip-count { background: var(--surface-critical-wash); color: inherit; }
+
+/* The model switcher in the composer row — Owner, 2026-08-26: the control that changes which
+   model answers was a bare 🧠 with no word on it, indistinguishable from the icons either side
+   of it. It carries its name and the model currently loaded, so the composer says what is
+   answering without opening anything. `small` holds the id and is `translate="no"`: a model
+   name run through a dictionary names a model that does not exist. */
+.model-switch{display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap}
+.model-switch small{opacity:.75;max-width:12ch;overflow:hidden;text-overflow:ellipsis}
+.model-release{border-top:1px solid var(--line);margin-top:.5rem;padding-top:.75rem}

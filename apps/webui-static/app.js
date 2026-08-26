@@ -5638,13 +5638,21 @@ function codenChatAnswerMarkup(chat){
  *  next read of `models/active` still names the model before it. Shared by every picker
  *  instance: which model is active is one fact for the whole installation, not one per view. */
 async function refreshCodenModelChip(){
-  const label=$('#codenModelChipLabel');if(!label)return;
+  // Two labels off ONE request: the CodeN chip and the chat composer's switcher say the same
+  // thing about the same installation, and two callers would be two answers the moment one of
+  // them was forgotten. Either may be absent — each shell renders only its own — so both are
+  // written defensively rather than gated on the pair existing.
+  const label=$('#codenModelChipLabel');
+  const composer=$('#chatModelLabel');
+  if(!label&&!composer)return;
+  const write=(chip,short)=>{if(label)label.textContent=`model ${chip}`;if(composer)composer.textContent=short;};
   try{
     const active=await api('/api/v1/models/active');
-    label.textContent=`model ${active?.state==='loaded'?(active.id||'loaded')
-      :active?.state==='unreachable'?'unreachable'
-      :active?.state==='none-served'?'no model served':'none configured'}`;
-  }catch{ label.textContent='model —'; }
+    const loaded=active?.state==='loaded'?(active.id||'loaded'):null;
+    write(loaded??(active?.state==='unreachable'?'unreachable'
+      :active?.state==='none-served'?'no model served':'none configured'),
+      loaded??t('none'));
+  }catch{ write('—','—'); }
 }
 /**
  * The model picker, as a factory rather than a page-bound singleton.
@@ -5728,7 +5736,7 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
         +`<p class="empty-state">${escapeHtml(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'))}</p>`;
       return undefined;
     }
-    list.innerHTML=codenChatAnswerMarkup(data?.chat)+models.map((entry)=>rowMarkup(entry,activeId)).join('');
+    list.innerHTML=codenChatAnswerMarkup(data?.chat)+models.map((entry)=>rowMarkup(entry,activeId)).join('')+releaseMarkup(activeId);
   }
   /** Re-paint for a choice that changed nothing on the server — from the payload already held,
    *  never from the DOM. Reading the rows back to rebuild them would make the page its own data
@@ -5736,6 +5744,51 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
    *  round trip through markup to stay true. No request either: opening a confirmation must not
    *  be something the network can slow down or disagree with. */
   function repaint(){ if(snapshot)render(snapshot); }
+  /**
+   * Freeing the loaded model — Owner, 2026-08-26: "togli modello in modo da toglierlo dalla
+   * RAM, sempre con doppio consenso".
+   *
+   * `POST /api/v1/models/deactivate` already existed and had no control anywhere (noted as
+   * unfinished when it was added): until now the only way to give the GPU back was to stop the
+   * whole container. The gesture is the SAME two-act shape a row's `Use` → `Start it` uses,
+   * with its own pending key, so asking to free and asking to start cannot both be open at
+   * once — and so nothing about the confirmation has to be learned twice.
+   *
+   * Drawn only when something is actually loaded: an installation serving nothing has nothing
+   * to free, and a button that always answers "nothing was loaded" teaches people to ignore it.
+   */
+  function releaseMarkup(activeId){
+    if(!activeId)return '';
+    const confirming=pending==='\u0000release'
+      ?`<div class="model-row-confirm"><span>${escapeHtml(t('This unloads the model from memory. Chat cannot answer until one is started again.'))}</span>`
+        +`<button type="button" class="danger" data-model-release-confirm="1">${escapeHtml(t('Free it'))}</button>`
+        +`<button type="button" class="text-button" data-model-cancel="1">${escapeHtml(t('Cancel'))}</button></div>`
+      :'';
+    return `<div class="model-row model-release" role="listitem">`
+      +`<div><b>${escapeHtml(t('Free the loaded model'))}</b><small translate="no">${escapeHtml(activeId)}</small></div>`
+      +`<div><button type="button" class="secondary" data-model-release="1">${escapeHtml(t('Free'))}</button></div>`
+      +`${confirming}</div>`;
+  }
+  async function release(){
+    const list=$(listId);if(!list)return;
+    for(const button of list.querySelectorAll('button'))button.disabled=true;
+    try{
+      await api('/api/v1/models/deactivate',{method:'POST',body:'{}'});
+      pending=null;
+      await load();
+      await refreshCodenModelChip();
+    }catch(error){
+      // The server's refusal in the place that asked for it, for the same reason `activate`
+      // does it: "could not free the model" would drop the half that says what to do next.
+      pending=null;
+      await load();
+      const note=document.createElement('p');
+      note.className='model-row-note';
+      note.setAttribute('role','status');
+      note.textContent=`${t('Refused:')} ${error.value?.error??error.message}`;
+      list.querySelector('.model-release')?.append(note);
+    }
+  }
   async function load(){
     const list=$(listId);if(!list)return;
     render(null,{loading:true});
@@ -5789,8 +5842,12 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
       const use=event.target.closest('[data-model-use]');
       const confirm=event.target.closest('[data-model-confirm]');
       const cancel=event.target.closest('[data-model-cancel]');
+      const free=event.target.closest('[data-model-release]');
+      const freeConfirm=event.target.closest('[data-model-release-confirm]');
       if(use){pending=use.dataset.modelUse;return repaint();}
       if(cancel){pending=null;return repaint();}
+      if(free){pending='\u0000release';return repaint();}
+      if(freeConfirm)return release();
       if(confirm)return activate(confirm.dataset.modelConfirm);
     });
   }

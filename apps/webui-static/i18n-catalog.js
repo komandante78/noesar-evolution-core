@@ -78,6 +78,15 @@ export const RUNTIME_ONLY = Object.freeze([
   'startable',
   'Starting this stops the model that is answering now.',
   'Start it',
+  // The release row (Owner, 2026-08-26): freeing the loaded model is composed by the same
+  // factory that composes the rows above it, so it belongs in the same list for the same reason.
+  'Free the loaded model',
+  'Free',
+  'Free it',
+  'This unloads the model from memory. Chat cannot answer until one is started again.',
+  // The composer's switcher when nothing is loaded. One word, and it must not read as an error:
+  // an installation serving no model is a state, not a fault.
+  'none',
   'Refused:',
   'The list could not be read:',
   'No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.',
@@ -719,6 +728,12 @@ const it = {
   'startable': 'avviabili',
   'Starting this stops the model that is answering now.': 'Avviarlo ferma il modello che sta rispondendo adesso.',
   'Start it': 'Avvialo',
+  'Free the loaded model': 'Libera il modello caricato',
+  'Free': 'Libera',
+  'Free it': 'Liberalo',
+  'This unloads the model from memory. Chat cannot answer until one is started again.':
+    'Questo scarica il modello dalla memoria. La chat non può rispondere finché non se ne avvia un altro.',
+  'none': 'nessuno',
   'Refused:': 'Rifiutato:',
   'The list could not be read:': 'Non è stato possibile leggere l’elenco:',
   'No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.':
