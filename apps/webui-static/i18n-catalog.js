@@ -451,7 +451,6 @@ const it = {
   'Memory': 'Memoria',
   'Agents': 'Agenti',
   'Workflows': 'Flussi di lavoro',
-  'Models': 'Modelli',
   'Research': 'Ricerca',
   'Settings': 'Impostazioni',
   'External connections': 'Connessioni esterne',
@@ -721,6 +720,7 @@ const it = {
   'Reading what is present…': 'Lettura di ciò che è presente…',
   'All models, and how to get more': 'Tutti i modelli, e come averne altri',
   'Close': 'Chiudi',
+  'Models': 'Modelli',
   // …and the rows it paints at runtime, which appear in no markup — listed in RUNTIME_ONLY
   // below for exactly that reason, per that block's own rule.
   'undeclared': 'non dichiarato',

@@ -1627,6 +1627,8 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    of it. It carries its name and the model currently loaded, so the composer says what is
    answering without opening anything. `small` holds the id and is `translate="no"`: a model
    name run through a dictionary names a model that does not exist. */
-.model-switch{display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap}
-.model-switch small{opacity:.75;max-width:12ch;overflow:hidden;text-overflow:ellipsis}
+.model-switch{display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;padding-inline:.5rem}
+/* 8ch, not 12: a model id is long and its TAIL is the part that differs (…-7b vs …-1.5b), so
+   the ellipsis is at the START. Truncating the end would leave every row reading "qwen2.5-…". */
+.model-switch small{opacity:.75;max-width:8ch;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left}
 .model-release{border-top:1px solid var(--line);margin-top:.5rem;padding-top:.75rem}

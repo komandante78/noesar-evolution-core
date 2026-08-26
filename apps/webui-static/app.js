@@ -5637,6 +5637,15 @@ function codenChatAnswerMarkup(chat){
  *  written from the activation's own reply, which would make the chip say "loaded" while the
  *  next read of `models/active` still names the model before it. Shared by every picker
  *  instance: which model is active is one fact for the whole installation, not one per view. */
+/** The shortest thing that still names a model on the composer's narrow button: its size and
+ *  what it is for (`7b-instruct`, `1.5b-instruct`), which is what differs between the models one
+ *  installation holds — the publisher and the quantisation are shared by all of them, and the
+ *  full id is in the panel and the title attribute. Falls back to the whole id when it matches
+ *  no known shape, because a name this cannot parse is still a name. */
+function shortModelName(id){
+  const match=String(id).match(/(\d+(?:\.\d+)?b(?:-[a-z]+)?)/i);
+  return match?match[1]:String(id);
+}
 async function refreshCodenModelChip(){
   // Two labels off ONE request: the CodeN chip and the chat composer's switcher say the same
   // thing about the same installation, and two callers would be two answers the moment one of
@@ -5651,7 +5660,7 @@ async function refreshCodenModelChip(){
     const loaded=active?.state==='loaded'?(active.id||'loaded'):null;
     write(loaded??(active?.state==='unreachable'?'unreachable'
       :active?.state==='none-served'?'no model served':'none configured'),
-      loaded??t('none'));
+      loaded?shortModelName(loaded):t('none'));
   }catch{ write('—','—'); }
 }
 /**
