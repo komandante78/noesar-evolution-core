@@ -872,6 +872,23 @@ function activeModelConsumers() {
   if (providerGateway.activeRuntimeProfile().profile) consumers.push('chat');
   return consumers;
 }
+/**
+ * The model this runtime has STARTED and not yet released — the fact two different readers were
+ * each deriving for themselves, and both getting wrong in the same way.
+ *
+ * `config().model` is the model this installation is configured to launch. `release()` does not
+ * touch it, on purpose: stopping a process is not unconfiguring it, and the next start must bring
+ * the same model back. So the configured name outlives the process, and reading it as "what is
+ * running" makes Free look like it did nothing — which is exactly what the Owner reported, twice,
+ * because two places were reading it that way.
+ *
+ * `status().launched` is the runtime's own record of the child it spawned, set to null by
+ * `release()`. That is the only local witness that a model is actually resident.
+ */
+function launchedModelId() {
+  const status = localModels.status();
+  return status.launched && !status.launched.exited ? (status.model ?? null) : null;
+}
 async function refreshActiveModel({ force = false } = {}) {
   const age = Date.now() - Date.parse(activeModelSnapshot.at || 0);
   if (!force && Number.isFinite(age) && age < ACTIVE_MODEL_TTL_MS) return activeModelSnapshot;
@@ -879,7 +896,13 @@ async function refreshActiveModel({ force = false } = {}) {
   // probes of a model server that is busy generating.
   if (activeModelRefreshing) return activeModelRefreshing;
   activeModelRefreshing = resolveActiveModel({
-    localRuntimeModel: localModels.config().model ?? null,
+    // `resolveActiveModel` returns LOADED for a non-empty `localRuntimeModel` WITHOUT probing
+    // anything, and its own comment says why that is sound: "a model this product started itself
+    // and therefore knows the identity of without asking anyone". What was passed here was the
+    // CONFIGURED model, which is not that — so a released runtime kept answering LOADED for a
+    // process that no longer existed, and no probe was ever reached to notice. The contract was
+    // right; the caller was not.
+    localRuntimeModel: launchedModelId(),
     endpoint: String(process.env.NOESAR_AUTHORING_ENDPOINT ?? '').trim() || null,
     fetchImpl: typeof fetch === 'function' ? fetch : undefined,
   }).then((resolved) => {
@@ -906,9 +929,7 @@ function activeModelId() {
   // The fallback is unchanged and still matters: on an installation where the model is served by
   // something this runtime did not start, `launched` is null and the PROBE
   // (`activeModelSnapshot`) is the only witness there is.
-  const status = localModels.status();
-  const running = status.launched && !status.launched.exited ? status.model : null;
-  return running ?? (activeModelSnapshot.state === ActiveModelState.LOADED ? activeModelSnapshot.id : null);
+  return launchedModelId() ?? (activeModelSnapshot.state === ActiveModelState.LOADED ? activeModelSnapshot.id : null);
 }
 
 /**

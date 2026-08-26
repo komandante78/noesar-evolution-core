@@ -19,16 +19,31 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const serverSource = readFileSync(join(ROOT, 'services/reference-control-plane/src/server.mjs'), 'utf8');
 const appJs = readFileSync(join(ROOT, 'apps/webui-static/app.js'), 'utf8');
 
-test('"what is loaded" is asked of the runtime, never of the configuration', () => {
-  const body = serverSource.match(/function activeModelId\(\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
-  assert.ok(body, 'activeModelId must still exist');
-  assert.match(body, /localModels\.status\(\)/,
-    'the runtime’s own record of the child it started is the only witness that it is still there');
-  assert.match(body, /launched/, 'a released runtime has no launched child, and that is the answer');
-  // The regression in one line: `config().model` survives release() on purpose, so reading it as
-  // "loaded" makes Free look like it did nothing.
-  assert.doesNotMatch(body, /localModels\.config\(\)\.model/,
-    'the configured model is what WOULD load; reading it as what IS loaded is the reported bug');
+test('one function answers "which model has this runtime actually started"', () => {
+  const body = serverSource.match(/function launchedModelId\(\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+  assert.ok(body, 'launchedModelId must exist — two readers deriving this separately is how the '
+    + 'same bug got fixed in one of them and reported again from the other');
+  assert.match(body, /localModels\.status\(\)/);
+  assert.match(body, /launched/, 'release() sets launched to null; that is the whole signal');
+  assert.doesNotMatch(body, /config\(\)\.model/,
+    'the configured model survives release() on purpose — reading it as "running" is the bug');
+});
+
+test('both readers of "what is loaded" come from that one function', () => {
+  const active = serverSource.match(/function activeModelId\(\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+  assert.match(active, /launchedModelId\(\)/);
+  assert.doesNotMatch(active, /localModels\.config\(\)\.model/);
+
+  // The one that actually caused the second report. resolveActiveModel returns LOADED for a
+  // non-empty localRuntimeModel WITHOUT probing — sound only because that argument is meant to be
+  // a model this product started. Handed the configured name instead, it answered LOADED for a
+  // process that no longer existed and never reached a probe that would have noticed.
+  const refresh = serverSource.match(/async function refreshActiveModel\([\s\S]*?\n\}/)?.[0] ?? '';
+  assert.ok(refresh, 'refreshActiveModel must still exist');
+  assert.match(refresh, /localRuntimeModel: launchedModelId\(\)/,
+    'the resolver skips the probe for this argument, so it must only ever receive a model that '
+    + 'is genuinely running');
+  assert.doesNotMatch(refresh, /localRuntimeModel: localModels\.config\(\)\.model/);
 });
 
 test('the probe stays the fallback — a model this runtime did not start is still a model', () => {
