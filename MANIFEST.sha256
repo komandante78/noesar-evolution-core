@@ -6736,7 +6736,7 @@ f833e096bb996a7e466f5a3b69feca311d5c13e89547726be6b32bb943bcabc3  ./tools/test-p
 5315f9ad357094b411bfa00211789c3b883f9e9b6fb8bc6e46ca472ec764314c  ./tools/verify-compliance-pack.mjs
 4eaae5f77c94ced1515491622c4f53359695bcf4737d910c524159c9e59823a4  ./tools/verify-crate-extraction.sh
 895267f993666624294d42f7adfdccecdd053967b909f670741e2a0523946321  ./tools/verify-five-archives.mjs
-0aa1b9dd5dd526f566f6cfdf75f101dee9511d8c1b6198d1112a6d5007423149  ./tools/verify-image-provenance.sh
+8cda98575f16024d55d80068dbbeeea5aeca795559be217bb06a711db4d0c213  ./tools/verify-image-provenance.sh
 1e488fc4fb0a5cf4c90e42ca6442ca524d1531c9ea42f1c757bf59e496ef854f  ./tools/verify-linter-detects.sh
 b7bf109b81c7485b48bb982bf58cb81e50a12fe28cc4ee65f59d654271cede20  ./tools/verify-package.py
 16192ba648bede67f6dda31a52f617ea8ce319f89580f8b9be801921c3b55311  ./tools/verify-permission-diff.mjs

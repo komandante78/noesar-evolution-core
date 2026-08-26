@@ -114,6 +114,9 @@ tree_path_for() {
     bin/atomd.provenance.json)    echo "oci/vendor/atom/atomd.provenance.json" ;;
     bin/noesar-supervisord)       echo "" ;;   # built by the rust stage, no tree counterpart
     bin/noesar-sandbox)           echo "" ;;   # built by the rust stage, no tree counterpart
+    llama-runtime/*)              echo "" ;;   # COPY --from=llama-runtime (oci/Dockerfile), a
+                                                # digest-pinned public image — no tree counterpart
+                                                # by design, see oci/Dockerfile's comment there
     *)                            echo "$1" ;;
   esac
 }
