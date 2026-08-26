@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, openSync, readSync, closeSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -998,6 +998,39 @@ function productAuthenticity(descriptor) {
 // Which artefacts are on disk, and whether each matches the digest its publisher declared.
 // `verified:false` is not an error state to be hidden — it is the `unverified` lane, and
 // nothing starts from there (MC-004).
+/**
+ * The sha256 of a file, read in chunks — measured, not preferred.
+ *
+ * This was `createHash().update(readFileSync(file))`, and `readFileSync` throws
+ * `ERR_FS_FILE_TOO_LARGE` above 2 GiB. The throw landed in the caller's `catch`, which records
+ * `verified: false` — the unverified lane, from which nothing starts (MC-004). So **every model
+ * artefact larger than 2 GiB was permanently unstartable**, and said so in the vocabulary of a
+ * failed integrity check rather than of a reader that could not read it. A 7B q4 model is 3.9 GB;
+ * the class of model this product exists to run is exactly the class this could not verify.
+ *
+ * Found by measuring the read against the real artefact, after the model that was answering
+ * vanished from the chooser the moment a second one took over from it: while it was active it
+ * needed no digest (`external: true` above), and the instant it was not, it needed one it could
+ * never produce.
+ *
+ * Chunked and SYNCHRONOUS on purpose: `readPresentModels` is called inside a synchronous catalogue
+ * build, and making it async would turn one reader into an async path through six callers. 1 MiB
+ * is large enough that the syscall count is irrelevant beside the disk read.
+ */
+function fileDigest(file) {
+  const hash = createHash('sha256');
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  const handle = openSync(file, 'r');
+  try {
+    for (;;) {
+      const read = readSync(handle, buffer, 0, buffer.length, null);
+      if (read <= 0) break;
+      hash.update(read === buffer.length ? buffer : buffer.subarray(0, read));
+    }
+  } finally { closeSync(handle); }
+  return hash.digest('hex');
+}
+
 function readPresentModels(descriptors) {
   const present = new Map();
   for (const descriptor of descriptors) {
@@ -1020,8 +1053,7 @@ function readPresentModels(descriptors) {
     const expected = descriptor.hashes?.sha256 ?? null;
     if (!expected) { present.set(descriptor.id, { verified: false }); continue; }
     try {
-      const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
-      present.set(descriptor.id, { verified: digest === String(expected).toLowerCase() });
+      present.set(descriptor.id, { verified: fileDigest(file) === String(expected).toLowerCase() });
     } catch { present.set(descriptor.id, { verified: false }); }
   }
   return present;

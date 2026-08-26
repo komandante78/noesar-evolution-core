@@ -407,7 +407,7 @@ a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-s
 13debbf6c3f51d659d61875c1c5d2186e1fe399c9d4d21ccbc35819ef1209098  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
-1fa51fc9e2995090febf9dc2c579d7403cb9aa841a33caa45b6081ff5eade811  ./apps/webui-static/styles.css
+76b1067ebedd8724d96e9bb435d15b31d247e96abd63a45b0e318a35adc2125d  ./apps/webui-static/styles.css
 b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd  ./apps/webui-static/vendor/xterm/LICENSE
 70cf8efd07e7e8a60fdcb4ba09f142f7ba8ac53f0f54cd4317bde25fe8730851  ./apps/webui-static/vendor/xterm/PROVENANCE.md
 854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6  ./apps/webui-static/vendor/xterm/xterm.css
@@ -6392,7 +6392,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 536bbea9e3530530f58222f027d7215906f655a3f3ba1757ae0a9f8315eb5792  ./services/reference-control-plane/src/scim.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-473afe6d8a03620fecd6163afabfa2b9636d8a049209c73c5fdeef00409347d1  ./services/reference-control-plane/src/server.mjs
+640cee268f86927050146b0671bf9db32763f57c1f43ac681bad69ed71cf13d0  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 6664621ee52e27eca618636107c5ec2a35c7138e7de1ee95a6be804647cfcd46  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs

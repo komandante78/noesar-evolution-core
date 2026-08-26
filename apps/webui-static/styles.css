@@ -1418,7 +1418,13 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    reading. It uses the popover surface tokens the search popover and the `/` menu already use,
    so all three overlays in this product read as one thing in either theme. */
 .model-picker {
-  position: relative; z-index: 30; margin: -4px 0 12px;
+  /* Owner, 2026-08-26: the panel stretched the full width of the composer while its content —
+     a model name and one button — needed a third of it, so every row read as a long empty bar.
+     Bounded by what the widest row needs, not by what the parent offers. "max-width" and not
+     "width", so a narrow viewport still gets the whole of it rather than a panel wider than
+     the screen; "margin-inline-start:auto" keeps it under the control that opens it. */
+  max-width: min(30rem, 100%); margin-inline-start: auto;
+  position: relative; z-index: 30; margin-block: -4px 12px;
   border: 1px solid var(--line); border-radius: 12px;
   background: var(--surface-popover); color: var(--text-popover);
   box-shadow: 0 24px 80px var(--shadow-overlay); padding: 12px;
