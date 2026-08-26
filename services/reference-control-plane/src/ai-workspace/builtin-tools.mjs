@@ -104,6 +104,9 @@ export const EFFECT = Object.freeze({
   'closure.list': 'read',
   'closure.record': 'write',
   'model.activate': 'write',
+  // Freeing the loaded model stops the model that is answering, exactly as starting a different
+  // one does — so it is classified where its sibling is, not lower because it takes no argument.
+  'model.deactivate': 'write',
 });
 
 /**
@@ -183,6 +186,9 @@ export const SCHEMA = Object.freeze({
     reviewSeconds: { type: 'integer', description: 'how long human review took' },
   }, ['runId', 'summary']),
   'model.activate': object({ id: str('the installed model to load; omit to list what is loadable') }),
+  // No properties, and that is the contract: the handler frees whatever is loaded and accepts
+  // nothing, so a parameter here would describe an argument the engine ignores.
+  'model.deactivate': object({}),
 });
 
 /** The four methods no `/` command names, so no summary exists to derive. Written here rather than

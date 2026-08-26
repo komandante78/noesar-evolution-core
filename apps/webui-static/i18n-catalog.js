@@ -1513,6 +1513,8 @@ const it = {
   'These commands': 'Questi comandi',
   'Clear the transcript on screen (the session keeps its state)': 'Pulisci la trascrizione a schermo (la sessione mantiene il suo stato)',
   'List models present on this installation, or load one by id': 'Elenca i modelli presenti su questa installazione, o caricane uno per id',
+  'Unload the model from memory — asks for the word `confirm`; chat cannot answer until one is started again':
+    'Scarica il modello dalla memoria — chiede la parola `confirm`; la chat non può rispondere finché non se ne avvia un altro',
   'End this session — asks for `logout confirm`': 'Chiudi questa sessione — richiede `logout confirm`',
   // `D-0590`, `CE-020`. The six capabilities that gained a keyboard form. They arrive here in the
   // same change that adds them, because this catalogue is read off the registry: a command added

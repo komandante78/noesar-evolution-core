@@ -491,6 +491,15 @@ const sessionDispatch = createSessionDispatch({
   // function declaration still reads `localModels`/`adapterGrants` only when called, which is
   // the deferral the note above is about.
   activateInstalledModel: (id, actor) => activateInstalledModelById(id, actor),
+  // The same three steps the HTTP route performs, in the same order, because they are one act:
+  // release the process, record it, and force the next read of "what is active" rather than
+  // letting a cached answer outlive the model it describes.
+  deactivateInstalledModel: async (actor) => {
+    const released = await localModels.release();
+    ledger.append({ actor, action: 'model.deactivate', result: 'released', details: released });
+    await refreshActiveModel({ force: true });
+    return released;
+  },
   // Owner, 2026-08-15: `/model` with no id answered "needs an id" and named none — the same
   // dead end `s333 point 2` already found for every other required-argument command, just not
   // yet fixed for this one. The SAME catalogue `GET /api/v1/models/catalog` already serves the

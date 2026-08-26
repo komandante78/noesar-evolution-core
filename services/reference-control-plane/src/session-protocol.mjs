@@ -225,6 +225,12 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // no separate existing HTTP route for this operation to defer to — every shell reaches it
   // through this one dispatch, §4b.4 rule 4.
   'model.activate': { permission: 'model.manage', bridged: true },
+  // The other half of `model.activate`, and it existed on exactly one surface. Freeing the
+  // loaded model was reachable from the browser's picker (`POST /api/v1/models/deactivate`) and
+  // from nowhere a terminal could type — the asymmetry `CE-034` refuses: a capability one shell
+  // has and the other does not. Same permission as activation, because giving the GPU back stops
+  // the model that is answering just as surely as starting a different one does.
+  'model.deactivate': { permission: 'model.manage', bridged: true },
 });
 
 /** The methods the HTTP bridge exposes, and what each needs — derived, never re-typed. */
@@ -270,6 +276,7 @@ export function createSessionDispatch({
   // `D-0444`. `(id, actor) => Promise<result>` — see `model.activate` below and this
   // factory's own note on `getClosureRegister` for why this arrives as a function.
   activateInstalledModel,
+  deactivateInstalledModel,
   // Owner, 2026-08-15: `() => { models }` — the SAME catalogue `#/models` reads, filtered to
   // what `/model` with no id can actually answer. See `model.activate` below.
   listInstalledModels,
@@ -558,6 +565,15 @@ export function createSessionDispatch({
       } catch (error) {
         throw new ProtocolError('MODEL_ACTIVATION_REFUSED', error.message);
       }
+    },
+    'model.deactivate': async ({ actor }) => {
+      if (typeof deactivateInstalledModel !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the local model runtime');
+      }
+      // No params, and none accepted: there is one loaded model, and naming it would let a
+      // caller free something other than what is actually running. `release()` is idempotent,
+      // so freeing an installation that has nothing loaded is a true answer, not an error.
+      return deactivateInstalledModel(actor);
     },
     // Same module the HTTP route calls, against the same workspace root — not a second
     // reading of git that could disagree with the browser's chip about the same repository.

@@ -33,7 +33,10 @@ const CODEN_PLAN_METHODS = ['coden.gitStatus', 'coden.divergence'];
 // `D-0444`. Same shape, a different permission: `model.activate` costs `model.manage`, which
 // `PUT /api/v1/runtime/local-model` already requires for the same class of action
 // (reconfiguring and launching the local runtime) — its HTTP twin, proven below.
-const MODEL_MANAGE_METHODS = ['model.activate'];
+// `model.deactivate` joins its sibling here for the reason the list is NAMED rather than a chain
+// of `!==`: it arrived at the same `model.manage` gate its own HTTP route already stands behind,
+// so nothing was widened and no role lost a capability it held.
+const MODEL_MANAGE_METHODS = ['model.activate', 'model.deactivate'];
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');

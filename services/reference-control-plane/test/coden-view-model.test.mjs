@@ -115,7 +115,10 @@ describe('the view model — what a session looks like, decided once', () => {
     assert.equal(turn.kind, 'unknown');
     assert.match(turn.message, /Nothing named `mode`/);
     assert.match(turn.message, /Did you mean \/model/);
-    assert.deepEqual(turn.suggestions, ['/model']);
+    // Two since `/model-free` was added: a near miss names EVERY command it is near, and
+    // trimming the list to keep this assertion at one entry would hide the second answer from
+    // the person who typed the typo. The order is `matchCommands`' ranking, not this file's.
+    assert.deepEqual(turn.suggestions, ['/model', '/model-free']);
     // Named, never run: the turn is still `unknown`, so no shell can treat it as a command.
     assert.equal(turn.command, undefined);
   });
@@ -124,7 +127,10 @@ describe('the view model — what a session looks like, decided once', () => {
     // The failure this prevents: suggesting `/plan` to an account whose menu does not carry it,
     // which is a 403 announced as a hint. `commands` here is what the shell OFFERS — the same
     // array the menu paints — not `AGENT_COMMANDS` reached past the filter.
-    const offered = AGENT_COMMANDS.filter((entry) => entry.name !== 'model');
+    // Both model commands withheld, not just one: the point is that a suggestion never names a
+    // command the account cannot reach, and leaving `/model-free` in would prove nothing about
+    // `/model` being filtered — the list would simply be shorter.
+    const offered = AGENT_COMMANDS.filter((entry) => !entry.name.startsWith('model'));
     const turn = planTurn('/mode', { ...deps, commands: offered });
     assert.deepEqual(turn.suggestions, []);
     assert.doesNotMatch(turn.message, /Did you mean/);

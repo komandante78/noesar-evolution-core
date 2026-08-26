@@ -72,6 +72,9 @@ export const RUN = {
   // shells answer `/review` identically — the standing rule this table exists to enforce.
   review: () => ['review.latency', {}],
   model: (argument) => ['model.activate', { id: argument }],
+  // No params: there is one loaded model, and the confirmation the command already carries is
+  // what stands between a typed line and the GPU being handed back.
+  'model-free': () => ['model.deactivate', {}],
   // `D-0590`, `CE-020`. The transports for the six capabilities that had no keyboard form. Built
   // here beside the other nineteen rather than in either shell, for this table's standing reason:
   // two shells that each decide what a typed line means will disagree, and the disagreement

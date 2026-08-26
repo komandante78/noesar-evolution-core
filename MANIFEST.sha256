@@ -390,7 +390,7 @@ e539e5ddca34152e1c8558484d564efee8dbb07518bfa04db0cdcbf8f2fa6aba  ./ai-workspace
 7d14f5858e5e8618a82eae3a5099860ff01527218311e6a05fab60d7b652f80a  ./ai-workspace/tests/ai-workspace.test.mjs
 24ec378a472d1e7849d1aeb39e46126b9a320f4402e6aed266eab866290db53d  ./ai-workspace/tool-executor.mjs
 fdd1c1a5560ff9d398861ec2ed69a263cf9f606b01b4f239b17c30b3cbb8a937  ./ai-workspace/workspace-service.mjs
-d0da5f3bfe0a2d090bb92f9b85f87c24ac0297d71ac3f5b67b6f800af0a15901  ./apps/shared/coden/agent-commands.js
+4d1ff6e5f6963d4d6b034e4540462ff1bb6311079f4183743f184dc889ab5d20  ./apps/shared/coden/agent-commands.js
 e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/coden/coden-address-views.mjs
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
@@ -399,9 +399,9 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
-466b251be19669e82a923817a4231dfc6adbb58fdc084b837099f44cd2ebae99  ./apps/webui-static/coden-view-model.js
+95f93d8c2358ea5edbbed5065e17f1df8babf0db8f4743ddefc0ea1016c22740  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-4409945192968e8fece78eecf4896f74b0e938bc3a2442301a824bca93ad37a5  ./apps/webui-static/i18n-catalog.js
+68de17231a4cd3cc7d59945edc53f6063059f90fc505aed6a3bf3204d0c08908  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 1b9ed985a6a413842d890e278a2765407a5535ebd1faf6af31bd234dcf31635e  ./apps/webui-static/index.html
 13debbf6c3f51d659d61875c1c5d2186e1fe399c9d4d21ccbc35819ef1209098  ./apps/webui-static/page-help.js
@@ -6301,7 +6301,7 @@ e7ef0cf8658aec40e2518dc8072c82b04bda13ddcea24ef6cdeb77a44e42f3f2  ./services/ref
 f370efff5022df4b9bb1683c21a29563612b9f2feb2ed97ca72e5eefd7fa9428  ./services/reference-control-plane/src/ai-workspace/agent-service.mjs
 4202c1f21dc8aaa4ff73161075bbc6bc13be8895aedf5302aaef008b078b324f  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
 cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/reference-control-plane/src/ai-workspace/atomic-store.mjs
-c07f8c91149d3ca0073d960e12bb564c111c5dce55d4e26bf15ef1f99110c759  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
+6ec9ca91be3b2a794e6f740aabb74f5a180e790ee991f74e3e2d33e24c572b52  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
 0577b989a563d64e5e014f044ec9f2dc1bd14e4578b8566fd379ef62cb73ece5  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
 dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/reference-control-plane/src/ai-workspace/context-graph.mjs
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
@@ -6392,9 +6392,9 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 536bbea9e3530530f58222f027d7215906f655a3f3ba1757ae0a9f8315eb5792  ./services/reference-control-plane/src/scim.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-640cee268f86927050146b0671bf9db32763f57c1f43ac681bad69ed71cf13d0  ./services/reference-control-plane/src/server.mjs
+3a51b596e039fd072d84f84b9291b4276503e8eb09b83dab0895ecb4d6be637f  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
-6664621ee52e27eca618636107c5ec2a35c7138e7de1ee95a6be804647cfcd46  ./services/reference-control-plane/src/session-protocol.mjs
+ab9219b565e84483e8c010451a8c3fb2532aee3b37f52b82a1f7be33fdeaeea4  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
 afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  ./services/reference-control-plane/src/shadow.mjs
@@ -6493,7 +6493,7 @@ ea0a46122ad492f2f9eec5c9ed8175047cf9346ccfc84fec06de482d19288035  ./services/ref
 3070a2fd0045885e242b04486cae154ed2cb7e1aa309a12fbe30b8514c8f125b  ./services/reference-control-plane/test/coden-shell-parity.test.mjs
 e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/reference-control-plane/test/coden-spa-catchall.test.mjs
 170021ec6f6f0213aebc62ba624470b1ca2f9ad6db979c21a98ed2298f7f9330  ./services/reference-control-plane/test/coden-terminal-client.test.mjs
-23658873e26139aa7b77b5699b9ce3aaf99b24df93510dc32532e4603dbb90d2  ./services/reference-control-plane/test/coden-view-model.test.mjs
+5852fac47de0026cd437c92f098cbc6d0d4f26006c89173822e8af3695fabc9d  ./services/reference-control-plane/test/coden-view-model.test.mjs
 ea34124e0b3aaa180dc942e81b56051f302ae17f129a92c098eb397f1a22179d  ./services/reference-control-plane/test/codev-relay.test.mjs
 046be73ee26f5c9f2b9c08d7cfd0f4b921a6f2dccfbd41aeb0c1b0f8cfa86df9  ./services/reference-control-plane/test/compliance-packs.test.mjs
 054bfb394da16242439ff8bd6531e103634fe60ed2d6b1bae6bde0ec9b395c9f  ./services/reference-control-plane/test/conformance.test.mjs
@@ -6614,7 +6614,7 @@ fb563aba09baf5e9506afa3bc76100d453f633c91a61782d7ccfd4f96eb97b14  ./services/ref
 40ef1a252134ff0d62fe495ccde27dd0302b4ec90dd6f728d221a9b7f8edebad  ./services/reference-control-plane/test/tui-client-sessions.test.mjs
 e5173932822e336e97804f868649e2b274dd52b1ce24e8996a37a9c4fb7a8ef0  ./services/reference-control-plane/test/tui-import-closure.test.mjs
 99e062768ca7191e1281d4620f9c8f7f3d7e10e784b15b01c7b542f7ff378f72  ./services/reference-control-plane/test/tui-screen-layout.test.mjs
-caa46b856c02e7e20d210985cbbae61a1763707d96ba2ae8485ae100aa1c85a1  ./services/reference-control-plane/test/two-shells-parity.test.mjs
+c1c2f8446a3b4b96d26c8ef63f9cf52f2eccee5dd07316c7010acf0117f6a79e  ./services/reference-control-plane/test/two-shells-parity.test.mjs
 e22f6b8012379f173282243cb48908d5e9e90a6dc6565594579a86fa8aea2da9  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
 8d57f04b38e657a89196f51f705e815a3e47d5afa6d88537b1873b7f14639e88  ./services/reference-control-plane/test/update-manager.test.mjs
 66f1525b9946e61f2932df27cee921067f6de3c85e5aeecf3577eb87223d210c  ./services/reference-control-plane/test/updates-channel-key-http.test.mjs

@@ -225,6 +225,17 @@ export const AGENT_COMMANDS = Object.freeze([
   // given no id, answers with what is actually loadable right now instead of refusing.
   { name: 'model', argument: '[id]', summary: 'List models present on this installation, or load one by id', group: 'configure', kind: 'call', method: 'model.activate', permission: 'model.manage' },
 
+  // Owner, 2026-08-26: "togli modello, sempre con doppio consenso" — asked for the browser's
+  // picker and built there first, which left the terminal without it. `CE-034` fails on a
+  // capability one shell has and the other does not, so it is a command here rather than a
+  // second button somewhere.
+  //
+  // `confirm: true` is the same gate `/session-action` uses, and for the reason `15` §13 states:
+  // in a terminal a lone `y` is one paste away from being typed by something that is not you. It
+  // is also the terminal's rendition of the picker's two-act `Free` → `Free it` — one rule, two
+  // shells, neither of them cheaper than the other.
+  { name: 'model-free', argument: '[confirm]', summary: 'Unload the model from memory — asks for the word `confirm`; chat cannot answer until one is started again', group: 'configure', kind: 'call', method: 'model.deactivate', permission: 'model.manage', confirm: true },
+
   // SESSION — changes who you are. `/logout` needs a second, TYPED word rather than a key:
   // `15` §13, "in un terminale `y` è a un incollaggio di distanza dall'essere digitato da
   // qualcosa che non sei tu".
