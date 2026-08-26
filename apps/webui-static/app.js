@@ -5147,6 +5147,16 @@ function modelAdvisories(item){
 // The button is only drawn where there is something to delete; the server refuses anyway
 // (`model-removal.mjs`), because a guard that lives only in the browser is not a guard.
 function removeControl(item){
+  // Owner, 2026-08-26: the in-use card had no Delete at all, so the one lane where a person most
+  // wants to know why they cannot delete was the one lane that said nothing. Drawn and DISABLED
+  // with its reason instead — the MC-006 posture this file already applies to `acquireControl`,
+  // and the reason is the server's own words (`previewRemoval`), not a second sentence written
+  // here that could drift from what the route actually answers.
+  if(item.lane==='in-use'){
+    const why=t('this model is in use now: free it before deleting it');
+    return `<p class="card-actions"><button type="button" class="danger" disabled title="${escapeHtml(why)}">`
+      +`${escapeHtml(t('Delete'))}</button><small translate="no">${escapeHtml(why)}</small></p>`;
+  }
   if(item.lane!=='downloaded'&&item.lane!=='unverified')return '';
   return `<p class="card-actions"><button type="button" class="danger" data-remove="${escapeHtml(item.id)}">`
     +`${escapeHtml(t('Delete'))}</button></p>`
@@ -5192,6 +5202,88 @@ function modelCard(item,context={}){
     +`<footer class="model-tile-foot">${acquireControl(item,context)}${loadControl(item)}${removeControl(item)}`
     +(item.sourceUrl?`<p class="model-source">${source.replace(' &middot; ','')}</p>`:'')+`</footer></article>`;
 }
+/**
+ * Will this machine run that model, and how — the question a self-hosted product owes an
+ * operator BEFORE they spend an hour downloading (Owner, 2026-08-26).
+ *
+ * Estimated, and labelled as estimated wherever it is shown. The catalogue declares a parameter
+ * count as prose ("25.2B total · 3.8B active", "~1.1T"), never a byte size, so the only honest
+ * thing available is an arithmetic guess from the count. For a mixture-of-experts model the
+ * TOTAL is what has to be resident, not the active part, so that is the number taken.
+ *
+ * ponytail: 0.55 GB per billion parameters is q4_k_m's rough constant, and the context window's
+ * KV cache is ignored. Both make this optimistic by a few percent on a model that only just
+ * fits — which is why "fits" is drawn as a hint and not as a promise, and why the CPU tier
+ * exists rather than a bare yes/no. A real measurement would need the artefact, and the whole
+ * point of this line is to be read before downloading one.
+ */
+function estimatedModelBytes(parameters){
+  const text=String(parameters??'');
+  const match=text.match(/([\d.]+)\s*([BTM])\b/i);
+  if(!match)return null;
+  const scale={ m: 1e6, b: 1e9, t: 1e12 }[match[2].toLowerCase()];
+  const count=Number(match[1]);
+  if(!Number.isFinite(count)||!scale)return null;
+  return count*scale*0.55; // bytes at roughly q4
+}
+/** 'gpu' — fits in accelerator memory. 'cpu' — fits in RAM, and will be slow. null — neither,
+ *  or nothing was declared to judge by, which is not the same as "no" and is not shown as one. */
+function modelFit(item,hardware){
+  const bytes=estimatedModelBytes(item.parameters);
+  if(!bytes||!hardware)return null;
+  const vram=(hardware.accelerators??[]).reduce((most,a)=>Math.max(most,(a.memoryMiB??0)*1024*1024),0);
+  if(vram&&bytes<=vram*0.9)return 'gpu';
+  if(bytes<=(hardware.memory?.totalBytes??0)*0.7)return 'cpu';
+  return null;
+}
+let modelHardware=null;
+/**
+ * The suggestions, grouped by the same categories the filter chips use — so a person who has
+ * decided they want a coding model reads one heading instead of every card.
+ *
+ * Only what this machine can run appears: a self-hosted product listing a 671B model to someone
+ * with 12 GB of accelerator memory is listing homework, not a suggestion. What was filtered out
+ * is stated rather than silently dropped, the same rule the `/` menu's hidden-count follows.
+ */
+function renderSuggestedModels(catalog){
+  const host=$('#modelSuggestedList');
+  if(!host)return;
+  const note=$('#modelSuggestedHardware');
+  if(note){
+    const gpu=(modelHardware?.accelerators??[])[0];
+    const ram=Math.round((modelHardware?.memory?.totalBytes??0)/1e9);
+    note.textContent=modelHardware
+      ?(gpu?`${gpu.name} · ${Math.round(gpu.memoryMiB/1024)} GB · ${ram} GB RAM`:`${ram} GB RAM, ${t('no accelerator found')}`)
+      :t('This machine has not been measured, so nothing is ranked for it.');
+  }
+  const items=(catalog?.available?.items??[]).map((item)=>({ item, fit: modelFit(item,modelHardware) }));
+  const usable=items.filter((entry)=>entry.fit);
+  if(!usable.length){
+    host.innerHTML=`<p class="hint">${escapeHtml(items.length
+      ? t('None of the catalogue models fit this machine. What is here is listed under All models, with its size.')
+      : t('The catalogue is empty, so there is nothing to suggest.'))}</p>`;
+    return;
+  }
+  const byCategory=new Map();
+  for(const entry of usable){
+    // A model declaring no function lands under one heading rather than vanishing: the catalogue
+    // is allowed to be incomplete, and a suggestion list that hides the incomplete ones is not.
+    const keys=entry.item.functions?.filter((f)=>f!=='undeclared');
+    for(const key of (keys?.length?keys:['undeclared'])){
+      if(!byCategory.has(key))byCategory.set(key,[]);
+      byCategory.get(key).push(entry);
+    }
+  }
+  // Biggest first inside a category: on a machine that can run it, the larger model is the
+  // better answer, and the smaller ones below it are the fallbacks.
+  const size=(entry)=>estimatedModelBytes(entry.item.parameters)??0;
+  host.innerHTML=[...byCategory.entries()].map(([key,entries])=>
+    `<h4 translate="no">${escapeHtml(modelCategoryTitle(key))}</h4>`
+    +entries.sort((a,b)=>size(b)-size(a)).slice(0,4).map(({item,fit})=>
+      `<div class="model-suggested-row"><b translate="no" title="${escapeHtml(item.id)}">${escapeHtml(String(item.id).split('/').pop())}</b>`
+      +`<small class="model-suggested-fit-${fit}" translate="no">${escapeHtml(fit==='gpu'?t('fits the GPU'):t('RAM only, slow'))}</small></div>`
+    ).join('')).join('');
+}
 let modelCategories=[];
 function modelCategoryTitle(id){
   return modelCategories.find((c)=>c.id===id)?.title??id;
@@ -5214,6 +5306,7 @@ function renderCategoryChips(catalog){
 function renderModelLanes(catalog){
   if(Array.isArray(catalog.categories))modelCategories=catalog.categories;
   renderCategoryChips(catalog);
+  renderSuggestedModels(catalog);
   const foreground=$('#modelForegroundLanes');
   if(foreground){
     const total=catalog.foreground.reduce((sum,entry)=>sum+entry.items.length,0);
@@ -5224,7 +5317,7 @@ function renderModelLanes(catalog){
       :catalog.foreground.filter((entry)=>entry.items.length>0).map((entry)=>
         `<h4 translate="no">${escapeHtml(t(MODEL_LANE_TITLE[entry.lane]??entry.lane))} &middot; ${entry.items.length}</h4>`
         +`<p class="hint" translate="no">${escapeHtml(t(MODEL_LANE_NOTE[entry.lane]??''))} ${escapeHtml(t('Action:'))} ${escapeHtml(t(MODEL_LANE_VERB[entry.lane]??''))}.</p>`
-        +`<div class="card-list model-grid">${entry.items.map(modelCard).join('')}</div>`).join('');
+        +`<div class="card-list model-grid model-lane-installed">${entry.items.map(modelCard).join('')}</div>`).join('');
   }
   const list=$('#modelAvailableList');
   if(list){
@@ -5271,6 +5364,13 @@ function renderModelLanes(catalog){
 async function loadModelCatalogue(){
   const foreground=$('#modelForegroundLanes');
   if(!foreground)return;
+  // Read once per page, and NOT fatal: the suggestions need to know what this machine has, but
+  // `hardware.read` is a permission an account may not hold, and a catalogue that refused to
+  // render because the optional half of it was forbidden would be worse than one without
+  // suggestions. `modelHardware` stays null and `renderSuggestedModels` says so in words.
+  if(modelHardware===null){
+    try{ modelHardware=await api('/api/v1/hardware'); }catch{ modelHardware=null; }
+  }
   try{
     renderModelLanes(await api(`/api/v1/models/catalog?${modelFilterQuery()}`));
   }catch(error){

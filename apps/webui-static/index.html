@@ -923,7 +923,14 @@
         </section>
         <section class="panel" id="modelForeground">
           <div class="panel-title"><h2>On this installation</h2><span class="chip" id="modelForegroundCount">—</span></div>
-          <div id="modelForegroundLanes" class="empty-state">Loading…</div>
+          <div class="model-foreground-split">
+            <div id="modelForegroundLanes" class="empty-state">Loading…</div>
+            <aside id="modelSuggested" class="model-suggested" aria-labelledby="modelSuggestedTitle">
+              <h3 id="modelSuggestedTitle">Suggested for this machine</h3>
+              <p class="hint" id="modelSuggestedHardware">Reading what this machine has…</p>
+              <div id="modelSuggestedList"></div>
+            </aside>
+          </div>
         </section>
         <section class="panel">
           <div class="panel-title"><h2>Available from registered publishers</h2><span class="chip" id="modelAvailableCount">—</span></div>

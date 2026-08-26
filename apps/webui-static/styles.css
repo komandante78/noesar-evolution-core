@@ -1565,11 +1565,16 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* Sotto i 900px una colonna: due riquadri stretti si leggono peggio di uno largo. */
 @media (max-width: 900px) { .model-grid { grid-template-columns: minmax(0, 1fr); } }
 
+/* Owner, 2026-08-26: «vedi come sono grandi le finestre dei modelli? troppo». The floor was
+   set for the catalogue tile, which carries a four-line description and three facts; the cards
+   for what is INSTALLED carry a publisher, a signature and a button, and were being padded out
+   to the same height by it. Lowered to what the shorter card actually needs — the catalogue
+   tiles still grow past it on their own content, which is what a min-height is for. */
 .model-tile {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--text-scale) * 4px);
-  min-height: calc(var(--text-scale) * 210px);
+  gap: calc(var(--text-scale) * 3px);
+  min-height: calc(var(--text-scale) * 140px);
 }
 .model-tile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .model-tile-head h3 {
@@ -1591,12 +1596,19 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* La descrizione e limitata a quattro righe: un riquadro che cresce con il testo distrugge la
    griglia, e la descrizione intera resta leggibile alla fonte. */
 .model-tile .model-description {
-  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
-  line-clamp: 4;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  line-clamp: 3;
   overflow: hidden;
   font-size: calc(var(--text-scale) * 12px);
   margin: 0;
 }
+/* An installed model has no publisher description and never will — it was put here by an
+   operator, not shipped by anybody. Rendering "no description declared" on every one of those
+   cards spends two lines saying nothing about a model the person already chose. The sentence
+   stays in the catalogue lanes, where a publisher COULD have declared one and did not. */
+.model-lane-installed .model-tile .model-description.hint { display: none; }
+.model-lane-installed .model-facts { font-size: calc(var(--text-scale) * 11px); }
+.model-lane-installed .model-tile { min-height: 0; }
 .model-facts {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px; margin: calc(var(--text-scale) * 6px) 0 0;
@@ -1638,3 +1650,19 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    the ellipsis is at the START. Truncating the end would leave every row reading "qwen2.5-…". */
 .model-switch small{opacity:.75;max-width:8ch;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left}
 .model-release{border-top:1px solid var(--line);margin-top:.5rem;padding-top:.75rem}
+
+/* Owner, 2026-08-26, drawn on a screenshot: the installed lanes used half the panel and the
+   other half was empty, so the suggestions go where the space already was. Two columns only
+   when there IS a second column's worth of width — below that the aside follows the lanes
+   rather than squeezing both into something neither can use. */
+.model-foreground-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 22rem); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .model-foreground-split { grid-template-columns: minmax(0, 1fr); } }
+.model-suggested { border-inline-start: 1px solid var(--line); padding-inline-start: 16px; }
+@media (max-width: 1100px) { .model-suggested { border-inline-start: 0; padding-inline-start: 0; border-top: 1px solid var(--line); padding-top: 12px; } }
+.model-suggested h3 { margin: 0 0 4px; font-size: calc(var(--text-scale) * 14px); }
+.model-suggested h4 { margin: 12px 0 6px; font-size: calc(var(--text-scale) * 11px); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.model-suggested-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.model-suggested-row b { font-size: calc(var(--text-scale) * 12px); overflow-wrap: anywhere; }
+.model-suggested-row small { color: var(--muted); white-space: nowrap; font-size: calc(var(--text-scale) * 11px); }
+.model-suggested-fit-gpu { color: var(--green); }
+.model-suggested-fit-cpu { color: var(--amber); }

@@ -81,6 +81,15 @@ export const RUNTIME_ONLY = Object.freeze([
   // The release row (Owner, 2026-08-26): freeing the loaded model is composed by the same
   // factory that composes the rows above it, so it belongs in the same list for the same reason.
   'Free the loaded model',
+  // The hardware-aware suggestions (Owner, 2026-08-26) — composed in app.js from the catalogue
+  // and the hardware probe, so no markup scan can find them.
+  'no accelerator found',
+  'This machine has not been measured, so nothing is ranked for it.',
+  'None of the catalogue models fit this machine. What is here is listed under All models, with its size.',
+  'The catalogue is empty, so there is nothing to suggest.',
+  'fits the GPU',
+  'RAM only, slow',
+  'this model is in use now: free it before deleting it',
   'Free',
   'Free it',
   'This unloads the model from memory. Chat cannot answer until one is started again.',
@@ -729,6 +738,17 @@ const it = {
   'Starting this stops the model that is answering now.': 'Avviarlo ferma il modello che sta rispondendo adesso.',
   'Start it': 'Avvialo',
   'Free the loaded model': 'Libera il modello caricato',
+  'Suggested for this machine': 'Consigliati per questa macchina',
+  'Reading what this machine has…': 'Leggo cosa ha questa macchina…',
+  'no accelerator found': 'nessun acceleratore trovato',
+  'This machine has not been measured, so nothing is ranked for it.':
+    'Questa macchina non è stata misurata, quindi non c’è niente ordinato per lei.',
+  'None of the catalogue models fit this machine. What is here is listed under All models, with its size.':
+    'Nessun modello del catalogo entra in questa macchina. Quelli presenti sono elencati sotto Tutti i modelli, con la loro dimensione.',
+  'The catalogue is empty, so there is nothing to suggest.': 'Il catalogo è vuoto, quindi non c’è niente da suggerire.',
+  'fits the GPU': 'entra nella GPU',
+  'RAM only, slow': 'solo RAM, lento',
+  'this model is in use now: free it before deleting it': 'questo modello è in uso adesso: liberalo prima di eliminarlo',
   'Free': 'Libera',
   'Free it': 'Liberalo',
   'This unloads the model from memory. Chat cannot answer until one is started again.':
