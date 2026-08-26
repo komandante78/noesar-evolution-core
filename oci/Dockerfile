@@ -304,6 +304,17 @@ RUN chmod 0755 /opt/noesar/llama-runtime/ld-linux-x86-64.so.2
 # size cost of GPU support at all here (~870MB of the two `so.12.8.4.1` files, bundled kernels
 # for architectures this one GPU will never run): the alternative is every chat answer coming
 # from CPU on hardware that has a GPU sitting idle next to it, which is the worse trade.
+#
+# `libnccl.so.2` is the FOURTH member of that same family, and it was missed here until 26/08
+# because the hunt above stopped the moment `--list-devices` named a GPU. Without it
+# `libggml-cuda.so` cannot be dlopen'd at all (`libnccl.so.2: cannot open shared object file`),
+# llama.cpp SWALLOWS that failure, `-ngl 99` goes inert, and every surface answers from the CPU
+# — measured at 9.4 tok/s against ~62 on this same GPU. The failure prints nothing unless
+# `GGML_BACKEND_PATH` names the file explicitly, which is how this product came to log
+# `profile: "cuda:0"` for a model it was running on the processor. NCCL itself is multi-GPU
+# collective communication this installation will never call: it is a LINK dependency of the
+# CUDA backend, needed to LOAD it, not to use it. Same symlink-plus-real-file pair as cuBLAS
+# above, so the ~366MB is paid once.
 COPY --from=llama-runtime --chown=10001:10001 \
   /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so.12 \
   /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so.12.8.90 \
@@ -311,6 +322,8 @@ COPY --from=llama-runtime --chown=10001:10001 \
   /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublas.so.12.8.4.1 \
   /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublasLt.so.12 \
   /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublasLt.so.12.8.4.1 \
+  /usr/lib/x86_64-linux-gnu/libnccl.so.2 \
+  /usr/lib/x86_64-linux-gnu/libnccl.so.2.25.1 \
   /opt/noesar/llama-runtime/
 
 # The gesture, inside the container too. `docker exec <c> coden_evolution` and a terminal
