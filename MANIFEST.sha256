@@ -6273,7 +6273,7 @@ c20ba8285a577e912cec83894f335550d9751546309b817a119b7647bea6c605  ./schemas/exec
 b7a8c18f7521640a85fa920bef5c41b4554146b2969ef8bf41d24091c49be260  ./schemas/identity-context.schema.json
 5f9d398674c64bb6b5087a901e76c4f9654646a08b5d4c60dd767a3e73f81148  ./schemas/industry-module-manifest.schema.json
 13210864da950c5ef0975ee68d4d2fc6088d391500a6a67d9b88f813fd56e462  ./schemas/mcp-gateway-declaration.schema.json
-4b475c4045831e19bdbd78f5eb17a9a022dfce832d2dfe6d332ab38bc6cfac71  ./schemas/model-descriptor.schema.json
+0f5947c282fe1c4c099bc77f3ac301c3cbb2a4dd7df783199845b69d3bf2db88  ./schemas/model-descriptor.schema.json
 0d56caeb61f6d320da110f939ef459087a0a2322907d47ac697642d671e9ca0a  ./schemas/owner-entitlement.schema.json
 b2873a3d5eb6134f5a79a7ffb75c1ec65ac3fcc8a856e9a33a76775ad785280f  ./schemas/postgres-production-gate.schema.json
 8ed0d43ddbd05282d74b5e98148e059f0d78b5fa1257ebfed7ee9c60352f25fa  ./schemas/postgres-repository-status.schema.json
