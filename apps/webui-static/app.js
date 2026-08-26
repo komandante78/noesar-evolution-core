@@ -5251,7 +5251,7 @@ function renderSuggestedModels(catalog){
   const note=$('#modelSuggestedHardware');
   if(note){
     const gpu=(modelHardware?.accelerators??[])[0];
-    const ram=Math.round((modelHardware?.memory?.totalBytes??0)/1e9);
+    const ram=Math.round((modelHardware?.memory?.totalBytes??0)/(1024**3));
     note.textContent=modelHardware
       ?(gpu?`${gpu.name} · ${Math.round(gpu.memoryMiB/1024)} GB · ${ram} GB RAM`:`${ram} GB RAM, ${t('no accelerator found')}`)
       :t('This machine has not been measured, so nothing is ranked for it.');
@@ -5283,6 +5283,43 @@ function renderSuggestedModels(catalog){
       `<div class="model-suggested-row"><b translate="no" title="${escapeHtml(item.id)}">${escapeHtml(String(item.id).split('/').pop())}</b>`
       +`<small class="model-suggested-fit-${fit}" translate="no">${escapeHtml(fit==='gpu'?t('fits the GPU'):t('RAM only, slow'))}</small></div>`
     ).join('')).join('');
+}
+/**
+ * The scout, from the page — Owner, 2026-08-26: an agent that goes looking for new models.
+ *
+ * Everything it reports is the server's own answer. The three outcomes are kept apart on
+ * purpose, because collapsing them is how a page starts lying about what happened:
+ *
+ *   PROCEED with additions  — how many, so the number can be checked against the list below
+ *   PROCEED with none       — the search ran and found nothing new, which is a real result
+ *   REFUSE / ASK            — a gate stopped it; NOT the same as finding nothing
+ *
+ * A 503 with `UNCONFIGURED` is the ordinary state of a fresh installation, not a fault: nobody
+ * has registered a search provider yet, and the sentence the server sends says exactly that.
+ * Shown as it arrives rather than rewritten into "the scout failed".
+ */
+async function runModelScout(){
+  const button=$('#modelScoutRun');
+  const status=$('#modelScoutStatus');
+  if(!button||!status)return;
+  button.disabled=true;
+  status.setAttribute('translate','no');
+  status.textContent=t('Looking…');
+  try{
+    const result=await api('/api/v1/models/scout',{method:'POST',body:'{}'});
+    if(result.outcome!=='PROCEED'){
+      status.textContent=`${t('The search was stopped before it ran:')} ${result.stage??result.outcome}`;
+    }else{
+      status.textContent=result.added
+        ?`${result.added} ${t('added')} · ${result.kept} ${t('kept')}`
+        :t('Nothing new — the catalogue already had what was found.');
+      await loadModelCatalogue();
+    }
+  }catch(error){
+    status.textContent=error.value?.error??error.message;
+  }finally{
+    button.disabled=false;
+  }
 }
 let modelCategories=[];
 function modelCategoryTitle(id){
@@ -6133,6 +6170,7 @@ Object.assign(SECTION_LOADERS,{
 wireModelCatalogue();
 codenModelPicker.wire();
 chatModelPicker.wire();
+$('#modelScoutRun')?.addEventListener('click',()=>void runModelScout());
 // Owner, 2026-08-21: "su coden evolution fai come chat per poter mettere i modelli
 // velocemente" — the picker already existed here (s336), reachable only from a small "▾" on
 // the model chip up in `.coden-bar`. Not a second picker: a second door onto the SAME one,

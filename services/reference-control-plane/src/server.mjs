@@ -30,6 +30,7 @@ import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDeta
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
 import { discoverHardware, recommendRuntime } from './hardware.mjs';
+import { buildScoutObjective, findingToEntry, mergeDiscovered } from './model-scout.mjs';
 import {
   securityHeaders, validHostHeader, isWildcardAddress,
   resolveBindScope, allowsUnauthenticatedMetrics, allowsUnauthenticatedHealthDetail,
@@ -902,6 +903,31 @@ function readSeedDescriptors() {
   }
 }
 
+/** Where one scout run leaves what it found. A file in the workspace and not the seed: the seed
+ *  ships with the image and an operator cannot change it without a rebuild, while findings are
+ *  exactly the thing that has to change between rebuilds. */
+const MODEL_DISCOVERED = join(workspace, 'models', 'discovered.json');
+
+/**
+ * What the scout found, as catalogue entries.
+ *
+ * Read on every catalogue build rather than cached, for `readModelDescriptors`' own stated
+ * reason: a finding an operator deleted a moment ago must stop appearing on this read, not the
+ * next restart. `seeded: false` is not set here — these carry `discovered: true` from
+ * `findingToEntry`, which is what the card reads to say where the entry came from.
+ */
+function readDiscoveredDescriptors() {
+  try {
+    const parsed = JSON.parse(readFileSync(MODEL_DISCOVERED, 'utf8'));
+    return Array.isArray(parsed?.entries) ? parsed.entries.filter((entry) => entry?.id) : [];
+  } catch {
+    // No file yet, or a file this build cannot parse. Both mean "nothing has been found", which
+    // is a true answer; a scout that has never run and a corrupt store are not worth
+    // distinguishing on a page whose subject is models.
+    return [];
+  }
+}
+
 /** I titoli leggibili delle categorie, dal seed. Una fonte sola: una mappa ricopiata nel
  * browser sarebbe una seconda risposta alla stessa domanda (`D-0300`, `D-0302`). */
 function readSeedCategories() {
@@ -918,7 +944,13 @@ function readModelDescriptors() {
   // The seed goes in FIRST so an operator's own descriptor with the same id overwrites it
   // below: the workspace is what an operator controls without a rebuild, and a shipped default
   // that could not be overridden would be a boundary rather than a starting point.
-  const seeded = new Map(readSeedDescriptors().map((entry) => [entry.id, entry]));
+  const seeded = new Map([
+    // Findings first, curated second: `Map` keeps the LAST write, so a model someone curated
+    // replaces a search result about it — the same precedence `mergeDiscovered` enforces when
+    // the findings are stored, applied again here because this is the other place they meet.
+    ...readDiscoveredDescriptors().map((entry) => [entry.id, entry]),
+    ...readSeedDescriptors().map((entry) => [entry.id, entry]),
+  ]);
   try {
     for (const name of readdirSync(MODEL_CATALOG_DIR)) {
       if (!name.endsWith('.json')) continue;
@@ -2346,6 +2378,56 @@ const requestListener = async (req, res) => {
     // container. `release()` is already idempotent (`alreadyStopped` rather than an error when
     // nothing is running) and already the shutdown path's own call — this is the same action,
     // reachable while the product keeps running, gated the same way starting one is.
+    // The scout — Owner, 2026-08-26. `model.manage` and not `research.run`: what this changes is
+    // the model catalogue, and the person who may change it is the person who may start a model.
+    // The search itself still goes through the operator's own registered, consented connector,
+    // and both research gates still apply — this route composes a query and stores a result, it
+    // does not reach the network.
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/scout') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const { objective, criteria } = buildScoutObjective(hardware);
+      const scoutState = aiStore.read();
+      let outcome;
+      try {
+        outcome = await runResearchReport({
+          objective, criteria, actorId: authenticated.user.id,
+          gate: researchGateFrom(process.env), tools: scoutState.tools ?? [], executor: toolExecutor,
+          toolId: scoutState.settings?.researchProviderToolId ?? null,
+          ledger, reportStore: researchReportStore, refusalRegistry: researchRefusalRegistry,
+        });
+      } catch (error) {
+        // The provider's own unavailability, in its own words — 503 UNCONFIGURED when nobody has
+        // registered one. "The scout failed" would hide the only sentence that says what to do.
+        return json(res, error.status ?? 502, { error: error.message, kind: error.kind ?? 'INTERNAL' });
+      }
+      if (outcome.outcome !== 'PROCEED') {
+        // A gate said no. Reported as itself rather than as an empty result: a scout that found
+        // nothing and a scout that was refused are different facts about this installation.
+        return json(res, 200, { outcome: outcome.outcome, stage: outcome.stage ?? null, added: 0 });
+      }
+      const discoveredAt = new Date().toISOString();
+      const findings = (outcome.report.candidates ?? [])
+        .map((candidate) => findingToEntry(candidate, { discoveredAt, providerId: outcome.report.toolId ?? null }))
+        .filter(Boolean);
+      const merged = mergeDiscovered({
+        stored: readDiscoveredDescriptors(),
+        findings,
+        seededIds: readSeedDescriptors().map((entry) => entry.id),
+      });
+      mkdirSync(join(workspace, 'models'), { recursive: true });
+      writeFileSync(MODEL_DISCOVERED, `${JSON.stringify({ updatedAt: discoveredAt, entries: merged.entries }, null, 2)}\n`);
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.scout', result: 'completed',
+        details: { added: merged.added, kept: merged.entries.length, reportId: outcome.report.id },
+      });
+      return json(res, 200, {
+        outcome: 'PROCEED', added: merged.added, kept: merged.entries.length,
+        // The query that left, verbatim — the same disclosure the Ricerca destination makes, and
+        // for the same reason: a search a person cannot read is a search they cannot consent to.
+        queryEcho: outcome.report.queryEcho,
+      });
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/models/deactivate') {
       const authenticated = requireSession(req, res, 'model.manage');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
