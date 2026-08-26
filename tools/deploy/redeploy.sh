@@ -6,7 +6,8 @@
 #   tools/deploy/redeploy.sh --source <container> --check
 #   tools/deploy/redeploy.sh --source <container> --apply --authorized-by-owner \
 #                            [--rotate-secret VAR[,VAR…]] [--image TAG] \
-#                            [--set VAR=VALUE]… [--unset VAR[,VAR…]] [--ip ADDR]
+#                            [--set VAR=VALUE]… [--unset VAR[,VAR…]] [--ip ADDR] \
+#                            [--bind SRC:DST[:MODE]]… [--gpus]
 #
 # # Why this exists, measured rather than argued
 #
@@ -62,6 +63,7 @@ HEALTH_INTERVAL="${NOESAR_DEPLOY_HEALTH_INTERVAL:-3}"
 STOP_GRACE="${NOESAR_DEPLOY_STOP_GRACE:-30}"
 
 SOURCE=""; MODE="check"; AUTHORIZED=0; ROTATE_VARS=""; NEW_IMAGE=""; UNSET_VARS=""; SET_PAIRS=(); NEW_IP=""
+EXTRA_BINDS=(); NEW_GPUS=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --source) SOURCE="${2:?--source needs a container name}"; shift 2 ;;
@@ -92,6 +94,13 @@ while [ $# -gt 0 ]; do
     # The address is READ BACK and carried like everything else below; this flag exists to
     # RE-ESTABLISH a pin that was already lost, which is not a thing a read-back can do.
     --ip) NEW_IP="${2:?--ip needs an address}"; shift 2 ;;
+    # Same shape as `--ip`: a mount or a device grant lives on the CONTAINER, `docker inspect`
+    # reads it back below so a normal redeploy carries it forward automatically once it exists —
+    # but nothing can read back a bind or a device request that was never there. `--bind` and
+    # `--gpus` are how the FIRST redeploy establishes one, exactly as `--ip` re-establishes a
+    # pin the read-back cannot invent on its own.
+    --bind) EXTRA_BINDS+=("${2:?--bind needs SRC:DST[:MODE]}"); shift 2 ;;
+    --gpus) NEW_GPUS=1; shift ;;
     --image) NEW_IMAGE="${2:?--image needs a tag}"; shift 2 ;;
     -h|--help) sed -n '3,10p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
@@ -197,6 +206,27 @@ preflight() {
   else
     warn "address: NOT pinned — the replacement takes whatever the network hands out, and anything naming a fixed address for this container is already wrong (--ip re-establishes one)"
   fi
+  # A GPU device request lives on the container, exactly like the address pin above, and for the
+  # exact same reason `--gpus` exists: `docker run` without it does not fail, it silently starts
+  # a replacement that cannot see the card, and the first symptom is chat answering from CPU
+  # (slow) rather than from nothing (loud) — the same class of quiet loss `F-ROT-001` named.
+  local gpu_now
+  gpu_now="$(docker inspect "$SOURCE" --format '{{range .HostConfig.DeviceRequests}}{{range .Capabilities}}{{range .}}{{.}}{{end}}{{end}}{{end}}')"
+  if [ "${NEW_GPUS:-0}" = "1" ]; then
+    ok "GPU: will be granted (--gpus)$([ "$gpu_now" = "gpu" ] && echo " — already granted today")"
+  elif [ "$gpu_now" = "gpu" ]; then
+    ok "GPU: already granted, and the replacement will carry that grant"
+  else
+    warn "GPU: not granted — the local model runtime falls back to CPU (--gpus grants it)"
+  fi
+
+  local bad_bind=0 src
+  for b in ${EXTRA_BINDS[@]+"${EXTRA_BINDS[@]}"}; do
+    src="${b%%:*}"
+    [ -e "$src" ] || { bad "--bind source does not exist on this host: $src"; bad_bind=1; }
+  done
+  [ "$bad_bind" -eq 0 ] && [ "${#EXTRA_BINDS[@]}" -gt 0 ] && ok "new bind(s) verified on host: ${#EXTRA_BINDS[@]}"
+
   [ "$state" = "running" ] && ok "state: running" || bad "state is '$state', not running"
   # `none` is accepted: an image with no HEALTHCHECK is a fact about that image, not a fault.
   case "$health" in
@@ -278,7 +308,8 @@ fi
 [ "$FAIL" -eq 0 ] || { say "REFUSED: preflight failed — not deploying."; exit 1; }
 [ "$AUTHORIZED" -eq 1 ] || { say "REFUSED: --apply requires --authorized-by-owner."; exit 2; }
 [ -n "$ROTATE_VARS" ] || [ -n "$NEW_IMAGE" ] || [ "${#SET_PAIRS[@]}" -gt 0 ] || [ -n "$UNSET_VARS" ] || [ -n "$NEW_IP" ] \
-  || { say "REFUSED: --apply changes nothing — name --rotate-secret, --image, --set, --unset or --ip."; exit 2; }
+  || [ "$NEW_GPUS" = "1" ] || [ "${#EXTRA_BINDS[@]}" -gt 0 ] \
+  || { say "REFUSED: --apply changes nothing — name --rotate-secret, --image, --set, --unset, --ip, --gpus or --bind."; exit 2; }
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 WORK="$(mktemp -d)"; ENVFILE="$WORK/env"
@@ -309,6 +340,9 @@ RO_ROOTFS="$(docker inspect "$SOURCE" --format '{{.HostConfig.ReadonlyRootfs}}')
 IP_NOW="$(docker inspect "$SOURCE" --format \
   '{{range .NetworkSettings.Networks}}{{if .IPAMConfig}}{{.IPAMConfig.IPv4Address}}{{end}}{{end}}')"
 IP="${NEW_IP:-$IP_NOW}"
+# Same shape as IP above: read back what the predecessor already had, OR what was just asked for.
+GPU_NOW="$(docker inspect "$SOURCE" --format '{{range .HostConfig.DeviceRequests}}{{range .Capabilities}}{{range .}}{{.}}{{end}}{{end}}{{end}}')"
+WANT_GPU=0; { [ "$GPU_NOW" = "gpu" ] || [ "$NEW_GPUS" = "1" ]; } && WANT_GPU=1
 WORKSPACE="$(docker inspect "$SOURCE" --format '{{range .Mounts}}{{if eq .Destination "/workspace"}}{{.Source}}{{end}}{{end}}')"
 docker inspect "$SOURCE" --format '{{range .Config.Env}}{{println .}}{{end}}' > "$ENVFILE"
 chmod 0600 "$ENVFILE"
@@ -339,6 +373,10 @@ mapfile -t BIND_FLAGS < <(docker inspect "$SOURCE" --format \
   '{{range .HostConfig.Binds}}-v
 {{.}}
 {{end}}' | grep -v '^$' || true)
+# `--bind` establishes a NEW mount the read-back above cannot invent; every redeploy after this
+# one carries it forward automatically, the same way `--ip` re-establishes a pin once and the
+# read-back keeps it from then on.
+for b in ${EXTRA_BINDS[@]+"${EXTRA_BINDS[@]}"}; do BIND_FLAGS+=(-v "$b"); done
 # Two settings that live on the CONTAINER and not in the image. A recreate loses them silently:
 #   --stop-timeout : without it Docker falls back to 10s, and a supervisor with a database under
 #                    it needs the grace this installation was given (§3a wants a CLEAN shutdown).
@@ -427,6 +465,8 @@ if [ "${#SET_PAIRS[@]}" -gt 0 ] || [ -n "$UNSET_VARS" ]; then
 fi
 [ -n "$NEW_IMAGE" ] && ok "image will change: $IMAGE_NOW -> $IMAGE"
 [ -n "$NEW_IP" ] && ok "address will change: ${IP_NOW:-unpinned} -> $NEW_IP"
+[ "$NEW_GPUS" = "1" ] && [ "$GPU_NOW" != "gpu" ] && ok "GPU: will be granted for the first time"
+[ "${#EXTRA_BINDS[@]}" -gt 0 ] && ok "bind(s) added: ${EXTRA_BINDS[*]}"
 
 # ── ROLLBACK, AUTOMATIC ───────────────────────────────────────────────────────────────────────
 # Printing rollback instructions and hoping somebody runs them is not a rollback.
@@ -487,8 +527,9 @@ trap 'fail_after_rename "an unexpected command failed after the rename"' ERR
 # ── STEP 7 · CREATE THE REPLACEMENT FROM THE RECIPE READ BACK ─────────────────────────────────
 RO_FLAG=(); [ "$RO_ROOTFS" = "true" ] && RO_FLAG=(--read-only)
 IP_FLAG=(); [ -n "$IP" ] && IP_FLAG=(--ip "$IP")
+GPU_FLAG=(); [ "$WANT_GPU" = "1" ] && GPU_FLAG=(--gpus all)
 docker run -d --name "$SOURCE" --env-file "$ENVFILE" --network "$NETWORK" --restart "$RESTART" \
-  "${RO_FLAG[@]}" "${IP_FLAG[@]}" "${STOP_FLAG[@]}" "${LOGDRIVER_FLAG[@]}" "${LOG_FLAGS[@]}" \
+  "${RO_FLAG[@]}" "${IP_FLAG[@]}" "${GPU_FLAG[@]}" "${STOP_FLAG[@]}" "${LOGDRIVER_FLAG[@]}" "${LOG_FLAGS[@]}" \
   "${PORT_FLAGS[@]}" "${BIND_FLAGS[@]}" "${TMPFS_FLAGS[@]}" "$IMAGE" >/dev/null \
   || fail_after_rename "the replacement could not be created"
 ok "replacement created from $IMAGE"

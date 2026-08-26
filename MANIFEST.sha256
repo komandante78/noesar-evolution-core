@@ -767,7 +767,7 @@ ca0060059f49d61fbb7d508e92ece9930bfbd29e82ad56535089a3c465e3bb65  ./experiments/
 857b5927c635a511ff4680dab831e8fc2ff407f42381127293fa2769ec3df097  ./hardware-probes/windows.ps1
 1f14008528b0b5c301df7c299629b0fcf7eb2f1036046b486b1efd4c498338f3  ./oci/.dockerignore
 fe0ee15883007cdf4dfc8bd0c3d9b757cb2ba89094002939a4a735d704b69afa  ./oci/Containerfile
-48a9719a03304f76a0bc007d4cc95a4f77a3e9c68d11bd8935931265ebe772eb  ./oci/Dockerfile
+71efd544ae55c61d731c83010898a3c14ba31101f744f4116149ca536ca52f23  ./oci/Dockerfile
 8cb8e014671f00b9280aa6c974bb2c4531ab68106f585f452b4a6e0241af9279  ./oci/Dockerfile.phase4
 7bf98f27ec620b01a7a31bd531a1adc6770236d7425f15c04eecd1d4f30f1017  ./oci/Dockerfile.phase4-arch005-adapter-gate
 e864a7c01c7486a20eb2679a7660fe9ae1e7ae8b1f6fc60f13c8a11096bc2e38  ./oci/Dockerfile.phase4-arch005-manifest-precision
@@ -6392,7 +6392,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 536bbea9e3530530f58222f027d7215906f655a3f3ba1757ae0a9f8315eb5792  ./services/reference-control-plane/src/scim.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-5f702e57c3b46d4636452eb3beaba9f1b45708af8c85c72369f6632e407b4145  ./services/reference-control-plane/src/server.mjs
+dca2806da7bb6b1a243983bbf084b2724a300679b783042465ea78c1c6622e1d  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 6664621ee52e27eca618636107c5ec2a35c7138e7de1ee95a6be804647cfcd46  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6526,7 +6526,7 @@ ed93607cb2f6eeb8458e207c7f8ffa92d3e85eab8fdd859bf1dea1dbd6b2f36a  ./services/ref
 37dff3ddf3d8216d60a8ea44a4371fa58eafc9093fab2e6e5318109a1ad6bc80  ./services/reference-control-plane/test/local-model-runtime.test.mjs
 bc2c8ab71d5c7c3e7d1b943edf7513541c51cc3f52e76e6719a4f1b879c3c05e  ./services/reference-control-plane/test/logging.test.mjs
 f7ce1a2e234f00ce243fbf1cfe9dd603b862b13915073e651636ca319e29ccf0  ./services/reference-control-plane/test/login-malformed-username.test.mjs
-8496fa1509428be18c05c540ccf28336a2211304fefa2dfda22c40f9f06dd4d9  ./services/reference-control-plane/test/manifest-integrity.test.mjs
+fd06094a7ce396924aafaa0b3733632ce9dc75ea94cb1303bfd5b9cfc194e1eb  ./services/reference-control-plane/test/manifest-integrity.test.mjs
 939f176a6c9cedc6b279007f599761b71e55de0e2156e8564376c7391c058a09  ./services/reference-control-plane/test/memory-compaction.test.mjs
 5b726ae3dd1b31bac8c48519f77ef013d04a8028621edb5a44ab7f82e0e0c36e  ./services/reference-control-plane/test/memory-model-swap.test.mjs
 32fc0d679f433fc19a93667aaaccdbe2efacbb214d87b688f0da8ee408fc5f5b  ./services/reference-control-plane/test/memory-service.test.mjs
@@ -6683,7 +6683,7 @@ a1df315d15d1e88dba83d8fd5383929050bfbd78b1d554d5e33d00b87d6ff0fc  ./tools/coden-
 9df693011fe6357cb0da049868122bbcfac558e04e303869cb3f94b1ea125998  ./tools/coden-evolution.ps1
 c7666a02c2a951f4632cbbad6a2f7906fe9105222a43e09a12a15e7984e034d7  ./tools/computed-style-snapshot.mjs
 8bed5e305c66f2934f2af9146d78aaf63be51718d99d79cb9845509a81d813ea  ./tools/create-rust-build-provenance.py
-17e9fca0707fa93a3bfed25aac905f90eb540fea69bd3cf1eb92470029b93e8d  ./tools/deploy/redeploy.sh
+5ab1750e73862b786622f1fb32086fe42cd68b2879eb7b6f3d110c12f688a286  ./tools/deploy/redeploy.sh
 8ee8fc4275e9c17c82b03288a365fe4424c90d9e0a627e74ee21207f394c3bc9  ./tools/deploy/test/fake-docker
 2016e5a17e38569ab5a56532bea832eb6d23c674d9202867e3071f47d700d23b  ./tools/deploy/test/redeploy-fixture.sh
 cc8572dbde0c7b9b9940b9b9bb6a82e0b6103ffa3adba986c72e1cb0d80af536  ./tools/derive-tasks-from-history.mjs

@@ -13,7 +13,7 @@ import {
 } from './data-plane.mjs';
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
-import { LocalModelRuntime, activateModel } from './local-model-runtime.mjs';
+import { LocalModelRuntime, activateModel, RuntimeMode } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition, loadableModels } from './model-catalog.mjs';
 // D-0520: the transport `planAcquisition` was planning FOR. The manager owns the disk and the
 // jobs; the transport owns the bytes; this file owns neither and only wires them to a route.
@@ -573,6 +573,39 @@ function chatAnswerFrom() {
       reason: null,
     }
     : { answers: false, providerId: null, model: null, evidence: null, lastSeenAt: null, reason };
+}
+
+/**
+ * Start the configured local model at boot, when an operator has declared one — the missing
+ * half of the symmetry `localModels.release()` already has in the shutdown path below.
+ *
+ * Deliberately NOT `activateInstalledModelById`: that path exists for a person switching chat
+ * to a model picked from the catalogue, and it gates on a verified, product-acquired artefact
+ * (`readPresentModels`). A boot default was never going to clear that bar EITHER, on an
+ * installation that has been answering from a hand-started sidecar container with no such gate
+ * at all. A `launchCommand` an operator wrote into `config/local-model.json` is the same trust
+ * boundary as that sidecar, expressed as configuration instead of a container someone remembered
+ * to start.
+ */
+async function bootLocalModelIfConfigured() {
+  const config = localModels.config();
+  if (config.mode === RuntimeMode.DISABLED || !config.launchCommand) return;
+  try {
+    const nowUnix = Math.floor(Date.now() / 1000);
+    const granted = adapterGrants.request({
+      resource: 'local-model-runtime', operation: 'EXECUTE', actor: 'system:boot', nowUnix,
+    });
+    const approved = adapterGrants.approve({ runId: granted.runId, approverId: 'system:boot', nowUnix });
+    const launched = await localModels.launch({ capabilityToken: approved.token });
+    logger.info('local-model.boot-launched', {
+      component: 'local-model', model: config.model, profile: launched.profileId,
+    });
+  } catch (error) {
+    // Chat still comes up either way — /model already reports why it cannot answer, the same
+    // shape s341 built for a person clicking activate. A boot that could not start a model is a
+    // fact for that lane to carry, not a reason to refuse to serve the rest of the product.
+    logger.warn('local-model.boot-launch-failed', { component: 'local-model', error: error.message });
+  }
 }
 
 async function activateInstalledModelById(id, actor) {
@@ -5216,6 +5249,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         return;
       }
     }
+
+    // Fire-and-forget, deliberately not awaited: `launch()` itself polls the endpoint until
+    // ready (or its own timeout) when one is configured, and gating server.listen's callback
+    // on that would hold /livez, the watchdog and the signal handlers below hostage to however
+    // long a model takes to load. `bootLocalModelIfConfigured` logs its own outcome either way.
+    bootLocalModelIfConfigured();
 
     await watchdog.runOnce({ force:true }).catch(() => {});
     watchdog.start(Number(process.env.NOESAR_WATCHDOG_INTERVAL_MS ?? 15_000));

@@ -28,6 +28,7 @@ import {
   formatLine,
   trackedFiles,
   isSelf,
+  isAttestable,
   MANIFEST_NAME,
   repoRoot,
 } from '../../../tools/generate-manifest.mjs';
@@ -200,5 +201,15 @@ test('the real repository manifest is complete and correct', () => {
       `notListed:${verdict.notListed.length} untracked:${verdict.untracked.length} ` +
       `missingFile:${verdict.missingFile.length}. Repair: node tools/generate-manifest.mjs`,
   );
-  assert.equal(verdict.entries, trackedFiles(repoRoot).length);
+  // Not a bare count of every tracked path: `oci/vendor/llama-cpp/` (2026-08-26) is the first
+  // symlink this repository has ever committed, and a symlink is tracked with no content of its
+  // own to hash — `isAttestable` is the shared predicate `check()` itself already uses to keep
+  // `notListed` from reporting one as a hole the generator would refuse to fill. This assertion
+  // used to be a bare `trackedFiles(repoRoot).length` and passed only because, as generate-
+  // manifest.mjs's own comment recorded on 2026-08-21, the repository then held zero such
+  // entries — a latent mismatch, not an absent one, and this is where it stopped being latent.
+  assert.equal(
+    verdict.entries,
+    trackedFiles(repoRoot).filter((rel) => isAttestable(path.join(repoRoot, rel))).length,
+  );
 });

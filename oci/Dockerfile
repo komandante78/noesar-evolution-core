@@ -68,6 +68,14 @@ RUN cd /build/rust \
  && test -x /build/rust/target/release/noesar-sandbox
 
 # ------------------------------------------------------------------------------------------
+# The inference engine — a public, versioned release, pinned by DIGEST and not by the moving
+# `:server-cuda` tag, so this line still produces the exact same bytes years from now. Recorded
+# here rather than in a separate provenance file because a `FROM` pin already IS the
+# reproducibility claim: `docker build` never re-resolves a digest, only a tag.
+# ------------------------------------------------------------------------------------------
+FROM ghcr.io/ggml-org/llama.cpp@sha256:4c0ece468721077a8bff8c114f8b0a92a8604ed310c91939fadfe37595a53b9e AS llama-runtime
+
+# ------------------------------------------------------------------------------------------
 # The runtime.
 # ------------------------------------------------------------------------------------------
 FROM ${NODE_IMAGE}
@@ -106,7 +114,7 @@ LABEL org.noesar.lineage="single-file-reconciliation-of-77-overlays"
 # Media and document tooling, plus the unprivileged identity everything else runs as. `10001`
 # is not cosmetic: the module boundary of `D-0290` is drawn with it.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends unzip poppler-utils tesseract-ocr ffmpeg ca-certificates \
+ && apt-get install -y --no-install-recommends unzip poppler-utils tesseract-ocr ffmpeg ca-certificates libgomp1 \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 10001 noesar \
  && useradd --uid 10001 --gid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin noesar \
@@ -246,6 +254,65 @@ RUN chmod 0755 /opt/noesar/bin/atomd \
  && [ -n "$DECLARED" ] || { echo "atomd provenance declares no sha256" >&2; exit 1; } \
  && [ "$DECLARED" = "$ACTUAL" ] || { echo "atomd digest mismatch: declared=$DECLARED image=$ACTUAL" >&2; exit 1; }
 
+# The inference engine, inside the product too — Owner, 2026-08-26.
+#
+# «Deve essere tutto dentro un solo container... automatico su tutti i dispositivi.» Same
+# motivation as the ATOM block above: until this line, chat only answered because a SIBLING
+# container (`atom-evolution-model`) was started by hand, on a host this image had no GPU access
+# to even if it had wanted to run it. Unlike ATOM, llama.cpp is not a second repository this one
+# must vendor a built copy of — it is a public, versioned release, so the `llama-runtime` stage
+# above pulls it directly, pinned to an image DIGEST rather than the moving `:server-cuda` tag,
+# which is the same reproducibility guarantee atomd's provenance file gives by hand.
+#
+# A first attempt committed the extracted files under `oci/vendor/llama-cpp/` instead, mirroring
+# atomd literally. That does not work for THIS artefact: `libggml-cuda.so` alone is 159MB, and
+# GitHub refuses any single file over 100MB outright — measured by the push failing, not by
+# reading a limits page first. The digest pin below is the correct shape, not a workaround for
+# the size limit: it needs no repository storage at all, and `docker build` re-resolves nothing
+# behind that digest for as long as this line names it.
+COPY --from=llama-runtime --chown=10001:10001 /app/ /opt/noesar/llama-runtime/
+RUN chmod 0755 /opt/noesar/llama-runtime/llama-server
+
+# `llama-runtime`'s own base is newer than ${NODE_IMAGE} (bookworm, glibc 2.36): measured by
+# running the copied binary, not by comparing version numbers first — it failed with
+# `GLIBC_2.38' not found` and three more symbols one level down in libstdc++. Rebasing this whole
+# image to chase one binary's toolchain is not on the table (`postgresql-18=18.4-1.pgdg12+1`
+# above is pinned to bookworm-pgdg specifically), and neither is patching the system's own libc,
+# which every other process in this container also links against. So the files a portable Linux
+# binary actually needs — the dynamic LOADER and the libraries under its version floor — travel
+# alongside it instead, invoked explicitly rather than trusted to the base image's own `/lib`:
+# `local-model.json`'s `launchCommand` names the vendored loader first, with `--library-path`
+# pointed at this directory, so resolution never falls through to the host copies these
+# deliberately do not replace. Verified by running the result, the same way the defect was found.
+COPY --from=llama-runtime --chown=10001:10001 \
+  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 \
+  /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 \
+  /usr/lib/x86_64-linux-gnu/libm.so.6 \
+  /usr/lib/x86_64-linux-gnu/libstdc++.so.6 \
+  /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33 \
+  /lib/x86_64-linux-gnu/libc.so.6 \
+  /opt/noesar/llama-runtime/
+RUN chmod 0755 /opt/noesar/llama-runtime/ld-linux-x86-64.so.2
+
+# The CUDA TOOLKIT runtime, distinct from the CUDA DRIVER: `nvidia-container-toolkit` injects
+# `libcuda.so.1` and the device nodes at container start (a property of the HOST's driver, and
+# already how `atom-evolution-model` got GPU access) — but `libcudart.so.12`, `libcublas.so.12`
+# and `libcublasLt.so.12` are toolkit components the llama.cpp build links against and no host
+# ever provides, because they are not part of any driver. `--list-devices` reported "no usable
+# GPU found" with `LD_DEBUG=libs` showing every one of these three searched for and found
+# nowhere — not a driver problem, a missing dependency one layer down from it. cuBLAS is the
+# size cost of GPU support at all here (~870MB of the two `so.12.8.4.1` files, bundled kernels
+# for architectures this one GPU will never run): the alternative is every chat answer coming
+# from CPU on hardware that has a GPU sitting idle next to it, which is the worse trade.
+COPY --from=llama-runtime --chown=10001:10001 \
+  /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so.12 \
+  /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so.12.8.90 \
+  /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublas.so.12 \
+  /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublas.so.12.8.4.1 \
+  /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublasLt.so.12 \
+  /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublasLt.so.12.8.4.1 \
+  /opt/noesar/llama-runtime/
+
 # The gesture, inside the container too. `docker exec <c> coden_evolution` and a terminal
 # opened into the container both get the same one word the host gets — the underscore is the
 # Owner's, fixed in `16` §4.2b, while the repository file keeps the hyphen every other tool
@@ -274,10 +341,17 @@ RUN chmod 0755 /opt/noesar/tools/coden-evolution /opt/noesar/tools/install-coden
 # the rest: directories `0755`, executables `0755`, everything else `0644`. The explicit
 # `chmod`s above stay where they are: each sits next to the step that asserts something about
 # that file, and this one is a property of the whole tree, not of any file in it.
+#
+# `-type f` on the final assertion too, added when `oci/vendor/llama-cpp` (2026-08-26) put this
+# repository's first symlinks under /opt/noesar: `find -perm -o+w` with no type filter matches a
+# symlink's OWN mode bits, which are conventionally `lrwxrwxrwx` and meaningless — the kernel
+# enforces the TARGET's permissions when the link is followed, and every target here already went
+# through the `-type f` passes above. Asserting on the link too would refuse a tree that is
+# actually fine, for a reason this exact check exists to catch never actually being true.
 RUN find /opt/noesar -type d -exec chmod 0755 {} + \
  && find /opt/noesar -type f -perm -u+x -exec chmod 0755 {} + \
  && find /opt/noesar -type f ! -perm -u+x -exec chmod 0644 {} + \
- && test "$(find /opt/noesar -perm -o+w | wc -l)" = "0"
+ && test "$(find /opt/noesar -type f -perm -o+w | wc -l)" = "0"
 
 ENV NODE_ENV=production \
     NOESAR_RUNTIME_ROOT=/opt/noesar \
