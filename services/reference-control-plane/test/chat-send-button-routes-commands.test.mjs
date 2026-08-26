@@ -44,3 +44,30 @@ test('submitComposer() itself still tells a `/` line from prose', () => {
   assert.match(body, /submitChatPrompt\(typed\)/, 'a `/` line must reach submitChatPrompt, the command path');
   assert.match(body, /else sendChat\(\)/, 'plain text must still reach sendChat, the prose path');
 });
+
+test('picking a command from the menu (click) runs it when it takes no required argument', () => {
+  assert.match(
+    appJs,
+    /button\.addEventListener\('click',\(\)=>runOrCompleteCommand\(button\.dataset\.command\)\)/,
+    'the menu row click handler must call runOrCompleteCommand, not completeCommand — ' +
+    'Owner-reported: picking a row only ever filled the box, a click was never itself the action',
+  );
+});
+
+test('Enter on the highlighted row also runs it, through the same function as a click', () => {
+  assert.match(
+    appJs,
+    /if\(event\.key==='Enter'&&!event\.shiftKey&&!menu\.hits\.some\(\(c\)=>c\.name===menu\.parsed\.word\)\)\{\n\s*event\.preventDefault\(\);return runOrCompleteCommand\(menu\.hits\[commandMenuIndex\]\.name\);/,
+  );
+});
+
+test('runOrCompleteCommand() only completes (never runs) a command with a required argument', () => {
+  const body = appJs.match(/function runOrCompleteCommand\(name\)\{([\s\S]*?)\n\}/)?.[1] ?? '';
+  assert.match(
+    body,
+    /if\(command\.argument\.startsWith\('<'\)\)return completeCommand\(name\);/,
+    "a command like /plan <goal> has nowhere to put the argument but the composer, so it must " +
+    'still only complete — running it with an empty argument would be a worse regression',
+  );
+  assert.match(body, /submitChatPrompt\(/, 'a command with no required argument must actually run');
+});

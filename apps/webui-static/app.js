@@ -1429,7 +1429,7 @@ function renderCommandMenu(){
     :'<p>No command matches that.</p>';
   // Bound within the menu, not through a page-wide selector: a second container rendering the
   // same markup would otherwise double-bind and fire each click twice.
-  box.querySelectorAll('[data-command]').forEach((button)=>button.addEventListener('click',()=>completeCommand(button.dataset.command)));
+  box.querySelectorAll('[data-command]').forEach((button)=>button.addEventListener('click',()=>runOrCompleteCommand(button.dataset.command)));
   // Owner-reported: arrow-key navigation moved `commandMenuIndex` but never brought the newly
   // active row into view, so a list taller than the box required the scrollbar by hand. The
   // sibling menu (`setPaletteActive`, global search) already does this; this one never did.
@@ -1443,6 +1443,23 @@ function completeCommand(name){
   $('#chatInput').value=`/${command.name}${command.argument?' ':''}`;
   $('#chatInput').focus();
   renderCommandMenu();
+}
+// Owner-reported (2026-08-26): the two-act split above ("choosing and committing stay two
+// acts") reads correctly for a command like `/plan <goal>` — clicking it has nowhere to put
+// the goal but the composer — but for a command that takes no REQUIRED argument, the split
+// bought nothing except a second, easy-to-forget Invio: choosing `/status` from the menu is
+// already the whole decision. Split the two cases on the same field the menu already prints
+// (`argument`, e.g. `<goal>` vs `[id]` vs `''`): a leading `<` marks a required argument
+// nobody can supply by picking a row, so those still only complete; everything else — no
+// argument, or an optional one this account can leave off (`/model`, `/status`, `/help`…) —
+// runs the moment it is chosen, by a click OR by Enter on the highlighted row.
+function runOrCompleteCommand(name){
+  const command=AGENT_COMMANDS.find((entry)=>entry.name===name);
+  if(!command)return;
+  if(command.argument.startsWith('<'))return completeCommand(name);
+  $('#chatCommands')?.classList.add('hidden');
+  $('#chatInput').value='';
+  void submitChatPrompt(`/${command.name}`);
 }
 $('#chatInput').addEventListener('input',()=>{commandMenuIndex=0;renderCommandMenu();});
 // The composer has two ways to submit — Enter and the ➔ button — and only Enter used to
@@ -1466,6 +1483,15 @@ $('#chatInput').addEventListener('keydown',(event)=>{
     }
     if(event.key==='Tab'){event.preventDefault();return completeCommand(menu.hits[commandMenuIndex].name);}
     if(event.key==='Escape'){event.preventDefault();$('#chatCommands')?.classList.add('hidden');return undefined;}
+    // Owner-reported (2026-08-26): typing a prefix (`/m`) and pressing Enter — instead of
+    // Tab or a click — reached submitComposer() with the raw prefix, which is not an exact
+    // command name, so it always failed as `unknown`. Enter never looked at the highlighted
+    // row the menu was already showing. Same completion Tab already does, only skipped when
+    // what's typed is ALREADY an exact name — typing the full word and pressing Enter must
+    // still run it immediately, not complete it into itself and wait for a second Enter.
+    if(event.key==='Enter'&&!event.shiftKey&&!menu.hits.some((c)=>c.name===menu.parsed.word)){
+      event.preventDefault();return runOrCompleteCommand(menu.hits[commandMenuIndex].name);
+    }
   }
   if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();return submitComposer();}
   return undefined;
