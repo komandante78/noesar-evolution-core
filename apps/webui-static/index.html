@@ -963,8 +963,8 @@
       </section>
 
       <section class="view" id="view-research">
-        <div class="section-header"><div><p class="eyebrow">GOAL AND CRITERIA · NOT A SEARCH BOX</p><h1>Research</h1><p>A report with compared candidates, the evidence behind each one, and what was not verified.</p></div></div>
-        <section class="panel"><p>Takes a <b>goal and criteria</b>, not a string, and returns a report reachable through a temporary link that expires and can be revoked — the link is <b>not public of itself</b> (<code>UI-080…UI-089</code>). Evidence quality is stated per candidate, because reviews can be bought and an average score is not evidence.</p><p class="hint">Two gates stand in front of it (<code>UI-090…UI-096</code>): on the intent before anything leaves, and on the content that comes back, before it is ever shown — three outcomes, not two (proceed · ask · refuse), each refusal naming its category. It refuses the <b>effect</b>, never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.</p></section>
+        <div class="section-header"><div><p class="eyebrow">ONE LINE · ASK IT THE WAY YOU WOULD SAY IT</p><h1>Research</h1><p>A report with compared candidates, the evidence behind each one, and what was not verified.</p></div></div>
+        <section class="panel"><p>Takes <b>one line, the way you would say it</b>, and returns a report that is <b>kept until you delete it</b>. Its link needs a session on this installation — it is <b>not public of itself</b> (<code>UI-080…UI-089</code>). Evidence quality is stated per candidate, because reviews can be bought and an average score is not evidence.</p><p class="hint">Two gates stand in front of it (<code>UI-090…UI-096</code>): on the intent before anything leaves, and on the content that comes back, before it is ever shown — three outcomes, not two (proceed · ask · refuse), each refusal naming its category. It refuses the <b>effect</b>, never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.</p></section>
         <section class="panel" id="researchProviderPanel">
           <div class="panel-title"><h2>Research provider</h2><span id="researchProviderStatus" class="badge badge-off">Checking…</span></div>
           <p class="hint">This installation reaches the open web only through a provider you configure and consent to — the same external-tool mechanism as any other connector (<a href="#/settings/privacy">Settings → Privacy and connectors</a>). No provider is built in.</p>
@@ -975,9 +975,12 @@
         </section>
         <section class="panel">
           <div class="panel-title"><h2>New report</h2></div>
-          <label>Goal<input id="researchObjective" placeholder="What do you want compared?" maxlength="500"></label>
-          <label>Criteria<input id="researchCriterionInput" placeholder="Type a criterion and press Enter"></label>
-          <div class="chip-list" id="researchCriteriaChips"></div>
+          <!-- Owner, 2026-08-27: «deve essere una ricerca naturale». Two fields, then commas,
+               then neither: `buildSearchQuery` already joins everything with spaces, so a plain
+               sentence sends the identical query. The second field was never protecting the
+               search — it asked a form to be filled in, and twice in one day it silently ate
+               what was typed into it. A field that cannot exist cannot lose anything. -->
+          <label>Search<input id="researchObjective" placeholder="What are you looking for?" maxlength="500"></label>
           <button class="primary" id="researchRunButton" type="button">Run research</button>
         </section>
         <!-- Owner, 2026-08-27: a way back to what was already asked. Deliberately NOT a history —
@@ -985,7 +988,7 @@
              see research.mjs own comment. -->
         <section class="panel" id="researchRecentPanel">
           <div class="panel-title"><h2>Saved reports</h2><span class="chip" id="researchRecentCount">—</span></div>
-          <p class="hint">Kept until you delete them. Open one, change its goal and criteria before asking again, run the same search again, or delete it — deleting takes two presses.</p>
+          <p class="hint">Kept until you delete them. Open one, change what you asked before asking again, run the same search again, or delete it — deleting takes two presses.</p>
           <div id="researchRecentList" class="empty-state">Nothing has been searched yet.</div>
         </section>
         <section class="panel hidden" id="researchOutcomePanel"></section>

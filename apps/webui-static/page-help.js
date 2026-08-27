@@ -80,8 +80,8 @@ export const PAGE_HELP = Object.freeze({
     howto: 'Type and function are what the publisher declared, never what the product guessed from a name — `undeclared` means nobody said, not that the model cannot do it. Acquiring is egress, and it is switched off unless the local model runtime is enabled.',
   },
   research: {
-    what: 'Research takes a goal and criteria, not a search string, and returns a report with the evidence behind each candidate and what was NOT verified.',
-    howto: 'Write criteria you could be shown to be wrong about. Evidence quality is stated per candidate because reviews can be bought and an average score is not evidence. No provider is built in: you configure and consent to one.',
+    what: 'Research takes one line, the way you would say it, and returns a report with the evidence behind each candidate and what was NOT verified. Reports are kept until you delete them.',
+    howto: 'Ask for something you could be shown to be wrong about. Evidence quality is stated per candidate because reviews can be bought and an average score is not evidence. No provider is built in: you configure and consent to one.',
   },
   settings: {
     what: 'One destination holding every setting. This page itself is static — it owns no content, and each section inside it loads its own.',

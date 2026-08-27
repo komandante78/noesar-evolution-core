@@ -4959,30 +4959,14 @@ const RESEARCH_CATEGORY_LABELS={
   'legal-evasion':'Evading a legal control',
 };
 function researchCategoryLabel(category){return RESEARCH_CATEGORY_LABELS[category]??category;}
-let researchCriteria=[];
 let researchLastRefusalId=null;
 function researchReportIdFromHash(){
   const query=(location.hash||'').split('?')[1]||'';
   return new URLSearchParams(query).get('report');
 }
-function renderResearchCriteriaChips(){
-  const box=$('#researchCriteriaChips');
-  box.innerHTML=researchCriteria.map((value,index)=>`<span class="chip">${escapeHtml(value)} <button type="button" data-remove-criterion="${index}" aria-label="Remove ${escapeHtml(value)}">×</button></span>`).join('');
-  $$('[data-remove-criterion]').forEach((button)=>button.addEventListener('click',()=>{researchCriteria.splice(Number(button.dataset.removeCriterion),1);renderResearchCriteriaChips();}));
-}
-// n.13 — a criterion typed but not confirmed with Enter was thrown away in silence, and the
-// report went out with `criteria: []` while the person watching had just typed three. The
-// pending text is committed here, in the ONE place both the key and the button reach.
-function commitPendingCriterion(){
-  const input=$('#researchCriterionInput');const value=input.value.trim();
-  if(value&&!researchCriteria.includes(value)){researchCriteria.push(value);renderResearchCriteriaChips();}
-  input.value='';
-}
-$('#researchCriterionInput').addEventListener('keydown',(event)=>{
-  if(event.key!=='Enter')return;
-  event.preventDefault();
-  commitPendingCriterion();
-});
+// n.13 is gone by deletion rather than by repair: the criterion that vanished this morning could
+// only vanish because there was a second field to leave it in. There is one line now, and what
+// is in it is what is sent.
 async function loadResearchProviderStatus(){
   const status=$('#researchProviderStatus');
   const picker=$('#researchProviderPicker');
@@ -5097,11 +5081,10 @@ function renderResearchOutcome(outcome){
   loadResearchRecent();
 }
 $('#researchRunButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
-  commitPendingCriterion();
   const objective=$('#researchObjective').value.trim();
   if(!objective){toast('A goal is required.',{kind:'error'});return;}
   $('#researchOutcomePanel').classList.add('hidden');
-  try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:researchCriteria})}));}
+  try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:[]})}));}
   catch(error){reportError(error,'Running research');}
 }));
 // The saved searches — Owner, 2026-08-27: «vengano salvate … con possibilità di modificare o
@@ -5134,7 +5117,6 @@ async function loadResearchRecent(){
     count.textContent=String(reports.length);
     list.className=reports.length?'':'empty-state';
     list.innerHTML=reports.length?reports.map((report)=>`<article class="entity-card"><h3>${escapeHtml(report.objective)}</h3>`
-      +`<div class="chip-list">${report.criteria.map((value)=>`<span class="chip">${escapeHtml(value)}</span>`).join('')||'<span class="chip">no criteria</span>'}</div>`
       +`<p class="hint">${escapeHtml(isoToLocal(report.createdAt))} · ${report.candidateCount} candidates</p>`
       +`<button type="button" data-open-report="${escapeHtml(report.id)}">Open</button> `
       +`<button type="button" data-reuse-report="${escapeHtml(report.id)}">Edit and run again</button> `
@@ -5148,9 +5130,9 @@ async function loadResearchRecent(){
     $$('[data-reuse-report]').forEach((button)=>button.addEventListener('click',()=>{
       const report=reportById(button.dataset.reuseReport);
       if(!report)return;
-      $('#researchObjective').value=report.objective;
-      researchCriteria=[...report.criteria];
-      renderResearchCriteriaChips();
+      // Older reports kept their criteria apart; joined back into the one line, which is where
+      // they were always going anyway.
+      $('#researchObjective').value=[report.objective,...report.criteria].join(' ');
       $('#researchObjective').scrollIntoView({behavior:'smooth',block:'center'});
       $('#researchObjective').focus();
       toast('Goal and criteria put back — change what you need, then press Run research.');
@@ -5168,7 +5150,6 @@ async function loadResearchRecent(){
   }catch(error){list.className='empty-state';list.textContent=error.message;}
 }
 async function loadResearchDestination(){
-  renderResearchCriteriaChips();
   await loadResearchProviderStatus();
   await loadResearchImagesSwitch();
   await loadResearchRecent();
