@@ -58,6 +58,11 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // The picture switch (Owner, 2026-08-27) paints the OTHER half of each pair: the markup ships
+  // the off state and the offer to allow, `loadResearchImagesSwitch()` writes these two when the
+  // consent has been given. Listed rather than tolerated, per this block own rule.
+  'Pictures allowed',
+  'Stop allowing pictures',
   // Owner, 2026-08-24 («pulire intera chat»). The clear's confirmation, its refusal and its
   // result line are written by `app.js` when the button is pressed, so none of the four can
   // appear in `index.html` — the control itself is in the markup and is covered there.
@@ -941,9 +946,14 @@ const it = {
   'effect': 'effetto',
   ', never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.': ', mai il soggetto: legislazione, storia, prevenzione, sicurezza sul lavoro e rimedio restano raggiungibili.',
   'Research provider': 'Fornitore di ricerca',
-  'Reports still open': 'Ricerche ancora aperte',
-  'Reachable from this session until they expire. Reopen one, or put its goal and criteria back in the form above to correct and run again.': 'Raggiungibili da questa sessione finché non scadono. Riaprine una, oppure rimetti obiettivo e criteri nel modulo qui sopra per correggere e rilanciare.',
-  'Nothing has been run in this session yet.': 'In questa sessione non è ancora stato eseguito nulla.',
+  'Saved reports': 'Ricerche salvate',
+  'Pictures off': 'Immagini spente',
+  'Pictures allowed': 'Immagini consentite',
+  'Allow pictures in reports': 'Consenti le immagini nei resoconti',
+  'Stop allowing pictures': 'Smetti di consentire le immagini',
+  'A result carries a picture, and showing it means reaching the site that hosts it — not just the search instance you already consented to. So it is its own switch, and it is off until you say otherwise. A picture is fetched once, when the report is made, and kept inside it: opening a saved report reaches nobody.': 'Un risultato porta con sé un’immagine, e mostrarla significa raggiungere il sito che la ospita — non solo l’istanza di ricerca a cui hai già dato il consenso. Per questo ha un interruttore suo, ed è spento finché non dici altrimenti. L’immagine viene presa una volta sola, quando il resoconto è creato, e resta dentro: aprire un resoconto salvato non raggiunge nessuno.',
+  'Kept until you delete them. Open one, change its goal and criteria before asking again, run the same search again, or delete it — deleting takes two presses.': 'Restano finché non le elimini. Aprine una, cambia obiettivo e criteri prima di richiedere, rilancia la stessa ricerca, oppure eliminala — per eliminare servono due pressioni.',
+  'Nothing has been searched yet.': 'Non è ancora stata fatta nessuna ricerca.',
   'Checking…': 'Verifica in corso…',
   'This installation reaches the open web only through a provider you configure and consent to — the same external-tool mechanism as any other connector (': 'Questa installazione raggiunge il web aperto solo attraverso un fornitore che configuri e a cui dai il consenso — lo stesso meccanismo di strumento esterno di qualunque altro connettore (',
   'Settings → Privacy and connectors': 'Impostazioni → Privacy e connettori',

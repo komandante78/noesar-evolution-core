@@ -969,6 +969,8 @@
           <div class="panel-title"><h2>Research provider</h2><span id="researchProviderStatus" class="badge badge-off">Checking…</span></div>
           <p class="hint">This installation reaches the open web only through a provider you configure and consent to — the same external-tool mechanism as any other connector (<a href="#/settings/privacy">Settings → Privacy and connectors</a>). No provider is built in.</p>
           <div class="inline-form hidden" id="researchProviderPicker"><label>Use this tool<select id="researchProviderSelect"></select></label><button id="researchProviderSave" type="button">Set as research provider</button></div>
+          <div class="inline-form" id="researchImagesForm"><span id="researchImagesState" class="badge badge-off">Pictures off</span><button id="researchImagesToggle" type="button">Allow pictures in reports</button></div>
+          <p class="hint">A result carries a picture, and showing it means reaching the site that hosts it — not just the search instance you already consented to. So it is its own switch, and it is off until you say otherwise. A picture is fetched once, when the report is made, and kept inside it: opening a saved report reaches nobody.</p>
           <p class="hint" id="researchProviderRegisterHint" hidden>A research provider is registered the same way any other external tool is. <a href="#/coden/bench/tools">Register one in CodeN Evolution</a>, then come back here to pick it.</p>
         </section>
         <section class="panel">
@@ -979,12 +981,12 @@
           <button class="primary" id="researchRunButton" type="button">Run research</button>
         </section>
         <!-- Owner, 2026-08-27: a way back to what was already asked. Deliberately NOT a history —
-             these are the reports still alive in this session, they expire on their own and a
-             restart forgets them, which is what UI-080…089 chose. -->
+             saved on disk and kept until deleted — the expiry of UI-080…089 is reversed by name,
+             see research.mjs own comment. -->
         <section class="panel" id="researchRecentPanel">
-          <div class="panel-title"><h2>Reports still open</h2><span class="chip" id="researchRecentCount">—</span></div>
-          <p class="hint">Reachable from this session until they expire. Reopen one, or put its goal and criteria back in the form above to correct and run again.</p>
-          <div id="researchRecentList" class="empty-state">Nothing has been run in this session yet.</div>
+          <div class="panel-title"><h2>Saved reports</h2><span class="chip" id="researchRecentCount">—</span></div>
+          <p class="hint">Kept until you delete them. Open one, change its goal and criteria before asking again, run the same search again, or delete it — deleting takes two presses.</p>
+          <div id="researchRecentList" class="empty-state">Nothing has been searched yet.</div>
         </section>
         <section class="panel hidden" id="researchOutcomePanel"></section>
       </section>

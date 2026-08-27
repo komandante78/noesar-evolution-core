@@ -5017,30 +5017,58 @@ $('#researchProviderSave').addEventListener('click',(event)=>withBusy(event.curr
   try{await api('/api/v1/settings/research',{method:'PUT',body:JSON.stringify({toolId})});toast('Research provider updated.');await loadResearchProviderStatus();}
   catch(error){reportError(error,'Setting the research provider');}
 }));
+// Owner, 2026-08-27: «con immagini spiegazioni prezzi». Three of those four words are honest
+// here and one is not, so the card is built around what the provider actually returns.
+// The image is inlined INTO the report when it is made, not fetched while you read: the saved
+// page keeps working with nothing reaching out, which is also why deleting a report deletes its
+// pictures with it. A price appears only when a source states one in its own words — SearXNG
+// carries no price field, and a number this product invented would be the worst row on the page.
 function researchCandidateRow(candidate){
   if(candidate.excluded)return `<article class="entity-card"><h3>${escapeHtml(candidate.name)} <span class="badge badge-off">Excluded</span></h3><p class="hint">${escapeHtml(candidate.excludedReason)}</p></article>`;
   const evidence=candidate.evidence.map((row)=>`<li><b>${escapeHtml(row.kind.replaceAll('_',' '))}</b> — ${escapeHtml(row.statement)}</li>`).join('');
   const q=candidate.evidenceQuality;
   const quality=[`${q.reviewCount} reviews`,q.timeSpanDays!=null?`over ${q.timeSpanDays} days`:null,q.verifiedPurchaseShare!=null?`${Math.round(q.verifiedPurchaseShare*100)}% verified purchase`:null].filter(Boolean).join(' · ');
-  return `<article class="entity-card"><h3>${escapeHtml(candidate.name)}${candidate.sponsored?' <span class="badge badge-warn">Sponsored — not an affiliate link</span>':''}</h3>`
+  const image=candidate.image?`<img class="candidate-image" src="${escapeHtml(candidate.image)}" alt="" loading="lazy">`:'';
+  const price=candidate.price?`<p class="candidate-price">${escapeHtml(candidate.price)} <span class="badge badge-warn">as the source stated it · not verified</span></p>`:'';
+  const source=candidate.url?`<p class="hint"><a href="${escapeHtml(candidate.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(candidate.sourceHost??candidate.url)}</a></p>`:'';
+  return `<article class="entity-card candidate">${image}<div class="candidate-body"><h3>${escapeHtml(candidate.name)}${candidate.sponsored?' <span class="badge badge-warn">Sponsored — not an affiliate link</span>':''}</h3>`
     +(candidate.volatileObservedAt?`<small>Observed ${escapeHtml(isoToLocal(candidate.volatileObservedAt))}</small>`:'')
-    +`<ul>${evidence}</ul><p class="hint">Evidence quality: ${escapeHtml(quality)}${q.anomalyFlag?` · <b>${escapeHtml(q.anomalyNote)}</b>`:''}</p></article>`;
+    +price+source
+    +`<ul>${evidence}</ul><p class="hint">Evidence quality: ${escapeHtml(quality)}${q.anomalyFlag?` · <b>${escapeHtml(q.anomalyNote)}</b>`:''}</p></div></article>`;
 }
 function researchReportLink(reportId){return `${location.origin}${location.pathname}#/research?report=${encodeURIComponent(reportId)}`;}
+// «eliminarla con doppia conferma» — Owner, 2026-08-27. No dialog box: the button itself says
+// what the second press will do and disarms after five seconds, so a stray click deletes
+// nothing. One helper, because two places delete a report and two copies of a confirmation is
+// how one of them ends up without it.
+function armOnce(button,armedLabel,run){
+  const original=button.textContent;
+  let armed=false,timer=null;
+  button.addEventListener('click',()=>{
+    if(armed){clearTimeout(timer);armed=false;button.textContent=original;button.classList.remove('armed');run();return;}
+    armed=true;button.textContent=armedLabel;button.classList.add('armed');
+    timer=setTimeout(()=>{armed=false;button.textContent=original;button.classList.remove('armed');},5000);
+  });
+}
+async function deleteResearchReport(reportId){
+  await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`,{method:'DELETE'});
+  toast('Report deleted.');
+  await loadResearchRecent();
+}
 async function renderResearchReport(reportId){
   const panel=$('#researchOutcomePanel');
   panel.classList.remove('hidden');
   panel.innerHTML='<p class="hint">Loading the report…</p>';
   try{
     const report=await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`);
-    panel.innerHTML=`<div class="panel-title"><h2>Report</h2><span class="badge badge-on">Expires ${escapeHtml(isoToLocal(report.expiresAt))}</span></div>`
+    panel.innerHTML=`<div class="panel-title"><h2>${escapeHtml(report.objective)}</h2><span class="badge badge-on">Saved ${escapeHtml(isoToLocal(report.createdAt))}</span></div>`
       +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p>`
       +`<p class="hint">The exact string sent to the provider: <code>${escapeHtml(report.queryEcho)}</code></p>`
       +report.candidates.map(researchCandidateRow).join('')
-      +'<button id="researchRevokeButton" type="button" class="danger">Revoke this link now</button>';
-    $('#researchRevokeButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
-      try{await api(`/api/v1/research/report/${encodeURIComponent(report.id)}/revoke`,{method:'POST',body:'{}'});toast('Revoked.');panel.innerHTML='<p class="hint">This report has been revoked.</p>';}
-      catch(error){reportError(error,'Revoking the report');}
+      +'<button id="researchDeleteButton" type="button" class="danger">Delete this report</button>';
+    armOnce($('#researchDeleteButton'),'Press again to delete it for good',()=>withBusy($('#researchDeleteButton'),async()=>{
+      try{await deleteResearchReport(report.id);panel.innerHTML='<p class="hint">This report has been deleted.</p>';}
+      catch(error){reportError(error,'Deleting the report');}
     }));
     panel.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){panel.innerHTML=`<p class="hint">${escapeHtml(error.message)}</p>`;}
@@ -5076,6 +5104,29 @@ $('#researchRunButton').addEventListener('click',(event)=>withBusy(event.current
   try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:researchCriteria})}));}
   catch(error){reportError(error,'Running research');}
 }));
+// The saved searches — Owner, 2026-08-27: «vengano salvate … con possibilità di modificare o
+// rimandare la ricerca, o eliminarla con doppia conferma». Four actions, and they are four
+// different intentions: read it again, change it before asking again, ask the same thing again
+// now, throw it away. Re-run deliberately does NOT reuse the report: it runs the query afresh,
+// through both gates, exactly as pressing Run would — a saved page is a record of an answer,
+// never a shortcut past the doors.
+// The picture switch (Owner, 2026-08-27). Same two lines of behaviour as the model-download
+// switch it is modelled on: read what the server says, and let a person who may manage
+// providers change it. A person who may not sees the state and no button.
+async function loadResearchImagesSwitch(){
+  const state=$('#researchImagesState');const toggle=$('#researchImagesToggle');
+  try{
+    const info=await api('/api/v1/settings/research-images');
+    state.textContent=info.consented?t('Pictures allowed'):t('Pictures off');
+    state.className=`badge ${info.consented?'badge-on':'badge-off'}`;
+    toggle.hidden=!info.canManage;
+    toggle.textContent=info.consented?t('Stop allowing pictures'):t('Allow pictures in reports');
+    toggle.onclick=(event)=>withBusy(event.currentTarget,async()=>{
+      try{await api('/api/v1/settings/research-images',{method:'PUT',body:JSON.stringify({consented:!info.consented})});await loadResearchImagesSwitch();}
+      catch(error){reportError(error,'Changing the picture setting');}
+    });
+  }catch{state.textContent=t('Pictures off');state.className='badge badge-off';toggle.hidden=true;}
+}
 async function loadResearchRecent(){
   const list=$('#researchRecentList');const count=$('#researchRecentCount');
   try{
@@ -5083,32 +5134,43 @@ async function loadResearchRecent(){
     count.textContent=String(reports.length);
     list.className=reports.length?'':'empty-state';
     list.innerHTML=reports.length?reports.map((report)=>`<article class="entity-card"><h3>${escapeHtml(report.objective)}</h3>`
-      +`<div class="chip-list">${report.criteria.map((value)=>`<span class="chip">${escapeHtml(value)}</span>`).join('')||`<span class="chip">no criteria</span>`}</div>`
-      +`<p class="hint">Expires ${escapeHtml(isoToLocal(report.expiresAt))}</p>`
+      +`<div class="chip-list">${report.criteria.map((value)=>`<span class="chip">${escapeHtml(value)}</span>`).join('')||'<span class="chip">no criteria</span>'}</div>`
+      +`<p class="hint">${escapeHtml(isoToLocal(report.createdAt))} · ${report.candidateCount} candidates</p>`
       +`<button type="button" data-open-report="${escapeHtml(report.id)}">Open</button> `
-      +`<button type="button" data-reuse-report="${escapeHtml(report.id)}">Edit and run again</button></article>`).join('')
-      :escapeHtml(t('Nothing has been run in this session yet.'));
+      +`<button type="button" data-reuse-report="${escapeHtml(report.id)}">Edit and run again</button> `
+      +`<button type="button" data-rerun-report="${escapeHtml(report.id)}">Run it again as it is</button> `
+      +`<button type="button" class="danger" data-delete-report="${escapeHtml(report.id)}">Delete</button></article>`).join('')
+      :escapeHtml(t('Nothing has been searched yet.'));
+    const reportById=(id)=>reports.find((item)=>item.id===id)??null;
     $$('[data-open-report]').forEach((button)=>button.addEventListener('click',()=>renderResearchReport(button.dataset.openReport)));
-    // "Edit and run again" refills the form and stops: the person decides what to change and
-    // presses Run themselves. Re-running on their behalf would send a query they never read.
+    // Edit refills the form and STOPS: the person decides what to change and presses Run
+    // themselves. Re-running on their behalf would send a query they never read.
     $$('[data-reuse-report]').forEach((button)=>button.addEventListener('click',()=>{
-      const report=reports.find((item)=>item.id===button.dataset.reuseReport);
+      const report=reportById(button.dataset.reuseReport);
       if(!report)return;
       $('#researchObjective').value=report.objective;
       researchCriteria=[...report.criteria];
       renderResearchCriteriaChips();
-      // Measured 2026-08-27: the two buttons DID fire and the server answered 200 both times —
-      // the report simply re-rendered into a panel that already showed it, and the form it
-      // refills is above the fold. A control that works and looks broken is a broken control.
       $('#researchObjective').scrollIntoView({behavior:'smooth',block:'center'});
       $('#researchObjective').focus();
       toast('Goal and criteria put back — change what you need, then press Run research.');
     }));
+    $$('[data-rerun-report]').forEach((button)=>button.addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+      const report=reportById(button.dataset.rerunReport);
+      if(!report)return;
+      try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective:report.objective,criteria:report.criteria})}));}
+      catch(error){reportError(error,'Running research');}
+    })));
+    $$('[data-delete-report]').forEach((button)=>armOnce(button,'Press again to delete',()=>withBusy(button,async()=>{
+      try{await deleteResearchReport(button.dataset.deleteReport);}
+      catch(error){reportError(error,'Deleting the report');}
+    })));
   }catch(error){list.className='empty-state';list.textContent=error.message;}
 }
 async function loadResearchDestination(){
   renderResearchCriteriaChips();
   await loadResearchProviderStatus();
+  await loadResearchImagesSwitch();
   await loadResearchRecent();
   const reportId=researchReportIdFromHash();
   if(reportId)await renderResearchReport(reportId);

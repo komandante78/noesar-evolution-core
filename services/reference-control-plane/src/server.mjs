@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, openSync, readSync, closeSync, statSync, writeFileSync } from 'node:fs';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, openSync, readSync, closeSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID, generateKeyPairSync, createPrivateKey, createPublicKey, createHash } from 'node:crypto';
@@ -405,9 +405,22 @@ const toolExecutor = new ToolExecutor({
   vault:credentialVault, ledger,
   engineDispatch:(method, params, actor, can) => sessionDispatch(method, params, actor, can),
 });
-// UI-080…096 — ephemeral by design, see research.mjs's own module comment: a restart
-// revoking every live report link is the declared behaviour, not a gap.
-const researchReportStore = new ResearchReportStore();
+// UI-080…096 — saved on disk and kept until deleted (Owner, 2026-08-27). The session gate of
+// UI-082 is what protects a report; the expiry that used to sit here protected nothing more.
+const researchReportsPath = join(workspace, 'state/research-reports.json');
+// Temp-then-rename, the same way `AtomicJsonStore` writes beside it: a reader sees the previous
+// complete file or the next one, never half of either.
+const researchReportStore = new ResearchReportStore({
+  load: () => (existsSync(researchReportsPath) ? JSON.parse(readFileSync(researchReportsPath, 'utf8')) : []),
+  save: (records) => {
+    mkdirSync(dirname(researchReportsPath), { recursive:true, mode:0o700 });
+    const tmp = `${researchReportsPath}.${process.pid}.tmp`;
+    writeFileSync(tmp, `${JSON.stringify(records, null, 2)}
+`, { encoding:'utf8', mode:0o600 });
+    renameSync(tmp, researchReportsPath);
+    chmodSync(researchReportsPath, 0o600);
+  },
+});
 const researchRefusalRegistry = new RefusalRegistry();
 // `reasoner` is the same ProviderGateway Chat answers through (D-0397). Without it an agent
 // run's first step -- the one with no tool -- had nothing that could execute it, and every run
@@ -503,6 +516,10 @@ const sessionDispatch = createSessionDispatch({
   searchProvider: ({ objective, criteria }) => searchWith({
     endpoint: process.env.NOESAR_SEARCH_ENDPOINT ?? null,
     objective, criteria, validate: validateToolEndpoint,
+    // Rules 30-32 again, and for the same reason as `modelAcquisitionEgress` beside it: the
+    // aggregator is one host this installation consented to, and the sites that keep the
+    // pictures are not. Ships off; a report simply has no pictures until somebody says yes.
+    withImages: researchImagesConsented(),
   }),
   deactivateInstalledModel: async (actor) => {
     const released = await localModels.release();
@@ -1164,6 +1181,13 @@ const publisherRegistry = new PublisherRegistry({ root: join(workspace, 'publish
  * to send prompts to a remote model is not the same act as consenting to download weights from
  * a third party, and one gesture standing for two is how consent stops meaning anything.
  */
+/** Owner, 2026-08-27. Its own switch, not a consequence of having consented to the search
+ *  provider: asking an aggregator a question and fetching a picture from whoever hosts it are
+ *  two acts, and one gesture standing for both is how consent stops meaning anything. */
+function researchImagesConsented() {
+  try { return aiStore.read().settings?.researchImageEgress === true; } catch { return false; }
+}
+
 function modelEgressConsented() {
   try { return aiStore.read().settings?.modelAcquisitionEgress === true; } catch { return false; }
 }
@@ -2861,6 +2885,21 @@ const requestListener = async (req, res) => {
     // The way back to a report already run — Owner, 2026-08-27. Gated exactly like opening one
     // (UI-082, a session on THIS installation), scoped to the caller, and carrying no candidates:
     // it exists so a goal can be corrected and run again, not so results live anywhere new.
+    // The picture switch. Same shape as `/settings/model-egress`, deliberately: a person who
+    // has met one of these switches has met them all.
+    if (req.method === 'GET' && url.pathname === '/api/v1/settings/research-images') {
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      return json(res, 200, { consented: researchImagesConsented(), canManage: auth.hasPermission(authenticated.user, 'provider.manage') });
+    }
+    if (req.method === 'PUT' && url.pathname === '/api/v1/settings/research-images') {
+      const authenticated = requireSession(req, res, 'provider.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const consented = request.consented === true;
+      aiStore.transact((state) => { state.settings ??= {}; state.settings.researchImageEgress = consented; return { consented }; });
+      ledger.append({ actor:authenticated.user.id, action:'research.image-egress', result:consented ? 'consented' : 'withdrawn', details:{ consented } });
+      return json(res, 200, { consented });
+    }
     if (req.method === 'GET' && url.pathname === '/api/v1/research/reports') {
       const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
       return json(res, 200, { reports: researchReportStore.list({ createdBy: authenticated.user.id }) });
@@ -2875,14 +2914,18 @@ const requestListener = async (req, res) => {
       if (!report) return json(res, 404, { error:'This report link no longer works — it may have expired, been revoked, or never existed.' });
       return json(res, 200, report);
     }
-    const researchRevokeMatch = url.pathname.match(/^\/api\/v1\/research\/report\/([^/]+)\/revoke$/);
-    if (researchRevokeMatch && req.method === 'POST') {
+    // Deleting a saved report — Owner, 2026-08-27, in place of revoking a link that no longer
+    // expires. DELETE on the report itself rather than a `/revoke` verb: there is one thing that
+    // can happen to a report now, and it is the person removing it. The double confirmation is
+    // the page's, and the store refuses an id that is not the caller own either way.
+    const researchDeleteMatch = url.pathname.match(/^\/api\/v1\/research\/report\/([^/]+)$/);
+    if (researchDeleteMatch && req.method === 'DELETE') {
       const authenticated = requireSession(req, res, 'workspace.write');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
-      const revoked = researchReportStore.revoke(researchRevokeMatch[1], { actorId:authenticated.user.id });
-      if (!revoked) return json(res, 404, { error:'This report link no longer works.' });
-      ledger.append({ actor:authenticated.user.id, action:'research.report-revoked', result:'success', details:{ reportId:researchRevokeMatch[1] } });
-      return json(res, 200, { revoked:true });
+      const removed = researchReportStore.remove(researchDeleteMatch[1], { createdBy:authenticated.user.id });
+      if (!removed) return json(res, 404, { error:'This report no longer exists.' });
+      ledger.append({ actor:authenticated.user.id, action:'research.report-deleted', result:'success', details:{ reportId:researchDeleteMatch[1], objective:removed.objective } });
+      return json(res, 200, { deleted:true });
     }
     // UI-096: the contestation is registered, not auto-resolved — the far side of it is a
     // human review, out of this route's scope.

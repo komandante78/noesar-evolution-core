@@ -26,7 +26,6 @@
 
 import { randomUUID } from 'node:crypto';
 
-export const REPORT_TTL_MS = 24 * 60 * 60 * 1000; // UI-081's declared expiry
 const MAX_OBJECTIVE_LENGTH = 500;
 const MAX_CRITERIA = 12;
 const EVIDENCE_KINDS = Object.freeze(['SOURCE_FACT', 'MEASURED_AGGREGATE', 'INFERENCE', 'NOT_VERIFIED']); // UI-084
@@ -50,6 +49,17 @@ export function buildQueryEcho(objective, criteria) {
  * INTERNAL, matching `research-gate.mjs`'s own vocabulary for "the far side answered but not
  * validly"), not silently patched with a default.
  */
+/** http(s) and nothing else: a javascript: or file: link rendered as a source is the oldest
+ *  way a page turns somebody else content into an action on the reader machine. */
+/** Only a base64 picture this server inlined itself. Built from a string so the pattern reads
+ *  as what it is rather than as a thicket of escapes. */
+const DATA_IMAGE = new RegExp('^data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$');
+
+function httpUrl(value) {
+  try { const parsed = new URL(String(value)); return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null; }
+  catch { return null; }
+}
+
 export function validateCandidate(candidate, index) {
   const where = `candidate[${index}]`;
   if (!candidate || typeof candidate !== 'object') throw err(`${where} is not an object.`, 502, { kind:'INTERNAL' });
@@ -87,6 +97,20 @@ export function validateCandidate(candidate, index) {
     },
     sponsored: Boolean(candidate.sponsored), // UI-087 — declared, never an affiliate link
     affiliateLink: false, // UI-087 — structurally false; this product emits no affiliate field to violate
+    // Owner, 2026-08-27 — «con immagini … prezzi». Whitelisted HERE, where every other field of
+    // a candidate is already bounded, rather than trusted as the provider sent it.
+    url: httpUrl(candidate.url),
+    // Derived, never taken: the host a person reads under a link must be the host the link goes
+    // to, or the label is a lie the provider could write.
+    sourceHost: httpUrl(candidate.url) ? new URL(String(candidate.url)).hostname : null,
+    // A price only when a source states one in its own words, kept as the string it said —
+    // parsing it into a number would invent a currency and a precision nobody wrote down.
+    price: candidate.price ? String(candidate.price).trim().slice(0, 40) : null,
+    // AN INLINE PICTURE OR NOTHING. A remote URL here would make every later reader of a saved
+    // report call out to whoever hosts it, without consenting to anything — so the field
+    // structurally cannot hold one. The fetching happens once, server-side, under its own
+    // switch, in searxng-provider.mjs.
+    image: DATA_IMAGE.test(String(candidate.image ?? '')) ? String(candidate.image) : null,
   };
 }
 
@@ -97,51 +121,69 @@ export function validateReportPayload(payload) {
   return candidates.map((candidate, index) => validateCandidate(candidate, index));
 }
 
-/** In-memory, ephemeral, revocable (UI-081/082). Not a cache of anything durable. */
+/**
+ * Saved on disk and kept until the person deletes it — Owner, 2026-08-27, reversing UI-080…089's
+ * ephemeral store BY NAME rather than by accident. The Owner asked three times for the page of a
+ * search to survive; a list that emptied itself on every deploy was half the thing asked for.
+ *
+ * What protected a report was never the expiry — it was, and remains, a session on THIS
+ * installation (UI-082). The 24-hour clock protected nothing a delete button does not, and it
+ * threw away work the person wanted.
+ *
+ * WHERE the saving happens is not here, and that is CE-014 rather than taste: this module reads
+ * what came off the open web, so it must have no path to the filesystem at all — the check that
+ * says so reads this file own text. It is handed a `load` and a `save` and knows nothing else.
+ */
 export class ResearchReportStore {
   #reports = new Map();
+  #save;
 
-  put({ id = randomUUID(), createdBy, objective, criteria, queryEcho, candidates, nowMs = Date.now(), ttlMs = REPORT_TTL_MS }) {
+  constructor({ load = null, save = null } = {}) {
+    this.#save = save;
+    if (typeof load !== 'function') return;
+    // Whatever cannot be loaded is an empty list, never a refusal to start: the saved reports
+    // are a convenience, and the product booting is not.
+    try {
+      for (const record of load() ?? []) this.#reports.set(record.id, Object.freeze(record));
+    } catch { /* empty */ }
+  }
+
+  #persist() { if (typeof this.#save === 'function') this.#save([...this.#reports.values()]); }
+
+  put({ id = randomUUID(), createdBy, objective, criteria, queryEcho, candidates, nowMs = Date.now() }) {
     const record = Object.freeze({
       id, createdBy, objective, criteria: Object.freeze([...criteria]),
       queryEcho, candidates: Object.freeze(candidates),
       createdAt: new Date(nowMs).toISOString(),
-      expiresAt: new Date(nowMs + ttlMs).toISOString(),
-      revoked: false,
     });
     this.#reports.set(id, record);
+    this.#persist();
     return record;
   }
 
-  /** Returns null for missing, expired or revoked — the three cases UI-081/082 collapse into
-   * one "this link no longer works" answer, on purpose: distinguishing them to a caller who
-   * does not hold the report would leak whether a given id ever existed. */
-  get(id, { nowMs = Date.now() } = {}) {
-    const record = this.#reports.get(id);
-    if (!record) return null;
-    if (record.revoked) return null;
-    if (Date.parse(record.expiresAt) <= nowMs) return null;
-    return record;
-  }
+  /** Missing and never-existed remain ONE answer, which is what UI-082 was really buying: a
+   *  caller who does not hold the report learns nothing about whether an id ever existed. */
+  get(id) { return this.#reports.get(id) ?? null; }
 
-  /** The reports this person can still open, newest first and WITHOUT their candidates: a list
-   *  is a way back to a report, not a second copy of one. Same three-way collapse as `get` —
-   *  expired, revoked and never-existed are all simply absent, and one person never sees that
-   *  another ran anything. Nothing is persisted by this: what a restart forgets stays forgotten
-   *  (`UI-080…089`). */
-  list({ createdBy, nowMs = Date.now() } = {}) {
+  /** Newest first, one person only, and WITHOUT the candidates: a list is a way back to a
+   *  report, not a second copy of one. */
+  list({ createdBy } = {}) {
     return [...this.#reports.values()]
-      .filter((record) => record.createdBy === createdBy && !record.revoked && Date.parse(record.expiresAt) > nowMs)
+      .filter((record) => record.createdBy === createdBy)
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      .map(({ id, objective, criteria, createdAt, expiresAt }) => ({ id, objective, criteria:[...criteria], createdAt, expiresAt }));
+      .map(({ id, objective, criteria, createdAt, candidates }) => ({
+        id, objective, criteria:[...criteria], createdAt, candidateCount: candidates.length,
+      }));
   }
 
-  revoke(id, { actorId, nowMs = Date.now() }) {
+  /** Deleting one own report. The double confirmation the Owner asked for is the page's job;
+   *  what belongs here is that nobody deletes a report that is not theirs. */
+  remove(id, { createdBy = null } = {}) {
     const record = this.#reports.get(id);
-    if (!record || record.revoked) return null;
-    const revoked = Object.freeze({ ...record, revoked:true, revokedAt:new Date(nowMs).toISOString(), revokedBy:actorId });
-    this.#reports.set(id, revoked);
-    return revoked;
+    if (!record || (createdBy && record.createdBy !== createdBy)) return null;
+    this.#reports.delete(id);
+    this.#persist();
+    return record;
   }
 }
 

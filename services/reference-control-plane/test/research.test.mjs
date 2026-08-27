@@ -10,7 +10,7 @@ import test, { describe } from 'node:test';
 import {
   resolveResearchTool,
   runResearchReport, validateCandidate, validateReportPayload,
-  ResearchReportStore, RefusalRegistry, buildQueryEcho, REPORT_TTL_MS,
+  ResearchReportStore, RefusalRegistry, buildQueryEcho,
 } from '../src/research.mjs';
 
 const goodCandidate = {
@@ -173,17 +173,34 @@ test('a malformed provider answer is refused, not silently patched with defaults
   );
 });
 
-test('ResearchReportStore: expiry, revoke and the not-found case are indistinguishable to a caller', () => {
+test('ResearchReportStore: a report is kept until removed, and a stranger removes nothing', () => {
   const store = new ResearchReportStore();
   const now = Date.parse('2026-07-31T00:00:00Z');
   const report = store.put({ createdBy: 'u1', objective: 'x', criteria: [], queryEcho: '{}', candidates: [], nowMs: now });
-  assert.ok(store.get(report.id, { nowMs: now + 1000 }));
-  assert.equal(store.get(report.id, { nowMs: now + REPORT_TTL_MS + 1 }), null, 'expired');
+  assert.ok(store.get(report.id), 'a saved report is simply still there');
   assert.equal(store.get('never-existed'), null, 'missing');
-  const revoked = store.revoke(report.id, { actorId: 'u1', nowMs: now + 1000 });
-  assert.equal(revoked.revoked, true);
-  assert.equal(store.get(report.id, { nowMs: now + 1000 }), null, 'revoked');
-  assert.equal(store.revoke(report.id, { actorId: 'u1' }), null, 'revoking twice is a no-op, not an error');
+  assert.equal(store.remove(report.id, { createdBy: 'someone-else' }), null, 'not yours, not removed');
+  assert.ok(store.get(report.id), 'and it really was not removed');
+  assert.equal(store.remove(report.id, { createdBy: 'u1' }).id, report.id);
+  assert.equal(store.get(report.id), null, 'removed and never-existed stay one answer');
+  assert.equal(store.remove(report.id, { createdBy: 'u1' }), null, 'removing twice is a no-op, not an error');
+});
+
+test('ResearchReportStore: what was saved survives a restart, and the module never touches a disk', () => {
+  // The store is handed a `load` and a `save`, and that is CE-014 rather than taste: `research.mjs`
+  // reads what came off the open web and must have no path to the filesystem. Standing in for the
+  // file here is a variable — the contract is the callbacks, so this test measures the contract.
+  let saved = null;
+  const wiring = { load: () => saved ?? [], save: (records) => { saved = JSON.parse(JSON.stringify(records)); } };
+
+  const before = new ResearchReportStore(wiring);
+  const kept = before.put({ createdBy: 'u1', objective: 'survives', criteria: ['c'], queryEcho: 'q', candidates: [goodCandidate] });
+  const gone = before.put({ createdBy: 'u1', objective: 'deleted', criteria: [], queryEcho: 'q', candidates: [goodCandidate] });
+  before.remove(gone.id, { createdBy: 'u1' });
+
+  const after = new ResearchReportStore(wiring);
+  assert.equal(after.get(kept.id).objective, 'survives', 'a new process reads what the last one saved');
+  assert.equal(after.get(gone.id), null, 'and a delete is durable too');
 });
 
 test('RefusalRegistry: a contest can only be filed by the person the refusal was shown to (UI-096)', () => {
@@ -228,16 +245,16 @@ describe('a self-hosted research provider', () => {
   });
 });
 
-test('the report list is scoped to one person, filtered to the live ones, and carries no candidates', () => {
+test('the report list is scoped to one person, drops what was removed, and carries no candidates', () => {
   const store = new ResearchReportStore();
   const base = { objective: 'o', criteria: ['c'], queryEcho: 'q', candidates: [goodCandidate] };
   const older = store.put({ ...base, createdBy: 'me', nowMs: 1000 });
   const newer = store.put({ ...base, objective: 'newer', createdBy: 'me', nowMs: 2000 });
   store.put({ ...base, createdBy: 'someone-else', nowMs: 1500 });
-  store.put({ ...base, createdBy: 'me', nowMs: 500, ttlMs: 1 });
-  store.revoke(store.put({ ...base, createdBy: 'me', nowMs: 1200 }).id, { actorId: 'me' });
+  const removed = store.put({ ...base, createdBy: 'me', nowMs: 1200 });
+  store.remove(removed.id, { createdBy: 'me' });
 
   const listed = store.list({ createdBy: 'me', nowMs: 3000 });
-  assert.deepEqual(listed.map((row) => row.id), [newer.id, older.id], 'newest first, and only the live ones this person ran');
+  assert.deepEqual(listed.map((row) => row.id), [newer.id, older.id], 'newest first, only this person, and not the removed one');
   assert.ok(!('candidates' in listed[0]), 'a list is a way back to a report, never a second copy of one');
 });

@@ -87,7 +87,40 @@ export function hitToCandidate(hit) {
     // UI-087. SearXNG marks nothing as sponsored and this product emits no affiliate field at
     // all, so both are structurally false rather than defaulted.
     sponsored: false,
+    // Owner, 2026-08-27. The URL now travels BESIDE the statement as well as inside it, because
+    // `validateCandidate` was taught to keep it and derive the host from it. Inside the
+    // statement it stays: that is the trace, and a card is a rendering, not the record.
+    url,
+    price: priceFrom(snippet),
+    // The address of a picture, never the picture. Consumed and DELETED in `searchWith` — it
+    // must not reach a report, where it would become a third-party request on every read.
+    thumbnailUrl: String(hit?.thumbnail ?? hit?.img_src ?? '').trim() || null,
   };
+}
+
+/** A price ONLY when a source states one, kept as the string it used. Measured against this
+ *  installation on 2026-08-27: a query with the word `prezzo` returned zero of them, because a
+ *  general web search carries no price field. That is the honest result — a number assembled
+ *  from parts nobody wrote is the row a person would trust most and should trust least. */
+export function priceFrom(text) {
+  const match = /(?:[€$£]s?d{1,3}(?:[.,]d{3})*(?:[.,]d{2})?)|(?:d{1,3}(?:[.,]d{3})*(?:[.,]d{2})?s?(?:€|$|£|EUR|USD|GBP))/i.exec(String(text ?? ''));
+  return match ? match[0].trim() : null;
+}
+
+/** A thumbnail fetched ONCE, here, and inlined into the report — never linked from it. A saved
+ *  report that reached out to whoever hosts a picture every time somebody opened it would be an
+ *  egress nobody consented to, months after the search. A failure is silent and simply means no
+ *  picture: no report is worth failing over a thumbnail. */
+export async function inlineThumbnail(url, { fetchImpl = fetch, timeoutMs = 5_000, maxBytes = 120_000 } = {}) {
+  try {
+    const response = await fetchImpl(String(url), { signal: AbortSignal.timeout(timeoutMs) });
+    if (!response.ok) return null;
+    const type = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+    if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(type)) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (!bytes.length || bytes.length > maxBytes) return null;
+    return `data:${type};base64,${bytes.toString('base64')}`;
+  } catch { return null; }
 }
 
 /** The report payload for a set of hits: deduplicated by name, capped, order preserved because
@@ -113,7 +146,7 @@ export function hitsToReport(hits) {
  * addresses, and a "local" tool pointing at the public internet. Reusing it rather than writing
  * a second check here is the difference between one rule and two that agree until they do not.
  */
-export async function searchWith({ endpoint, objective, criteria = [], fetchImpl = fetch, validate, timeoutMs = 20_000 }) {
+export async function searchWith({ endpoint, objective, criteria = [], fetchImpl = fetch, validate, timeoutMs = 20_000, withImages = false }) {
   if (!endpoint) {
     const error = new Error('No search endpoint is configured for this installation.');
     error.status = 503; error.kind = 'UNCONFIGURED';
@@ -134,5 +167,13 @@ export async function searchWith({ endpoint, objective, criteria = [], fetchImpl
     throw error;
   }
   const payload = await response.json();
-  return hitsToReport(payload?.results);
+  const report = hitsToReport(payload?.results);
+  // `thumbnailUrl` dies here whatever the switch says: the only way a picture reaches a report
+  // is as bytes this server already fetched and looked at.
+  await Promise.all(report.candidates.map(async (candidate) => {
+    const thumbnail = candidate.thumbnailUrl;
+    delete candidate.thumbnailUrl;
+    if (withImages && thumbnail) candidate.image = await inlineThumbnail(thumbnail, { fetchImpl });
+  }));
+  return report;
 }
