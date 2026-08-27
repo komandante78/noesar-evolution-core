@@ -182,13 +182,15 @@ describe('CE-014 — the engine builds the query, and the user\'s code never lea
 
   // n.16. The write-up is the one outgoing request that carries BOTH halves — the question and
   // what came back — so what it must not carry is stated field by field rather than by canary
-  // alone: three keys, the engine's own normalised values, and the provider's candidates.
-  test('the write-up is handed the objective, the normalised criteria and the candidates — and nothing else', async () => {
+  // alone: four keys, the engine's own normalised values, and the provider's candidates. The
+  // fourth is the interface's language code — a preference the reader set inside this product,
+  // and the only one of the four that came neither from the question nor from the web.
+  test('the write-up is handed the objective, the normalised criteria, the candidates and the language — and nothing else', async () => {
     const rec = recorder();
     await runWith(rec);
     const call = rec.sent.at(-1);
     assert.equal(call.via, 'writeup');
-    assert.deepEqual(Object.keys(call.payload).sort(), ['candidates', 'criteria', 'objective']);
+    assert.deepEqual(Object.keys(call.payload).sort(), ['candidates', 'criteria', 'language', 'objective']);
     assert.equal(call.payload.objective, 'find a self-hosted vector database');
     assert.deepEqual(call.payload.criteria, ['open source', 'runs offline']);
     assert.equal(call.payload.candidates.length, 1);

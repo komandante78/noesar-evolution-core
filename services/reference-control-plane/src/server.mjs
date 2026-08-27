@@ -2873,6 +2873,9 @@ const requestListener = async (req, res) => {
       try {
         const outcome = await runResearchReport({
           objective: request.objective, criteria: request.criteria,
+          // The language the interface is in, so the write-up comes back readable to whoever
+          // asked. Never trusted as text: it is looked up in a table of two, never pasted.
+          language: request.language,
           actorId: authenticated.user.id, projectId: request.projectId ?? null,
           can:(permission)=>auth.hasPermission(authenticated.user,permission),
           gate: researchGateFrom(process.env), tools: state.tools ?? [], executor: toolExecutor,

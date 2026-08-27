@@ -5096,7 +5096,7 @@ async function renderResearchReport(reportId){
     // Re-run does NOT reuse the stored report: it asks again, through both gates, exactly as
     // pressing Run would. A saved page is a record of an answer, never a shortcut past the doors.
     $('#researchRerunButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
-      try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective:report.objective,criteria:report.criteria})}));}
+      try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective:report.objective,criteria:report.criteria,language:document.documentElement.lang})}));}
       catch(error){reportError(error,'Running research');}
     }));
     armOnce($('#researchDeleteButton'),t('Press again to delete it for good'),()=>withBusy($('#researchDeleteButton'),async()=>{
@@ -5137,7 +5137,7 @@ $('#researchRunButton').addEventListener('click',(event)=>withBusy(event.current
   const objective=$('#researchObjective').value.trim();
   if(!objective){toast('A goal is required.',{kind:'error'});return;}
   $('#researchOutcomePanel').classList.add('hidden');
-  try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:[]})}));}
+  try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:[],language:document.documentElement.lang})}));}
   catch(error){reportError(error,'Running research');}
 }));
 // The saved searches — Owner, 2026-08-27: «vengano salvate … con possibilità di modificare o

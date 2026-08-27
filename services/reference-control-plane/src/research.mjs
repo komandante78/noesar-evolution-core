@@ -186,8 +186,11 @@ const WRITEUP_MAX_PROMPT_CHARS = 6000;
  *                                      no-invention rule is now FIRST and absolute, and the
  *                                      temperature below does the other half of the work.
  *
- * The language line is explicit about the case that actually occurs here: an Italian question
- * over English material. Without it the model answers in the language of the material.
+ * The language line names ONE language and it is the interface's, not the question's and not the
+ * material's — Owner, 2026-08-28: «la lingua principale è l'inglese». A question typed in Italian
+ * into an English interface is answered in English, because the language a person reads in is the
+ * one they chose in the product, and the question is only how they typed it. Without any such line
+ * the model answers in the language of the material, which is neither.
  */
 export const WRITEUP_INSTRUCTION = [
   'You write the answer to a question, using only material collected from the web.',
@@ -198,8 +201,9 @@ export const WRITEUP_INSTRUCTION = [
   'prices. If it does not settle the question, say what it does establish and name what is',
   'missing — that is a complete answer, not a failure.',
   '',
-  'LANGUAGE: write the whole answer in the language the question is written in. An Italian',
-  'question gets an Italian answer, even though most of the material is in English.',
+  'LANGUAGE: write the whole answer in {{LANGUAGE}} — not in the language of the question, and',
+  'not in the language of the material. Where a source says it in another language, say it in',
+  '{{LANGUAGE}}.',
   '',
   'SHAPE: continuous prose, three or four short paragraphs, no headings, no bullet points, no',
   'bold. FIRST SENTENCE: name what you would choose and why, plainly. Then the practical part —',
@@ -217,6 +221,18 @@ export const WRITEUP_INSTRUCTION = [
   'after a claim that needs backing, never as a marker at the start of a line. Do not end with a',
   'list of source numbers: the sources are printed under your answer already.',
 ].join('\n');
+
+/**
+ * The interface's two languages (`i18n-catalog.js`), named in English because the model reads
+ * English. Looked UP rather than interpolated: the code arrives from a browser, and a string
+ * pasted into a system instruction IS the system instruction. Anything unknown, absent or null
+ * is English — the product's source language, and what "no preference" has to mean.
+ */
+const WRITEUP_LANGUAGE_NAMES = { en:'English', it:'Italian' };
+export function writeupInstructionFor(language) {
+  const name = WRITEUP_LANGUAGE_NAMES[language] ?? 'English';
+  return WRITEUP_INSTRUCTION.replaceAll('{{LANGUAGE}}', () => name);
+}
 
 /** Low, because this answer must not invent. Measured: at the server's default the model priced
  *  three cards that no source mentions; at 0.2, on the same material, it priced none. */
@@ -237,14 +253,14 @@ export function buildWriteupPrompt(objective, criteria, candidates) {
 }
 
 export async function writeResearchAnswer({
-  complete, profileId, objective, criteria = [], candidates = [],
+  complete, profileId, objective, criteria = [], candidates = [], language = null,
   maxOutputTokens = WRITEUP_MAX_OUTPUT_TOKENS,
 } = {}) {
   if (typeof complete !== 'function') return { text:'', reason:'no way to reach a model was supplied' };
   try {
     const result = await complete(profileId, {
       messages: [
-        { role:'system', content:WRITEUP_INSTRUCTION },
+        { role:'system', content:writeupInstructionFor(language) },
         { role:'user', content:buildWriteupPrompt(objective, criteria, candidates) },
       ],
       maxOutputTokens,
@@ -396,7 +412,7 @@ export function resolveResearchTool(tools, toolId) {
  * store. Every exit before "store" is a refusal or an unavailability, never a partial report.
  */
 export async function runResearchReport({
-  objective, criteria = [], actorId, projectId = null, can = null,
+  objective, criteria = [], language = null, actorId, projectId = null, can = null,
   gate, tools, executor, toolId, ledger, reportStore, refusalRegistry, writeup = null, nowMs = Date.now(),
 }) {
   const trimmedObjective = String(objective ?? '').trim();
@@ -444,7 +460,7 @@ export async function runResearchReport({
   // with no model to ask — and the canary tests that prove nothing leaks — keep the exact
   // three-request pipeline they had.
   const answer = typeof writeup === 'function'
-    ? await writeup({ objective:trimmedObjective, criteria:normalizedCriteria, candidates })
+    ? await writeup({ objective:trimmedObjective, criteria:normalizedCriteria, candidates, language })
     : null;
 
   const report = reportStore.put({ createdBy:actorId, objective:trimmedObjective, criteria:normalizedCriteria, queryEcho, candidates, answer, images, nowMs });
