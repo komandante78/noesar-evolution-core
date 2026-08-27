@@ -5053,24 +5053,47 @@ function researchAnswerBlock(answer){
   if(answer?.reason)return `<p class="hint">${escapeHtml(t('No written answer for this one:'))} ${escapeHtml(answer.reason)}</p>`;
   return '';
 }
+// Owner, 2026-08-27, looking at the first version: «crea un cazzo di link 1, non farmi apparire
+// tutto questo casino aperto». He is right, and 16-bis had said it already: the saved search IS a
+// page, so opening one is going somewhere — not unfolding ten cards under the form you searched
+// from. `data-report-open` hides every other panel of this destination (one CSS line), the answer
+// is what the page is made of, and the sources live in a `<details>` that starts closed. The
+// technical two lines — the query echo and the link — go inside it: provenance, not headline.
 async function renderResearchReport(reportId){
   const panel=$('#researchOutcomePanel');
   panel.classList.remove('hidden');
+  $('#view-research')?.setAttribute('data-report-open','yes');
   panel.innerHTML='<p class="hint">Loading the report…</p>';
   try{
     const report=await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`);
-    panel.innerHTML=`<div class="panel-title"><h2>${escapeHtml(report.objective)}</h2><span class="badge badge-on">Saved ${escapeHtml(isoToLocal(report.createdAt))}</span></div>`
-      +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p>`
+    panel.innerHTML=`<p class="hint"><a href="#/research">← ${escapeHtml(t('Saved reports'))}</a></p>`
+      +`<div class="panel-title"><h2>${escapeHtml(report.objective)}</h2><span class="badge badge-on">${escapeHtml(isoToLocal(report.createdAt))}</span></div>`
       +researchAnswerBlock(report.answer)
-      +`<p class="hint">The exact string sent to the provider: <code>${escapeHtml(report.queryEcho)}</code></p>`
-      +`<h3 class="research-sources-title">${escapeHtml(t('Sources the answer was written from'))}</h3>`
+      +`<div class="card-actions"><button type="button" id="researchReuseButton">${escapeHtml(t('Edit and run again'))}</button>`
+      +`<button type="button" id="researchRerunButton">${escapeHtml(t('Run it again as it is'))}</button>`
+      +`<button type="button" id="researchDeleteButton" class="danger">${escapeHtml(t('Delete this report'))}</button></div>`
+      +`<details class="research-sources"><summary translate="no">${escapeHtml(t('Sources the answer was written from'))} (${report.candidates.length})</summary>`
       +report.candidates.map(researchCandidateRow).join('')
-      +'<button id="researchDeleteButton" type="button" class="danger">Delete this report</button>';
-    armOnce($('#researchDeleteButton'),'Press again to delete it for good',()=>withBusy($('#researchDeleteButton'),async()=>{
-      try{await deleteResearchReport(report.id);panel.innerHTML='<p class="hint">This report has been deleted.</p>';}
+      +`<p class="hint">The exact string sent to the provider: <code>${escapeHtml(report.queryEcho)}</code></p>`
+      +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p></details>`;
+    // Edit refills the line and STOPS, on the page you came from: the person decides what to
+    // change and presses Run themselves. Running on their behalf would send a query they never read.
+    $('#researchReuseButton').addEventListener('click',()=>{
+      location.hash='#/research';
+      $('#researchObjective').value=[report.objective,...report.criteria].join(' ');
+      $('#researchObjective').focus();
+      toast('Goal put back — change what you need, then press Run research.');
+    });
+    // Re-run does NOT reuse the stored report: it asks again, through both gates, exactly as
+    // pressing Run would. A saved page is a record of an answer, never a shortcut past the doors.
+    $('#researchRerunButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+      try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective:report.objective,criteria:report.criteria})}));}
+      catch(error){reportError(error,'Running research');}
+    }));
+    armOnce($('#researchDeleteButton'),t('Press again to delete it for good'),()=>withBusy($('#researchDeleteButton'),async()=>{
+      try{await deleteResearchReport(report.id);location.hash='#/research';}
       catch(error){reportError(error,'Deleting the report');}
     }));
-    panel.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){panel.innerHTML=`<p class="hint">${escapeHtml(error.message)}</p>`;}
 }
 function renderResearchOutcome(outcome){
@@ -5093,9 +5116,14 @@ function renderResearchOutcome(outcome){
     panel.innerHTML='<div class="panel-title"><h2>The gate needs more detail</h2></div><p>Add what you actually need to the goal above — for example licensing requirements or authorised sellers — then run it again.</p>';
     return;
   }
-  renderResearchReport(outcome.reportId);
-  loadResearchRecent();
+  // The address is the page (16-bis). Assigning the hash lets the router open it, so a run, a
+  // click in the list and a pasted link all arrive the same way — and a reload stays on it.
+  location.hash=`#/research?report=${encodeURIComponent(outcome.reportId)}`;
 }
+// n.15, Owner 2026-08-27: a search box where Enter does nothing is broken for anyone who has
+// ever used a search engine. The button stays the one place the run is defined; this is the key
+// that presses it.
+$('#researchObjective').addEventListener('keydown',(event)=>{ if(event.key==='Enter')$('#researchRunButton').click(); });
 $('#researchRunButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
   const objective=$('#researchObjective').value.trim();
   if(!objective){toast('A goal is required.',{kind:'error'});return;}
@@ -5132,45 +5160,23 @@ async function loadResearchRecent(){
     const {reports}=await api('/api/v1/research/reports');
     count.textContent=String(reports.length);
     list.className=reports.length?'':'empty-state';
-    list.innerHTML=reports.length?reports.map((report)=>`<article class="entity-card"><h3>${escapeHtml(report.objective)}</h3>`
-      +`<p class="hint">${escapeHtml(isoToLocal(report.createdAt))} · ${report.candidateCount} candidates</p>`
-      +`<button type="button" data-open-report="${escapeHtml(report.id)}">Open</button> `
-      +`<button type="button" data-reuse-report="${escapeHtml(report.id)}">Edit and run again</button> `
-      +`<button type="button" data-rerun-report="${escapeHtml(report.id)}">Run it again as it is</button> `
-      +`<button type="button" class="danger" data-delete-report="${escapeHtml(report.id)}">Delete</button></article>`).join('')
+    // ONE link per search, and it is a real one: it can be middle-clicked, copied, bookmarked.
+    // The four buttons that used to sit here moved onto the page they act on — a list is a way
+    // in, and four controls per row on the way in is the «casino» the Owner was shown.
+    list.innerHTML=reports.length?reports.map((report)=>`<a class="research-entry" href="#/research?report=${escapeHtml(report.id)}"><b>${escapeHtml(report.objective)}</b><small>${escapeHtml(isoToLocal(report.createdAt))}</small></a>`).join('')
       :escapeHtml(t('Nothing has been searched yet.'));
-    const reportById=(id)=>reports.find((item)=>item.id===id)??null;
-    $$('[data-open-report]').forEach((button)=>button.addEventListener('click',()=>renderResearchReport(button.dataset.openReport)));
-    // Edit refills the form and STOPS: the person decides what to change and presses Run
-    // themselves. Re-running on their behalf would send a query they never read.
-    $$('[data-reuse-report]').forEach((button)=>button.addEventListener('click',()=>{
-      const report=reportById(button.dataset.reuseReport);
-      if(!report)return;
-      // Older reports kept their criteria apart; joined back into the one line, which is where
-      // they were always going anyway.
-      $('#researchObjective').value=[report.objective,...report.criteria].join(' ');
-      $('#researchObjective').scrollIntoView({behavior:'smooth',block:'center'});
-      $('#researchObjective').focus();
-      toast('Goal and criteria put back — change what you need, then press Run research.');
-    }));
-    $$('[data-rerun-report]').forEach((button)=>button.addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
-      const report=reportById(button.dataset.rerunReport);
-      if(!report)return;
-      try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective:report.objective,criteria:report.criteria})}));}
-      catch(error){reportError(error,'Running research');}
-    })));
-    $$('[data-delete-report]').forEach((button)=>armOnce(button,'Press again to delete',()=>withBusy(button,async()=>{
-      try{await deleteResearchReport(button.dataset.deleteReport);}
-      catch(error){reportError(error,'Deleting the report');}
-    })));
   }catch(error){list.className='empty-state';list.textContent=error.message;}
 }
 async function loadResearchDestination(){
+  // Two addresses, two pages. `#/research?report=x` IS the report — nothing else of this
+  // destination is drawn behind it, and the panels are not merely scrolled past.
+  const reportId=researchReportIdFromHash();
+  if(reportId){await renderResearchReport(reportId);return;}
+  $('#view-research')?.removeAttribute('data-report-open');
+  $('#researchOutcomePanel').classList.add('hidden');
   await loadResearchProviderStatus();
   await loadResearchImagesSwitch();
   await loadResearchRecent();
-  const reportId=researchReportIdFromHash();
-  if(reportId)await renderResearchReport(reportId);
 }
 
 

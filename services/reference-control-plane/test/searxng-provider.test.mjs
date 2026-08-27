@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildSearchQuery, repositoryFrom, hitToCandidate, hitsToReport, searchWith, MAX_CANDIDATES,
+  priceFrom, isListingUrl,
 } from '../src/searxng-provider.mjs';
 import { validateReportPayload } from '../src/research.mjs';
 
@@ -20,6 +21,37 @@ test('the query is the objective and the criteria as plain words', () => {
   // Capped: an engine given a 4000-character query answers about the first part of it and the
   // caller cannot tell which part.
   assert.ok(buildSearchQuery('x'.repeat(900), []).length <= 400);
+});
+
+// n.17, Owner 2026-08-27: a card showed `D` where a price goes. The pattern had lost every
+// backslash — `s?d{1,3}` instead of `\\s?\\d{1,3}` — so it matched the LETTER d, and the
+// unescaped `$` in the currency group anchored the end of the string. One line, never tested,
+// shipped. The first assertion is the string that was on the Owner's screen.
+test('a price is a price, and the letter D is not (n.17)', () => {
+  assert.equal(priceFrom('Amazon.it: Mini Pcie Raid D'), null);
+  assert.equal(priceFrom('the best card is D'), null);
+  assert.equal(priceFrom('nothing priced here'), null);
+  assert.equal(priceFrom('costa 45,90 EUR spedito'), '45,90 EUR');
+  assert.equal(priceFrom('prezzo € 1.299,00 oggi'), '€ 1.299,00');
+  assert.equal(priceFrom('at 129.99 USD now'), '129.99 USD');
+});
+
+// n.18, Owner 2026-08-27: «Amazon.it: Mini Pcie Raid» was offered as a candidate to compare. It
+// is Amazon's own results page — its title is the query somebody typed. Now that a model writes
+// the answer from these, a listing costs twice: a slot in the ten, and a query string standing
+// where a product name belongs.
+test('a page of search results is not a candidate (n.18)', () => {
+  assert.equal(isListingUrl('https://www.amazon.it/s?k=mini+pcie+raid'), true);
+  assert.equal(isListingUrl('https://www.ebay.it/sch/i.html?_nkw=lsi+9211'), true);
+  assert.equal(isListingUrl('https://duckduckgo.com/?q=hba+unraid'), true);
+  assert.equal(isListingUrl('https://www.amazon.it/LSI-9207-8i/dp/B00BYGVTXP'), false);
+  assert.equal(isListingUrl('https://www.reddit.com/r/unRAID/comments/abc/what_hba/'), false);
+  assert.equal(isListingUrl('https://linustechtips.com/topic/1407668-what-hba-for-unraid/'), false);
+  assert.equal(hitToCandidate({ url: 'https://www.amazon.it/s?k=sas+controller', title: 'Amazon.it: Sas Controller', content: 'results' }), null);
+  // And the pipeline drops it rather than spending one of the ten on it.
+  const report = hitsToReport([{ url: 'https://www.amazon.it/s?k=x', title: 'a listing', content: 'results' }, hit()]);
+  assert.equal(report.candidates.length, 1);
+  assert.equal(report.candidates[0].name, 'Qwen/Qwen3-8B');
 });
 
 test('a model page is recognised by its URL, and a documentation page is not', () => {

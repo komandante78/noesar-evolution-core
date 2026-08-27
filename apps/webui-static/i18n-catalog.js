@@ -111,6 +111,13 @@ export const RUNTIME_ONLY = Object.freeze([
   'Written by the model running on this installation, from the sources below. Not verified.',
   'No written answer for this one:',
   'Sources the answer was written from',
+  // The three controls that moved off the list and onto the page they act on, plus the armed
+  // label of the delete. They were written in English by the renderer before this and were part
+  // of n.14; moving them was the moment to stop that.
+  'Edit and run again',
+  'Run it again as it is',
+  'Delete this report',
+  'Press again to delete it for good',
   // The composer's switcher when nothing is loaded. One word, and it must not read as an error:
   // an installation serving no model is a state, not a fault.
   'none',
@@ -959,6 +966,10 @@ const it = {
   'Written by the model running on this installation, from the sources below. Not verified.': 'Scritta dal modello che gira su questa installazione, a partire dalle fonti qui sotto. Non verificata.',
   'No written answer for this one:': 'Nessuna risposta scritta per questa ricerca:',
   'Sources the answer was written from': 'Le fonti da cui è stata scritta la risposta',
+  'Edit and run again': 'Modifica e cerca di nuovo',
+  'Run it again as it is': 'Ripeti la ricerca così com\'è',
+  'Delete this report': 'Elimina questa ricerca',
+  'Press again to delete it for good': 'Premi di nuovo per eliminarla davvero',
   'Pictures off': 'Immagini spente',
   'Pictures allowed': 'Immagini consentite',
   'Allow pictures in reports': 'Consenti le immagini nei resoconti',

@@ -145,15 +145,48 @@ export function validateReportPayload(payload) {
 export const WRITEUP_MAX_OUTPUT_TOKENS = 900;
 const WRITEUP_MAX_PROMPT_CHARS = 6000;
 
-/** What is asked for is bounded by the sources — the instruction says so in as many words. */
+/**
+ * Rewritten after the first version shipped and the Owner read it: «sembra un elenco della
+ * spesa». It was — one line per source, which is an index of the sources wearing prose. Three
+ * things were wrong and all three are addressed by wording, measured against the real report:
+ *
+ *   «refer to a source by its number»  became a per-source bullet list. Now: a number backs a
+ *                                      claim, never opens a line, and never ends the answer.
+ *   the shape was not stated           now it is: what the material converges on, why, what
+ *                                      else to know, and one line on what stayed unconfirmed.
+ *   invention                          asking for «the recommendation and what it costs»
+ *                                      produced three prices that appear in no source. The
+ *                                      no-invention rule is now FIRST and absolute, and the
+ *                                      temperature below does the other half of the work.
+ *
+ * The language line is explicit about the case that actually occurs here: an Italian question
+ * over English material. Without it the model answers in the language of the material.
+ */
 export const WRITEUP_INSTRUCTION = [
-  'You are writing the answer to a question, from web search results someone else collected.',
-  'Explain what the sources say, compare the options against the requirements, and say which',
-  'one fits and why. Use ONLY what the sources below state — never name a product, a price or',
-  'a fact that is not written there — and where they do not answer part of the question, say',
-  'so in one line instead of filling the gap. Refer to a source by its number in brackets.',
-  'Write in the language the question is written in. Plain prose and short paragraphs.',
-].join(' ');
+  'You write the answer to a question, using only material collected from the web.',
+  '',
+  'THE ONE RULE THAT OVERRIDES EVERYTHING: every product name, model number, price, quantity and',
+  'claim in your answer must appear in the material below. You may not add one from your own',
+  'knowledge, not even an obvious one. If the material states no prices, your answer contains no',
+  'prices. If it does not settle the question, say what it does establish and name what is',
+  'missing — that is a complete answer, not a failure.',
+  '',
+  'LANGUAGE: write the whole answer in the language the question is written in. An Italian',
+  'question gets an Italian answer, even though most of the material is in English.',
+  '',
+  'SHAPE: continuous prose, three or four short paragraphs, no headings, no bullet points, no',
+  'bold. Open with what the material converges on and answer the question directly. Then why,',
+  'then what else is worth knowing or avoiding, and close with one line on what stayed',
+  'unconfirmed. Never walk the sources one by one, and never write one line per source: the',
+  'material is raw search results, several of them forum questions and listing pages that state',
+  'nothing, and those are to be ignored rather than described. Put a source number in brackets',
+  'after a claim that needs backing, never as a marker at the start of a line. Do not end with a',
+  'list of source numbers: the sources are printed under your answer already.',
+].join('\n');
+
+/** Low, because this answer must not invent. Measured: at the server's default the model priced
+ *  three cards that no source mentions; at 0.2, on the same material, it priced none. */
+export const WRITEUP_TEMPERATURE = 0.2;
 
 /** The sources as the model sees them: numbered, bounded, and nothing a candidate did not carry. */
 export function buildWriteupPrompt(objective, criteria, candidates) {
@@ -181,8 +214,12 @@ export async function writeResearchAnswer({
         { role:'user', content:buildWriteupPrompt(objective, criteria, candidates) },
       ],
       maxOutputTokens,
+      temperature: WRITEUP_TEMPERATURE,
     });
-    const text = String(result?.text ?? '').trim();
+    // The bibliography line the model adds anyway, deleted rather than asked for again: a
+    // trailing run of bare [1] [2] [3] is the sources listed twice, and the sources are already
+    // printed under the answer. Only at the END, so a citation inside a sentence is untouched.
+    const text = String(result?.text ?? '').trim().replace(/(?:\s*\[\d+\])+\s*$/, '').trim();
     if (!text) return { text:'', reason:'the model answered with nothing' };
     return { text, model:result?.provider?.defaultModel ?? null };
   } catch (error) {

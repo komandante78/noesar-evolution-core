@@ -67,9 +67,30 @@ export function repositoryFrom(url) {
  * evidence, and `validateCandidate` keeps only `kind` and `statement` from each row — a source
  * field added here would be dropped on the way through and the trace lost silently.
  */
+/**
+ * Is this URL a page of search results rather than a thing?
+ *
+ * n.18, Owner 2026-08-27: «Amazon.it: Mini Pcie Raid» and «Amazon.it: Sas Controller» were
+ * offered as candidates to compare. They are Amazon's own results pages — their title is the
+ * query somebody typed, and there is no product behind them. Since the report is now read BY A
+ * MODEL as well as by a person, a listing costs twice: it takes a slot in the ten, and it puts
+ * a query string where a product name belongs.
+ *
+ * ponytail: a heuristic on the address, not a fetch — the path segments and query keys the big
+ * catalogues use for their own search. It cannot recognise a listing that hides behind a pretty
+ * URL; if one shows up, the upgrade is to look at the page, which costs a request per hit.
+ */
+export function isListingUrl(url) {
+  let parsed;
+  try { parsed = new URL(String(url)); } catch { return false; }
+  if (/(?:^|\/)(?:s|sch|search|find|results?)(?:\/|$)/i.test(parsed.pathname)) return true;
+  return ['q', 'k', 'query', 'search', 'keyword', 'keywords', 'text', '_nkw'].some((key) => parsed.searchParams.has(key));
+}
+
 export function hitToCandidate(hit) {
   const url = String(hit?.url ?? '').trim();
   if (!url) return null;
+  if (isListingUrl(url)) return null;
   const snippet = String(hit?.content ?? '').trim();
   const title = String(hit?.title ?? '').trim();
   if (!snippet && !title) return null;
@@ -101,9 +122,16 @@ export function hitToCandidate(hit) {
 /** A price ONLY when a source states one, kept as the string it used. Measured against this
  *  installation on 2026-08-27: a query with the word `prezzo` returned zero of them, because a
  *  general web search carries no price field. That is the honest result — a number assembled
- *  from parts nobody wrote is the row a person would trust most and should trust least. */
+ *  from parts nobody wrote is the row a person would trust most and should trust least.
+ *
+ *  n.17, Owner 2026-08-27: a card showed `D` as a price. The pattern had lost every backslash —
+ *  `s?d{1,3}` for `\\s?\\d{1,3}` — so it matched the LETTER d, and the unescaped `$` in the
+ *  currency group anchored the end of the string. `D` at the end of a snippet was therefore a
+ *  perfect match. It is one line and it was never tested; the test beside it now names the
+ *  exact string that shipped. A wrong price is worse than no price, which is why this reads
+ *  from the source's own words in the first place. */
 export function priceFrom(text) {
-  const match = /(?:[€$£]s?d{1,3}(?:[.,]d{3})*(?:[.,]d{2})?)|(?:d{1,3}(?:[.,]d{3})*(?:[.,]d{2})?s?(?:€|$|£|EUR|USD|GBP))/i.exec(String(text ?? ''));
+  const match = /(?:[€$£]\s?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)|(?:\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\s?(?:€|£|\$|EUR|USD|GBP))/i.exec(String(text ?? ''));
   return match ? match[0].trim() : null;
 }
 
