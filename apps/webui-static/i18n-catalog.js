@@ -986,6 +986,7 @@ const it = {
   'New report': 'Nuovo resoconto',
   'Run research': 'Avvia la ricerca',
   'What are you looking for?': 'Che cosa cerchi?',
+  'The search is done by artificial intelligence, which can make mistakes.': "La ricerca è fatta da un'intelligenza artificiale che può commettere errori.",
 
   // ——— Settings shell ———
   'ONE DESTINATION · EVERY SETTING': 'UNA DESTINAZIONE · OGNI IMPOSTAZIONE',

@@ -981,7 +981,14 @@
                search — it asked a form to be filled in, and twice in one day it silently ate
                what was typed into it. A field that cannot exist cannot lose anything. -->
           <label>Search<input id="researchObjective" placeholder="What are you looking for?" maxlength="500"></label>
-          <button class="primary" id="researchRunButton" type="button">Run research</button>
+          <!-- Owner, 2026-08-28: the warning goes BESIDE the button, where the decision to press
+               it is made — the line under a finished answer arrives after the reader has already
+               believed it. `.card-actions` is the row this product already uses for a button
+               with a note next to it, so this costs no CSS. -->
+          <div class="card-actions">
+            <button class="primary" id="researchRunButton" type="button">Run research</button>
+            <small>The search is done by artificial intelligence, which can make mistakes.</small>
+          </div>
         </section>
         <!-- Owner, 2026-08-27: a way back to what was already asked. Deliberately NOT a history —
              saved on disk and kept until deleted — the expiry of UI-080…089 is reversed by name,
