@@ -11,7 +11,7 @@ import {
   resolveResearchTool,
   runResearchReport, validateCandidate, validateReportPayload,
   ResearchReportStore, RefusalRegistry, buildQueryEcho,
-  writeResearchAnswer, buildWriteupPrompt,
+  writeResearchAnswer, buildWriteupPrompt, validateReportImages,
 } from '../src/research.mjs';
 
 const goodCandidate = {
@@ -67,6 +67,20 @@ test('an excluded candidate must name why (UI-086)', () => {
   assert.throws(() => validateCandidate({ name: 'X', excluded: true }, 0), /excluded but names no reason/);
   const excluded = validateCandidate({ name: 'X', excluded: true, excludedReason: 'Outside your stated criteria.' }, 0);
   assert.equal(excluded.excluded, true);
+});
+
+test('a picture is an inlined one or none: a remote address never reaches a saved report', () => {
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const validated = validateReportImages({ images: [
+    { image: PIXEL, title: 'A card', sourceUrl: 'https://shop.test/card' },
+    { image: 'https://cdn.test/remote.png', title: 'remote', sourceUrl: 'https://shop.test/x' },
+    { image: PIXEL, title: 'no source', sourceUrl: 'javascript:alert(1)' },
+  ] });
+  assert.equal(validated.length, 1, 'a remote address and a non-http source are both dropped');
+  assert.equal(validated[0].sourceHost, 'shop.test', 'the host under a picture is derived from its link, never taken');
+  assert.deepEqual(validateReportImages({}), [], 'a provider that sends no pictures is not an error');
+  assert.equal(validateReportImages({ images: Array.from({ length: 20 }, () => ({ image: PIXEL, sourceUrl: 'https://shop.test/x' })) }).length, 6,
+    'a provider cannot fill the page with pictures');
 });
 
 test('validateReportPayload refuses an empty candidate list rather than an empty report', () => {

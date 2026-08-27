@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildSearchQuery, repositoryFrom, hitToCandidate, hitsToReport, searchWith, MAX_CANDIDATES,
-  priceFrom, isListingUrl,
+  priceFrom, isListingUrl, searchImages, MAX_IMAGES,
 } from '../src/searxng-provider.mjs';
 import { validateReportPayload } from '../src/research.mjs';
 
@@ -27,6 +27,40 @@ test('the query is the objective and the criteria as plain words', () => {
 // backslash — `s?d{1,3}` instead of `\\s?\\d{1,3}` — so it matched the LETTER d, and the
 // unescaped `$` in the currency group anchored the end of the string. One line, never tested,
 // shipped. The first assertion is the string that was on the Owner's screen.
+// Owner, 2026-08-27: «con foto». A general search carries a thumbnail on about one hit in ten,
+// so a report had one picture on it. The image category of the SAME instance carries one on
+// every hit — same host, same consent, a second query rather than a new destination.
+test('the pictures are asked of the image category, fetched once, and inlined (foto)', async () => {
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const asked = [];
+  const fetchImpl = async (url) => {
+    asked.push(String(url));
+    if (String(url).includes('categories=images')) {
+      return { ok: true, json: async () => ({ results: [
+        { url: 'https://shop.test/card', title: 'A card', thumbnail_src: 'https://cdn.test/a.png' },
+        { url: 'https://shop.test/other', title: 'Another', img_src: 'https://cdn.test/b.png' },
+        { url: 'https://shop.test/nothing', title: 'No picture at all' },
+      ] }) };
+    }
+    return { ok: true, headers: { get: () => 'image/png' }, arrayBuffer: async () => Uint8Array.from([1, 2, 3]).buffer };
+  };
+  const images = await searchImages({ endpoint: 'http://search.test', objective: 'a card', fetchImpl });
+  assert.equal(images.length, 2, 'a hit carrying no picture is skipped, not padded');
+  assert.ok(asked[0].includes('categories=images'), 'the picture query must name the image category');
+  assert.ok(images.every((row) => row.image.startsWith('data:image/png;base64,')),
+    'a picture reaches a report as bytes this server fetched, never as a remote address');
+  assert.equal(images[0].sourceUrl, 'https://shop.test/card');
+  assert.ok(MAX_IMAGES >= images.length);
+  assert.ok(PIXEL.startsWith('data:image/png'));
+});
+
+test('a picture search that fails costs the pictures, never the report', async () => {
+  const failing = async () => { throw new Error('the instance is down'); };
+  assert.deepEqual(await searchImages({ endpoint: 'http://search.test', objective: 'x', fetchImpl: failing }), []);
+  const refusing = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  assert.deepEqual(await searchImages({ endpoint: 'http://search.test', objective: 'x', fetchImpl: refusing }), []);
+});
+
 test('a price is a price, and the letter D is not (n.17)', () => {
   assert.equal(priceFrom('Amazon.it: Mini Pcie Raid D'), null);
   assert.equal(priceFrom('the best card is D'), null);

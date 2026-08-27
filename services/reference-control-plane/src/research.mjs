@@ -114,6 +114,33 @@ export function validateCandidate(candidate, index) {
   };
 }
 
+/** Six is more than any provider sends today; it is here so a provider cannot fill a page. */
+const MAX_REPORT_IMAGES = 6;
+
+/**
+ * The report's own pictures (Owner: «con foto»), bounded exactly where a candidate's picture is
+ * bounded and by the same pattern: an inline data: URI this server fetched itself, or nothing. A
+ * remote address here would make every later reader of a saved report call out to whoever hosts
+ * it, months after the search, without consenting to anything.
+ *
+ * A malformed row is DROPPED rather than refused: a picture is decoration on an answer, and the
+ * candidates it decorates have already passed two gates. That is the opposite posture to
+ * `validateCandidate`, deliberately — there, a missing field means evidence nobody checked.
+ */
+export function validateReportImages(payload) {
+  const rows = Array.isArray(payload?.images) ? payload.images : [];
+  return rows
+    .filter((row) => DATA_IMAGE.test(String(row?.image ?? '')) && httpUrl(row?.sourceUrl))
+    .slice(0, MAX_REPORT_IMAGES)
+    .map((row) => ({
+      image: String(row.image),
+      title: String(row.title ?? '').slice(0, 120),
+      sourceUrl: httpUrl(row.sourceUrl),
+      // Derived, never taken — the same rule as a candidate's host.
+      sourceHost: new URL(String(httpUrl(row.sourceUrl))).hostname,
+    }));
+}
+
 export function validateReportPayload(payload) {
   if (!payload || typeof payload !== 'object') throw err('The provider answered with something that is not a report.', 502, { kind:'INTERNAL' });
   const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
@@ -175,9 +202,16 @@ export const WRITEUP_INSTRUCTION = [
   'question gets an Italian answer, even though most of the material is in English.',
   '',
   'SHAPE: continuous prose, three or four short paragraphs, no headings, no bullet points, no',
-  'bold. Open with what the material converges on and answer the question directly. Then why,',
-  'then what else is worth knowing or avoiding, and close with one line on what stayed',
-  'unconfirmed. Never walk the sources one by one, and never write one line per source: the',
+  'bold. FIRST SENTENCE: name what you would choose and why, plainly. Then the practical part —',
+  'what to check before deciding, what the material warns about, what to avoid. That advice is',
+  'what the reader came for, so give the most of your space to it.',
+  '',
+  'AT MOST ONE closing line for what the material does not settle, and only if it matters to the',
+  'decision. Do not write paragraphs about what is missing: if no source states a price, say',
+  'nothing about prices at all rather than repeating that none was found. Never mention a detail',
+  'that nobody asked about just because a source happened to carry it.',
+  '',
+  'Never walk the sources one by one, and never write one line per source: the',
   'material is raw search results, several of them forum questions and listing pages that state',
   'nothing, and those are to be ignored rather than described. Put a source number in brackets',
   'after a claim that needs backing, never as a marker at the start of a line. Do not end with a',
@@ -256,13 +290,14 @@ export class ResearchReportStore {
 
   #persist() { if (typeof this.#save === 'function') this.#save([...this.#reports.values()]); }
 
-  put({ id = randomUUID(), createdBy, objective, criteria, queryEcho, candidates, answer = null, nowMs = Date.now() }) {
+  put({ id = randomUUID(), createdBy, objective, criteria, queryEcho, candidates, answer = null, images = [], nowMs = Date.now() }) {
     const record = Object.freeze({
       id, createdBy, objective, criteria: Object.freeze([...criteria]),
       queryEcho, candidates: Object.freeze(candidates),
       // n.16. `null` on every report written before there was a write-up, and on any report
       // whose model could not be asked — a reader tells the cases apart by `text` and `reason`.
       answer: answer ? Object.freeze({ ...answer }) : null,
+      images: Object.freeze(Array.isArray(images) ? images : []),
       createdAt: new Date(nowMs).toISOString(),
     });
     this.#reports.set(id, record);
@@ -386,9 +421,15 @@ export async function runResearchReport({
   const tool = resolveResearchTool(tools, toolId);
   const { result } = await executor.execute(tool, { objective:trimmedObjective, criteria:normalizedCriteria }, { actorId, projectId, can });
   const candidates = validateReportPayload(result);
+  const images = validateReportImages(result);
 
   // Gate 2 — content, on what came back, before it is ever stored or shown (UI-091 second door).
-  const contentSummary = candidates.map((candidate) => `${candidate.name}: ${candidate.excluded ? candidate.excludedReason : candidate.evidence.map((row) => row.statement).join(' | ')}`).join('\n');
+  const contentSummary = [
+    ...candidates.map((candidate) => `${candidate.name}: ${candidate.excluded ? candidate.excludedReason : candidate.evidence.map((row) => row.statement).join(' | ')}`),
+    // The pictures' own captions go through the second door with everything else: they are text
+    // that came off the open web and will be shown to a person, which is the whole test.
+    ...images.map((row) => row.title).filter(Boolean),
+  ].join('\n');
   const content = await gate.classify(contentSummary || trimmedObjective);
   ledger.append({ actor:actorId, action:'research.gated', result:content.outcome.toLowerCase(), details:{ stage:'content', category:content.category } });
   if (content.outcome === 'REFUSE') {
@@ -406,7 +447,7 @@ export async function runResearchReport({
     ? await writeup({ objective:trimmedObjective, criteria:normalizedCriteria, candidates })
     : null;
 
-  const report = reportStore.put({ createdBy:actorId, objective:trimmedObjective, criteria:normalizedCriteria, queryEcho, candidates, answer, nowMs });
+  const report = reportStore.put({ createdBy:actorId, objective:trimmedObjective, criteria:normalizedCriteria, queryEcho, candidates, answer, images, nowMs });
   ledger.append({ actor:actorId, action:'research.report-created', result:'success', details:{ reportId:report.id, candidates:candidates.length, toolId:tool.id, written:Boolean(answer?.text) } });
   return { outcome:'PROCEED', report };
 }

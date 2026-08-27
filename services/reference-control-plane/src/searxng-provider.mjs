@@ -151,6 +151,50 @@ export async function inlineThumbnail(url, { fetchImpl = fetch, timeoutMs = 5_00
   } catch { return null; }
 }
 
+/** How many pictures a report carries. Four is what fits across the page above the answer. */
+export const MAX_IMAGES = 4;
+
+/**
+ * The pictures — Owner, 2026-08-27: «con foto». A general web search carries a thumbnail on
+ * about one hit in ten, which is why a report had one picture on it and looked like a list.
+ * SearXNG has an image category and answers it from the SAME instance, on the SAME consent:
+ * this is a second query to the host already agreed to, not a new destination.
+ *
+ * The picture itself is fetched ONCE, here, and inlined — `inlineThumbnail`'s whole reason. The
+ * remote address never reaches the report, so opening a saved page months later reaches nobody.
+ * The switch that governs all of it is the one that already existed (`researchImageEgress`).
+ *
+ * Never throws and never blocks a report: no picture is worth failing a search over.
+ */
+export async function searchImages({ endpoint, objective, criteria = [], fetchImpl = fetch, validate, timeoutMs = 20_000, max = MAX_IMAGES }) {
+  let payload;
+  try {
+    const base = typeof validate === 'function' ? validate(endpoint, false) : endpoint;
+    const url = new URL('./search', base.endsWith('/') ? base : `${base}/`);
+    url.searchParams.set('q', buildSearchQuery(objective, criteria));
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('categories', 'images');
+    const response = await fetchImpl(url.toString(), {
+      method: 'GET', headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(Math.min(timeoutMs, 60_000)),
+    });
+    if (!response.ok) return [];
+    payload = await response.json();
+  } catch { return []; }
+  const images = [];
+  for (const hit of Array.isArray(payload?.results) ? payload.results : []) {
+    if (images.length >= max) break;
+    const sourceUrl = String(hit?.url ?? '').trim();
+    // The engine's own thumbnail first: it is small, already resized, and served by the
+    // aggregator's upstream rather than by the shop. The full picture only if there is none.
+    const remote = String(hit?.thumbnail_src ?? hit?.thumbnail ?? hit?.img_src ?? '').trim();
+    if (!remote || !sourceUrl) continue;
+    const image = await inlineThumbnail(remote, { fetchImpl });
+    if (image) images.push({ image, title: String(hit?.title ?? '').slice(0, 120), sourceUrl });
+  }
+  return images;
+}
+
 /** The report payload for a set of hits: deduplicated by name, capped, order preserved because
  *  the engine's ranking is the only ranking anyone here has. */
 export function hitsToReport(hits) {
@@ -196,6 +240,11 @@ export async function searchWith({ endpoint, objective, criteria = [], fetchImpl
   }
   const payload = await response.json();
   const report = hitsToReport(payload?.results);
+  // The pictures ride on the same switch and the same instance as the thumbnails below, and
+  // they are asked for only when it is on.
+  report.images = withImages
+    ? await searchImages({ endpoint, objective, criteria, fetchImpl, validate, timeoutMs })
+    : [];
   // `thumbnailUrl` dies here whatever the switch says: the only way a picture reaches a report
   // is as bytes this server already fetched and looked at.
   await Promise.all(report.candidates.map(async (candidate) => {

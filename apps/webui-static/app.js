@@ -5047,6 +5047,13 @@ async function deleteResearchReport(reportId){
 // A report made before there was a write-up, and one whose model could not be asked, are two
 // different states and are shown as two: an empty space where an answer belongs is the kind of
 // silence this page exists to stop.
+// Owner, 2026-08-27: «con foto». The pictures were fetched once when the report was made and
+// live INSIDE it as data: URIs — opening this page reaches nobody, which is what let them be
+// shown large instead of hidden in a card. Each one links to the page it was found on.
+function researchFigures(images){
+  if(!images?.length)return '';
+  return '<div class="research-figures">'+images.map((row)=>`<figure><a href="${escapeHtml(row.sourceUrl)}" target="_blank" rel="noreferrer noopener"><img src="${escapeHtml(row.image)}" alt="" loading="lazy"></a><figcaption>${escapeHtml(row.sourceHost)}</figcaption></figure>`).join('')+'</div>';
+}
 function researchAnswerBlock(answer){
   if(answer?.text)return `<div class="research-answer" translate="no">${escapeHtml(answer.text)}</div>`
     +`<p class="hint">${escapeHtml(t('Written by the model running on this installation, from the sources below. Not verified.'))}${answer.model?` <code>${escapeHtml(answer.model)}</code>`:''}</p>`;
@@ -5066,8 +5073,10 @@ async function renderResearchReport(reportId){
   panel.innerHTML='<p class="hint">Loading the report…</p>';
   try{
     const report=await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`);
-    panel.innerHTML=`<p class="hint"><a href="#/research">← ${escapeHtml(t('Saved reports'))}</a></p>`
-      +`<div class="panel-title"><h2>${escapeHtml(report.objective)}</h2><span class="badge badge-on">${escapeHtml(isoToLocal(report.createdAt))}</span></div>`
+    panel.innerHTML=`<article class="research-page"><p class="hint"><a href="#/research">← ${escapeHtml(t('Saved reports'))}</a></p>`
+      +`<h1>${escapeHtml(report.objective)}</h1>`
+      +`<p class="research-meta">${escapeHtml(isoToLocal(report.createdAt))}</p>`
+      +researchFigures(report.images)
       +researchAnswerBlock(report.answer)
       +`<div class="card-actions"><button type="button" id="researchReuseButton">${escapeHtml(t('Edit and run again'))}</button>`
       +`<button type="button" id="researchRerunButton">${escapeHtml(t('Run it again as it is'))}</button>`
@@ -5075,7 +5084,7 @@ async function renderResearchReport(reportId){
       +`<details class="research-sources"><summary translate="no">${escapeHtml(t('Sources the answer was written from'))} (${report.candidates.length})</summary>`
       +report.candidates.map(researchCandidateRow).join('')
       +`<p class="hint">The exact string sent to the provider: <code>${escapeHtml(report.queryEcho)}</code></p>`
-      +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p></details>`;
+      +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p></details></article>`;
     // Edit refills the line and STOPS, on the page you came from: the person decides what to
     // change and presses Run themselves. Running on their behalf would send a query they never read.
     $('#researchReuseButton').addEventListener('click',()=>{
