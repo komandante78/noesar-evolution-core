@@ -3239,6 +3239,11 @@ function renderShadowContent(){
   if(currentSimulation){
     const sim=currentSimulation.simulation??{};
     parts.push(`<div class="metric"><span>Simulated</span><b>${sim.supported?`${(sim.predictedDiff??[]).length} predicted path(s)`:'not supported by this provider'}</b></div>`);
+    // A count is not an answer to the question this panel exists to answer: *which* paths a
+    // plan would touch is what has to be read before approving it. The count stays — it is
+    // what a glance wants — and the paths themselves are now shown under it.
+    const predicted=sim.supported?(sim.predictedDiff??[]):[];
+    if(predicted.length)parts.push(`<ul class="provenance-list">${predicted.map((path)=>`<li><b translate="no">${escapeHtml(String(path))}</b></li>`).join('')}</ul>`);
     if(!sim.supported)parts.push(`<p class="declared-empty">The provider that answered (${escapeHtml(provenanceSummary(currentSimulation.provenance))}) declared \`supported: false\` rather than invent a prediction — a real answer, not an empty one dressed as a miss.</p>`);
   }
   if(currentApproveResult){

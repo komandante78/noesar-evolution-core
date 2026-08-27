@@ -79,13 +79,14 @@ test('PROCEED end to end: both gates called, tool called once, report stored', a
   const reportStore = new ResearchReportStore();
   const refusalRegistry = new RefusalRegistry();
   const outcome = await runResearchReport({
-    objective: 'Compare vacuum cleaners under 400 euros', criteria: ['under-400-eur', 'cordless'],
+    objective: 'Compare vacuum cleaners under 400 euros', criteria: ['under-400-eur', 'cordless'], can: () => true,
     actorId: 'user-1', gate, tools: [tool], executor, toolId: 'tool-1',
     ledger, reportStore, refusalRegistry,
   });
   assert.equal(outcome.outcome, 'PROCEED');
   assert.equal(gate.seen.length, 2, 'intent gate and content gate must both be asked');
   assert.equal(executor.calls.length, 1);
+  assert.equal(typeof executor.calls[0].ctx.can, "function", "the caller authority must reach the executor: a builtin provider is refused 403 without it");
   assert.deepEqual(executor.calls[0].input.criteria, ['under-400-eur', 'cordless']);
   const stored = reportStore.get(outcome.report.id);
   assert.ok(stored);

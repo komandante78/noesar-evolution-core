@@ -198,7 +198,7 @@ export function resolveResearchTool(tools, toolId) {
  * store. Every exit before "store" is a refusal or an unavailability, never a partial report.
  */
 export async function runResearchReport({
-  objective, criteria = [], actorId, projectId = null,
+  objective, criteria = [], actorId, projectId = null, can = null,
   gate, tools, executor, toolId, ledger, reportStore, refusalRegistry, nowMs = Date.now(),
 }) {
   const trimmedObjective = String(objective ?? '').trim();
@@ -221,7 +221,7 @@ export async function runResearchReport({
 
   // PROCEED — dispatch to the designated provider tool.
   const tool = resolveResearchTool(tools, toolId);
-  const { result } = await executor.execute(tool, { objective:trimmedObjective, criteria:normalizedCriteria }, { actorId, projectId });
+  const { result } = await executor.execute(tool, { objective:trimmedObjective, criteria:normalizedCriteria }, { actorId, projectId, can });
   const candidates = validateReportPayload(result);
 
   // Gate 2 — content, on what came back, before it is ever stored or shown (UI-091 second door).

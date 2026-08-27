@@ -2440,6 +2440,7 @@ const requestListener = async (req, res) => {
       try {
         outcome = await runResearchReport({
           objective, criteria, actorId: authenticated.user.id,
+          can:(permission)=>auth.hasPermission(authenticated.user,permission),
           gate: researchGateFrom(process.env), tools: scoutState.tools ?? [], executor: toolExecutor,
           toolId: scoutState.settings?.researchProviderToolId ?? null,
           ledger, reportStore: researchReportStore, refusalRegistry: researchRefusalRegistry,
@@ -2840,6 +2841,7 @@ const requestListener = async (req, res) => {
         const outcome = await runResearchReport({
           objective: request.objective, criteria: request.criteria,
           actorId: authenticated.user.id, projectId: request.projectId ?? null,
+          can:(permission)=>auth.hasPermission(authenticated.user,permission),
           gate: researchGateFrom(process.env), tools: state.tools ?? [], executor: toolExecutor,
           toolId: state.settings?.researchProviderToolId ?? null,
           ledger, reportStore: researchReportStore, refusalRegistry: researchRefusalRegistry,
