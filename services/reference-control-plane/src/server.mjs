@@ -2858,6 +2858,13 @@ const requestListener = async (req, res) => {
         throw error;
       }
     }
+    // The way back to a report already run — Owner, 2026-08-27. Gated exactly like opening one
+    // (UI-082, a session on THIS installation), scoped to the caller, and carrying no candidates:
+    // it exists so a goal can be corrected and run again, not so results live anywhere new.
+    if (req.method === 'GET' && url.pathname === '/api/v1/research/reports') {
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      return json(res, 200, { reports: researchReportStore.list({ createdBy: authenticated.user.id }) });
+    }
     const researchReportMatch = url.pathname.match(/^\/api\/v1\/research\/report\/([^/]+)$/);
     if (researchReportMatch && req.method === 'GET') {
       // UI-082: a session on THIS installation is required — the link is not public of its

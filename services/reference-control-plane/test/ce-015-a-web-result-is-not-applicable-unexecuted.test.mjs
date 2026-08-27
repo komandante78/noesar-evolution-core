@@ -83,7 +83,12 @@ describe('CE-015 — a result from the web is not applicable until executed and 
     walk(SRC);
     assert.ok(uses.length > 0, 'the report store is not used at all — this scan is not reaching the code');
     const methods = [...new Set(uses.map((use) => use.method))].sort();
-    assert.deepEqual(methods, ['get', 'put', 'revoke'],
+    // 2026-08-27, Owner: `list` is the fourth, and it is admitted rather than tolerated. CE-015
+    // is about a WEB RESULT reaching the workspace unexecuted; `list` returns ids, the objective
+    // and criteria the person typed, and two dates — never a candidate, never a statement, never
+    // a URL. `research.test.mjs` holds that claim as its own assertion, so this list staying at
+    // four is not the only thing standing between a search result and an apply.
+    assert.deepEqual(methods, ['get', 'list', 'put', 'revoke'],
       `the report store gained a method: ${uses.map((use) => `${use.file}:${use.line} ${use.method}`).join(', ')}`);
   });
 

@@ -4970,12 +4970,18 @@ function renderResearchCriteriaChips(){
   box.innerHTML=researchCriteria.map((value,index)=>`<span class="chip">${escapeHtml(value)} <button type="button" data-remove-criterion="${index}" aria-label="Remove ${escapeHtml(value)}">×</button></span>`).join('');
   $$('[data-remove-criterion]').forEach((button)=>button.addEventListener('click',()=>{researchCriteria.splice(Number(button.dataset.removeCriterion),1);renderResearchCriteriaChips();}));
 }
+// n.13 — a criterion typed but not confirmed with Enter was thrown away in silence, and the
+// report went out with `criteria: []` while the person watching had just typed three. The
+// pending text is committed here, in the ONE place both the key and the button reach.
+function commitPendingCriterion(){
+  const input=$('#researchCriterionInput');const value=input.value.trim();
+  if(value&&!researchCriteria.includes(value)){researchCriteria.push(value);renderResearchCriteriaChips();}
+  input.value='';
+}
 $('#researchCriterionInput').addEventListener('keydown',(event)=>{
   if(event.key!=='Enter')return;
   event.preventDefault();
-  const value=$('#researchCriterionInput').value.trim();
-  if(value&&!researchCriteria.includes(value)){researchCriteria.push(value);renderResearchCriteriaChips();}
-  $('#researchCriterionInput').value='';
+  commitPendingCriterion();
 });
 async function loadResearchProviderStatus(){
   const status=$('#researchProviderStatus');
@@ -5059,17 +5065,45 @@ function renderResearchOutcome(outcome){
     return;
   }
   renderResearchReport(outcome.reportId);
+  loadResearchRecent();
 }
 $('#researchRunButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+  commitPendingCriterion();
   const objective=$('#researchObjective').value.trim();
   if(!objective){toast('A goal is required.',{kind:'error'});return;}
   $('#researchOutcomePanel').classList.add('hidden');
   try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:researchCriteria})}));}
   catch(error){reportError(error,'Running research');}
 }));
+async function loadResearchRecent(){
+  const list=$('#researchRecentList');const count=$('#researchRecentCount');
+  try{
+    const {reports}=await api('/api/v1/research/reports');
+    count.textContent=String(reports.length);
+    list.className=reports.length?'':'empty-state';
+    list.innerHTML=reports.length?reports.map((report)=>`<article class="entity-card"><h3>${escapeHtml(report.objective)}</h3>`
+      +`<div class="chip-list">${report.criteria.map((value)=>`<span class="chip">${escapeHtml(value)}</span>`).join('')||`<span class="chip">no criteria</span>`}</div>`
+      +`<p class="hint">Expires ${escapeHtml(isoToLocal(report.expiresAt))}</p>`
+      +`<button type="button" data-open-report="${escapeHtml(report.id)}">Open</button> `
+      +`<button type="button" data-reuse-report="${escapeHtml(report.id)}">Edit and run again</button></article>`).join('')
+      :escapeHtml(t('Nothing has been run in this session yet.'));
+    $$('[data-open-report]').forEach((button)=>button.addEventListener('click',()=>renderResearchReport(button.dataset.openReport)));
+    // "Edit and run again" refills the form and stops: the person decides what to change and
+    // presses Run themselves. Re-running on their behalf would send a query they never read.
+    $$('[data-reuse-report]').forEach((button)=>button.addEventListener('click',()=>{
+      const report=reports.find((item)=>item.id===button.dataset.reuseReport);
+      if(!report)return;
+      $('#researchObjective').value=report.objective;
+      researchCriteria=[...report.criteria];
+      renderResearchCriteriaChips();
+      $('#researchObjective').focus();
+    }));
+  }catch(error){list.className='empty-state';list.textContent=error.message;}
+}
 async function loadResearchDestination(){
   renderResearchCriteriaChips();
   await loadResearchProviderStatus();
+  await loadResearchRecent();
   const reportId=researchReportIdFromHash();
   if(reportId)await renderResearchReport(reportId);
 }

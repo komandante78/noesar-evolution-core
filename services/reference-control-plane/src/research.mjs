@@ -124,6 +124,18 @@ export class ResearchReportStore {
     return record;
   }
 
+  /** The reports this person can still open, newest first and WITHOUT their candidates: a list
+   *  is a way back to a report, not a second copy of one. Same three-way collapse as `get` —
+   *  expired, revoked and never-existed are all simply absent, and one person never sees that
+   *  another ran anything. Nothing is persisted by this: what a restart forgets stays forgotten
+   *  (`UI-080…089`). */
+  list({ createdBy, nowMs = Date.now() } = {}) {
+    return [...this.#reports.values()]
+      .filter((record) => record.createdBy === createdBy && !record.revoked && Date.parse(record.expiresAt) > nowMs)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .map(({ id, objective, criteria, createdAt, expiresAt }) => ({ id, objective, criteria:[...criteria], createdAt, expiresAt }));
+  }
+
   revoke(id, { actorId, nowMs = Date.now() }) {
     const record = this.#reports.get(id);
     if (!record || record.revoked) return null;

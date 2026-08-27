@@ -227,3 +227,17 @@ describe('a self-hosted research provider', () => {
     assert.throws(() => resolveResearchTool([provider({ disabled: true })], 'searxng'), /disabled/);
   });
 });
+
+test('the report list is scoped to one person, filtered to the live ones, and carries no candidates', () => {
+  const store = new ResearchReportStore();
+  const base = { objective: 'o', criteria: ['c'], queryEcho: 'q', candidates: [goodCandidate] };
+  const older = store.put({ ...base, createdBy: 'me', nowMs: 1000 });
+  const newer = store.put({ ...base, objective: 'newer', createdBy: 'me', nowMs: 2000 });
+  store.put({ ...base, createdBy: 'someone-else', nowMs: 1500 });
+  store.put({ ...base, createdBy: 'me', nowMs: 500, ttlMs: 1 });
+  store.revoke(store.put({ ...base, createdBy: 'me', nowMs: 1200 }).id, { actorId: 'me' });
+
+  const listed = store.list({ createdBy: 'me', nowMs: 3000 });
+  assert.deepEqual(listed.map((row) => row.id), [newer.id, older.id], 'newest first, and only the live ones this person ran');
+  assert.ok(!('candidates' in listed[0]), 'a list is a way back to a report, never a second copy of one');
+});

@@ -978,6 +978,14 @@
           <div class="chip-list" id="researchCriteriaChips"></div>
           <button class="primary" id="researchRunButton" type="button">Run research</button>
         </section>
+        <!-- Owner, 2026-08-27: a way back to what was already asked. Deliberately NOT a history —
+             these are the reports still alive in this session, they expire on their own and a
+             restart forgets them, which is what UI-080…089 chose. -->
+        <section class="panel" id="researchRecentPanel">
+          <div class="panel-title"><h2>Reports still open</h2><span class="chip" id="researchRecentCount">—</span></div>
+          <p class="hint">Reachable from this session until they expire. Reopen one, or put its goal and criteria back in the form above to correct and run again.</p>
+          <div id="researchRecentList" class="empty-state">Nothing has been run in this session yet.</div>
+        </section>
         <section class="panel hidden" id="researchOutcomePanel"></section>
       </section>
 
