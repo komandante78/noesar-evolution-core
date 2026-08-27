@@ -11,13 +11,20 @@
 // canary, sitting under the same root the rest of the product reads from. If any egress path in
 // the research pipeline consulted the workspace at all, one of them would show up.
 //
-// # "Every outgoing request" means every one, and there are THREE, not one
+// # "Every outgoing request" means every one, and there are FOUR, not one
 //
 // The obvious one is the provider call. The two that get forgotten are the gate calls:
 // `research.mjs` asks `gate.classify()` **before** anything leaves (intent) and **again** on what
 // came back (content). A classifier is an outgoing request like any other — an installation can
-// point it at a model — so all three are recorded and all three are inspected. Testing only the
-// provider would have proven the smaller half and called it the criterion.
+// point it at a model — so all of them are recorded and all of them are inspected. Testing only
+// the provider would have proven the smaller half and called it the criterion.
+//
+// The fourth arrived with n.16 (Owner, 2026-08-27): the write-up, which hands the candidates to
+// the model this installation runs so the page carries a written answer instead of a list of
+// links. It reaches loopback and not the open web — but "outgoing" here means *leaving this
+// module*, and a request that carries the workspace to a local model is a leak exactly as much
+// as one that carries it to a vendor. So it is recorded and inspected with the other three,
+// which is also why the count in this file's own name for the run is stated rather than assumed.
 //
 // # And the structural half, which is stronger than any canary
 //
@@ -87,6 +94,11 @@ function recorder({ gateOutcome = 'PROCEED', providerAnswer = PROVIDER_ANSWER } 
         return { result: providerAnswer };
       },
     },
+    // n.16's write-up, recorded like any other outgoing request.
+    writeup: async (payload) => {
+      sent.push({ via: 'writeup', payload });
+      return { text: 'a written answer', model: 'a-model' };
+    },
     /** Everything that left, as one string — what a network capture would have seen. */
     wire() { return JSON.stringify(sent); },
   };
@@ -100,7 +112,7 @@ async function runWith(rec, overrides = {}) {
     objective: 'find a self-hosted vector database',
     criteria: ['open source', 'runs offline'],
     actorId: 'owner-001',
-    gate: rec.gate, tools: [TOOL], executor: rec.executor, toolId: TOOL.id,
+    gate: rec.gate, tools: [TOOL], executor: rec.executor, toolId: TOOL.id, writeup: rec.writeup,
     ledger: ledger(), reportStore: new ResearchReportStore(), refusalRegistry: new RefusalRegistry(),
     nowMs: 1_800_000_000_000,
     ...overrides,
@@ -133,15 +145,15 @@ describe('CE-014 — the engine builds the query, and the user\'s code never lea
   });
 
   // ── 2 · the canary half: inspect every outgoing request of a real run ─────────────────────
-  test('a full PROCEED run makes exactly three outgoing requests, and none carries a canary', async () => {
+  test('a full PROCEED run makes exactly four outgoing requests, and none carries a canary', async () => {
     const root = workspaceWithCanaries();
     const rec = recorder();
     const outcome = await runWith(rec);
     assert.equal(outcome.outcome, 'PROCEED');
 
-    // Three, named: intent gate, provider, content gate — in that order.
+    // Four, named: intent gate, provider, content gate, write-up — in that order.
     assert.deepEqual(rec.sent.map((entry) => entry.via),
-      ['gate.classify', 'executor.execute', 'gate.classify']);
+      ['gate.classify', 'executor.execute', 'gate.classify', 'writeup']);
 
     const wire = rec.wire();
     for (const [path, canary] of Object.entries(CANARIES)) {
@@ -168,6 +180,23 @@ describe('CE-014 — the engine builds the query, and the user\'s code never lea
     assert.equal(intent.payload, buildQueryEcho('find a self-hosted vector database', ['open source', 'runs offline']));
   });
 
+  // n.16. The write-up is the one outgoing request that carries BOTH halves — the question and
+  // what came back — so what it must not carry is stated field by field rather than by canary
+  // alone: three keys, the engine's own normalised values, and the provider's candidates.
+  test('the write-up is handed the objective, the normalised criteria and the candidates — and nothing else', async () => {
+    const rec = recorder();
+    await runWith(rec);
+    const call = rec.sent.at(-1);
+    assert.equal(call.via, 'writeup');
+    assert.deepEqual(Object.keys(call.payload).sort(), ['candidates', 'criteria', 'objective']);
+    assert.equal(call.payload.objective, 'find a self-hosted vector database');
+    assert.deepEqual(call.payload.criteria, ['open source', 'runs offline']);
+    assert.equal(call.payload.candidates.length, 1);
+    for (const canary of Object.values(CANARIES)) {
+      assert.ok(!JSON.stringify(call.payload).includes(canary), `the write-up carried \`${canary}\``);
+    }
+  });
+
   test('the content gate is asked only what the PROVIDER returned — not the workspace, not the query', async () => {
     const rec = recorder();
     await runWith(rec);
@@ -184,7 +213,7 @@ describe('CE-014 — the engine builds the query, and the user\'s code never lea
       objective: 'legitimate objective',
       criteria: ['one'],
       actorId: 'owner-001',
-      gate: rec.gate, tools: [TOOL], executor: rec.executor, toolId: TOOL.id,
+      gate: rec.gate, tools: [TOOL], executor: rec.executor, toolId: TOOL.id, writeup: rec.writeup,
       ledger: ledger(), reportStore: new ResearchReportStore(), refusalRegistry: new RefusalRegistry(),
       nowMs: 1_800_000_000_000,
       // Everything an attacking caller would try to attach to the request.
@@ -219,7 +248,7 @@ describe('CE-014 — the engine builds the query, and the user\'s code never lea
     assert.equal(outcome.outcome, 'REFUSE');
     assert.equal(outcome.stage, 'intent');
     assert.deepEqual(rec.sent.map((entry) => entry.via), ['gate.classify'],
-      'a refused intent still reached the provider');
+      'a refused intent still reached the provider, or the write-up was asked for a report that does not exist');
   });
 
   // Negative control: the pipeline really does emit something when it is supposed to, or the

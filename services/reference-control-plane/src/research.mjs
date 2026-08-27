@@ -122,6 +122,75 @@ export function validateReportPayload(payload) {
 }
 
 /**
+ * The written answer — Owner, 2026-08-27 (n.16 and n.16-bis): «una pagina … con il risultato
+ * elaborato dal modello», not an index of links.
+ *
+ * WHERE it sits is what makes it safe. It runs AFTER the content gate, on candidates that have
+ * already passed it, and it is pointed at the model this installation is ALREADY running — so
+ * the write-up adds no egress at all: nothing new leaves, and nothing reaches a vendor.
+ *
+ * `searxng-provider.mjs`'s objection ("no model in this path, on purpose") stands as an
+ * objection and is answered rather than ignored: prose assembled from unverified fragments
+ * reads like a conclusion while being just as unverified. So the page states who wrote it and
+ * keeps every source beneath it with its own label. What that comment refuses is a model
+ * writing ABOUT the web on its own; what happens here is a model writing FROM what came back.
+ *
+ * `complete` is injected — `(profileId, request) => Promise<{text}>` — exactly as
+ * `vision-caption.mjs` takes it, so this is provable without a gateway, a vault or a socket.
+ *
+ * NEVER THROWS. A model that cannot be reached costs the write-up, never the report: the
+ * candidates are already through both doors, and losing them to a busy GPU would be the worse
+ * failure. The page then says why it has no answer on it, which is the honest half of UI-085.
+ */
+export const WRITEUP_MAX_OUTPUT_TOKENS = 900;
+const WRITEUP_MAX_PROMPT_CHARS = 6000;
+
+/** What is asked for is bounded by the sources — the instruction says so in as many words. */
+export const WRITEUP_INSTRUCTION = [
+  'You are writing the answer to a question, from web search results someone else collected.',
+  'Explain what the sources say, compare the options against the requirements, and say which',
+  'one fits and why. Use ONLY what the sources below state — never name a product, a price or',
+  'a fact that is not written there — and where they do not answer part of the question, say',
+  'so in one line instead of filling the gap. Refer to a source by its number in brackets.',
+  'Write in the language the question is written in. Plain prose and short paragraphs.',
+].join(' ');
+
+/** The sources as the model sees them: numbered, bounded, and nothing a candidate did not carry. */
+export function buildWriteupPrompt(objective, criteria, candidates) {
+  const sources = candidates.map((candidate, index) => {
+    const head = `[${index + 1}] ${candidate.name}${candidate.sourceHost ? ` — ${candidate.sourceHost}` : ''}${candidate.price ? ` — ${candidate.price}` : ''}`;
+    const body = candidate.excluded
+      ? [`  excluded: ${candidate.excludedReason}`]
+      : candidate.evidence.map((row) => `  ${String(row.statement).slice(0, 400)}`);
+    return [head, ...body].join('\n');
+  }).join('\n').slice(0, WRITEUP_MAX_PROMPT_CHARS);
+  return `Question: ${objective}\n`
+    + (criteria.length ? `Requirements: ${criteria.join(', ')}\n` : '')
+    + `\nSources:\n${sources}`;
+}
+
+export async function writeResearchAnswer({
+  complete, profileId, objective, criteria = [], candidates = [],
+  maxOutputTokens = WRITEUP_MAX_OUTPUT_TOKENS,
+} = {}) {
+  if (typeof complete !== 'function') return { text:'', reason:'no way to reach a model was supplied' };
+  try {
+    const result = await complete(profileId, {
+      messages: [
+        { role:'system', content:WRITEUP_INSTRUCTION },
+        { role:'user', content:buildWriteupPrompt(objective, criteria, candidates) },
+      ],
+      maxOutputTokens,
+    });
+    const text = String(result?.text ?? '').trim();
+    if (!text) return { text:'', reason:'the model answered with nothing' };
+    return { text, model:result?.provider?.defaultModel ?? null };
+  } catch (error) {
+    return { text:'', reason:error?.message ?? String(error) };
+  }
+}
+
+/**
  * Saved on disk and kept until the person deletes it — Owner, 2026-08-27, reversing UI-080…089's
  * ephemeral store BY NAME rather than by accident. The Owner asked three times for the page of a
  * search to survive; a list that emptied itself on every deploy was half the thing asked for.
@@ -150,10 +219,13 @@ export class ResearchReportStore {
 
   #persist() { if (typeof this.#save === 'function') this.#save([...this.#reports.values()]); }
 
-  put({ id = randomUUID(), createdBy, objective, criteria, queryEcho, candidates, nowMs = Date.now() }) {
+  put({ id = randomUUID(), createdBy, objective, criteria, queryEcho, candidates, answer = null, nowMs = Date.now() }) {
     const record = Object.freeze({
       id, createdBy, objective, criteria: Object.freeze([...criteria]),
       queryEcho, candidates: Object.freeze(candidates),
+      // n.16. `null` on every report written before there was a write-up, and on any report
+      // whose model could not be asked — a reader tells the cases apart by `text` and `reason`.
+      answer: answer ? Object.freeze({ ...answer }) : null,
       createdAt: new Date(nowMs).toISOString(),
     });
     this.#reports.set(id, record);
@@ -253,7 +325,7 @@ export function resolveResearchTool(tools, toolId) {
  */
 export async function runResearchReport({
   objective, criteria = [], actorId, projectId = null, can = null,
-  gate, tools, executor, toolId, ledger, reportStore, refusalRegistry, nowMs = Date.now(),
+  gate, tools, executor, toolId, ledger, reportStore, refusalRegistry, writeup = null, nowMs = Date.now(),
 }) {
   const trimmedObjective = String(objective ?? '').trim();
   if (!trimmedObjective) throw err('An objective is required.', 400, { kind:'INVALID' });
@@ -290,7 +362,14 @@ export async function runResearchReport({
     return { outcome:'ASK', stage:'content' };
   }
 
-  const report = reportStore.put({ createdBy:actorId, objective:trimmedObjective, criteria:normalizedCriteria, queryEcho, candidates, nowMs });
-  ledger.append({ actor:actorId, action:'research.report-created', result:'success', details:{ reportId:report.id, candidates:candidates.length, toolId:tool.id } });
+  // The write-up (n.16), after the second door and never in place of it. Optional, so a caller
+  // with no model to ask — and the canary tests that prove nothing leaks — keep the exact
+  // three-request pipeline they had.
+  const answer = typeof writeup === 'function'
+    ? await writeup({ objective:trimmedObjective, criteria:normalizedCriteria, candidates })
+    : null;
+
+  const report = reportStore.put({ createdBy:actorId, objective:trimmedObjective, criteria:normalizedCriteria, queryEcho, candidates, answer, nowMs });
+  ledger.append({ actor:actorId, action:'research.report-created', result:'success', details:{ reportId:report.id, candidates:candidates.length, toolId:tool.id, written:Boolean(answer?.text) } });
   return { outcome:'PROCEED', report };
 }

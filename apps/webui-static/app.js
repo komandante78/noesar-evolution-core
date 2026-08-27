@@ -5039,6 +5039,20 @@ async function deleteResearchReport(reportId){
   toast('Report deleted.');
   await loadResearchRecent();
 }
+// n.16 — the answer on top, declared as the model's, with the sources kept underneath carrying
+// their own labels: the answer says who wrote it, the sources say where it came from. The prose
+// is marked `translate="no"` because it is not an interface string — it is content, and the walker
+// would otherwise record every sentence of it as a translation this product owes.
+//
+// A report made before there was a write-up, and one whose model could not be asked, are two
+// different states and are shown as two: an empty space where an answer belongs is the kind of
+// silence this page exists to stop.
+function researchAnswerBlock(answer){
+  if(answer?.text)return `<div class="research-answer" translate="no">${escapeHtml(answer.text)}</div>`
+    +`<p class="hint">${escapeHtml(t('Written by the model running on this installation, from the sources below. Not verified.'))}${answer.model?` <code>${escapeHtml(answer.model)}</code>`:''}</p>`;
+  if(answer?.reason)return `<p class="hint">${escapeHtml(t('No written answer for this one:'))} ${escapeHtml(answer.reason)}</p>`;
+  return '';
+}
 async function renderResearchReport(reportId){
   const panel=$('#researchOutcomePanel');
   panel.classList.remove('hidden');
@@ -5047,7 +5061,9 @@ async function renderResearchReport(reportId){
     const report=await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`);
     panel.innerHTML=`<div class="panel-title"><h2>${escapeHtml(report.objective)}</h2><span class="badge badge-on">Saved ${escapeHtml(isoToLocal(report.createdAt))}</span></div>`
       +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p>`
+      +researchAnswerBlock(report.answer)
       +`<p class="hint">The exact string sent to the provider: <code>${escapeHtml(report.queryEcho)}</code></p>`
+      +`<h3 class="research-sources-title">${escapeHtml(t('Sources the answer was written from'))}</h3>`
       +report.candidates.map(researchCandidateRow).join('')
       +'<button id="researchDeleteButton" type="button" class="danger">Delete this report</button>';
     armOnce($('#researchDeleteButton'),'Press again to delete it for good',()=>withBusy($('#researchDeleteButton'),async()=>{

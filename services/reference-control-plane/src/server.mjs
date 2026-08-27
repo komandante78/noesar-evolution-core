@@ -41,7 +41,8 @@ import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path
 import { ReasoningRefused, reasoningStatus } from './reasoning.mjs';
 import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-router.mjs';
 import { researchGateFrom } from './research-gate.mjs';
-import { runResearchReport, ResearchReportStore, RefusalRegistry } from './research.mjs';
+import { runResearchReport, ResearchReportStore, RefusalRegistry, writeResearchAnswer } from './research.mjs';
+import { LOCAL_RUNTIME_PROFILE_ID } from './ai-workspace/active-runtime-provider.mjs';
 import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
 import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings, triageFindingById, fetchAndScanRemoteTarget, probeApiTarget } from './debug-evolution-bridge.mjs';
 import { RemoteTargetRegistry } from './remote-target-registry.mjs';
@@ -422,6 +423,14 @@ const researchReportStore = new ResearchReportStore({
   },
 });
 const researchRefusalRegistry = new RefusalRegistry();
+// n.16 — who writes the answer: the model this installation is already running, the same one
+// Chat answers from, reached through the same bound `complete` the image captioner above uses.
+// The profile id is the DERIVED local runtime (`active-runtime-provider.mjs`), so when no model
+// is loaded `complete` refuses with its own reason and the report is stored without a write-up
+// rather than lost.
+const researchWriteup = (input) => writeResearchAnswer({
+  complete:providerGateway.complete.bind(providerGateway), profileId:LOCAL_RUNTIME_PROFILE_ID, ...input,
+});
 // `reasoner` is the same ProviderGateway Chat answers through (D-0397). Without it an agent
 // run's first step -- the one with no tool -- had nothing that could execute it, and every run
 // this product's own Agents screen created was unfinishable by construction.
@@ -2869,6 +2878,7 @@ const requestListener = async (req, res) => {
           gate: researchGateFrom(process.env), tools: state.tools ?? [], executor: toolExecutor,
           toolId: state.settings?.researchProviderToolId ?? null,
           ledger, reportStore: researchReportStore, refusalRegistry: researchRefusalRegistry,
+          writeup: researchWriteup,
         });
         if (outcome.outcome === 'PROCEED') {
           return json(res, 200, { outcome:'PROCEED', reportId:outcome.report.id, expiresAt:outcome.report.expiresAt });

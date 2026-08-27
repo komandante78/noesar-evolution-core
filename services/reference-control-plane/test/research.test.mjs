@@ -11,6 +11,7 @@ import {
   resolveResearchTool,
   runResearchReport, validateCandidate, validateReportPayload,
   ResearchReportStore, RefusalRegistry, buildQueryEcho,
+  writeResearchAnswer, buildWriteupPrompt,
 } from '../src/research.mjs';
 
 const goodCandidate = {
@@ -93,6 +94,79 @@ test('PROCEED end to end: both gates called, tool called once, report stored', a
   assert.equal(stored.candidates.length, 1);
   assert.equal(stored.queryEcho, buildQueryEcho('Compare vacuum cleaners under 400 euros', ['under-400-eur', 'cordless']));
   assert.ok(ledger.entries.some((e) => e.action === 'research.report-created'));
+});
+
+// n.16 — the written answer. Three properties, and the second is the one that matters when the
+// GPU is busy: the report survives a write-up that could not be made.
+test('the write-up is asked once, after both gates, with the candidates that passed them (n.16)', async () => {
+  const gate = fakeGate([{ outcome: 'PROCEED', category: null }, { outcome: 'PROCEED', category: null }]);
+  const executor = fakeExecutor({ candidates: [goodCandidate] });
+  const reportStore = new ResearchReportStore();
+  const ledger = fakeLedger();
+  const asked = [];
+  const outcome = await runResearchReport({
+    objective: 'Which cordless vacuum fits', criteria: ['  cordless  '], actorId: 'user-1', can: () => true,
+    gate, tools: [tool], executor, toolId: 'tool-1',
+    ledger, reportStore, refusalRegistry: new RefusalRegistry(),
+    writeup: async (input) => { asked.push(input); return { text: 'Vendor A fits [1].', model: 'a-model' }; },
+  });
+  assert.equal(asked.length, 1, 'the write-up must be asked exactly once');
+  assert.equal(gate.seen.length, 2, 'the write-up must not replace either gate');
+  assert.equal(asked[0].candidates.length, 1, 'the write-up reads the candidates that passed the content gate');
+  assert.deepEqual(asked[0].criteria, ['cordless'], 'the write-up reads the ENGINE-normalised criteria, not the raw ones');
+  const stored = reportStore.get(outcome.report.id);
+  assert.equal(stored.answer.text, 'Vendor A fits [1].');
+  assert.equal(stored.answer.model, 'a-model');
+  assert.ok(ledger.entries.some((e) => e.action === 'research.report-created' && e.details.written === true));
+});
+
+test('a write-up that could not be made costs the answer, never the report (n.16)', async () => {
+  const gate = fakeGate([{ outcome: 'PROCEED', category: null }, { outcome: 'PROCEED', category: null }]);
+  const reportStore = new ResearchReportStore();
+  const ledger = fakeLedger();
+  const outcome = await runResearchReport({
+    objective: 'anything', criteria: [], actorId: 'user-1', can: () => true,
+    gate, tools: [tool], executor: fakeExecutor({ candidates: [goodCandidate] }), toolId: 'tool-1',
+    ledger, reportStore, refusalRegistry: new RefusalRegistry(),
+    writeup: async () => ({ text: '', reason: 'no local model is answering' }),
+  });
+  assert.equal(outcome.outcome, 'PROCEED');
+  const stored = reportStore.get(outcome.report.id);
+  assert.equal(stored.candidates.length, 1, 'the candidates that passed both gates must survive a failed write-up');
+  assert.equal(stored.answer.text, '');
+  assert.equal(stored.answer.reason, 'no local model is answering');
+  assert.ok(ledger.entries.some((e) => e.action === 'research.report-created' && e.details.written === false));
+});
+
+test('a report stored with no write-up at all carries answer:null, not an empty answer (n.16)', () => {
+  const store = new ResearchReportStore();
+  const record = store.put({ createdBy: 'user-1', objective: 'o', criteria: [], queryEcho: 'q', candidates: [] });
+  assert.equal(record.answer, null);
+});
+
+test('writeResearchAnswer never throws — an unreachable model becomes a reason (n.16)', async () => {
+  const failed = await writeResearchAnswer({
+    complete: async () => { throw new Error('No local model is answering: none is loaded'); },
+    profileId: 'local-runtime', objective: 'x', candidates: [],
+  });
+  assert.equal(failed.text, '');
+  assert.match(failed.reason, /No local model is answering/);
+
+  const empty = await writeResearchAnswer({ complete: async () => ({ text: '   ' }), profileId: 'local-runtime', objective: 'x', candidates: [] });
+  assert.equal(empty.text, '');
+  assert.equal(empty.reason, 'the model answered with nothing');
+
+  let sent = null;
+  const written = await writeResearchAnswer({
+    complete: async (profileId, request) => { sent = { profileId, request }; return { text: '  an answer  ', provider: { defaultModel: 'a-model' } }; },
+    profileId: 'local-runtime', objective: 'Which vacuum', criteria: ['cordless'],
+    candidates: [{ name: 'Vendor A', sourceHost: 'example.test', evidence: [{ kind: 'SOURCE_FACT', statement: 'Listed price is €42.' }] }],
+  });
+  assert.equal(written.text, 'an answer', 'the answer is trimmed, not re-wrapped');
+  assert.equal(written.model, 'a-model');
+  assert.equal(sent.profileId, 'local-runtime');
+  assert.equal(sent.request.messages.at(-1).content, buildWriteupPrompt('Which vacuum', ['cordless'], [{ name: 'Vendor A', sourceHost: 'example.test', evidence: [{ kind: 'SOURCE_FACT', statement: 'Listed price is €42.' }] }]));
+  assert.match(sent.request.messages.at(-1).content, /\[1\] Vendor A — example\.test/);
 });
 
 test('intent REFUSE never calls the provider — no query is emitted (UI-095)', async () => {

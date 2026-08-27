@@ -104,6 +104,13 @@ export const RUNTIME_ONLY = Object.freeze([
   'Free',
   'Free it',
   'This unloads the model from memory. Chat cannot answer until one is started again.',
+  // n.16 — the write-up's own three lines. The panel around them is in the markup and is
+  // covered there; these are written by `renderResearchReport()` and can appear nowhere else.
+  // The model's prose itself is not here and never will be: it is content, not interface, and
+  // it is marked `translate="no"` where it is written.
+  'Written by the model running on this installation, from the sources below. Not verified.',
+  'No written answer for this one:',
+  'Sources the answer was written from',
   // The composer's switcher when nothing is loaded. One word, and it must not read as an error:
   // an installation serving no model is a state, not a fault.
   'none',
@@ -949,6 +956,9 @@ const it = {
   ', never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.': ', mai il soggetto: legislazione, storia, prevenzione, sicurezza sul lavoro e rimedio restano raggiungibili.',
   'Research provider': 'Fornitore di ricerca',
   'Saved reports': 'Ricerche salvate',
+  'Written by the model running on this installation, from the sources below. Not verified.': 'Scritta dal modello che gira su questa installazione, a partire dalle fonti qui sotto. Non verificata.',
+  'No written answer for this one:': 'Nessuna risposta scritta per questa ricerca:',
+  'Sources the answer was written from': 'Le fonti da cui è stata scritta la risposta',
   'Pictures off': 'Immagini spente',
   'Pictures allowed': 'Immagini consentite',
   'Allow pictures in reports': 'Consenti le immagini nei resoconti',
