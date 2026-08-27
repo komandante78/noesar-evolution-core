@@ -5042,6 +5042,7 @@ async function renderResearchReport(reportId){
       try{await api(`/api/v1/research/report/${encodeURIComponent(report.id)}/revoke`,{method:'POST',body:'{}'});toast('Revoked.');panel.innerHTML='<p class="hint">This report has been revoked.</p>';}
       catch(error){reportError(error,'Revoking the report');}
     }));
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){panel.innerHTML=`<p class="hint">${escapeHtml(error.message)}</p>`;}
 }
 function renderResearchOutcome(outcome){
@@ -5096,7 +5097,12 @@ async function loadResearchRecent(){
       $('#researchObjective').value=report.objective;
       researchCriteria=[...report.criteria];
       renderResearchCriteriaChips();
+      // Measured 2026-08-27: the two buttons DID fire and the server answered 200 both times —
+      // the report simply re-rendered into a panel that already showed it, and the form it
+      // refills is above the fold. A control that works and looks broken is a broken control.
+      $('#researchObjective').scrollIntoView({behavior:'smooth',block:'center'});
       $('#researchObjective').focus();
+      toast('Goal and criteria put back — change what you need, then press Run research.');
     }));
   }catch(error){list.className='empty-state';list.textContent=error.message;}
 }
