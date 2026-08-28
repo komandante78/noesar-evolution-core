@@ -744,6 +744,21 @@ describe('the chat is a frame the height of the screen, not a stack of fixed pix
     assert.ok(messages.includes('overflow:auto'), 'and the transcript is the one place that scrolls');
   });
 
+  // Owner, 2026-08-28: «falla più stretta ma in basso, in modo che la chat abbia più spazio».
+  // The composer reserved 85px of empty textarea whether or not anything had been typed, and
+  // every one of those pixels came off the transcript. Measured at 1366x700 after the change:
+  // the box is 107 instead of 156 and the transcript 307 instead of 256 — a fifth more
+  // conversation — while a 30-line draft grows the box to 273 and stops there, leaving 141.
+  test('the composer starts small and grows with what is typed, up to a ceiling', () => {
+    const textarea = rule('.composer textarea');
+    assert.ok(textarea.includes('field-sizing:content'),
+      'the browser does the growing; without this a small box means a long message scrolls in a slit');
+    assert.ok(!/min-height:\s*([89]\d|\d{3,})px/.test(textarea),
+      'a tall floor on an empty box is space taken from the transcript before a word is written');
+    assert.ok(/max-height:\s*\d+vh/.test(textarea),
+      'and a ceiling in viewport units, so a long draft can never eat the conversation it belongs to');
+  });
+
   test('the frame is scoped to the chat and to screens that have a sidebar', () => {
     assert.ok(css.includes('.main:has(#view-chat.active)'),
       'the frame is scoped the way .main:has(#view-coden.active) already scopes CodeN — no other page moves');

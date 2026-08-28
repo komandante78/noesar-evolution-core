@@ -407,7 +407,7 @@ a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-s
 b509c8b1da2d63d94b364ed9969082d8e3ca35dd19c268b34a7bfdfb4d716d41  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
-b6457a909b7c518e622b72ea4b06d8901b207bf7ae0b47b1223e0de745820af1  ./apps/webui-static/styles.css
+ab110e00032fe74553efb073bf08bb366d9255c83df8a2ffd0e708f9f93204c6  ./apps/webui-static/styles.css
 b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd  ./apps/webui-static/vendor/xterm/LICENSE
 70cf8efd07e7e8a60fdcb4ba09f142f7ba8ac53f0f54cd4317bde25fe8730851  ./apps/webui-static/vendor/xterm/PROVENANCE.md
 854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6  ./apps/webui-static/vendor/xterm/xterm.css
@@ -6635,7 +6635,7 @@ d55d7ed7041da5e6be291addb047507853abacf6ae2e138388c1f149ff361264  ./services/ref
 9433f1454df3b6f20f279a2578a212c95d311a0549c9d3a7e0a20dc447caf3bd  ./services/reference-control-plane/test/webui-boot-order.test.mjs
 0a86bf925091c333ba75acbba7f065acf6683e2638c74cc83cc01c21ea14703b  ./services/reference-control-plane/test/webui-colour.test.mjs
 5073ebefb1c1b2da4de352771b77a6084bd376b24368467b33f9914a21dbb86f  ./services/reference-control-plane/test/webui-jump-to-address.test.mjs
-d1ceccbc3619076acbfe6d79301799437e1eb7eccb51d97d4bdb49eb53b2b379  ./services/reference-control-plane/test/webui-markup-structure.test.mjs
+79c79c804d4fd794787b04d03a2612db0c0fbc0beadb4d0ddb1825d303521aee  ./services/reference-control-plane/test/webui-markup-structure.test.mjs
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs
 3a547526f1f9ae1e7a5980efbc4b40d0ee1a406ee49f71ede4241fcc5778f095  ./services/reference-control-plane/test/workflow-engine.test.mjs
 1eb92d39e1c01874e63efee2e89f2ed81500e1f2e4d46766ba227c01ffef09fd  ./services/reference-control-plane/test/workflow-interrupted-step.test.mjs
