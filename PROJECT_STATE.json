@@ -998,18 +998,27 @@
   },
   "phase_4_technical_gate": "PASS",
   "lan_webui_server_bind": "PASS",
-  "client_browser_test": "AWAITING_OWNER",
-  "owner_bootstrap": "AWAITING_OWNER_INTERACTION",
+  "client_browser_test": "PASS",
+  "owner_bootstrap": "PASS",
   "phase_5_documentation_ready": false,
   "phase_5_final_packaging_ready": false,
   "next_phase_constraint": "D-0203: Fase 1 chiusa con EXECUTE permanentemente escluso (confine di sicurezza, non gap). Fasi 2-6 del roadmap 09_PIANO.md §2 saltate su istruzione esplicita dell Owner — non un errore, una scelta di scope dichiarata. Prima azione: passo 27 (framework moduli di settore + livelli di fiducia), riprendendo capabilities/security/trust-level-policy.json e capabilities/templates/industry-module/ mai wired al prodotto vivo né in MANIFEST.sha256 fino a questa fase.",
   "phase_5_release_gate": {
-    "CLIENT_BROWSER_TEST": "AWAITING_OWNER",
-    "OWNER_BOOTSTRAP": "AWAITING_OWNER_INTERACTION",
-    "MFA_TOTP": "AWAITING_OWNER",
-    "TOKEN_REUSE_REJECTED": "AWAITING_OWNER",
-    "STEP_UP_AUTH": "AWAITING_OWNER",
-    "note": "All five are Owner-performed. None may be marked PASS by anyone but the Owner completing the flow in docs/OWNER_BOOTSTRAP.md. Until then Phase 5 may produce preliminary documentation only."
+    "CLIENT_BROWSER_TEST": "PASS",
+    "OWNER_BOOTSTRAP": "PASS",
+    "MFA_TOTP": "PASS",
+    "TOKEN_REUSE_REJECTED": "PASS",
+    "STEP_UP_AUTH": "PASS",
+    "closed_utc": "2026-08-28",
+    "note": "All five are Owner-performed, and the Owner performed them: on 2026-08-27 (four of them) and 2026-08-28 (the last three stages of the browser walk). Marked in one edit, on the Owner's word, once the last one had its proof — never one at a time as they landed. The evidence is the hash-chained audit ledger at RUNTIME_ROOT/audit/events.jsonl; the lines below only point at it, and the ledger is what settles a disagreement with this file.",
+    "evidence": {
+      "OWNER_BOOTSTRAP": "2026-08-09 — account koma78, role owner, TOTP enrolled, 10 recovery codes; GET /api/v1/auth/status answers initialized:true. Found already done on 2026-08-27 rather than performed then: the gate was never where the documents said it was.",
+      "TOKEN_REUSE_REJECTED": "2026-08-27 06:54 — setup replayed with a forged token AND with the real one; 409 'NOESAR is already initialized' both times. A token that still exists is not a token that still works.",
+      "MFA_TOTP": "2026-08-27 06:59 auth.mfa-failed/denied (401 Invalid TOTP code) then 07:00 auth.login/success role=owner mfa=true — the wrong code is refused before the right one is accepted, which is the half worth proving. Repeated 2026-08-28 at 05:09:35 and 05:12:53, both auth.login/success with mfa:true.",
+      "STEP_UP_AUTH": "2026-08-27 07:12 coden.authorize refused 403 'Recent strong reauthentication is required', then 07:17 auth.reauthenticated/success and a five-minute elevation.",
+      "CLIENT_BROWSER_TEST": "Six stages, walked in a real browser on the Owner's own machine against the LAN address http://192.168.178.100:8100 — which is the whole point of this row: curl from the server proves the port is bound, not that a client can open it. 2026-08-27: (1) Chat, (2) Models, with a 7b/1.5b swap verified on three separate readings, (3) Research, which recorded research.gated/proceed, tool.executed/success, research.gated on the returned content, and research.report-created with 10 candidates. 2026-08-28: (4) Knowledge — source.ingested/complete at 05:11:29, a real PDF extracted into 2 chunks with injectionSuspected:false, and the first source ever ingested on this installation; (5) Settings — visited and read, deliberately changing nothing, so it left no ledger record and none is claimed for it; (6) logout and back in — auth.logout 05:12:37, auth.password-verified/mfa-required 05:12:40, auth.login/success role=owner mfa=true 05:12:53."
+    },
+    "still_not_claimed": "Passing this gate says these five acts were performed and recorded. It does not say the phase-5 documents are written: phase_5_documentation_ready and phase_5_final_packaging_ready stay false, and they are about documents, not about this walk. client_browser_retest and owner_mfa_rotation are their own rows and were not part of these five."
   },
   "network_access": {
     "setting": "NOESAR_BIND_ADDRESS",

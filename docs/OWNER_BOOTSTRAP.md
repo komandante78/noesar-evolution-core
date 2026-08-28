@@ -137,7 +137,13 @@ work from a browser. Use the `https` address in both, so what you test is what y
 
 Username, password and TOTP enrolment are the Owner's choices. The phase specification
 forbids creating definitive credentials on the Owner's behalf when the product requires an
-interactive choice, so **no Owner account exists on this installation**.
+interactive choice, so phase 3 created none.
+
+**The Owner created theirs on 2026-08-09**, and this sentence used to end «so no Owner
+account exists on this installation» — present tense, and false from that day. It was read
+as current state twice before anybody checked it against `GET /api/v1/auth/status`, which
+answers `initialized: true`. The reason phase 3 stood back is still the reason; the state it
+described stopped being the state.
 
 ## What was verified instead
 
