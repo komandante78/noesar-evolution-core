@@ -702,3 +702,55 @@ describe('an option carries its own value, so a translation cannot change what i
       'these are the strings path-auth.mjs compares against; a translated one disarms isDestructive()');
   });
 });
+
+// Owner, 2026-08-28, looking at the deployed page: «l'area interna della chat deve scorrere, la
+// barra sotto deve essere fissa e portata più su, l'area a destra deve stare visibile a schermo
+// intero». Making the shell exactly one viewport was necessary and not sufficient: the chat was
+// sized in PIXELS — `min-height:650px` on the panel, `max-height:610px` on the transcript — so on
+// a screen shorter than that sum the whole chat overflowed and what scrolled was the COLUMN,
+// carrying the composer and the Work panel below the fold.
+//
+// Measured after the fix, in a real browser at 1366x700 against these exact files: the document
+// does not scroll, the composer ends at 591 of 700, the Work panel at 636, and the only things
+// with a scrollbar are the transcript and — on a screen too short for thirteen destinations —
+// the sidebar's own list. A pixel height put back here would undo that quietly, on screens
+// whoever put it back does not own, which is why it is asserted rather than remembered.
+describe('the chat is a frame the height of the screen, not a stack of fixed pixel heights', () => {
+  const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
+  // No regex: a selector is a literal, and building a pattern out of one is how a `.` or a `{`
+  // in it quietly matches something else.
+  const rule = (selector) => {
+    const at = css.indexOf(selector + '{');
+    return at < 0 ? '' : css.slice(at + selector.length + 1, css.indexOf('}', at));
+  };
+
+  test('the shell is exactly one viewport, so the column has something to scroll inside', () => {
+    const shell = rule('.app-shell');
+    assert.ok(shell.includes('height:100vh'), 'the shell must be the viewport');
+    assert.ok(!shell.includes('min-height:100vh'),
+      'min-height lets the grid grow past the screen, and then the PAGE scrolls instead of the column');
+    assert.ok(shell.includes('overflow:hidden'), 'the shell itself must never be what scrolls');
+  });
+
+  test('nothing in the chat decides its own height in pixels', () => {
+    const panel = rule('.chat-panel');
+    const messages = rule('.messages');
+    assert.ok(!/min-height:\s*\d+px/.test(panel),
+      'a pixel floor on the chat panel pushes the composer off a short screen');
+    assert.ok(!/max-height:\s*\d+px/.test(messages),
+      'a pixel ceiling on the transcript leaves dead space on a tall screen and overflows a short one');
+    assert.ok(messages.includes('flex:1'), 'the transcript takes what is left, whatever that is');
+    assert.ok(messages.includes('min-height:0'), 'without this a flex child refuses to shrink below its content');
+    assert.ok(messages.includes('overflow:auto'), 'and the transcript is the one place that scrolls');
+  });
+
+  test('the frame is scoped to the chat and to screens that have a sidebar', () => {
+    assert.ok(css.includes('.main:has(#view-chat.active)'),
+      'the frame is scoped the way .main:has(#view-coden.active) already scopes CodeN — no other page moves');
+    const at = css.indexOf('.main:has(#view-chat.active)');
+    assert.ok(css.lastIndexOf('@media(min-width:851px)', at) > css.lastIndexOf('@media(max-width', at),
+      'below 851px the shell stops being a grid and the page scrolls as a page — a phone wants that');
+    assert.ok(rule('.chat-grid>.context-panel').includes('overflow-y:auto'),
+      'the Work panel scrolls inside itself rather than lengthening the column');
+  });
+});
