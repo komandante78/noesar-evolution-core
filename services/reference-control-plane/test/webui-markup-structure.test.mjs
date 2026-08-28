@@ -668,3 +668,37 @@ describe('point 4b · the work column renders a relation it does not invent', ()
     assert.ok(code.includes('No work has been started from this chat yet'), 'an empty chat says so');
   });
 });
+
+// n.4, Owner 2026-08-27 — the defect that made this a structural invariant rather than a
+// preference. A `<select>` hands back an option's TEXT when the option carries no `value`, and
+// this product translates the text: with the interface in Italian, `<option>delete</option>`
+// sent `cancellazione`. `isDestructive()` asks `plan.operation === 'delete'`, so a deletion
+// stopped being destructive and could be granted the standing, unattended consent scope
+// `SEC-003` exists to refuse. The wire value was the translated label, in three selects.
+//
+// The server refuses an operation outside its five whatever a client sends — that is where the
+// hole is really closed. This is the other half: the page must not be the thing that sends it.
+// Asserted for EVERY option in the markup, not for the three that were caught: the next
+// translated enum will be written by somebody who never read this comment.
+describe('an option carries its own value, so a translation cannot change what is sent', () => {
+  const selects = [...html.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/g)];
+
+  test('no option in any select relies on its label being the value', () => {
+    const bare = [];
+    for (const [, attrs, body] of selects) {
+      const id = (attrs.match(/id="([^"]+)"/) ?? [])[1] ?? '(no id)';
+      for (const [, optionAttrs, label] of body.matchAll(/<option\b([^>]*)>([^<]*)<\/option>/g)) {
+        if (!/\bvalue=/.test(optionAttrs)) bare.push(`${id}: ${label.trim()}`);
+      }
+    }
+    assert.deepEqual(bare, [], `these options send their label, which the catalogue translates:\n  ${bare.join('\n  ')}`);
+  });
+
+  test('the five operations reach the server as themselves', () => {
+    const block = selects.find(([, attrs]) => attrs.includes('id="operation"'));
+    assert.ok(block, 'the authority panel must still have its operation select');
+    const values = [...block[2].matchAll(/value="([^"]*)"/g)].map((match) => match[1]);
+    assert.deepEqual(values, ['write', 'delete', 'execute', 'install', 'read'],
+      'these are the strings path-auth.mjs compares against; a translated one disarms isDestructive()');
+  });
+});

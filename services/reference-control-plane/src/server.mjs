@@ -2546,7 +2546,13 @@ const requestListener = async (req, res) => {
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       const request = await body(req);
       if (request.mode === 'OWNER_BYPASS' && !auth.hasPermission(authenticated.user, 'coden.owner-bypass')) return json(res, 403, { error:'Owner role is required for Owner Bypass.' });
-      const plan = createPathPlan(request, workspace);
+      // A refused plan is the caller's mistake, so it answers 400 with the reason — the same
+      // shape `/coden/authorize` below already uses for the same call. Without this a missing
+      // path or an operation outside the five became a 500, which reads as "the server broke"
+      // for a request the server understood perfectly and was right to refuse.
+      let plan;
+      try { plan = createPathPlan(request, workspace); }
+      catch (error) { return json(res, 400, { error:error.message }); }
       ledger.append({ actor:authenticated.user.id, action:'coden.path-plan', result:plan.blocked ? 'blocked':'planned', details:{ canonicalPath:plan.canonicalPath, risk:plan.risk, mode:plan.mode } });
       return json(res, plan.blocked ? 403 : 200, plan);
     }

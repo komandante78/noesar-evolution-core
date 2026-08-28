@@ -83,6 +83,26 @@ export const INVARIANT_ENFORCEMENT = Object.freeze([
 /** Consent scopes that leave a destructive operation reusable without a further decision. */
 const UNATTENDED_SCOPES = Object.freeze(['FOLDER_FOR_SESSION', 'PERSISTENT_FOLDER']);
 
+/**
+ * The five operations a plan may name — an enum on the wire, enforced here because here is
+ * where every caller passes.
+ *
+ * n.4, Owner 2026-08-27. `isDestructive` asks whether the operation IS the string `delete`,
+ * and until now nothing checked that the operation was one of five strings at all: anything
+ * else — a typo, another product's vocabulary, a word in another language — sailed through as
+ * a plan with `risk: LOW` and `isDestructive: false`, and could then be granted the standing,
+ * unattended scope `checkConsentScope` exists to refuse. What FOUND it was the browser sending
+ * `cancellazione`, because the Italian `<option>` had no `value` and a `<select>` hands back
+ * its label when it has none; but the browser was one way in, not the hole. The hole was a
+ * comparison against a bare string with no vocabulary behind it, and it is closed here rather
+ * than in the page, so a terminal, a script or a future client cannot re-open it.
+ *
+ * REFUSED, never normalised: mapping an unknown operation onto `write` would let a caller who
+ * meant `delete` get a plan for something else and never learn it. This throws the way
+ * `createPathPlan` already throws for a missing path.
+ */
+export const OPERATIONS = Object.freeze(['read', 'write', 'delete', 'execute', 'install']);
+
 export function isDestructive(plan) {
   return plan.operation === 'delete' || plan.recursive === true;
 }
@@ -118,6 +138,7 @@ export function createPathPlan(request, workspaceRoot) {
   const candidate = isAbsolute(rawPath) ? normalize(rawPath) : resolve(workspaceRoot, rawPath);
   const canonical = existsSync(candidate) ? realpathSync.native(candidate) : resolve(candidate);
   const operation = request.operation ?? 'write';
+  if (!OPERATIONS.includes(operation)) throw new Error(`Operation must be one of: ${OPERATIONS.join(', ')}.`);
   const findings = inspectExistingSegments(candidate);
   const protectedMatch = protectedRoots.find((root) => within(canonical, root));
   const ownerHomeSecrets = within(canonical, resolve(homedir(), '.ssh')) || within(canonical, resolve(homedir(), '.config'));

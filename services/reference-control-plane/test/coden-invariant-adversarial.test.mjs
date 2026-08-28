@@ -41,7 +41,7 @@ process.env.NOESAR_LOG_LEVEL = 'ERROR';
 process.env.NOESAR_DATA_PLANE = 'reference-json';
 
 const { server, watchdog } = await import('../src/server.mjs');
-const { createPathPlan } = await import('../src/path-auth.mjs');
+const { createPathPlan, checkConsentScope, isDestructive, OPERATIONS } = await import('../src/path-auth.mjs');
 
 const STEP_MS = 30_000;
 const stepStart = (offset = 0) => (Math.floor(Date.now() / STEP_MS) + offset) * STEP_MS;
@@ -224,6 +224,41 @@ describe('SEC-003 · adversarial — one attempt per declared invariant, from in
   // false assurance. The attempt is on the claim: the product must not present, as a
   // non-bypassable invariant of this authorization, something this authorization does not
   // enforce.
+  // n.4, Owner 2026-08-27 — destructive_action_confirmation was bypassable by naming the
+  // operation differently. `isDestructive()` asks whether the operation IS the string `delete`,
+  // and nothing checked that the operation was one of five strings at all: anything else was
+  // planned as `risk: LOW`, `isDestructive: false`, and could then be granted the standing,
+  // unattended scope `checkConsentScope` exists to refuse. The browser FOUND it — the Italian
+  // `<option>` had no `value`, so the select handed back `cancellazione` — but the browser was
+  // one way in, not the hole. The hole was a comparison with no vocabulary behind it.
+  test('an operation this layer does not recognise is refused, never planned as harmless (n.4)', () => {
+    const target = `${workspace}/n4.txt`;
+
+    // The exact string that reached the server from the Italian interface, and four more that
+    // never needed a translation to get here: a client is not obliged to use the page at all.
+    for (const operation of ['cancellazione', 'DELETE', 'remove', 'rm', '']) {
+      assert.throws(
+        () => createPathPlan({ path: target, operation }, workspace),
+        /Operation must be one of/,
+        `"${operation}" must be refused — planning it as something else is how a deletion stops being one`,
+      );
+    }
+
+    // The five still plan, so the guard refuses the unknown rather than narrowing the product.
+    for (const operation of OPERATIONS) {
+      assert.equal(createPathPlan({ path: target, operation }, workspace).operation, operation);
+    }
+
+    // And the operation the hole was about still lands where it should, with the scope refused.
+    const deletion = createPathPlan({ path: target, operation: 'delete' }, workspace);
+    assert.equal(deletion.risk, 'HIGH');
+    assert.ok(isDestructive(deletion), 'a delete must still be destructive');
+    assert.ok(checkConsentScope(deletion, 'FOLDER_FOR_SESSION'), 'a delete may not be granted an unattended, reusable scope');
+    // The same scope on a non-destructive plan is allowed — so the refusal above is the
+    // operation being read, not the scope being blocked for everybody.
+    assert.equal(checkConsentScope(createPathPlan({ path: target, operation: 'write' }, workspace), 'FOLDER_FOR_SESSION'), null);
+  });
+
   test('every declared invariant names where it is enforced', () => {
     const plan = createPathPlan({ path: `${workspace}/contract.txt`, operation: 'write' }, workspace);
     assert.ok(Array.isArray(plan.nonBypassableInvariants) && plan.nonBypassableInvariants.length > 0);
