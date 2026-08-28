@@ -64,6 +64,27 @@ answer without checking again.
 **`[UNVERIFIED]`, and it matters for planning:** whether one project may apply to more than one of
 the three programmes in the same round. Nothing read says yes or no.
 
+### 0b — Re-read 2026-08-28, six days before the calls reopen · `[VERIFIED]`
+
+Rule 3 of §6 applied before writing `DOSSIER_RESTACK.md`. Two rows moved and one is new.
+
+| Fact | Source, read 2026-08-28 |
+|---|---|
+| **Still not open.** `/propose/` reads "There are currently no calls open"; `/restack/` reads *"This fund is currently being set up"* and its apply button says **Coming soon** | <https://nlnet.nl/propose/>, <https://nlnet.nl/restack/> |
+| **2026-09-03 reopening and 2026-11-03 12:00 CEST deadline confirmed unchanged** since the 08-21 reading | /propose/ |
+| **CORRECTS §0a:** the caps are **€50,000 for a first proposal, €150,000 maximum per proposal, €500,000 lifetime per third party.** The €200,000 lifetime figure carried elsewhere in this project's documents is wrong. | <https://nlnet.nl/restack/guideforapplicants/> |
+| Proposals must be **in English**, must have **research and development as their primary objective**, and must show a **clear European dimension** | guideforapplicants |
+| Scoring confirmed: 30 / 40 / 30, pass above **5.0 of 7** | guideforapplicants |
+| **NOW VERIFIED, and §7 listed it as unverified:** the general form's fields — contact; proposal name and website; **abstract and expected outcomes**; prior relevant experience; **requested amount with a detailed breakdown**; comparison with existing efforts; technical challenges; ecosystem engagement; attachments (HTML/PDF/ODF/text, ≤50 MB). Restack's own form may still differ when it opens. | /propose/ |
+
+**The row that matters most to THIS project, and it is not a formality.** GenAI use is permitted
+and **must be disclosed**, and the disclosure is a **prompt provenance log**: the model, the dates
+and times, *"the prompts themselves"*, and *"the unedited output"*. Verbatim: *"Failure to comply
+with the above policy may result in rejection of the proposal."* Read 2026-08-28 from
+<https://nlnet.nl/foundation/policies/generativeAI/>. This product is built almost entirely with an
+assistant, so the log is real work on the Owner's own sessions and cannot be assembled by anyone
+else. It is opened now, not in October.
+
 ## 1 — The platforms, what they require, and whether this project can apply
 
 Every row read **2026-08-18**. `[VERIFIED]` = read from the source named. Re-read before use.
@@ -182,7 +203,7 @@ mandatory dependency on one private technology · a proposal full of unsubstanti
 
 ## 7 — What is NOT verified here
 
-- **Restack's application form, review timetable and reporting duties** — the fund read "Coming
+- **Restack's review timetable and reporting duties** — see §0b: the general `/propose/` form's fields are now read and listed there, but Restack's OWN form is still unpublished. The fund read "Coming
   soon" on 2026-08-18. `[UNVERIFIED]`, and it is the first thing to read when calls reopen.
 - **Whether this project, as it stands, would place.** No submission has been made and no assessor
   has seen it. Nothing in this file is a prediction of an outcome.
