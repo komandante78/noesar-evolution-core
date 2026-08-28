@@ -499,6 +499,22 @@ export const RUNTIME_ONLY = Object.freeze([
   'Contesting the refusal',
   'Changing the picture setting',
   'Changing the source-reading setting',
+  // --- Where a model runs · Owner, 2026-08-28 ---------------------------------------------
+  // Painted by `placementControl()` onto every model card, so none of it can appear in the
+  // markup. The recommendation's own sentence is NOT here and never will be: it is arithmetic
+  // built from this machine's numbers at the moment it is read, not an interface string.
+  'Where it runs',
+  'Where it runs:',
+  'All on the card',
+  'All in RAM',
+  'Split between card and RAM',
+  'Layers on the card',
+  'layers on the card, the rest in RAM',
+  'Recommended:',
+  'Right now only this many would fit — free the running model first:',
+  'not worked out for this model',
+  'Saved. It takes effect the next time this model starts.',
+  'This placement could not be saved:',
 ]);
 
 const it = {
@@ -1898,6 +1914,20 @@ const it = {
   'Contesting the refusal': 'Contestazione del rifiuto',
   'Changing the picture setting': 'Modifica dell’impostazione sulle immagini',
   'Changing the source-reading setting': 'Modifica dell’impostazione di lettura delle fonti',
+
+  // Dove gira un modello — Owner, 2026-08-28.
+  'Where it runs': 'Dove gira',
+  'Where it runs:': 'Dove gira:',
+  'All on the card': 'Tutto sulla scheda',
+  'All in RAM': 'Tutto in RAM',
+  'Split between card and RAM': 'Diviso fra scheda e RAM',
+  'Layers on the card': 'Layer sulla scheda',
+  'layers on the card, the rest in RAM': 'layer sulla scheda, il resto in RAM',
+  'Recommended:': 'Consigliato:',
+  'Right now only this many would fit — free the running model first:': 'Adesso ne entrerebbero solo questi — libera prima il modello in esecuzione:',
+  'not worked out for this model': 'non calcolato per questo modello',
+  'Saved. It takes effect the next time this model starts.': 'Salvato. Ha effetto al prossimo avvio di questo modello.',
+  'This placement could not be saved:': 'Questa collocazione non è stata salvata:',
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

@@ -210,6 +210,17 @@ function card(descriptor, lane, { outsideFilter = false } = {}) {
     // it is unverified, because a missing field is read as "fine" by every reader that ever
     // sees one. Attached by the caller, which is the only party holding the registry.
     authenticity: descriptor.authenticity ?? { verified: false, kind: 'NOT_CHECKED', signedBy: null, reason: 'this installation has not checked who published this descriptor' },
+    // Where this model runs — card, RAM, or split between them — and what this machine recommends.
+    //
+    // Owner, 2026-08-28: «far selezionare come usarli … 1 su GPU, 2 su RAM, 3 ibrido», with the
+    // recommendation shown. ATTACHED BY THE CALLER, exactly like `authenticity` above and for the
+    // same reason: the answer needs the card's free memory, and `MC-005` holds because this module
+    // never asks the hardware anything. A card whose caller did not attach one says it does not
+    // know, which is a different statement from "it fits".
+    placement: descriptor.placement ?? {
+      chosen: null, known: false, recommended: null, maxLayers: null, fitsEntirely: null,
+      reason: 'this installation has not worked out where this model fits',
+    },
     lane,
     // Why a card is showing when the filter would have excluded it. Without the reason the
     // card looks like a filter that does not work.

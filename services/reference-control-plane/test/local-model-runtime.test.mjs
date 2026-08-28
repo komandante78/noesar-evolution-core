@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   LocalModelRuntime, RuntimeMode, Backend, activateModel,
-  withGpuLayers, effectiveGpuLayers, placementOf,
+  withGpuLayers, effectiveGpuLayers, placementOf, recommendPlacement, declaredSize,
 } from '../src/local-model-runtime.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
@@ -440,6 +440,85 @@ describe('placement: gpu, ram, hybrid', () => {
     assert.equal(runtime.status().placement, 'ram');
     await runtime.configure({ gpuLayers: 36 });
     assert.equal(runtime.status().placement, 'hybrid');
+  });
+
+  // The recommendation is arithmetic, and these are the numbers measured on this installation on
+  // 2026-08-28 — Qwen3.8-27B, 65 layers, 15.33 GiB, on a 12 GiB card. A recommendation that could
+  // not be checked against a real machine would be a preference wearing a number's clothes.
+  test('the recommendation is worked out from the model and the card, and says so', () => {
+    const model = { layers: 65, bytes: 16464440224 };
+    const tight = recommendPlacement({ ...model, freeVramMiB: 12158 });
+    assert.equal(tight.known, true);
+    assert.equal(tight.fitsEntirely, false, '15.3 GiB of weights do not fit on a 12 GiB card');
+    assert.ok(tight.maxLayers > 0 && tight.maxLayers < 65, `expected a partial split, got ${tight.maxLayers}`);
+    assert.equal(tight.recommended, tight.maxLayers);
+    assert.match(tight.reason, /do not fit/);
+
+    // The same model on a card that holds it: all of them, and the reason says why.
+    const roomy = recommendPlacement({ ...model, freeVramMiB: 24576 });
+    assert.equal(roomy.fitsEntirely, true);
+    assert.equal(roomy.recommended, 65);
+    assert.match(roomy.reason, /all 65 layers fit/);
+
+    // A card with nothing spare holds nothing, and that is RAM — not a negative number.
+    assert.equal(recommendPlacement({ ...model, freeVramMiB: 512 }).maxLayers, 0);
+  });
+
+  test('an unknown model is reported as unknown rather than given an invented recommendation', () => {
+    for (const missing of [{}, { layers: 65 }, { bytes: 1e9 }, { layers: 65, bytes: 1e9 }]) {
+      const answer = recommendPlacement({ ...missing, freeVramMiB: missing.layers && missing.bytes ? null : 12158 });
+      assert.equal(answer.known, false);
+      assert.equal(answer.recommended, null);
+      assert.match(answer.reason, /does not declare|nothing can be worked out/);
+    }
+    // And a descriptor that never carried the numbers reads as absent, not as zero.
+    assert.deepEqual(declaredSize({ resource_profiles: [{ name: 'gpu' }] }), { layers: null, bytes: null });
+    assert.deepEqual(declaredSize({ resource_profiles: [{ name: 'gpu', layers: 65, bytes: 42 }] }), { layers: 65, bytes: 42 });
+  });
+
+  // The defect the Owner reasoned out from the surface before it ever bit anyone: one setting for
+  // the whole installation means the model you placed yesterday places the one you load today.
+  test('each model keeps its own placement, and does not inherit the previous one', async () => {
+    const { runtime, grants } = fresh();
+    await runtime.configure({ mode: RuntimeMode.AUTO, launchCommand: ['/bin/sleep', '60'] });
+    await runtime.configure({ placeModel: { id: 'big-one', gpuLayers: 0 } });
+    await runtime.configure({ placeModel: { id: 'small-one', gpuLayers: 99 } });
+    assert.deepEqual(runtime.status().placements, { 'big-one': 0, 'small-one': 99 });
+
+    const present = new Map([
+      ['big-one', { verified: true }], ['small-one', { verified: true }], ['never-placed', { verified: true }],
+    ]);
+    const start = async (id) => activateModel({
+      descriptor: { id, launchCommand: ['/bin/sleep', '60'] },
+      present, runtime, grants, actor: 'test-owner', descriptorAuthenticity: SIGNED,
+    });
+
+    await start('big-one');
+    assert.equal(runtime.config().gpuLayers, 0, 'the big one was put in RAM');
+    await runtime.release();
+
+    await start('small-one');
+    assert.equal(runtime.config().gpuLayers, 99, 'and the small one must NOT inherit RAM from it');
+    await runtime.release();
+
+    // A model nobody placed hands the decision back to its own descriptor rather than keeping
+    // whatever the last model was given.
+    await start('never-placed');
+    assert.equal(runtime.config().gpuLayers, null);
+    await runtime.release();
+  });
+
+  test('placing one model does not require rewriting the whole map, and is validated', async () => {
+    const { runtime } = fresh();
+    await runtime.configure({ mode: RuntimeMode.AUTO });
+    await assert.rejects(() => runtime.configure({ placeModel: { id: '', gpuLayers: 0 } }), /must be a model id/);
+    await assert.rejects(() => runtime.configure({ placeModel: { id: 'x', gpuLayers: -3 } }), /0 or more/);
+    await assert.rejects(() => runtime.configure({ placements: [] }), /object of model id/);
+    // null is allowed and means "let the descriptor decide" — it is not the same as 0.
+    await runtime.configure({ placeModel: { id: 'x', gpuLayers: null } });
+    assert.deepEqual(runtime.status().placements, { x: null });
+    // `placeModel` is consumed, never persisted as a field of its own.
+    assert.equal(runtime.config().placeModel, undefined);
   });
 });
 

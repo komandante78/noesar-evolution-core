@@ -48,6 +48,7 @@
 //                                [--port N] [--runtime-path P] [--license L] [--force]
 import { parseArgs } from 'node:util';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import {
   existsSync, mkdirSync, openSync, readSync, closeSync, statSync,
   readFileSync, writeFileSync, symlinkSync, unlinkSync,
@@ -57,6 +58,7 @@ import { fileURLToPath } from 'node:url';
 import {
   signModelDescriptor, validateAgainstSchema, formatSchemaErrors,
 } from '../packages/verified-acquisition/src/index.mjs';
+import { recommendPlacement } from '../services/reference-control-plane/src/local-model-runtime.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCHEMA = join(HERE, '..', 'schemas', 'model-descriptor.schema.json');
@@ -123,6 +125,19 @@ function readGgufHeader(path, budget = 4 * 1024 * 1024) {
     blockCount: kv[`${architecture}.block_count`] ?? null,
     contextLength: kv[`${architecture}.context_length`] ?? null,
   };
+}
+
+/**
+ * Free memory on the card, in MiB, asked of `nvidia-smi` — the same source the runtime's own
+ * detection uses. No card, no driver, or no answer is `null`, which `recommendPlacement()` reports
+ * as "not worked out" rather than turning into a recommendation nobody measured.
+ */
+function vram() {
+  try {
+    const answer = execFileSync('nvidia-smi', ['--query-gpu=memory.free,memory.total', '--format=csv,noheader,nounits'], { encoding: 'utf8', timeout: 5000 });
+    const [free, total] = String(answer).trim().split('\n')[0].split(',').map((part) => Number(part.trim()));
+    return { free: Number.isFinite(free) ? free : null, total: Number.isFinite(total) ? total : null };
+  } catch { return { free: null, total: null }; }
 }
 
 /** Streamed, because a model is bigger than `readFileSync` will hand back in one Buffer. */
@@ -195,9 +210,41 @@ if (known && header.architecture) {
 }
 
 // The split. `--gpu-layers` is the one knob that decides gpu / ram / hybrid, and it is written
-// into the descriptor so the model has a sensible default of its own; the runtime setting
-// overrides it at any time without reinstalling anything.
-const layers = args['gpu-layers'] == null ? 99 : Number(args['gpu-layers']);
+// into the descriptor so the model has a sensible default of its own; the placement chosen on the
+// Models page overrides it at any time without reinstalling anything.
+//
+// Owner, 2026-08-28: «quando si scarica un modello in automatico c'è la scelta di come usarlo e le
+// raccomandazioni». So NOT specifying `--gpu-layers` no longer means 99 — a number that was a
+// guess about somebody else's card. It means: work it out, from this card and this file, with
+// `recommendPlacement()` — the same function the page calls, so the command line and the screen
+// can never recommend two different things.
+const sizeBytes = statSync(ggufPath).size;
+const card = vram();
+
+// TWO answers, and the difference between them matters. Measured while writing this: run against
+// `memory.free` with the previous model still resident, the tool recommended SIX layers — because
+// the 27B being placed was itself holding 9.5 GB of the card. The memory free right now is not
+// the memory this model will have, since it releases its own before it restarts.
+//
+// So the default comes from the EMPTY card, which is the state a model actually starts in: a
+// model is freed before another is used, and this product's own page makes you do that. The
+// "as it is now" figure is still printed, because a person about to run two things at once needs
+// to see it — but it is not what the recommendation is built on.
+const onEmptyCard = recommendPlacement({ layers: header.blockCount ?? null, bytes: sizeBytes, freeVramMiB: card.total });
+const rightNow = recommendPlacement({ layers: header.blockCount ?? null, bytes: sizeBytes, freeVramMiB: card.free });
+if (onEmptyCard.known) {
+  out(`card          ${card.total} MiB total · ${card.free} MiB free right now`);
+  out(`recommended   ${onEmptyCard.reason}`);
+  if (rightNow.known && rightNow.maxLayers !== onEmptyCard.maxLayers) {
+    out(`              with the card as it is now, only ${rightNow.maxLayers} would fit — free the running model first`);
+  }
+} else {
+  out(`recommended   NOT WORKED OUT — ${onEmptyCard.reason}`);
+}
+
+const layers = args['gpu-layers'] != null ? Number(args['gpu-layers'])
+  : onEmptyCard.known ? onEmptyCard.recommended
+    : 99;
 if (!Number.isInteger(layers) || layers < 0) die('--gpu-layers must be an integer of 0 or more (0 = every layer in RAM)');
 const context = Number(args.context ?? 16384);
 if (!Number.isInteger(context) || context < 512) die('--context must be an integer of at least 512');
@@ -206,7 +253,7 @@ const port = Number(args.port ?? 8420);
 const placement = layers === 0 ? 'RAM only'
   : (header.blockCount && layers < header.blockCount) ? `hybrid — ${layers} of ${header.blockCount} layers on the card, ${header.blockCount - layers} in RAM`
     : 'every layer on the card';
-out(`placement     ${placement}`);
+out(`placement     ${placement}${args['gpu-layers'] != null ? ' (you chose this)' : ' (recommended)'}`);
 
 out('hashing…');
 const digest = sha256OfFile(ggufPath);
@@ -225,7 +272,14 @@ const descriptor = {
   runtime_adapters: ['llama.cpp'],
   resource_profiles: [{
     name: layers === 0 ? 'cpu' : 'gpu',
-    note: `${header.architecture ?? 'gguf'} · ${header.blockCount ?? '?'} layers · installed 2026 by the owner of this installation · ${placement}`,
+    // The two numbers the Models page needs to work out where this model fits, and the only
+    // place in the product that ever has the file open to read them. Inside the SIGNED document,
+    // which is where a fact about a file belongs — and `resource_profiles` items are an open
+    // object in the schema, so this costs no schema change.
+    layers: header.blockCount ?? null,
+    bytes: sizeBytes,
+    architecture: header.architecture ?? null,
+    note: `${header.architecture ?? 'gguf'} · ${header.blockCount ?? '?'} layers · installed by the owner of this installation · ${placement}`,
   }],
   context: { window: context },
   launchCommand: [

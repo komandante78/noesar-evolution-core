@@ -5372,6 +5372,56 @@ function loadControl(item){
   return `<p class="card-actions"><button type="button" data-load-model="${escapeHtml(item.id)}">`
     +`${escapeHtml(t('Load into memory'))}</button></p>`;
 }
+/**
+ * Where this model runs — Owner, 2026-08-28: «1 su GPU, 2 su RAM, 3 ibrido … e le raccomandazioni».
+ *
+ * Three choices and a number, next to the buttons that start and free the model, because choosing
+ * WHERE is part of the same act as choosing WHETHER. Put in Settings instead it would be the
+ * defect n.3 all over again: a control separated from the thing it governs.
+ *
+ * The number is not decoration. «Ibrido» on its own is not a setting — 36 of 65 layers and 60 of
+ * 65 are different machines — so picking it reveals the count, with the value this installation
+ * WORKED OUT from the card and the file rather than one it preferred. Everything shown here is
+ * arithmetic the person can check, and when the arithmetic is impossible it says so instead of
+ * offering a number nobody measured.
+ *
+ * "All on the card" is drawn STOPPED with the subtraction when the model does not fit, which is
+ * MC-006's posture: a gesture that would fail is shown refusing and saying why, never hidden and
+ * never left to fail at launch with an allocation error.
+ */
+function placementControl(item){
+  if(item.lane!=='downloaded'&&item.lane!=='in-use')return '';
+  const p=item.placement;
+  if(!p||!p.known){
+    return `<p class="hint">${escapeHtml(t('Where it runs:'))} ${escapeHtml(p?.reason??t('not worked out for this model'))}</p>`;
+  }
+  const id=escapeHtml(item.id);
+  const layers=p.layers;
+  // `chosen` null and never chosen means the model runs where its own descriptor says; the
+  // recommendation is then shown as a suggestion, not as somebody's decision.
+  const current=p.chosenExplicitly?p.chosen:p.recommended;
+  const mode=current===0?'ram':(current!=null&&current>=layers?'gpu':'hybrid');
+  const radio=(value,label,{disabled=false,title=''}={})=>
+    `<label class="placement-choice${disabled?' is-disabled':''}"${title?` title="${escapeHtml(title)}"`:''}>`
+    +`<input type="radio" name="placement-${id}" value="${value}" data-placement="${id}" data-layer-count="${layers}"`
+    +`${mode===value?' checked':''}${disabled?' disabled':''}> ${escapeHtml(label)}</label>`;
+  const hybridCount=mode==='hybrid'?(current??p.recommended):p.recommended;
+  return `<div class="model-placement">`
+    +`<p class="placement-title">${escapeHtml(t('Where it runs'))}</p>`
+    +radio('gpu',t('All on the card'),{disabled:!p.fitsEntirely,title:p.fitsEntirely?'':p.reason})
+    +radio('ram',t('All in RAM'))
+    +radio('hybrid',t('Split between card and RAM'))
+    +(mode==='hybrid'
+      ?`<p class="placement-split"><input type="number" min="0" max="${layers}" value="${hybridCount}" `
+        +`data-placement-layers="${id}" aria-label="${escapeHtml(t('Layers on the card'))}"> `
+        +`${escapeHtml(t('of'))} ${layers} ${escapeHtml(t('layers on the card, the rest in RAM'))}</p>`
+      :'')
+    +`<p class="hint">${escapeHtml(t('Recommended:'))} ${escapeHtml(p.reason)}</p>`
+    +(p.maxLayersRightNow!=null&&p.maxLayersRightNow!==p.maxLayers
+      ?`<p class="hint">${escapeHtml(t('Right now only this many would fit — free the running model first:'))} ${p.maxLayersRightNow}</p>`
+      :'')
+    +`</div>`;
+}
 function modelCard(item,context={}){
   const declared=(value)=>value==='undeclared'||value===null||value===undefined
     ?'<em>undeclared</em>':escapeHtml(String(value));
@@ -5398,6 +5448,7 @@ function modelCard(item,context={}){
     +`</dl>`
     +modelAdvisories(item)
     +outside+authenticityLine(item)
+    +placementControl(item)
     +`<footer class="model-tile-foot">${acquireControl(item,context)}${loadControl(item)}${removeControl(item)}`
     +(item.sourceUrl?`<p class="model-source">${source.replace(' &middot; ','')}</p>`:'')+`</footer></article>`;
 }
@@ -5771,6 +5822,33 @@ function closeRemoveConfirm(id){
   const panel=findByData('remove-panel',id);
   if(panel){panel.hidden=true;panel.innerHTML='';}
 }
+/**
+ * Remember where THIS model goes. Per model, not per installation — otherwise the 27B you put in
+ * RAM yesterday puts the 7B there today, silently, and nothing on any screen explains the ten
+ * seconds a reply now takes.
+ *
+ * `gpuLayers` is the whole vocabulary: 0 is RAM, the model's layer count is the card, anything
+ * between is the split. The choice is applied at once when this model is the one running, and
+ * kept for the next start when it is not — `configure()` decides which, since it is the side that
+ * knows what is loaded.
+ */
+async function placeModel(id,mode,layers,layerCount=layers){
+  // "All on the card" is the model's OWN layer count, not 99: a number that means "all of them"
+  // by being larger than any of them reads back as a hybrid split of 99 the next time somebody
+  // opens this page. The count travels on the control that was used, so it is never re-derived.
+  const gpuLayers=mode==='ram'?0
+    :mode==='gpu'?(Number.isInteger(layerCount)&&layerCount>0?layerCount:99)
+      :Number.isInteger(layers)&&layers>=0?Math.min(layers,layerCount||layers):null;
+  if(gpuLayers===null)return;
+  try{
+    await api('/api/v1/runtime/local-model',{method:'PUT',body:JSON.stringify({placeModel:{id,gpuLayers}})});
+    toast(t('Saved. It takes effect the next time this model starts.'),{kind:'success'});
+    await loadModelCatalogue();
+  }catch(error){
+    toast(`${t('This placement could not be saved:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+    await loadModelCatalogue();
+  }
+}
 async function loadModel(id){
   if(!confirm(t('Loading a model into memory replaces whatever is answering now and takes a moment. Load this one?')))return;
   const button=findByData('load-model',id);
@@ -5903,6 +5981,15 @@ function wireModelCatalogue(){
     if(commit)return commitRemove(commit);
     const cancel=event.target?.closest?.('[data-remove-cancel]')?.dataset?.removeCancel;
     if(cancel)return closeRemoveConfirm(cancel);
+  });
+  // The placement choice. `change` rather than `click` so the keyboard reaches it exactly as the
+  // mouse does, and so the number field commits on Enter or on leaving it — native behaviour, no
+  // Apply button to press and no debounce to get wrong.
+  $('#modelForegroundLanes')?.addEventListener('change',(event)=>{
+    const radioId=event.target?.dataset?.placement;
+    if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.layerCount));
+    const numberId=event.target?.dataset?.placementLayers;
+    if(numberId)return placeModel(numberId,'hybrid',Number(event.target.value),Number(event.target.max));
   });
   $('#modelForegroundLanes')?.addEventListener('input',(event)=>{
     const id=event.target?.dataset?.removeInput;

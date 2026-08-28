@@ -63,6 +63,17 @@ const DEFAULT_CONFIG = Object.freeze({
   // descriptor. It was `launch()` blanking `CUDA_VISIBLE_DEVICES` for anything not called CUDA,
   // which left exactly two states and no way to express the third.
   gpuLayers: null,
+  // Where each model goes, remembered per model id.
+  //
+  // A defect in the first version of this feature, found the same day by the Owner reasoning
+  // about the surface rather than the code: `gpuLayers` alone is ONE setting for the whole
+  // installation. Choose RAM for a 27B, load a 7B tomorrow, and the 7B starts in RAM — slow, and
+  // with nothing on any screen to say why. `activateModel` did not clear the field either.
+  //
+  // So the placement belongs to the model, which is also where the control that sets it lives.
+  // `gpuLayers` stays as the live value of the runtime — one process, one placement — and this is
+  // the memory it is restored from when a model is started again.
+  placements: {},
   // An argv array, never a shell string. A command assembled as text and handed to a
   // shell is a command an operator-supplied model name can extend.
   launchCommand: null,
@@ -113,6 +124,78 @@ export function placementOf(gpuLayers, layerCount = null) {
   if (layerCount != null && gpuLayers >= layerCount) return 'gpu';
   if (gpuLayers >= 99 && layerCount == null) return 'gpu';
   return 'hybrid';
+}
+
+/**
+ * What this card can actually hold of this model, and what to offer as the default.
+ *
+ * ONE function, called by BOTH the installer and the page, for the reason this project already
+ * writes down elsewhere: a command and a screen that each compute the same recommendation are two
+ * places that will one day disagree, and the person is the one who finds out.
+ *
+ * Owner, 2026-08-28: the three choices are GPU, RAM and hybrid — «e le raccomandazioni». A
+ * recommendation is only worth offering if it is arithmetic the person can check, so every field
+ * here is a number with a stated origin, never a preference:
+ *
+ *   maxLayers    how many fit, from the model's own bytes and the card's free memory
+ *   fitsEntirely whether "all on the card" is even offerable — if not, the control says so with
+ *                the subtraction rather than failing at launch with an allocation error
+ *   recommended  all of them when they fit, otherwise as many as do
+ *
+ * ponytail: `reserveMiB` is a flat 1 GiB for the KV cache and the compute buffers, not a model of
+ * them. Measured on this installation on 2026-08-28: Qwen3.8-27B, 65 layers, 15.33 GiB, 36 layers
+ * on the card at a 16k context took 9,593 MiB where the weights alone are 8,698 — an overhead of
+ * 895. The flat number is deliberately a little larger than the one case measured, so it errs
+ * towards a launch that fits. It is wrong for a very long context, where the KV cache dominates:
+ * the upgrade, the day someone runs 128k, is to compute it from the context window and the model's
+ * head geometry, both of which are in the GGUF header the installer already reads.
+ */
+export const PLACEMENT_RESERVE_MIB = 1024;
+
+export function recommendPlacement({ layers = null, bytes = null, freeVramMiB = null, reserveMiB = PLACEMENT_RESERVE_MIB } = {}) {
+  // An unknown is reported as unknown. A recommendation invented from a missing measurement is
+  // exactly the failure this product spent today repairing on another surface.
+  if (!Number.isInteger(layers) || layers <= 0 || !Number.isFinite(bytes) || bytes <= 0 || !Number.isFinite(freeVramMiB)) {
+    return {
+      known: false, maxLayers: null, fitsEntirely: null, recommended: null,
+      mibPerLayer: null, weightsMiB: null, freeVramMiB: Number.isFinite(freeVramMiB) ? freeVramMiB : null,
+      reason: 'this model does not declare its layer count or size, so nothing can be worked out about where it fits',
+    };
+  }
+  const weightsMiB = bytes / (1024 ** 2);
+  const mibPerLayer = weightsMiB / layers;
+  const budget = freeVramMiB - reserveMiB;
+  const maxLayers = Math.max(0, Math.min(layers, Math.floor(budget / mibPerLayer)));
+  const fitsEntirely = maxLayers >= layers;
+  return {
+    known: true,
+    maxLayers,
+    fitsEntirely,
+    recommended: fitsEntirely ? layers : maxLayers,
+    mibPerLayer: Math.round(mibPerLayer),
+    weightsMiB: Math.round(weightsMiB),
+    freeVramMiB: Math.round(freeVramMiB),
+    reserveMiB,
+    reason: fitsEntirely
+      ? `all ${layers} layers fit: ${Math.round(weightsMiB)} MiB of weights plus ${reserveMiB} MiB of working memory, against ${Math.round(freeVramMiB)} MiB free`
+      : `all ${layers} layers do not fit: they are ${Math.round(weightsMiB)} MiB and only ${Math.round(freeVramMiB)} MiB is free, of which ${reserveMiB} MiB is working memory — ${maxLayers} layers is what this card holds`,
+  };
+}
+
+/**
+ * What a descriptor says about its own size, if anything.
+ *
+ * The installer writes these two numbers because it has the GGUF open anyway and nothing else in
+ * the product ever does. They live under `resource_profiles` — an open object in the schema, so
+ * no schema change — and inside the SIGNED document, which is where a fact about a file belongs.
+ * A model installed before this reports nothing and says so; it is not guessed at.
+ */
+export function declaredSize(descriptor) {
+  const profile = (descriptor?.resource_profiles ?? []).find((entry) => entry?.layers != null) ?? null;
+  return {
+    layers: Number.isInteger(profile?.layers) ? profile.layers : null,
+    bytes: Number.isFinite(profile?.bytes) ? profile.bytes : null,
+  };
 }
 
 function fail(message, status = 400) {
@@ -365,6 +448,24 @@ export class LocalModelRuntime {
         throw fail('gpuLayers must be an integer of 0 or more — 0 keeps every layer in RAM');
       }
       next.gpuLayers = layers;
+    }
+    // Placing ONE model, without a caller having to read the whole map, change a key and write it
+    // back — which is how two browser tabs come to lose each other's choice. Consumed here rather
+    // than stored: what is persisted is the map it updates.
+    if (next.placeModel != null) {
+      const { id, gpuLayers } = next.placeModel;
+      if (typeof id !== 'string' || !id.trim()) throw fail('placeModel.id must be a model id');
+      if (gpuLayers !== null && (!Number.isInteger(gpuLayers) || gpuLayers < 0)) {
+        throw fail('placeModel.gpuLayers must be an integer of 0 or more, or null to hand the decision back to the model itself');
+      }
+      next.placements = { ...next.placements, [id]: gpuLayers };
+      // The model being placed is the one running: apply it now rather than at the next start,
+      // or the page would show a choice the process is not obeying.
+      if (next.model === id) next.gpuLayers = gpuLayers;
+      delete next.placeModel;
+    }
+    if (next.placements != null && (typeof next.placements !== 'object' || Array.isArray(next.placements))) {
+      throw fail('placements must be an object of model id to layer count');
     }
     if (next.endpoint != null) {
       let parsed;
@@ -734,6 +835,7 @@ export class LocalModelRuntime {
       gpuLayers: config.gpuLayers,
       effectiveGpuLayers: effectiveGpuLayers(config),
       placement: placementOf(effectiveGpuLayers(config)),
+      placements: config.placements ?? {},
       launchConfigured: Boolean(config.launchCommand),
       launched: this.launched
         ? {
@@ -821,8 +923,14 @@ export async function activateModel({ descriptor, present, runtime, grants, acto
   await runtime.release();
   const current = runtime.config();
   const mode = current.mode === RuntimeMode.DISABLED ? RuntimeMode.MANUAL : current.mode;
+  // The placement THIS model was given, restored as it is started. Without this line the runtime
+  // carries the previous model's placement into the next one — a 7B silently starting in RAM
+  // because a 27B was put there yesterday. `undefined` means this model was never placed by hand,
+  // and then `null` hands the decision back to its own descriptor.
+  const remembered = current.placements?.[descriptor.id];
   await runtime.configure({
     mode,
+    gpuLayers: remembered === undefined ? null : remembered,
     // Defect n.9: this was `current.profileId ?? 'cpu'` unconditionally, so every activation
     // rewrote `cpu` into the config of an installation running in `auto` on the GPU. `auto`
     // ignores this field entirely — inventing a value for it only produced a false one for a

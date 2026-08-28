@@ -13,7 +13,7 @@ import {
 } from './data-plane.mjs';
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
-import { LocalModelRuntime, activateModel, RuntimeMode } from './local-model-runtime.mjs';
+import { LocalModelRuntime, activateModel, RuntimeMode, recommendPlacement, declaredSize } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition, loadableModels } from './model-catalog.mjs';
 // D-0520: the transport `planAcquisition` was planning FOR. The manager owns the disk and the
 // jobs; the transport owns the bytes; this file owns neither and only wires them to a route.
@@ -2226,6 +2226,34 @@ const requestListener = async (req, res) => {
       // Presence is read HERE and not in the catalogue module, which is what keeps MC-005
       // true by construction: a module that never imports `node:fs` cannot make a request.
       const present = readPresentModels(descriptors);
+      // Where each model would run, attached here for the same reason `authenticity` is: the
+      // catalogue module must not ask the hardware anything (`MC-005`), and this is the only
+      // party holding both the card and the runtime's remembered placements.
+      //
+      // The recommendation is worked out against the card's TOTAL memory, not what is free this
+      // instant. Measured while building this: with a model resident, "free" recommends six
+      // layers for the very model that is holding the other nine gigabytes — a model releases its
+      // own memory before it restarts, so free-right-now is the wrong denominator. What is free
+      // is carried too, so the page can warn when the two differ.
+      const accelerator = (await localModels.profiles().catch(() => ({ profiles: [] })))
+        .profiles.find((profile) => profile.backend === 'cuda' && profile.memoryTotalMiB) ?? null;
+      for (const descriptor of descriptors) {
+        const { layers, bytes } = declaredSize(descriptor);
+        const advice = recommendPlacement({ layers, bytes, freeVramMiB: accelerator?.memoryTotalMiB ?? null });
+        const rightNow = recommendPlacement({ layers, bytes, freeVramMiB: accelerator?.memoryFreeMiB ?? null });
+        const chosen = runtimeConfig.placements?.[descriptor.id];
+        descriptor.placement = {
+          ...advice,
+          layers,
+          // What the person chose for THIS model. `undefined` — never chosen — is reported as
+          // null with `chosenExplicitly` false, so the page can show the recommendation as a
+          // suggestion rather than as a decision somebody already made.
+          chosen: chosen === undefined ? null : chosen,
+          chosenExplicitly: chosen !== undefined,
+          freeNowMiB: accelerator?.memoryFreeMiB ?? null,
+          maxLayersRightNow: rightNow.known ? rightNow.maxLayers : null,
+        };
+      }
       const filter = {
         type: url.searchParams.get('type'), fn: url.searchParams.get('fn'),
         text: url.searchParams.get('q'), publisherId: url.searchParams.get('publisher'),
