@@ -151,6 +151,94 @@ export async function inlineThumbnail(url, { fetchImpl = fetch, timeoutMs = 5_00
   } catch { return null; }
 }
 
+/**
+ * Reading the page instead of its snippet — Owner, 2026-08-28, and it is the lever the two
+ * previous closures both named. A general web search returns ~200 characters per hit, and nine
+ * of the ten are the TITLE of a forum thread with two lines under it: the model was writing
+ * advice out of other people's questions, and filling the rest in. That is not a size-of-model
+ * problem — on ten forum titles a 32B writes the same little, better. It is a material problem.
+ *
+ * # Why this is its own switch and not the picture one
+ *
+ * The pictures switch buys reaching whoever HOSTS a picture. This buys reaching, in full, every
+ * SITE a search returned. They are different acts and one gesture standing for both is how
+ * consent stops meaning anything — the same sentence `researchImageEgress` was created with.
+ *
+ * # What is deliberately not here
+ *
+ * No robots.txt read, and no parser. This makes one plain GET of a page the operator's own
+ * search instance just returned, at the operator's explicit request, and turns the markup into
+ * the words on it with four substitutions. A boilerplate-stripping reader (Readability) would
+ * give the model cleaner material, and it is a dependency this repository does not have and does
+ * not need to have to answer better than a snippet does.
+ */
+export const MAX_PAGE_CHARS = 4_000;
+
+/** How many pages fit the write-up's context — the six of `WRITEUP_MAX_PROMPT_CHARS`, and six
+ *  that ANSWERED rather than the first six by rank. Measured on this installation, 2026-08-28,
+ *  for «Scheda HBA per Unraid»: of the first six results four were Reddit threads, which answer
+ *  200 with an empty shell and draw themselves with script; the two sources that had readable
+ *  text sat at positions four and six, and two more sat at eight and ten, never tried. Asking
+ *  ten and keeping six costs four more requests in parallel and no extra wall-clock time. */
+export const MAX_PAGES_READ = 6;
+
+/** A page must be worth more than the snippet it replaces. Measured, 2026-08-28: a Reddit thread
+ *  extracts to 0 characters, trovaprezzi.it to «Please enable JS and disable any ad blocker»
+ *  (43), and Amazon's bot wall to 226 of «click the button below to continue shopping» — which
+ *  is why this floor is not 200. A real page came to thousands.
+ *  ponytail: a length, not a reader. It cannot tell a long consent page from a long article; if
+ *  one ever gets through, the upgrade is a boilerplate reader (Readability), which is a
+ *  dependency this repository does not have. */
+const MIN_PAGE_CHARS = 800;
+
+/**
+ * The words on a page, from its markup. Not a parser: the tags come out, the invisible elements
+ * come out with their content, the handful of entities that survive tag-stripping become the
+ * characters they name, and the whitespace collapses. `<svg>` goes with the rest because a page's
+ * icon set is a kilobyte of path data that reads to a model as noise.
+ */
+export function pageTextFrom(html) {
+  const ENTITIES = { nbsp:' ', amp:'&', lt:'<', gt:'>', quot:'"', apos:"'", '#39':"'", '#x27':"'" };
+  return String(html ?? '')
+    .replace(/<(script|style|noscript|template|svg|head)\b[\s\S]*?<\/\1\s*>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&(#x?[0-9a-f]{1,6}|[a-z]+);/gi, (whole, name) => ENTITIES[String(name).toLowerCase()] ?? ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * One source, read once, at the moment of the search — never linked to and never fetched again,
+ * exactly like `inlineThumbnail` above and for the same reason: what a report holds must be what
+ * this server already looked at.
+ *
+ * A failure is silent and costs that source its text, never the report: a site that is slow, gone
+ * or serving a PDF is an ordinary Tuesday on the open web, and losing ten candidates to one of
+ * them would be the worse failure.
+ */
+export async function readPage(url, { fetchImpl = fetch, timeoutMs = 8_000, maxBytes = 600_000, maxChars = MAX_PAGE_CHARS } = {}) {
+  try {
+    const response = await fetchImpl(String(url), {
+      headers: { accept: 'text/html,text/plain' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) return null;
+    const type = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+    if (!['text/html', 'application/xhtml+xml', 'text/plain'].includes(type)) return null;
+    // Refused BEFORE the body when the far side declares a size: a 40 MB page announced as one
+    // is not worth downloading to find out. Without the header the cap below still holds.
+    if (Number(response.headers.get('content-length')) > maxBytes) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (!bytes.length || bytes.length > maxBytes) return null;
+    const text = pageTextFrom(bytes.toString('utf8'));
+    // A page that yielded little is a cookie wall, a bot wall, or a shell that draws itself with
+    // script — all three answer 200 and all three were measured doing it. Nothing is better than
+    // «click the button below to continue shopping» handed to a model as a source.
+    return text.length >= MIN_PAGE_CHARS ? text.slice(0, maxChars) : null;
+  } catch { return null; }
+}
+
 /** How many pictures a report carries. Four is what fits across the page above the answer. */
 export const MAX_IMAGES = 4;
 
@@ -218,7 +306,7 @@ export function hitsToReport(hits) {
  * addresses, and a "local" tool pointing at the public internet. Reusing it rather than writing
  * a second check here is the difference between one rule and two that agree until they do not.
  */
-export async function searchWith({ endpoint, objective, criteria = [], fetchImpl = fetch, validate, timeoutMs = 20_000, withImages = false }) {
+export async function searchWith({ endpoint, objective, criteria = [], fetchImpl = fetch, validate, timeoutMs = 20_000, withImages = false, withPages = false }) {
   if (!endpoint) {
     const error = new Error('No search endpoint is configured for this installation.');
     error.status = 503; error.kind = 'UNCONFIGURED';
@@ -251,6 +339,16 @@ export async function searchWith({ endpoint, objective, criteria = [], fetchImpl
     const thumbnail = candidate.thumbnailUrl;
     delete candidate.thumbnailUrl;
     if (withImages && thumbnail) candidate.image = await inlineThumbnail(thumbnail, { fetchImpl });
+    if (withPages) candidate.pageText = await readPage(candidate.url, { fetchImpl });
   }));
+  // Every source is asked, and the ones that ANSWERED fill the six places the write-up has —
+  // in the engine's order, which is still the only ranking anyone here has. See
+  // `MAX_PAGES_READ` for the measurement that put the loop here rather than in the map above.
+  let kept = 0;
+  for (const candidate of report.candidates) {
+    if (!candidate.pageText) continue;
+    if (kept < MAX_PAGES_READ) kept += 1;
+    else delete candidate.pageText;
+  }
   return report;
 }

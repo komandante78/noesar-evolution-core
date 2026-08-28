@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   buildSearchQuery, repositoryFrom, hitToCandidate, hitsToReport, searchWith, MAX_CANDIDATES,
   priceFrom, isListingUrl, searchImages, MAX_IMAGES,
+  pageTextFrom, readPage, MAX_PAGE_CHARS, MAX_PAGES_READ,
 } from '../src/searxng-provider.mjs';
 import { validateReportPayload } from '../src/research.mjs';
 
@@ -174,6 +175,76 @@ test('the configured address goes through the executor’s own validator before 
   assert.match(requested, /\/search\?/);
   assert.match(requested, /format=json/);
   assert.equal(report.candidates.length, 1);
+});
+
+// Owner, 2026-08-28: read the pages, not their snippets. Nine of ten results are a forum
+// thread's title with two lines under it, and the model was writing advice out of questions.
+const PAGE = (body) => `<!doctype html><html><head><title>t</title><style>b{color:red}</style></head><body>${body}</body></html>`;
+const htmlResponse = (html) => ({
+  ok: true,
+  headers: { get: (name) => (String(name).toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null) },
+  arrayBuffer: async () => Buffer.from(html, 'utf8'),
+});
+
+test('a page becomes the words on it: no tags, no scripts, no icon paths, no entities', () => {
+  const text = pageTextFrom(PAGE(
+    '<script>var a="<b>not text</b>";</script><svg><path d="M0 0 L9 9"/></svg>'
+    + '<h1>HBA cards</h1><p>The&nbsp;9300-8i is an&nbsp;LSI card &amp; it works.</p><!-- a note -->',
+  ));
+  assert.equal(text, 'HBA cards The 9300-8i is an LSI card & it works.');
+  assert.ok(!/<|>/.test(text), 'no markup may survive into the material a model reads');
+  assert.equal(pageTextFrom(null), '', 'nothing at all is an empty string, never a crash');
+});
+
+test('a page is read once, bounded, and only when it really is a page', async () => {
+  const long = PAGE(`<p>${'word '.repeat(4000)}</p>`);
+  const read = await readPage('https://forum.test/thread', { fetchImpl: async () => htmlResponse(long) });
+  assert.equal(read.length, MAX_PAGE_CHARS, 'a page reaches the write-up bounded, whatever its size');
+
+  const pdf = { ok: true, headers: { get: () => 'application/pdf' }, arrayBuffer: async () => Buffer.from('%PDF') };
+  assert.equal(await readPage('https://x.test/a.pdf', { fetchImpl: async () => pdf }), null);
+  assert.equal(await readPage('https://x.test/gone', { fetchImpl: async () => ({ ok: false, status: 404 }) }), null);
+  assert.equal(await readPage('https://x.test/down', { fetchImpl: async () => { throw new Error('timed out'); } }), null,
+    'a site that is slow or gone costs its own text and nothing else');
+  // Measured on this installation, 2026-08-28: Amazon answers 200 with 226 characters of «click
+  // the button below to continue shopping», trovaprezzi.it with 43 of «please enable JS», and a
+  // Reddit thread with a shell that extracts to nothing at all. All three are a wall wearing a
+  // page's status code, and handing one to a model as a source is worse than the snippet.
+  const wall = PAGE(`<p>${'Click the button below to continue shopping. '.repeat(6)}</p>`);
+  assert.ok(pageTextFrom(wall).length > 226, 'the wall this refuses must be longer than the one that was measured');
+  assert.equal(await readPage('https://x.test/wall', { fetchImpl: async () => htmlResponse(wall) }), null);
+  assert.equal(await readPage('https://x.test/shell', { fetchImpl: async () => htmlResponse(PAGE('<div id="app"></div>')) }), null);
+  // The size the far side declares is believed before the body is pulled.
+  const huge = { ok: true, headers: { get: (n) => (String(n).toLowerCase() === 'content-type' ? 'text/html' : '99999999') }, arrayBuffer: async () => { throw new Error('must not be downloaded'); } };
+  assert.equal(await readPage('https://x.test/huge', { fetchImpl: async () => huge }), null);
+});
+
+test('the pages are read only when the switch is on, and the six places go to the sites that answered', async () => {
+  const hits = Array.from({ length: MAX_CANDIDATES }, (_, index) => hit({
+    url: `https://forum.test/thread-${index}`, title: `Thread ${index}`, content: 'two lines of snippet',
+  }));
+  const readable = PAGE(`<p>${'the page itself says a great deal more than a snippet does. '.repeat(20)}</p>`);
+  const asked = [];
+  // The measured shape of the real web, 2026-08-28: the first three results were Reddit threads
+  // that answer 200 with a shell, and the sources with text on them sat further down the list.
+  const fetchImpl = async (url) => {
+    asked.push(String(url));
+    if (String(url).includes('/search?')) return { ok: true, json: async () => ({ results: hits }) };
+    return htmlResponse(/thread-[012]$/.test(String(url)) ? PAGE('<div id="app"></div>') : readable);
+  };
+
+  const off = await searchWith({ endpoint: 'http://search.test', objective: 'HBA', validate: (v) => v, fetchImpl });
+  assert.equal(asked.length, 1, 'with the switch off nothing but the search instance is reached');
+  assert.ok(off.candidates.every((candidate) => !candidate.pageText));
+
+  asked.length = 0;
+  const on = await searchWith({ endpoint: 'http://search.test', objective: 'HBA', validate: (v) => v, fetchImpl, withPages: true });
+  assert.equal(asked.length, 1 + MAX_CANDIDATES, 'every source is asked, because which ones answer cannot be known in advance');
+  const read = on.candidates.filter((candidate) => candidate.pageText);
+  assert.equal(read.length, MAX_PAGES_READ, 'the shells cost their own slot, never one of the six');
+  assert.deepEqual(read.map((candidate) => candidate.url), [3, 4, 5, 6, 7, 8].map((index) => `https://forum.test/thread-${index}`),
+    'the six that answered, in the engine’s order — not the first six by rank');
+  assert.equal(on.candidates.at(-1).pageText, undefined, 'past the six a candidate keeps its snippet and nothing else');
 });
 
 test('a provider that answers with an error says so as an error, not as an empty result', async () => {

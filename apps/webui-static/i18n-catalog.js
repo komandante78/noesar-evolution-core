@@ -63,6 +63,11 @@ export const RUNTIME_ONLY = Object.freeze([
   // consent has been given. Listed rather than tolerated, per this block own rule.
   'Pictures allowed',
   'Stop allowing pictures',
+  // The page switch (Owner, 2026-08-28) is built the same way and pays the same price: the
+  // markup ships «read as snippets» and the offer to read them in full, `loadResearchPagesSwitch()`
+  // writes these two once the consent has been given.
+  'Sources read in full',
+  'Go back to snippets',
   // Owner, 2026-08-24 («pulire intera chat»). The clear's confirmation, its refusal and its
   // result line are written by `app.js` when the button is pressed, so none of the four can
   // appear in `index.html` — the control itself is in the markup and is covered there.
@@ -974,6 +979,11 @@ const it = {
   'Pictures allowed': 'Immagini consentite',
   'Allow pictures in reports': 'Consenti le immagini nei resoconti',
   'Stop allowing pictures': 'Smetti di consentire le immagini',
+  'Sources read as snippets': 'Fonti lette come frammenti',
+  'Sources read in full': 'Fonti lette per intero',
+  'Read the pages, not the snippets': 'Leggi le pagine, non i frammenti',
+  'Go back to snippets': 'Torna ai frammenti',
+  'A search result carries about two hundred characters, and most of them are the title of a forum thread. With this on, the first six sources are read in full — one request per site, made once when the report is made — and the answer is written from the pages instead of from their openings. It reaches those sites, which the search instance alone does not, so it is its own switch and it is off until you say otherwise.': 'Un risultato di ricerca porta con sé circa duecento caratteri, e per lo più sono il titolo di una discussione di forum. Con questo acceso, le prime sei fonti vengono lette per intero — una richiesta per sito, fatta una volta sola quando il resoconto è creato — e la risposta è scritta a partire dalle pagine invece che dai loro inizi. Raggiunge quei siti, cosa che la sola istanza di ricerca non fa: per questo ha un interruttore suo, ed è spento finché non dici altrimenti.',
   'A result carries a picture, and showing it means reaching the site that hosts it — not just the search instance you already consented to. So it is its own switch, and it is off until you say otherwise. A picture is fetched once, when the report is made, and kept inside it: opening a saved report reaches nobody.': 'Un risultato porta con sé un’immagine, e mostrarla significa raggiungere il sito che la ospita — non solo l’istanza di ricerca a cui hai già dato il consenso. Per questo ha un interruttore suo, ed è spento finché non dici altrimenti. L’immagine viene presa una volta sola, quando il resoconto è creato, e resta dentro: aprire un resoconto salvato non raggiunge nessuno.',
   'Kept until you delete them. Open one, change what you asked before asking again, run the same search again, or delete it — deleting takes two presses.': 'Restano finché non le elimini. Aprine una, cambia quello che hai chiesto prima di richiedere, rilancia la stessa ricerca, oppure eliminala — per eliminare servono due pressioni.',
   'Nothing has been searched yet.': 'Non è ancora stata fatta nessuna ricerca.',

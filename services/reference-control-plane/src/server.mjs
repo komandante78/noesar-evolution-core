@@ -529,6 +529,10 @@ const sessionDispatch = createSessionDispatch({
     // aggregator is one host this installation consented to, and the sites that keep the
     // pictures are not. Ships off; a report simply has no pictures until somebody says yes.
     withImages: researchImagesConsented(),
+    // The lever the last two closures both named: ~200 characters of snippet per source become
+    // the page itself, for the first six. Same posture as the line above — off by default,
+    // its own consent, and the report is written from snippets while it is off.
+    withPages: researchPagesConsented(),
   }),
   deactivateInstalledModel: async (actor) => {
     const released = await localModels.release();
@@ -1195,6 +1199,14 @@ const publisherRegistry = new PublisherRegistry({ root: join(workspace, 'publish
  *  two acts, and one gesture standing for both is how consent stops meaning anything. */
 function researchImagesConsented() {
   try { return aiStore.read().settings?.researchImageEgress === true; } catch { return false; }
+}
+
+/** Owner, 2026-08-28, and a THIRD switch rather than a second meaning for the picture one:
+ *  fetching a thumbnail from whoever hosts it and reading, in full, every site a search returned
+ *  are different acts with different reach. Off until somebody says otherwise, rules 30-32 —
+ *  a report simply keeps being written from snippets until then. */
+function researchPagesConsented() {
+  try { return aiStore.read().settings?.researchPageEgress === true; } catch { return false; }
 }
 
 function modelEgressConsented() {
@@ -2911,6 +2923,21 @@ const requestListener = async (req, res) => {
       const consented = request.consented === true;
       aiStore.transact((state) => { state.settings ??= {}; state.settings.researchImageEgress = consented; return { consented }; });
       ledger.append({ actor:authenticated.user.id, action:'research.image-egress', result:consented ? 'consented' : 'withdrawn', details:{ consented } });
+      return json(res, 200, { consented });
+    }
+    // The page switch. The same shape again, deliberately: a person who has met one of these
+    // has met them all, and the third one being a surprise would be the design failing.
+    if (req.method === 'GET' && url.pathname === '/api/v1/settings/research-pages') {
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      return json(res, 200, { consented: researchPagesConsented(), canManage: auth.hasPermission(authenticated.user, 'provider.manage') });
+    }
+    if (req.method === 'PUT' && url.pathname === '/api/v1/settings/research-pages') {
+      const authenticated = requireSession(req, res, 'provider.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const consented = request.consented === true;
+      aiStore.transact((state) => { state.settings ??= {}; state.settings.researchPageEgress = consented; return { consented }; });
+      ledger.append({ actor:authenticated.user.id, action:'research.page-egress', result:consented ? 'consented' : 'withdrawn', details:{ consented } });
       return json(res, 200, { consented });
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/research/reports') {

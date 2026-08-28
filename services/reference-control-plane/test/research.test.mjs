@@ -83,6 +83,36 @@ test('a picture is an inlined one or none: a remote address never reaches a save
     'a provider cannot fill the page with pictures');
 });
 
+// Owner, 2026-08-28: read the pages, not their snippets. The page is material for the write-up
+// and for the door in front of it — never a field a card renders, and never at the length it
+// arrived in.
+test('the page behind a source is admitted bounded, and only as the write-up’s material', () => {
+  const withPage = validateCandidate({ ...goodCandidate, url: 'https://forum.test/thread', pageText: 'x'.repeat(9000) }, 0);
+  assert.equal(withPage.pageText.length, 4000, 'a provider cannot hand this pipeline a novel');
+  assert.equal(validateCandidate(goodCandidate, 0).pageText, null, 'no page read means null, never an empty string');
+
+  // The page replaces the snippet in the prompt rather than joining it: the snippet is an
+  // extract of that same text, and printing both spends the context saying one thing twice.
+  const prompt = buildWriteupPrompt('Which HBA', [], [{
+    name: 'Thread', sourceHost: 'forum.test', pageText: 'The 9300-8i is the one that works in IT mode.',
+    evidence: [{ kind: 'NOT_VERIFIED', statement: 'What HBA should I use for unraid? — https://forum.test/thread' }],
+  }]);
+  assert.match(prompt, /The 9300-8i is the one that works in IT mode\./);
+  assert.doesNotMatch(prompt, /What HBA should I use/, 'the page is the source; its opening is not printed twice');
+});
+
+test('a page this product read goes through the content door like everything else that came back', async () => {
+  const gate = fakeGate([{ outcome: 'PROCEED', category: null }, { outcome: 'PROCEED', category: null }]);
+  await runResearchReport({
+    objective: 'Which HBA', actorId: 'user-1', can: () => true,
+    gate, tools: [tool], toolId: 'tool-1',
+    executor: fakeExecutor({ candidates: [{ ...goodCandidate, pageText: 'The page says the 9300-8i works in IT mode.' }] }),
+    ledger: fakeLedger(), reportStore: new ResearchReportStore(), refusalRegistry: new RefusalRegistry(),
+  });
+  assert.match(gate.seen[1], /The page says the 9300-8i works in IT mode\./,
+    'the content gate must judge the page, not only the snippet the page replaced');
+});
+
 test('validateReportPayload refuses an empty candidate list rather than an empty report', () => {
   assert.throws(() => validateReportPayload({ candidates: [] }), /no candidates/);
 });

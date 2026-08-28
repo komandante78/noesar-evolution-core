@@ -5163,6 +5163,22 @@ async function loadResearchImagesSwitch(){
     });
   }catch{state.textContent=t('Pictures off');state.className='badge badge-off';toggle.hidden=true;}
 }
+// The page switch (Owner, 2026-08-28). The same five lines as the picture switch above, against
+// its own route: two switches that behave differently would be two things to learn.
+async function loadResearchPagesSwitch(){
+  const state=$('#researchPagesState');const toggle=$('#researchPagesToggle');
+  try{
+    const info=await api('/api/v1/settings/research-pages');
+    state.textContent=info.consented?t('Sources read in full'):t('Sources read as snippets');
+    state.className=`badge ${info.consented?'badge-on':'badge-off'}`;
+    toggle.hidden=!info.canManage;
+    toggle.textContent=info.consented?t('Go back to snippets'):t('Read the pages, not the snippets');
+    toggle.onclick=(event)=>withBusy(event.currentTarget,async()=>{
+      try{await api('/api/v1/settings/research-pages',{method:'PUT',body:JSON.stringify({consented:!info.consented})});await loadResearchPagesSwitch();}
+      catch(error){reportError(error,'Changing the source-reading setting');}
+    });
+  }catch{state.textContent=t('Sources read as snippets');state.className='badge badge-off';toggle.hidden=true;}
+}
 async function loadResearchRecent(){
   const list=$('#researchRecentList');const count=$('#researchRecentCount');
   try{
@@ -5185,6 +5201,7 @@ async function loadResearchDestination(){
   $('#researchOutcomePanel').classList.add('hidden');
   await loadResearchProviderStatus();
   await loadResearchImagesSwitch();
+  await loadResearchPagesSwitch();
   await loadResearchRecent();
 }
 

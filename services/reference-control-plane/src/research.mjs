@@ -28,6 +28,17 @@ import { randomUUID } from 'node:crypto';
 
 const MAX_OBJECTIVE_LENGTH = 500;
 const MAX_CRITERIA = 12;
+/** The same bound `searxng-provider.mjs` reads a page to, restated on THIS side of the wire:
+ *  that module hands the material over, this one is what admits it, and a validator that
+ *  trusted the producer's cap would be no validator. */
+const MAX_PAGE_TEXT = 4_000;
+/** How much of a page the CONTENT GATE reads. The gate is one model call with a ten-second
+ *  timeout, and twenty-four thousand characters of forum markup would time it out rather than
+ *  judge it — so what goes through the door is each page's opening, beside the snippet and the
+ *  name that already went through it.
+ *  ponytail: an opening, not a whole page. If material ever hides its point past the first
+ *  paragraph, the upgrade is one gate call per source instead of one per report. */
+const GATE_PAGE_CHARS = 500;
 const EVIDENCE_KINDS = Object.freeze(['SOURCE_FACT', 'MEASURED_AGGREGATE', 'INFERENCE', 'NOT_VERIFIED']); // UI-084
 
 function err(message, status = 400, extra = {}) {
@@ -111,6 +122,11 @@ export function validateCandidate(candidate, index) {
     // structurally cannot hold one. The fetching happens once, server-side, under its own
     // switch, in searxng-provider.mjs.
     image: DATA_IMAGE.test(String(candidate.image ?? '')) ? String(candidate.image) : null,
+    // Owner, 2026-08-28 — the page behind the link, when the operator turned that switch on.
+    // It is MATERIAL FOR THE WRITE-UP AND NOTHING ELSE: no card renders it, because a card
+    // shows what a source said about itself and this is the whole source. Bounded here, where
+    // every other field of a candidate is bounded, rather than trusted at the length it arrived.
+    pageText: candidate.pageText ? String(candidate.pageText).slice(0, MAX_PAGE_TEXT) : null,
   };
 }
 
@@ -170,7 +186,19 @@ export function validateReportPayload(payload) {
  * failure. The page then says why it has no answer on it, which is the honest half of UI-085.
  */
 export const WRITEUP_MAX_OUTPUT_TOKENS = 900;
-const WRITEUP_MAX_PROMPT_CHARS = 6000;
+/**
+ * Raised from 6000 on 2026-08-28, and the number is the model's, not a preference. This
+ * installation runs `llama-server -c 16384 -np 1`: one slot, sixteen thousand tokens for the
+ * instruction, the material and the answer together. Twenty-four thousand characters is roughly
+ * six thousand tokens, which with the instruction (~450) and the answer (900) leaves the context
+ * half empty — and costs about nine seconds of prompt processing at the 650 tok/s this machine
+ * measures. Six pages at four thousand characters is exactly this, which is why
+ * `MAX_PAGES_READ` is six: the cap and the number of pages read are one decision, not two.
+ *
+ * With snippets alone the cap never binds — ten of them come to about two thousand characters —
+ * so nothing about a report made without the page switch changes.
+ */
+const WRITEUP_MAX_PROMPT_CHARS = 24000;
 
 /**
  * Rewritten after the first version shipped and the Owner read it: «sembra un elenco della
@@ -238,13 +266,19 @@ export function writeupInstructionFor(language) {
  *  three cards that no source mentions; at 0.2, on the same material, it priced none. */
 export const WRITEUP_TEMPERATURE = 0.2;
 
-/** The sources as the model sees them: numbered, bounded, and nothing a candidate did not carry. */
+/** The sources as the model sees them: numbered, bounded, and nothing a candidate did not carry.
+ *
+ *  When a candidate carries the page itself, the page IS the source and the snippet is not
+ *  repeated beneath it — the snippet is an extract of that same text, and printing both would
+ *  spend the context saying one thing twice. */
 export function buildWriteupPrompt(objective, criteria, candidates) {
   const sources = candidates.map((candidate, index) => {
     const head = `[${index + 1}] ${candidate.name}${candidate.sourceHost ? ` — ${candidate.sourceHost}` : ''}${candidate.price ? ` — ${candidate.price}` : ''}`;
     const body = candidate.excluded
       ? [`  excluded: ${candidate.excludedReason}`]
-      : candidate.evidence.map((row) => `  ${String(row.statement).slice(0, 400)}`);
+      : candidate.pageText
+        ? [`  ${candidate.pageText}`]
+        : candidate.evidence.map((row) => `  ${String(row.statement).slice(0, 400)}`);
     return [head, ...body].join('\n');
   }).join('\n').slice(0, WRITEUP_MAX_PROMPT_CHARS);
   return `Question: ${objective}\n`
@@ -441,7 +475,13 @@ export async function runResearchReport({
 
   // Gate 2 — content, on what came back, before it is ever stored or shown (UI-091 second door).
   const contentSummary = [
-    ...candidates.map((candidate) => `${candidate.name}: ${candidate.excluded ? candidate.excludedReason : candidate.evidence.map((row) => row.statement).join(' | ')}`),
+    ...candidates.map((candidate) => {
+      const said = candidate.excluded ? candidate.excludedReason : candidate.evidence.map((row) => row.statement).join(' | ');
+      // A page this product read is text off the open web that will reach a person through the
+      // write-up, so it goes through this door like everything else that came back — bounded to
+      // its opening, for the reason `GATE_PAGE_CHARS` states beside itself.
+      return candidate.pageText ? `${candidate.name}: ${said} | ${candidate.pageText.slice(0, GATE_PAGE_CHARS)}` : `${candidate.name}: ${said}`;
+    }),
     // The pictures' own captions go through the second door with everything else: they are text
     // that came off the open web and will be shown to a person, which is the whole test.
     ...images.map((row) => row.title).filter(Boolean),
