@@ -413,9 +413,18 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // idempotent here because `codenTerminal` is only null when nothing is attached.
   if(target==='coden')attachCodenTerminal();else detachCodenTerminal();
   let codenAddress='';
-  if(target==='coden'&&CODEN_REGIONS[section]){
-    const shown=activateCodenPanel(section,place);
-    if(shown){codenAddress=`${section}/${shown}`;CODEN_PANEL_ON_OPEN[section]?.[shown]?.();}
+  // n.6, Owner 2026-08-27, during test B: «`#/coden` nudo va eliminato; deve mostrare cio che
+  // oggi mostra `#/coden/agent/authority`». A bare address now names the agent region and the
+  // panel comes from that region's own default, which is why the markup's `active` moved onto
+  // Authority rather than a second default being written here beside the first.
+  //
+  // This REVERSES phase 3c (`16` §4b.3), which is what made the bare address empty. It is a
+  // change of course, not a repair, and it is in the DECISION_LOG as one.
+  const codenBare=target==='coden'&&!CODEN_REGIONS[section];
+  const codenRegion=codenBare?'agent':section;
+  if(target==='coden'&&CODEN_REGIONS[codenRegion]){
+    const shown=activateCodenPanel(codenRegion,codenBare?undefined:place);
+    if(shown){codenAddress=`${codenRegion}/${shown}`;CODEN_PANEL_ON_OPEN[codenRegion]?.[shown]?.();}
   }
   // The address keeps naming what was asked for. Rewriting it to #/access-denied would
   // make a reload land on a route that does not exist, turning a 403 into a 404.
@@ -429,21 +438,22 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // through `location.hash=`, it would fire hashchange and activate the page a second
   // time: a deep link that both loses its panel and costs two rounds of fetches.
   if(known&&codenAddress)want=`${view}/${codenAddress}`;
-  // PHASE 3c. A bare `#/coden` used to be COMPLETED to whichever panel happened to be
-  // showing, because a panel was always showing — which is what made this a dashboard rather
-  // than a place with things you go to. `16` §4b.3: the panels "smettono di essere riquadri
-  // sempre presenti e restano posti dove si va".
+  // PHASE 3c, REVERSED by the Owner on 2026-08-27 (n.6). 3c made a bare `#/coden` name no
+  // panel and open none — `16` §4b.3, the panels "smettono di essere riquadri sempre presenti
+  // e restano posti dove si va" — and what that produced on screen was an empty page under
+  // four region tabs. The Owner walked it and asked for the opposite: the bare address opens
+  // Authority. The completion above does that; what stood here removed every active panel and
+  // is gone with the behaviour it enforced.
   //
-  // So a bare `#/coden` now names no panel and opens none: the four regions, and nothing
-  // below them. The address stays short because it is honest — there is nowhere further in
-  // until you go somewhere. Nothing became unreachable; every one of the twenty-five is an
-  // address the prompt opens, measured one by one in 3c-1 before this line was written.
-  let completing=false;
-  if(known&&target==='coden'&&!codenAddress){
-    $$('#view-coden [data-bench-panel].active,#view-coden [data-agent-panel].active')
-      .forEach((node)=>node.classList.remove('active'));
-    $('#view-coden')?.removeAttribute('data-panel-open');
-  }
+  // Written with replaceState, like every other completion: `location.hash=` would fire
+  // hashchange and activate this page a second time, and this page's loader refetches the
+  // bench on every activation.
+  //
+  // The sidebar button needs no separate address for the same reason. It goes to `#/coden`
+  // and lands, in one replaceState and no extra fetch, on `#/coden/agent/authority` — which
+  // is what the Owner asked to see in the bar. A second address written onto the button would
+  // be a second thing to keep in step with this one.
+  let completing=codenBare&&Boolean(codenAddress);
   // A panel that was asked for and does not exist is corrected the same way. Without this
   // the screen falls back to the default while the ADDRESS keeps naming the panel nobody
   // has — the bar saying one thing and the page showing another, which is the confusion the
@@ -6227,7 +6237,12 @@ function installHelpButtonsUnsafely(){
   // that have one — which is the invisible omission this whole mechanism exists to prevent,
   // reproduced by the mechanism itself. A page with no header gets a strip that holds only this.
   for(const section of $$('.view,.settings-section,.settings-sub')){
-    let header=section.querySelector(':scope > .section-header, :scope > .hero');
+    // Owner, 2026-08-28: a page may say where its own ⓘ goes. Chat marks its toolbar, so the
+    // button joins the row that already carries project, branch and route instead of sitting
+    // alone on a strip above it. Read FIRST, so a page that says nothing keeps the old anchor
+    // and nothing else in the product moves.
+    let header=section.querySelector(':scope > [data-help-anchor]')
+      ??section.querySelector(':scope > .section-header, :scope > .hero');
     if(!header){
       header=document.createElement('div');
       header.className='section-header help-anchor';

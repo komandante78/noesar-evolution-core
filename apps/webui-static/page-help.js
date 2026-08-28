@@ -60,7 +60,15 @@ export const PAGE_HELP = Object.freeze({
     howto: 'Create the artifact from the conversation that produced it, so the version history and the reasoning stay connected.',
   },
   knowledge: {
-    what: 'Ingested sources, searched lexically and semantically, with the original passages kept rather than only their embeddings.',
+    // The last sentence is not description, it is a CLAIM under test. It stood in the page
+    // header until the headers were removed on 2026-08-28, and it is here now because this is
+    // where that prose went — `coden-addressable-panels.test.mjs` reads it from this file and
+    // checks it against `file-extractors.mjs`, so the day the extractor learns to transcribe,
+    // the sentence goes red instead of quietly becoming a lie. It is watched at all because an
+    // earlier version offered recordings as searchable evidence while the extractor refused to
+    // read them. That old wording is not quoted here: the test greps this entry, comments and
+    // all, and an example of the forbidden sentence would fail as though it were the claim.
+    what: 'Ingested sources, searched lexically and semantically, with the original passages kept rather than only their embeddings. Audio and video are indexed by their metadata, never transcribed: this build has no speech-to-text.',
     howto: 'Upload the original file when you have it: extraction happens locally. Notes here are what YOU write and pin; Memory is what the product writes for you, and they are separate on purpose.',
   },
   memory: {

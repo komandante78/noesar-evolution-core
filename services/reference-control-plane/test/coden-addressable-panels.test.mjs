@@ -126,7 +126,11 @@ describe('CodeN Evolution — every panel is an address', () => {
     // `#/coden` is completed to the panel it is showing. Doing that through
     // `location.hash=` would fire hashchange and run the whole activation — and the page's
     // loader — a second time, for an address that never left the place it was already at.
-    const start = app.indexOf('let completing=false;');
+    //
+    // The anchor stopped being `let completing=false;` on 2026-08-28 (n.6): a bare `#/coden`
+    // now completes to Authority, so the flag is decided rather than initialised. What this
+    // test is about — replaceState, and not gated on `updateHash` — is unchanged.
+    const start = app.indexOf('let completing=');
     assert.ok(start > 0, 'the address-completion branch is gone');
     const body = app.slice(start, app.indexOf('const scope=', start));
     assert.match(body, /if\(completing\)history\.replaceState/);
@@ -273,11 +277,16 @@ describe('the interface does not claim what the code contradicts', () => {
       join(here, '../src/ai-workspace/file-extractors.mjs'), 'utf8');
     const noSpeech = /has no transcription/.test(extractors);
     assert.ok(noSpeech, 'the extractor now transcribes: this test is the thing that is stale');
-    const header = html.match(/<h1>Knowledge<\/h1><p>([\s\S]*?)<\/p>/)?.[1] ?? '';
-    assert.ok(header.length > 0, 'the Knowledge identity line is gone');
-    assert.doesNotMatch(header, /recordings —/,
+    // Read from page-help.js since 2026-08-28: the page headers were removed and this sentence
+    // moved there with the rest of that prose. What is checked is unchanged — the claim, against
+    // the extractor. Following the sentence to where it now lives is the point; dropping the
+    // test when the markup lost it would have retired the guard along with the header.
+    const help = readFileSync(join(root, 'apps/webui-static/page-help.js'), 'utf8');
+    const entry = help.match(/\n {2}knowledge: \{([\s\S]*?)\n {2}\},/)?.[1] ?? '';
+    assert.ok(entry.length > 0, 'the Knowledge help entry is gone');
+    assert.doesNotMatch(entry, /recordings —/,
       'Knowledge offers recordings as searchable evidence while the extractor refuses to read them');
-    assert.match(header, /never transcribed|no speech-to-text/,
+    assert.match(entry, /never transcribed|no speech-to-text/,
       'Knowledge does not say that audio and video are not transcribed');
   });
   test('the TUI destination carries no "not built" flag, and the files it names exist', () => {

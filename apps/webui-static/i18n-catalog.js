@@ -505,9 +505,7 @@ const it = {
   'Primary': 'Principale',
 
   // ——— Home ———
-  'CONTROLLED AI WORK ENVIRONMENT': 'AMBIENTE DI LAVORO IA CONTROLLATO',
   'Ask. Create. Act.': 'Chiedi. Crea. Agisci.',
-  'Use local models or explicitly approved external APIs. Every project keeps its own chat graph, memory, files, tools and artifacts.': 'Usa modelli locali o API esterne approvate esplicitamente. Ogni progetto tiene il proprio grafo di chat, memoria, file, strumenti e artefatti.',
   'Ask': 'Chiedi',
   'Answers with context, sources and uncertainty.': 'Risposte con contesto, fonti e incertezza.',
   'Create': 'Crea',
@@ -560,7 +558,6 @@ const it = {
   'Daily median review time': 'Tempo mediano di revisione giornaliero',
 
   // ——— Chat ———
-  'VERSIONED CONTEXT GRAPH': 'GRAFO DI CONTESTO VERSIONATO',
   'AI Workspace': 'Spazio di lavoro IA',
   'Conversation': 'Conversazione',
   'Branch': 'Ramo',
@@ -805,8 +802,6 @@ const it = {
   'Agent': 'Agente',
 
   // ——— Tools ———
-  'LOCAL · MCP · OPENAPI': 'LOCALE · MCP · OPENAPI',
-  'A registered tool stays disabled by policy until it is granted consent. Mutative tools are marked as such.': 'Uno strumento registrato resta disabilitato per regola finché non riceve il consenso. Gli strumenti che modificano sono contrassegnati come tali.',
   'Register tool': 'Registra strumento',
   'Name': 'Nome',
   'Transport': 'Trasporto',
@@ -827,8 +822,6 @@ const it = {
   'Optional MCP tool name': 'Nome dello strumento MCP, facoltativo',
 
   // ——— CodeN Evolution TUI ———
-  'THE SAME SESSION, FROM A TERMINAL': 'LA STESSA SESSIONE, DA UN TERMINALE',
-  'The terminal shell attached to the same live session as the workbench.': 'La shell di terminale agganciata alla stessa sessione viva del banco di lavoro.',
   'SESSION PROTOCOL BUILT': 'PROTOCOLLO DI SESSIONE COSTRUITO',
   'One program, two shells, joined to the': 'Un programma, due shell, unite alla',
   'same live session': 'stessa sessione viva',
@@ -847,8 +840,6 @@ const it = {
   ', and spending it destroys it. It can only be redeemed at the terminal socket — no network endpoint accepts it — and minting a second code cancels the first. If it expires while you are typing, mint another; the terminal also still accepts username, password and second factor as before.': ', e spenderlo lo distrugge. Può essere riscosso soltanto sul socket del terminale — nessun endpoint di rete lo accetta — e coniare un secondo codice annulla il primo. Se scade mentre stai digitando, coniane un altro; il terminale accetta comunque ancora nome utente, password e secondo fattore come prima.',
 
   // ——— Projects ———
-  'SHARED WORKSPACE': 'SPAZIO DI LAVORO CONDIVISO',
-  'Chats, instructions, files, memory, tools and agents share one controlled scope.': 'Chat, istruzioni, file, memoria, strumenti e agenti condividono un unico ambito controllato.',
   'Create project': 'Crea progetto',
   'Project instructions': 'Istruzioni del progetto',
   'Tags': 'Etichette',
@@ -874,8 +865,6 @@ const it = {
   'Project deleted.': 'Progetto eliminato.',
 
   // ——— Documents / Artifacts ———
-  'VERSIONED OUTPUTS': 'RISULTATI VERSIONATI',
-  'Create and edit documents, code, tables, charts, canvas data and application specifications.': 'Crea e modifica documenti, codice, tabelle, grafici, dati su tela e specifiche di applicazioni.',
   'New document': 'Nuovo documento',
   'Type': 'Tipo',
   'document': 'documento',
@@ -890,8 +879,6 @@ const it = {
   'No documents.': 'Nessun documento.',
 
   // ——— Knowledge ———
-  'HYBRID RETRIEVAL': 'RECUPERO IBRIDO',
-  'What you feed the model as evidence: files, pasted text, media — ingested, indexed, and searched lexically and semantically before an answer cites it. Audio and video are indexed by their metadata, never transcribed: this build has no speech-to-text.': 'Ciò che dai in pasto al modello come prova: file, testo incollato, media — acquisiti, indicizzati e cercati lessicalmente e semanticamente prima che una risposta li citi. Audio e video sono indicizzati per i loro metadati, mai trascritti: questo build non ha riconoscimento vocale.',
   'Add source': 'Aggiungi fonte',
   'Upload PDF, Office, image, audio, video, ZIP, dataset or code': 'Carica PDF, Office, immagine, audio, video, ZIP, dataset o codice',
   'Camera': 'Fotocamera',
@@ -918,8 +905,6 @@ const it = {
   'No sources indexed yet — add a file or paste text to make it searchable.': 'Nessuna fonte indicizzata — aggiungi un file o incolla del testo per renderlo cercabile.',
 
   // ——— Memory ———
-  'WRITTEN FOR YOU, AT THE END OF EACH SESSION': 'SCRITTA PER TE, ALLA FINE DI OGNI SESSIONE',
-  'What the product inferred about your work while you talked, not what you typed — search it, browse it, or decide what stays. It never writes itself in silently: everything new waits below for you to keep or discard.': 'Ciò che il prodotto ha dedotto sul tuo lavoro mentre parlavi, non ciò che hai digitato — cercalo, sfoglialo, o decidi che cosa resta. Non si scrive mai da sola in silenzio: tutto ciò che è nuovo aspetta qui sotto perché tu lo tenga o lo scarti.',
   'Any topic': 'Qualsiasi argomento',
   'Nothing found yet — try a broader topic, or leave the search empty to browse everything.': 'Ancora nessun risultato — prova un argomento più ampio, o lascia la ricerca vuota per sfogliare tutto.',
   'Recently learned': 'Imparato di recente',
@@ -929,8 +914,6 @@ const it = {
   'What do you want to know?': 'Che cosa vuoi sapere?',
 
   // ——— Agents ———
-  'PLAN · APPROVE · EXECUTE · VERIFY': 'PIANIFICA · APPROVA · ESEGUI · VERIFICA',
-  'Mutative steps remain blocked until a human grants scoped approval.': 'I passi che modificano restano bloccati finché una persona non concede un’approvazione delimitata.',
   'Create agent': 'Crea agente',
   'Instructions': 'Istruzioni',
   'Plan run': 'Pianifica esecuzione',
@@ -941,8 +924,6 @@ const it = {
   'No runs.': 'Nessuna esecuzione.',
 
   // ——— Workflows ———
-  'TYPED STEPS · RETRIES · COMPENSATION · REPLAY': 'PASSI TIPIZZATI · RITENTATIVI · COMPENSAZIONE · RIESECUZIONE',
-  'A workflow declares what each step may do. A step with declared effects waits for a human.': 'Un flusso di lavoro dichiara che cosa può fare ogni passo. Un passo con effetti dichiarati aspetta una persona.',
   'Define workflow': 'Definisci flusso di lavoro',
   'Steps': 'Passi',
   'Loading the step vocabulary…': 'Caricamento del vocabolario dei passi…',
@@ -956,8 +937,6 @@ const it = {
   'Providers': 'Fornitori',
 
   // ——— Research ———
-  'ONE LINE · ASK IT THE WAY YOU WOULD SAY IT': 'UNA RIGA · CHIEDILO COME LO DIRESTI',
-  'A report with compared candidates, the evidence behind each one, and what was not verified.': 'Un resoconto con i candidati confrontati, l’evidenza dietro ciascuno, e ciò che non è stato verificato.',
   'Takes': 'Prende',
   'one line, the way you would say it': 'una riga sola, scritta come la diresti',
   ', and returns a report that is': ', e restituisce un resoconto che',
@@ -999,8 +978,6 @@ const it = {
   'The search is done by artificial intelligence, which can make mistakes.': "La ricerca è fatta da un'intelligenza artificiale che può commettere errori.",
 
   // ——— Settings shell ———
-  'ONE DESTINATION · EVERY SETTING': 'UNA DESTINAZIONE · OGNI IMPOSTAZIONE',
-  'Fifteen entries that used to occupy the sidebar are sections here. A destination is a place you decide to go to; everything else is a section you arrive at.': 'Quindici voci che occupavano la barra laterale qui sono sezioni. Una destinazione è un luogo in cui decidi di andare; tutto il resto è una sezione a cui arrivi.',
   'YOUR WORK': 'IL TUO LAVORO',
   'Appearance': 'Aspetto',
   'Language and time': 'Lingua e ora',
@@ -1297,8 +1274,6 @@ const it = {
   'ZERO AT REST · SEARCHABLE · NEVER A LOAD': 'ZERO A RIPOSO · CERCABILI · MAI UN CARICAMENTO',
   'A skill tells the agent how to do something. Its payload is instructions, so its cost is context — which is why nothing here is loaded until a session adopts it. Searching the catalogue returns what a skill is and what adopting it would cost in bytes, never the instructions themselves. At rest this installation carries none, and the count below is read from the live registry rather than claimed.': 'Una competenza dice all’agente come fare qualcosa. Il suo carico sono istruzioni, quindi il suo costo è contesto — ed è per questo che qui nulla viene caricato finché una sessione non l’adotta. Cercare nel catalogo restituisce che cos’è una competenza e quanto costerebbe adottarla in byte, mai le istruzioni stesse. A riposo questa installazione non ne porta nessuna, e il conteggio qui sotto è letto dal registro vivo invece che affermato.',
   // ——— Models · the catalogue, s333 point 5 ———
-  'WHAT YOU HAVE, FIRST': 'PRIMA QUELLO CHE HAI',
-  'Every model of a registered publisher. What is running and what is already on disk stays at the top and never paginates — the answer to “what do I have” must not cost a search.': 'Ogni modello di un pubblicatore registrato. Ciò che è in esecuzione e ciò che è già su disco resta in cima e non si impagina mai — la risposta a «che cosa ho» non deve costare una ricerca.',
   'Catalogue': 'Catalogo',
   'Any type': 'Qualsiasi tipo',
   'Function': 'Funzione',
