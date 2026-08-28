@@ -50,11 +50,70 @@ const DEFAULT_CONFIG = Object.freeze({
   endpoint: null,
   model: null,
   vramLimitMiB: null,
+  // How many of the model's layers go on the accelerator. THE WHOLE OF "GPU, RAM OR BOTH" IS
+  // THIS NUMBER — llama.cpp's `-ngl`. 0 keeps every layer in system memory, a number at or above
+  // the model's layer count puts them all on the card, and anything between is the hybrid split:
+  // the first N layers on the GPU, the rest in RAM, one process either way.
+  //
+  // `null` means "whatever the descriptor's own launchCommand says", which is how every model
+  // installed before this existed keeps behaving exactly as it did.
+  //
+  // Owner, 2026-08-28: «devi far girare i modelli sia su gpu che su ram o ibrido». It could not
+  // be done before, and not because the number was missing — `-ngl` was already in every
+  // descriptor. It was `launch()` blanking `CUDA_VISIBLE_DEVICES` for anything not called CUDA,
+  // which left exactly two states and no way to express the third.
+  gpuLayers: null,
   // An argv array, never a shell string. A command assembled as text and handed to a
   // shell is a command an operator-supplied model name can extend.
   launchCommand: null,
   launchReadyTimeoutMs: 120000,
 });
+
+/**
+ * Put `-ngl <n>` into an argv, replacing whatever was there.
+ *
+ * Pure and exported because it is the one piece of this feature with a wrong answer: a descriptor
+ * may carry `-ngl 99`, `--n-gpu-layers 40`, or neither, and an installation that appended a
+ * second `-ngl` would be relying on which one llama.cpp happens to read last. It replaces the
+ * value in place when the flag exists — in EITHER spelling — and appends only when it does not.
+ *
+ * `null` returns the argv untouched, which is what "the descriptor decides" has to mean.
+ */
+export function withGpuLayers(argv, gpuLayers) {
+  if (gpuLayers == null) return argv;
+  const next = [...argv];
+  const at = next.findIndex((part) => part === '-ngl' || part === '--n-gpu-layers');
+  if (at >= 0) {
+    next[at + 1] = String(gpuLayers);
+    return next;
+  }
+  next.push('-ngl', String(gpuLayers));
+  return next;
+}
+
+/**
+ * How many layers this configuration will actually put on the card — the setting when there is
+ * one, otherwise whatever the descriptor's own command already said, otherwise none.
+ *
+ * Read rather than assumed, because the honest answer to "is this run using the GPU" cannot come
+ * from the setting alone: a model installed before `gpuLayers` existed carries `-ngl 99` in its
+ * own command and is very much using it.
+ */
+export function effectiveGpuLayers(config = {}) {
+  if (config.gpuLayers != null) return config.gpuLayers;
+  const argv = config.launchCommand ?? [];
+  const at = argv.findIndex((part) => part === '-ngl' || part === '--n-gpu-layers');
+  const declared = at >= 0 ? Number(argv[at + 1]) : Number.NaN;
+  return Number.isInteger(declared) ? declared : 0;
+}
+
+/** What to call a placement, for a person reading a status page rather than an argv. */
+export function placementOf(gpuLayers, layerCount = null) {
+  if (gpuLayers === 0) return 'ram';
+  if (layerCount != null && gpuLayers >= layerCount) return 'gpu';
+  if (gpuLayers >= 99 && layerCount == null) return 'gpu';
+  return 'hybrid';
+}
 
 function fail(message, status = 400) {
   return Object.assign(new Error(message), { status });
@@ -296,6 +355,17 @@ export class LocalModelRuntime {
       }
       next.vramLimitMiB = limit;
     }
+    if (next.gpuLayers != null) {
+      const layers = Number(next.gpuLayers);
+      // No upper bound on purpose: llama.cpp reads a number above the layer count as "all of
+      // them", which is what `-ngl 99` has always meant, and this runtime does not know how many
+      // layers a model has until the model is opened. Refusing 99 to be tidy would break every
+      // descriptor already installed.
+      if (!Number.isInteger(layers) || layers < 0) {
+        throw fail('gpuLayers must be an integer of 0 or more — 0 keeps every layer in RAM');
+      }
+      next.gpuLayers = layers;
+    }
     if (next.endpoint != null) {
       let parsed;
       try {
@@ -509,17 +579,26 @@ export class LocalModelRuntime {
     const selection = await this.select();
     if (selection.error) throw fail(selection.error, 409);
 
-    const [command, ...args] = config.launchCommand;
+    const [command, ...args] = withGpuLayers(config.launchCommand, config.gpuLayers);
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        // An empty CUDA_VISIBLE_DEVICES is how a child is denied the GPU entirely. This
-        // is the mechanism behind "no GPU access without configuration": a CPU selection
-        // does not merely ask the runtime nicely, it removes the devices from its view.
-        CUDA_VISIBLE_DEVICES: selection.backend === Backend.CUDA
-          ? String(selection.profileId.split(':')[1] ?? '0')
-          : '',
+        // An empty CUDA_VISIBLE_DEVICES is how a child is denied the GPU entirely. This is the
+        // mechanism behind "no GPU access without configuration", and it stays: a run that puts
+        // NO layer on the card does not merely ask the runtime nicely, it removes the devices
+        // from its view.
+        //
+        // What changed on 2026-08-28 is what counts as such a run. The test used to be
+        // `backend === CUDA`, which made the placement a property of the SELECTION — two states,
+        // all-or-nothing, and a hybrid split had nowhere to live. It is now a property of the
+        // LAYERS, which is what it always physically was: no layers means no device, one layer
+        // means the device is needed, and everything in between is the ordinary case rather than
+        // an exception. `selection.backend` still decides WHICH card, because that is the
+        // question it actually answers.
+        CUDA_VISIBLE_DEVICES: effectiveGpuLayers(config) === 0 || selection.backend !== Backend.CUDA
+          ? ''
+          : String(selection.profileId.split(':')[1] ?? '0'),
       },
     });
     const record = {
@@ -650,6 +729,11 @@ export class LocalModelRuntime {
       endpoint: config.endpoint,
       model: config.model,
       vramLimitMiB: config.vramLimitMiB,
+      // What a person actually wants to know: where this model runs. `gpuLayers` is the setting
+      // (null = the descriptor decides), the other two are what that resolves to.
+      gpuLayers: config.gpuLayers,
+      effectiveGpuLayers: effectiveGpuLayers(config),
+      placement: placementOf(effectiveGpuLayers(config)),
       launchConfigured: Boolean(config.launchCommand),
       launched: this.launched
         ? {

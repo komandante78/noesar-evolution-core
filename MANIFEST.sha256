@@ -6350,7 +6350,7 @@ db6ad641629911060cb3b9d44b4f49978ee89322c9cd35342f65c8a640986499  ./services/ref
 c92e8d917acbf8796901028a7280e6de212c1ec2afc5ba38dd51c1c9ba403691  ./services/reference-control-plane/src/home-overview.mjs
 3e3e9c63c947f3dc5d62135d664ae54fd096f2f071c60ce6c3395976016a6547  ./services/reference-control-plane/src/http-security.mjs
 de9462d2d8b3f7a4e053d2a8f907c10e53c5564d78c8c6af5fe89a544d01cc9d  ./services/reference-control-plane/src/isolation.mjs
-b76a07c54c467be9f4c151837fe9f104f96679e0981c000c33928f6a3e5df455  ./services/reference-control-plane/src/local-model-runtime.mjs
+448ab15a9c1c6eea0fd2058781146a9dc4fdf8f340c8f0148fa2e380135fc193  ./services/reference-control-plane/src/local-model-runtime.mjs
 0c6103875935810eb716231d5031a9d1bf495f857b44b46497ad9c5c2c260cf2  ./services/reference-control-plane/src/logging.mjs
 4dfef3b8a143cc0824dcaeb5d2c590ec77062e4dc9e0766a7d6d2fb619802c58  ./services/reference-control-plane/src/memory-compaction.mjs
 07abd3b0cf286dbea7e0d2fbf3ba9f00ed02d735666c8bd0435c4e075b9e4742  ./services/reference-control-plane/src/memory-model-swap.mjs
@@ -6527,7 +6527,7 @@ c662f8af3924621e343139e6ca802f0fc109f1af94bc45a3f8980634efa42a45  ./services/ref
 bab20e90e687dd7bd16b3dc91b53648e06c7c0f450fd4f3af0bdd0eea66c0791  ./services/reference-control-plane/test/isolation.test.mjs
 446f6b2e6821eb398489afb64ef142d44acde494969b0105ad30dcf5a7d71145  ./services/reference-control-plane/test/lan-exposure.test.mjs
 ed93607cb2f6eeb8458e207c7f8ffa92d3e85eab8fdd859bf1dea1dbd6b2f36a  ./services/reference-control-plane/test/launcher-portability.test.mjs
-8777efb18fc77f8f64b128e83ba544010780643fb890f1b96509983170c4fc8d  ./services/reference-control-plane/test/local-model-runtime.test.mjs
+e188b0a4d3ae942a60fde5c7b7811a8947580dc4abc24e1016cedf6ccdf46fd5  ./services/reference-control-plane/test/local-model-runtime.test.mjs
 bc2c8ab71d5c7c3e7d1b943edf7513541c51cc3f52e76e6719a4f1b879c3c05e  ./services/reference-control-plane/test/logging.test.mjs
 f7ce1a2e234f00ce243fbf1cfe9dd603b862b13915073e651636ca319e29ccf0  ./services/reference-control-plane/test/login-malformed-username.test.mjs
 fd06094a7ce396924aafaa0b3733632ce9dc75ea94cb1303bfd5b9cfc194e1eb  ./services/reference-control-plane/test/manifest-integrity.test.mjs
@@ -6712,6 +6712,7 @@ f896911e4f82e8b71499a6007e89f6c1d0f84cf55917fa35464f342ec7e980c6  ./tools/measur
 3ce1e9aff38ea0c9077c3b5e56cbe4a124ae15873f31df1587a7b42c3cac75a6  ./tools/measure-ui-language-coverage.mjs
 cd382976bc32b31112ce2e9c485a0c1e37a1fb49bea8325f5e4a0eb4a4b8a2be  ./tools/mint-service-token.mjs
 5224ac53a75e4f01fdb7b03880bc07baf978b56a4d10ce5c7b8f2edfab9c8747  ./tools/model-acquisition-e2e.mjs
+beef4d9f93141cccf64d8ea2b98351cdaa4dc4111de99d09a6d58c49c05fde7b  ./tools/model-install.mjs
 314b6d42278673e355f8ff1b8152c1d221cef0165d6accccf735bb9395acec98  ./tools/page-screenshot.mjs
 9761fb189bcf64bd263f7ebf6776be24673123b4eecbe0f4697e6cef7849d80e  ./tools/release-signing.mjs
 860e91f7bc240696d1bf60fe659586084877fec9898edf450e40101402e87d7d  ./tools/restart-durability-smoke.mjs

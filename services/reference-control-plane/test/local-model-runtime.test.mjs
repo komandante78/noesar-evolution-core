@@ -13,7 +13,10 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LocalModelRuntime, RuntimeMode, Backend, activateModel } from '../src/local-model-runtime.mjs';
+import {
+  LocalModelRuntime, RuntimeMode, Backend, activateModel,
+  withGpuLayers, effectiveGpuLayers, placementOf,
+} from '../src/local-model-runtime.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
 import { freshTempDir } from './support/workspace.mjs';
@@ -380,6 +383,64 @@ test('the CPU profile is always present and always available', async () => {
   assert.ok(cpu);
   assert.equal(cpu.available, true);
   assert.equal(cpu.backend, Backend.CPU);
+});
+
+// --- GPU, RAM, or both — Owner, 2026-08-28 ------------------------------------------------
+//
+// «devi far girare i modelli sia su gpu che su ram o ibrido». The whole of it is llama.cpp's
+// `-ngl`, which every descriptor already carried; what did not exist was a way to say a number
+// other than the descriptor's, and a launch that did not blank the GPU whenever the selection
+// was not called CUDA. These four tests are the placement, and nothing here needs a GPU to run.
+describe('placement: gpu, ram, hybrid', () => {
+  test('the layer count is put into an argv without ever being appended twice', () => {
+    const argv = ['llama-server', '-m', 'x.gguf', '-ngl', '99', '-c', '16384'];
+    assert.deepEqual(withGpuLayers(argv, 0), ['llama-server', '-m', 'x.gguf', '-ngl', '0', '-c', '16384']);
+    assert.deepEqual(withGpuLayers(argv, 36), ['llama-server', '-m', 'x.gguf', '-ngl', '36', '-c', '16384']);
+    // The long spelling is the same flag, and a descriptor is free to use it.
+    assert.deepEqual(withGpuLayers(['s', '--n-gpu-layers', '99'], 8), ['s', '--n-gpu-layers', '8']);
+    // Absent: appended once.
+    assert.deepEqual(withGpuLayers(['s', '-m', 'x'], 12), ['s', '-m', 'x', '-ngl', '12']);
+    // Null is "the descriptor decides", and must not touch the command at all.
+    assert.deepEqual(withGpuLayers(argv, null), argv);
+  });
+
+  test('the effective placement is read from the descriptor when nothing was set', () => {
+    // A model installed before this feature existed carries its own -ngl and keeps behaving so.
+    assert.equal(effectiveGpuLayers({ launchCommand: ['s', '-ngl', '99'] }), 99);
+    assert.equal(effectiveGpuLayers({ launchCommand: ['s', '-ngl', '0'] }), 0);
+    // The setting wins over the descriptor.
+    assert.equal(effectiveGpuLayers({ gpuLayers: 36, launchCommand: ['s', '-ngl', '99'] }), 36);
+    // Nothing anywhere means nothing on the card, which is the safe reading.
+    assert.equal(effectiveGpuLayers({ launchCommand: ['s', '-m', 'x'] }), 0);
+    assert.equal(effectiveGpuLayers({}), 0);
+    assert.equal(placementOf(0), 'ram');
+    assert.equal(placementOf(36, 65), 'hybrid');
+    assert.equal(placementOf(65, 65), 'gpu');
+    assert.equal(placementOf(99), 'gpu');
+  });
+
+  test('a nonsensical layer count is refused rather than passed to the runtime', async () => {
+    const { runtime } = fresh();
+    await assert.rejects(() => runtime.configure({ mode: RuntimeMode.AUTO, gpuLayers: -1 }), /0 or more/);
+    await assert.rejects(() => runtime.configure({ mode: RuntimeMode.AUTO, gpuLayers: 2.5 }), /0 or more/);
+    // 99 is NOT refused: llama.cpp reads any number above the layer count as "all of them", and
+    // every descriptor already installed says exactly that.
+    await runtime.configure({ mode: RuntimeMode.AUTO, gpuLayers: 99 });
+    assert.equal(runtime.config().gpuLayers, 99);
+  });
+
+  test('status reports where the model runs, not merely what was configured', async () => {
+    const { runtime } = fresh();
+    await runtime.configure({ mode: RuntimeMode.AUTO, launchCommand: ['/bin/sleep', '60', '-ngl', '99'] });
+    assert.equal(runtime.status().gpuLayers, null, 'nothing was set');
+    assert.equal(runtime.status().effectiveGpuLayers, 99, 'so the descriptor decides');
+    assert.equal(runtime.status().placement, 'gpu');
+
+    await runtime.configure({ gpuLayers: 0 });
+    assert.equal(runtime.status().placement, 'ram');
+    await runtime.configure({ gpuLayers: 36 });
+    assert.equal(runtime.status().placement, 'hybrid');
+  });
 });
 
 // --- activateModel — the connection D-0444 adds between the catalogue and this class -------
