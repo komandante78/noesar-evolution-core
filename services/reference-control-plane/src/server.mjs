@@ -13,7 +13,7 @@ import {
 } from './data-plane.mjs';
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
-import { LocalModelRuntime, activateModel, RuntimeMode, recommendPlacement, declaredSize } from './local-model-runtime.mjs';
+import { LocalModelRuntime, activateModel, recommendPlacement, declaredSize } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition, loadableModels } from './model-catalog.mjs';
 // D-0520: the transport `planAcquisition` was planning FOR. The manager owns the disk and the
 // jobs; the transport owns the bytes; this file owns neither and only wires them to a route.
@@ -624,38 +624,26 @@ function chatAnswerFrom() {
     : { answers: false, providerId: null, model: null, evidence: null, lastSeenAt: null, reason };
 }
 
-/**
- * Start the configured local model at boot, when an operator has declared one — the missing
- * half of the symmetry `localModels.release()` already has in the shutdown path below.
- *
- * Deliberately NOT `activateInstalledModelById`: that path exists for a person switching chat
- * to a model picked from the catalogue, and it gates on a verified, product-acquired artefact
- * (`readPresentModels`). A boot default was never going to clear that bar EITHER, on an
- * installation that has been answering from a hand-started sidecar container with no such gate
- * at all. A `launchCommand` an operator wrote into `config/local-model.json` is the same trust
- * boundary as that sidecar, expressed as configuration instead of a container someone remembered
- * to start.
- */
-async function bootLocalModelIfConfigured() {
-  const config = localModels.config();
-  if (config.mode === RuntimeMode.DISABLED || !config.launchCommand) return;
-  try {
-    const nowUnix = Math.floor(Date.now() / 1000);
-    const granted = adapterGrants.request({
-      resource: 'local-model-runtime', operation: 'EXECUTE', actor: 'system:boot', nowUnix,
-    });
-    const approved = adapterGrants.approve({ runId: granted.runId, approverId: 'system:boot', nowUnix });
-    const launched = await localModels.launch({ capabilityToken: approved.token });
-    logger.info('local-model.boot-launched', {
-      component: 'local-model', model: config.model, profile: launched.profileId,
-    });
-  } catch (error) {
-    // Chat still comes up either way — /model already reports why it cannot answer, the same
-    // shape s341 built for a person clicking activate. A boot that could not start a model is a
-    // fact for that lane to carry, not a reason to refuse to serve the rest of the product.
-    logger.warn('local-model.boot-launch-failed', { component: 'local-model', error: error.message });
-  }
-}
+// NOTHING IS LOADED AT BOOT. Owner, 2026-08-28: «devi fare modo che al riavvio non carichi
+// nulla».
+//
+// The boot launch used to start whatever `config/local-model.json` last named. It
+// was removed rather than made optional, and there are three reasons, in the order they matter:
+//
+//   1. It started a model NOBODY ASKED FOR. A restart — a deploy, a crash, a power cut — put
+//      fifteen gigabytes on the card because of a choice somebody made days earlier, and the
+//      first thing the Owner had to do was undo it.
+//   2. It started the WRONG ONE. `local-model.json` holds a SNAPSHOT of the launch command taken
+//      when a model was activated, so a boot relaunch reproduces the split that was current then
+//      and ignores everything decided since. Measured on 2026-08-28: the descriptor said 46
+//      layers, the process came back with 36, and nothing on any surface said why.
+//   3. It approved its own capability. The token was requested AND approved as `system:boot` —
+//      the exact shape `03_ARCHITETTURA.md` §4 forbids everywhere else in this product: *no
+//      adapter may grant itself a permission*. A boot path is not a person.
+//
+// A model is started from the Models page, by someone who is looking at the card and at how much
+// of it fits. The symmetry with `release()` in the shutdown path is not lost: shutting down frees
+// what is loaded, and starting up loads nothing, which is the honest pair.
 
 async function activateInstalledModelById(id, actor) {
   const descriptors = readModelDescriptors();
@@ -5585,11 +5573,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       }
     }
 
-    // Fire-and-forget, deliberately not awaited: `launch()` itself polls the endpoint until
-    // ready (or its own timeout) when one is configured, and gating server.listen's callback
-    // on that would hold /livez, the watchdog and the signal handlers below hostage to however
-    // long a model takes to load. `bootLocalModelIfConfigured` logs its own outcome either way.
-    bootLocalModelIfConfigured();
+    // No model is launched here. See the block above `activateInstalledModelById` for why the
+    // boot launch was removed rather than made a setting — the short version is that a restart
+    // used to load fifteen gigabytes nobody had asked for, with a split nobody had chosen.
+    logger.info('local-model.boot-idle', {
+      component: 'local-model',
+      model: localModels.config().model ?? null,
+      reason: 'nothing is loaded at startup; a model is started from the Models page',
+    });
 
     await watchdog.runOnce({ force:true }).catch(() => {});
     watchdog.start(Number(process.env.NOESAR_WATCHDOG_INTERVAL_MS ?? 15_000));

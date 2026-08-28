@@ -69,3 +69,24 @@ test('one request writes every chip that names the resident model', () => {
   assert.match(body, /#modelChip/, 'the global chip — whose CodeN sibling has claimed since s336 '
     + 'that the two carry the same value');
 });
+
+// Owner, 2026-08-28: «devi fare modo che al riavvio non carichi nulla». A restart used to start
+// whatever `config/local-model.json` last named — fifteen gigabytes nobody had asked for, with a
+// split nobody had chosen, and a capability token the boot path requested AND approved as itself.
+//
+// The absence is the feature, so it is pinned as one: an absence nothing guards is an absence
+// that comes back the next time somebody restores the symmetry with `release()` on shutdown.
+test('nothing is loaded at startup, and the boot launch is gone rather than merely unused', () => {
+  assert.doesNotMatch(serverSource, /bootLocalModelIfConfigured/,
+    'the boot launch must be removed, not left defined and uncalled — a dead function is one call '
+    + 'away from being alive again');
+  assert.doesNotMatch(serverSource, /'system:boot'/,
+    'nothing may request and approve its own capability: a boot path is not a person');
+  // What the startup path DOES do is say, in the log, that it deliberately did nothing. A silent
+  // absence is indistinguishable from a launch that failed.
+  assert.match(serverSource, /local-model\.boot-idle/);
+  // The shutdown half stays: freeing what is loaded on the way down and loading nothing on the
+  // way up is the honest pair, and losing the first would strand a model on the card.
+  assert.match(serverSource, /localModels\.release\(\)/,
+    'shutdown must still free what is loaded');
+});

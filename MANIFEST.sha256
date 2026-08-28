@@ -6394,7 +6394,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 1091ea20b7d44e93c8eee19ee3a8bdb4a22a4667cfdaed7b232199a6a4f431be  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-93594a65ab9e5221927932781b56b2af55099e917e158920a318f880dc29aa75  ./services/reference-control-plane/src/server.mjs
+f4cf5261e4c76b72efe1cf6108d405ba43eefffada3f1044935a56e7579f9fcf  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 836d93ac41774d98b0fa6bd49c47ee2852d4218a8f910327a32f303c86f343fe  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6418,7 +6418,7 @@ f8993be580352331e0c4eabdf41e424319c943a1ecd190dc2afc945cbae7a7bb  ./services/ref
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 62914deb8793bb673db805fa1a0f626c4852fbea2523d83771138e406cb5b7c7  ./services/reference-control-plane/test/account-security.test.mjs
-61e488ef35893871aead05469291b6d2c70ed15d3432b00fa0422f8d203ecc9f  ./services/reference-control-plane/test/active-model-truth.test.mjs
+296ee04ba874bb4e0cb53a32b4376f30a2f31e6d134618206abf74aa7bfda2bb  ./services/reference-control-plane/test/active-model-truth.test.mjs
 a3f5116bc284e43b9b7101ab48dad3dd1178643e79eadb525fa9dcd0325b48e9  ./services/reference-control-plane/test/active-model.test.mjs
 8eb51d09dd1b51ad43188aeee8f366d65fadfd2aa27abe59882e7358007cfcba  ./services/reference-control-plane/test/active-runtime-provider.test.mjs
 39738b01db1b088a5d7c1c34c59d1e3284f9037e053169482a1369f298b3f009  ./services/reference-control-plane/test/adapter-capability-http-adversarial.test.mjs
