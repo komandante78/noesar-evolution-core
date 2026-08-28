@@ -561,8 +561,63 @@ const sessionDispatch = createSessionDispatch({
  * the second-reading defect this file has already paid for twice (`D-0300`, `D-0302`), and it
  * would show a person a model the terminal would refuse to start.
  */
+/**
+ * The card, held between reads — Owner, 2026-08-28, looking at the compact chooser: «non fa
+ * scegliere la modalità».
+ *
+ * Where a model fits needs a number from the hardware, and asking the hardware is asynchronous
+ * while `installedModelList()` is not and has three callers that are not either. So the reading
+ * is CACHED here, refreshed exactly where `refreshActiveModel()` already is — the two routes that
+ * serve a model list — and read synchronously by both surfaces.
+ *
+ * Held rather than re-read on failure: a card that did not answer once is not a card that
+ * vanished, and blanking the recommendation on a transient miss would be the "declared empty vs
+ * unreadable" confusion this file corrects elsewhere.
+ */
+let acceleratorSnapshot = null;
+async function refreshAccelerator() {
+  try {
+    const { profiles } = await localModels.profiles();
+    acceleratorSnapshot = profiles.find((profile) => profile.backend === 'cuda' && profile.memoryTotalMiB) ?? null;
+  } catch { /* keep the last reading rather than claiming there is no card */ }
+  return acceleratorSnapshot;
+}
+
+/**
+ * Where each model would run, attached to the descriptors both listings are built from.
+ *
+ * ONE function, because `#/models` and the compact chooser must not answer this differently —
+ * the same rule `installedModelList()` states about publishers and context windows, and the
+ * divergence `noesar-evolution` rule 3 exists to prevent. It lives here, not in the catalogue
+ * module, for `MC-005`: that module never asks the hardware anything.
+ *
+ * The recommendation is worked out against the card's TOTAL, not what is free this instant.
+ * Measured on 2026-08-28: with a model resident, "free" recommends six layers for the very model
+ * holding the other nine gigabytes — a model releases its own memory before it restarts, so
+ * free-right-now is the wrong denominator. What is free is carried alongside so a surface can
+ * warn when the two differ.
+ */
+function attachPlacements(descriptors) {
+  const placements = localModels.config().placements ?? {};
+  for (const descriptor of descriptors) {
+    const { layers, bytes } = declaredSize(descriptor);
+    const advice = recommendPlacement({ layers, bytes, freeVramMiB: acceleratorSnapshot?.memoryTotalMiB ?? null });
+    const rightNow = recommendPlacement({ layers, bytes, freeVramMiB: acceleratorSnapshot?.memoryFreeMiB ?? null });
+    const chosen = placements[descriptor.id];
+    descriptor.placement = {
+      ...advice,
+      layers,
+      chosen: chosen === undefined ? null : chosen,
+      chosenExplicitly: chosen !== undefined,
+      freeNowMiB: acceleratorSnapshot?.memoryFreeMiB ?? null,
+      maxLayersRightNow: rightNow.known ? rightNow.maxLayers : null,
+    };
+  }
+  return descriptors;
+}
+
 function installedModelList() {
-  const descriptors = readModelDescriptors();
+  const descriptors = attachPlacements(readModelDescriptors());
   const present = readPresentModels(descriptors);
   const catalog = buildCatalog({ descriptors, present, activeModelId: activeModelId() });
   // WHICH models are startable stays `loadableModels`' decision — pure, in the catalogue module,
@@ -597,6 +652,9 @@ function installedModelList() {
         // starts a model while showing less than the page that lists it is the divergence
         // `noesar-evolution` rule 3 exists to prevent.
         authenticity: item.authenticity ?? null,
+        // Where it runs, carried for the same reason as everything above it: the compact chooser
+        // must not offer a different choice from the page that lists the same model.
+        placement: item.placement ?? null,
       };
     }),
   };
@@ -2210,38 +2268,11 @@ const requestListener = async (req, res) => {
       // Awaited, but bounded: `refreshActiveModel` returns the held snapshot inside the TTL and
       // the probe underneath carries its own timeout, so this cannot become the page that hangs.
       await refreshActiveModel();
-      const descriptors = readModelDescriptors();
+      await refreshAccelerator();
+      const descriptors = attachPlacements(readModelDescriptors());
       // Presence is read HERE and not in the catalogue module, which is what keeps MC-005
       // true by construction: a module that never imports `node:fs` cannot make a request.
       const present = readPresentModels(descriptors);
-      // Where each model would run, attached here for the same reason `authenticity` is: the
-      // catalogue module must not ask the hardware anything (`MC-005`), and this is the only
-      // party holding both the card and the runtime's remembered placements.
-      //
-      // The recommendation is worked out against the card's TOTAL memory, not what is free this
-      // instant. Measured while building this: with a model resident, "free" recommends six
-      // layers for the very model that is holding the other nine gigabytes — a model releases its
-      // own memory before it restarts, so free-right-now is the wrong denominator. What is free
-      // is carried too, so the page can warn when the two differ.
-      const accelerator = (await localModels.profiles().catch(() => ({ profiles: [] })))
-        .profiles.find((profile) => profile.backend === 'cuda' && profile.memoryTotalMiB) ?? null;
-      for (const descriptor of descriptors) {
-        const { layers, bytes } = declaredSize(descriptor);
-        const advice = recommendPlacement({ layers, bytes, freeVramMiB: accelerator?.memoryTotalMiB ?? null });
-        const rightNow = recommendPlacement({ layers, bytes, freeVramMiB: accelerator?.memoryFreeMiB ?? null });
-        const chosen = runtimeConfig.placements?.[descriptor.id];
-        descriptor.placement = {
-          ...advice,
-          layers,
-          // What the person chose for THIS model. `undefined` — never chosen — is reported as
-          // null with `chosenExplicitly` false, so the page can show the recommendation as a
-          // suggestion rather than as a decision somebody already made.
-          chosen: chosen === undefined ? null : chosen,
-          chosenExplicitly: chosen !== undefined,
-          freeNowMiB: accelerator?.memoryFreeMiB ?? null,
-          maxLayersRightNow: rightNow.known ? rightNow.maxLayers : null,
-        };
-      }
       const filter = {
         type: url.searchParams.get('type'), fn: url.searchParams.get('fn'),
         text: url.searchParams.get('q'), publisherId: url.searchParams.get('publisher'),
@@ -2453,6 +2484,7 @@ const requestListener = async (req, res) => {
       // Bounded like the catalogue route above: the held snapshot inside its TTL, and the probe
       // underneath carries its own timeout. A chooser that hangs is a chooser nobody opens.
       await refreshActiveModel();
+      await refreshAccelerator();
       return json(res, 200, installedModelList());
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/models/activate') {

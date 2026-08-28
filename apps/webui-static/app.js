@@ -5416,11 +5416,35 @@ function placementControl(item){
         +`data-placement-layers="${id}" aria-label="${escapeHtml(t('Layers on the card'))}"> `
         +`${escapeHtml(t('of'))} ${layers} ${escapeHtml(t('layers on the card, the rest in RAM'))}</p>`
       :'')
-    +`<p class="hint">${escapeHtml(t('Recommended:'))} ${escapeHtml(p.reason)}</p>`
-    +(p.maxLayersRightNow!=null&&p.maxLayersRightNow!==p.maxLayers
-      ?`<p class="hint">${escapeHtml(t('Right now only this many would fit — free the running model first:'))} ${p.maxLayersRightNow}</p>`
+    // ONE short line, composed from the numbers rather than printed from the server's sentence.
+    //
+    // Owner, 2026-08-28, looking at the first version: «non si capisce nulla». He was right twice.
+    // `advice.reason` is written for a log and for the API — «all 65 layers do not fit: they are
+    // 15702 MiB and only 12288 MiB is free, of which 1024 MiB is working memory» — and printing a
+    // log line at a person is not an explanation, it is a refusal to write one. It was also
+    // English inside an Italian page, and it could never be anything else: a sentence assembled
+    // on the server with numbers in it has no catalogue entry it could ever match.
+    //
+    // So the words are `t()` fragments and the numbers are numbers, which makes the line short,
+    // translatable, and still checkable — the two figures that decide the answer are both in it.
+    +`<p class="hint">${escapeHtml(t('Recommended:'))} `
+    +(p.fitsEntirely
+      ?escapeHtml(t('all of it on the card'))
+      :`${p.recommended} ${escapeHtml(t('of'))} ${layers} — ${gib(p.weightsMiB)} GB ${escapeHtml(t('against'))} ${gib(p.freeVramMiB)} GB`)
+    +`</p>`
+    +(p.maxLayersRightNow!=null&&p.maxLayersRightNow<p.recommended
+      ?`<p class="hint">${escapeHtml(t('Right now only'))} ${p.maxLayersRightNow} — ${escapeHtml(t('free the model in use first'))}</p>`
       :'')
     +`</div>`;
+}
+/**
+ * MiB to GB with one decimal, for a line a person reads rather than a log a machine parses.
+ * `toLocaleString` and not a hand-rolled comma: the decimal separator is the browser's business,
+ * and an Italian page that prints `15.3` is as wrong as an English one that prints `15,3`.
+ */
+function gib(mib){
+  return mib==null?'—'
+    :(mib/1024).toLocaleString(document.documentElement.lang||undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
 }
 function modelCard(item,context={}){
   const declared=(value)=>value==='undeclared'||value===null||value===undefined
@@ -5843,11 +5867,12 @@ async function placeModel(id,mode,layers,layerCount=layers){
   try{
     await api('/api/v1/runtime/local-model',{method:'PUT',body:JSON.stringify({placeModel:{id,gpuLayers}})});
     toast(t('Saved. It takes effect the next time this model starts.'),{kind:'success'});
-    await loadModelCatalogue();
   }catch(error){
     toast(`${t('This placement could not be saved:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
-    await loadModelCatalogue();
   }
+  // Deliberately refreshes NOTHING here. Two surfaces call this — the page and the compact
+  // chooser — and each repaints itself afterwards; reloading the page's catalogue from inside a
+  // chooser that the page is not even showing was a call into a DOM that may not be there.
 }
 async function loadModel(id){
   if(!confirm(t('Loading a model into memory replaces whatever is answering now and takes a moment. Load this one?')))return;
@@ -5987,9 +6012,10 @@ function wireModelCatalogue(){
   // Apply button to press and no debounce to get wrong.
   $('#modelForegroundLanes')?.addEventListener('change',(event)=>{
     const radioId=event.target?.dataset?.placement;
-    if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.layerCount));
+    if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.layerCount)).then(()=>loadModelCatalogue());
     const numberId=event.target?.dataset?.placementLayers;
-    if(numberId)return placeModel(numberId,'hybrid',Number(event.target.value),Number(event.target.max));
+    if(numberId)return placeModel(numberId,'hybrid',Number(event.target.value),Number(event.target.max)).then(()=>loadModelCatalogue());
+    return undefined;
   });
   $('#modelForegroundLanes')?.addEventListener('input',(event)=>{
     const id=event.target?.dataset?.removeInput;
@@ -6149,9 +6175,16 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
         +`<button type="button" class="primary" data-model-confirm="${escapeHtml(entry.id)}">${escapeHtml(t('Start it'))}</button>`
         +`<button type="button" class="text-button" data-model-cancel="1">${escapeHtml(t('Cancel'))}</button></div>`
       :'';
+    // Owner, 2026-08-28: «non fa scegliere la modalità». The placement control went onto `#/models`
+    // first, and this is the surface he actually uses — the one his own description named, since
+    // it is the one with Use and Free on it. The SAME function paints it in both, so the two
+    // cannot come to offer different choices; `installedModelList()` carries the same `placement`
+    // the catalogue card does, for the same reason it already shares publisher and context window.
     return `<div class="model-row${inUse?' active':''}" role="listitem" data-model-id="${escapeHtml(entry.id)}">`
       +`<div><b translate="no">${escapeHtml(entry.id)}</b><small translate="no">${facts}</small>${provenance}</div>`
-      +`<div>${action}</div>${confirming}</div>`;
+      +`<div>${action}</div>${confirming}`
+      +placementControl({...entry,lane:inUse?'in-use':'downloaded'})
+      +`</div>`;
   }
   function render(data,{loading=false,error=null}={}){
     const list=$(listId);if(!list)return;
@@ -6289,6 +6322,16 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
       if(free){pending='\u0000release';return repaint();}
       if(freeConfirm)return release();
       if(confirm)return activate(confirm.dataset.modelConfirm);
+      return undefined;
+    });
+    // The placement, on this surface too. `change` for the same reason as on the page: the
+    // keyboard reaches it exactly as the mouse does, and the number commits on Enter or on blur.
+    $(listId)?.addEventListener('change',(event)=>{
+      const radioId=event.target?.dataset?.placement;
+      if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.layerCount)).then(()=>load());
+      const numberId=event.target?.dataset?.placementLayers;
+      if(numberId)return placeModel(numberId,'hybrid',Number(event.target.value),Number(event.target.max)).then(()=>load());
+      return undefined;
     });
   }
   return {wire};
