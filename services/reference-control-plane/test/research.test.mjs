@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import {
-  resolveResearchTool,
+  resolveResearchTool, researchToolStatus,
   runResearchReport, validateCandidate, validateReportPayload,
   ResearchReportStore, RefusalRegistry, buildQueryEcho,
   writeResearchAnswer, buildWriteupPrompt, writeupInstructionFor, validateReportImages,
@@ -379,6 +379,30 @@ describe('a self-hosted research provider', () => {
 
   test('a disabled provider is refused rather than dialled', () => {
     assert.throws(() => resolveResearchTool([provider({ disabled: true })], 'searxng'), /disabled/);
+  });
+
+  // Defect n.10: the Settings routes kept the `external` test this module had already dropped,
+  // so the panel reported 0 eligible tools out of 24 and "awaiting consent" for a provider that
+  // was consented and answering. `researchToolStatus` exists so there is one rule, not three.
+  test('the panel asks the same rule the engine uses, and a local consented provider passes it', () => {
+    const status = researchToolStatus([provider()], 'searxng');
+    assert.deepEqual(status, { usable: true, designatable: true, kind: null, reason: null });
+  });
+
+  test('unconsented may still be DESIGNATED — consenting is what comes next, not first', () => {
+    const status = researchToolStatus([provider({ consent: { granted: false } })], 'searxng');
+    assert.equal(status.usable, false);
+    assert.equal(status.designatable, true, 'a provider you cannot choose is a provider you can never consent');
+    assert.match(status.reason, /not consented/);
+  });
+
+  test('disabled and missing are neither usable nor designatable', () => {
+    assert.deepEqual(
+      { ...researchToolStatus([provider({ disabled: true })], 'searxng'), reason: null },
+      { usable: false, designatable: false, kind: 'UNCONFIGURED', reason: null },
+    );
+    assert.equal(researchToolStatus([], 'searxng').designatable, false);
+    assert.equal(researchToolStatus([provider()], null).designatable, false);
   });
 });
 

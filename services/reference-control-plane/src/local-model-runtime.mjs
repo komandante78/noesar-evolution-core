@@ -642,13 +642,22 @@ export class LocalModelRuntime {
     return {
       mode: config.mode,
       overriddenByEnvironment: Boolean(config.overriddenByEnvironment),
+      // The PINNED profile, which in `auto` mode is not the one it runs on — `select()` picks
+      // that one and `launched.profileId` below reports it. Defect n.9 was reading this field as
+      // if it were the effective one: it said `cpu` while the model was on the GPU with `-ngl 99`,
+      // and a human reading the config file had no other place to look.
       profileId: config.profileId,
       endpoint: config.endpoint,
       model: config.model,
       vramLimitMiB: config.vramLimitMiB,
       launchConfigured: Boolean(config.launchCommand),
       launched: this.launched
-        ? { pid: this.launched.pid, startedAt: this.launched.startedAt, exited: this.launched.exited }
+        ? {
+          pid: this.launched.pid,
+          startedAt: this.launched.startedAt,
+          exited: this.launched.exited,
+          profileId: this.launched.profileId,
+        }
         : null,
       lastProbe: this.lastProbe,
       lastError: this.lastError,
@@ -727,9 +736,15 @@ export async function activateModel({ descriptor, present, runtime, grants, acto
   // second, race-prone source of the same fact `release()` already establishes on its own.
   await runtime.release();
   const current = runtime.config();
+  const mode = current.mode === RuntimeMode.DISABLED ? RuntimeMode.MANUAL : current.mode;
   await runtime.configure({
-    mode: current.mode === RuntimeMode.DISABLED ? RuntimeMode.MANUAL : current.mode,
-    profileId: current.profileId ?? 'cpu',
+    mode,
+    // Defect n.9: this was `current.profileId ?? 'cpu'` unconditionally, so every activation
+    // rewrote `cpu` into the config of an installation running in `auto` on the GPU. `auto`
+    // ignores this field entirely — inventing a value for it only produced a false one for a
+    // human to read. Only `MANUAL` requires it, and there `cpu` is the honest default: nothing
+    // was pinned, and the CPU profile is the one that is always selectable.
+    profileId: mode === RuntimeMode.MANUAL ? (current.profileId ?? 'cpu') : current.profileId,
     launchCommand: descriptor.launchCommand,
     model: descriptor.id,
     endpoint: descriptor.endpoint ?? current.endpoint ?? null,

@@ -41,7 +41,7 @@ import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path
 import { ReasoningRefused, reasoningStatus } from './reasoning.mjs';
 import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-router.mjs';
 import { researchGateFrom } from './research-gate.mjs';
-import { runResearchReport, ResearchReportStore, RefusalRegistry, writeResearchAnswer } from './research.mjs';
+import { runResearchReport, ResearchReportStore, RefusalRegistry, writeResearchAnswer, researchToolStatus } from './research.mjs';
 import { LOCAL_RUNTIME_PROFILE_ID } from './ai-workspace/active-runtime-provider.mjs';
 import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
 import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings, triageFindingById, fetchAndScanRemoteTarget, probeApiTarget } from './debug-evolution-bridge.mjs';
@@ -2813,12 +2813,21 @@ const requestListener = async (req, res) => {
       const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
       const state = aiStore.read();
       const toolId = state.settings?.researchProviderToolId ?? null;
-      const tool = toolId ? (state.tools ?? []).find((item) => item.id === toolId) ?? null : null;
+      const tools = state.tools ?? [];
+      const tool = toolId ? tools.find((item) => item.id === toolId) ?? null : null;
+      // n.10: `research.mjs` owns what counts as a provider, so this asks it instead of
+      // repeating the `external` test it dropped. `reason` is carried out so the panel can say
+      // the true thing — for a whole day it said "awaiting consent" about a provider that had
+      // been consented on 2026-08-26 and was answering queries.
+      const status = researchToolStatus(tools, toolId);
       return json(res, 200, {
         toolId,
         configured: Boolean(tool),
-        consented: Boolean(tool?.external && tool?.consent?.granted),
-        eligibleTools: (state.tools ?? []).filter((item) => item.external).map((item) => ({ id:item.id, name:item.name, consented:Boolean(item.consent?.granted) })),
+        consented: status.usable,
+        unusableReason: status.usable ? null : status.reason,
+        eligibleTools: tools
+          .filter((item) => !item.disabled)
+          .map((item) => ({ id:item.id, name:item.name, consented:Boolean(item.consent?.granted) })),
       });
     }
     if (req.method === 'PUT' && url.pathname === '/api/v1/settings/research') {
@@ -2827,9 +2836,15 @@ const requestListener = async (req, res) => {
       const request = await body(req);
       const toolId = request.toolId === null ? null : String(request.toolId ?? '').trim() || null;
       if (toolId) {
-        const tool = (aiStore.read().tools ?? []).find((item) => item.id === toolId);
+        const tools = aiStore.read().tools ?? [];
+        const tool = tools.find((item) => item.id === toolId);
         if (!tool) return json(res, 404, { error:'No such tool.' });
-        if (!tool.external) return json(res, 400, { error:'The research provider must be an external tool.' });
+        // n.10 again, and the half that made the live value unrecoverable: this refused every
+        // non-external tool, so the provider actually in use — a builtin — could not have been
+        // re-selected from the interface. `designatable` is the same rule as the GET, minus
+        // consent: designating is what you do BEFORE consenting, not after.
+        const status = researchToolStatus(tools, toolId);
+        if (!status.designatable) return json(res, 400, { error:status.reason });
       }
       const updated = aiStore.transact((state) => { state.settings ??= {}; state.settings.researchProviderToolId = toolId; return { researchProviderToolId:toolId }; });
       ledger.append({ actor:authenticated.user.id, action:'research.provider-designated', result:'success', details:updated });

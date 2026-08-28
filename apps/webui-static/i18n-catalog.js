@@ -271,7 +271,7 @@ export const RUNTIME_ONLY = Object.freeze([
   'Configured, awaiting consent',
   'Not configured',
   'not yet consented',
-  'No external tools registered yet',
+  'No tools registered yet',
   'Could not read provider status',
   'Local OpenAI-compatible',
   'Custom OpenAI-compatible',
@@ -417,6 +417,88 @@ export const RUNTIME_ONLY = Object.freeze([
   'A run needs one sentence to work towards.',
   'Pick an agent first — create one on the left if the list is empty.',
   'The step completed without returning any text.',
+  // --- n.1 · the auth card's heading, 2026-08-28 -----------------------------------------
+  // `showOnly()` now names the pane it shows, because the markup ships ONE heading and five of
+  // the six panes were inheriting a title about initialising an installation that had been
+  // initialised on 2026-08-09. Only `Secure initialization` appears in `index.html`; these are
+  // the five the walker never sees in the file.
+  'Set up two-factor authentication',
+  'Two-factor authentication',
+  'Recover access',
+  'Complete Owner setup',
+  'Initialize NOESAR securely',
+  // --- n.2 · Home, built by the server, painted by the browser ---------------------------
+  // The six entry cards and the ten goals are composed in `home-overview.mjs` so that a test
+  // can assert the COUNT — six, and three of them wired — which is a property no list in markup
+  // ever keeps. The price is that they reach the page already written, in the source language,
+  // and so appear in no HTML file. The wording is the criterion here, not decoration, which is
+  // why they are translated rather than moved into the markup.
+  'Resume the last session',
+  'No session yet. The first conversation you open becomes the one this resumes.',
+  'Open a project',
+  'The projects you already have.',
+  'Start a new project',
+  'A project owns its own chats, memory, files and tools.',
+  'Clone a repository',
+  'Waiting on the backbone. Cloning writes a working tree, and writing one needs the executor that holds it — nothing on this layer may write to disk.',
+  'Import an archive',
+  'Waiting on the backbone, for the same reason. Restoring a WORKSPACE backup is a different act and already exists in Settings → Storage.',
+  'Connect a remote repository',
+  'Waiting on the backbone and on the search gate: a remote is a way out to the network, and this build has nothing that classifies what goes through it.',
+  'can act on this build',
+  'goals',
+  'Analyse this repository and tell me how it is put together',
+  'Find a bug and fix it',
+  'Implement a feature',
+  'Generate the tests that are missing',
+  'Check the security of this code',
+  'Update the dependencies',
+  'Explain the architecture',
+  'Improve the performance',
+  'Prepare a release',
+  'Review my changes',
+  // --- n.14 · the Research renderer, one pass over the whole of it -----------------------
+  // Every fixed word `researchCandidateRow()`, `renderResearchReport()` and
+  // `renderResearchOutcome()` paint. The composed lines — «Evidence quality: 12 reviews · over
+  // 300 days» — are why this could not be closed by catalogue entries alone: the halves are
+  // translated separately from the provider's numbers and statements, which are never touched.
+  'Excluded',
+  'reviews',
+  'over',
+  'days',
+  'verified purchase',
+  'as the source stated it · not verified',
+  'Sponsored — not an affiliate link',
+  'Observed',
+  'Evidence quality:',
+  'Loading the report…',
+  'The exact string sent to the provider:',
+  'Link — it only opens for someone signed in to this installation:',
+  'Goal put back — change what you need, then press Run research.',
+  'Refused',
+  'intent check',
+  'content check',
+  'Instructions for physical harm',
+  'Instructions to harm an animal',
+  'Self-harm',
+  'Evading a legal control',
+  'Legislation, history, prevention and remediation about this topic remain reachable — what is refused is operational instructions.',
+  'This wasn’t right — contest this decision',
+  'Why should this be reconsidered?',
+  'Recorded for review.',
+  'The gate needs more detail',
+  'Add what you actually need to the goal above — for example licensing requirements or authorised sellers — then run it again.',
+  'A goal is required.',
+  'Report deleted.',
+  'Research provider updated.',
+  // The context half of every `reportError()` on this destination. The message half comes from
+  // the server and is left as it came — this product does not own that sentence.
+  'Running research',
+  'Deleting the report',
+  'Setting the research provider',
+  'Contesting the refusal',
+  'Changing the picture setting',
+  'Changing the source-reading setting',
 ]);
 
 const it = {
@@ -937,14 +1019,20 @@ const it = {
   'Providers': 'Fornitori',
 
   // ——— Research ———
-  'Takes': 'Prende',
-  'one line, the way you would say it': 'una riga sola, scritta come la diresti',
-  ', and returns a report that is': ', e restituisce un resoconto che',
-  'kept until you delete it': 'resta finché non lo elimini',
-  '. Its link needs a session on this installation — it is': '. Il suo collegamento richiede una sessione su questa installazione — non è',
-  'not public of itself': 'pubblico di per sé',
-  'effect': 'effetto',
-  ', never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.': ', mai il soggetto: legislazione, storia, prevenzione, sicurezza sul lavoro e rimedio restano raggiungibili.',
+  // n.10, 2026-08-28: the four paragraphs of this destination used to be split across `<b>`,
+  // `<code>` and `<a>`, so the catalogue held fourteen half-sentences — and the two runs that
+  // carried the actual meaning had no entry at all, which is what the Owner saw as «due blocchi
+  // in inglese». One sentence, one entry. The `UI-0…` references went with them: they were
+  // internal names being shown to whoever happened to be reading the page.
+  'Takes one line, the way you would say it, and returns a report kept until you delete it. Its link opens only for someone signed in to this installation: it is not public of itself. Evidence quality is stated for each candidate, because reviews can be bought and an average score is not evidence.': 'Prende una riga sola, scritta come la diresti, e restituisce un resoconto che resta finché non lo elimini. Il suo collegamento si apre solo per chi ha una sessione su questa installazione: non è pubblico di per sé. La qualità delle prove è dichiarata per ogni candidato, perché le recensioni si comprano e un voto medio non è una prova.',
+  'Two gates stand in front of it: one on the intent, before anything leaves, and one on the content that comes back, before it is ever shown. There are three outcomes, not two — proceed, ask, refuse — and every refusal names its category. What it refuses is the effect, never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.': 'Davanti ci stanno due cancelli: uno sull’intento, prima che esca qualcosa, e uno sul contenuto che torna indietro, prima che venga mostrato. Gli esiti sono tre, non due — procedi, chiedi, rifiuta — e ogni rifiuto nomina la propria categoria. Ciò che viene rifiutato è l’effetto, mai il soggetto: legislazione, storia, prevenzione, sicurezza sul lavoro e rimedio restano raggiungibili.',
+  'This installation reaches the open web only through a provider you choose and consent to. It can be a tool running here or one belonging to somebody else: what is required in both cases is your consent, because a search leaves this machine either way. Every consented provider is listed under Settings, Privacy and connectors.': 'Questa installazione raggiunge il web aperto solo attraverso un fornitore che scegli e a cui dai il consenso. Può essere uno strumento che gira qui oppure di qualcun altro: in entrambi i casi serve il tuo consenso, perché una ricerca esce comunque da questa macchina. Ogni fornitore a cui hai dato il consenso è elencato in Impostazioni, Privacy e connettori.',
+  // Three runs, because the link in the middle is not decoration: `coden-addressable-panels`
+  // asserts it, and F-NAV-001 is why — the old hint told you to register a tool somewhere you
+  // could not register one. A sentence carrying a working link is worth three entries.
+  'There is no tool on this installation that could serve as a research provider.': 'Su questa installazione non c’è nessuno strumento che possa fare da fornitore di ricerca.',
+  'Register one in CodeN Evolution': 'Registrane uno in CodeN Evolution',
+  ', then come back here and pick it.': ', poi torna qui e scegli quello.',
   'Research provider': 'Fornitore di ricerca',
   'Saved reports': 'Ricerche salvate',
   'Written by the model running on this installation, from the sources below. Not verified.': 'Scritta dal modello che gira su questa installazione, a partire dalle fonti qui sotto. Non verificata.',
@@ -967,9 +1055,6 @@ const it = {
   'Kept until you delete them. Open one, change what you asked before asking again, run the same search again, or delete it — deleting takes two presses.': 'Restano finché non le elimini. Aprine una, cambia quello che hai chiesto prima di richiedere, rilancia la stessa ricerca, oppure eliminala — per eliminare servono due pressioni.',
   'Nothing has been searched yet.': 'Non è ancora stata fatta nessuna ricerca.',
   'Checking…': 'Verifica in corso…',
-  'This installation reaches the open web only through a provider you configure and consent to — the same external-tool mechanism as any other connector (': 'Questa installazione raggiunge il web aperto solo attraverso un fornitore che configuri e a cui dai il consenso — lo stesso meccanismo di strumento esterno di qualunque altro connettore (',
-  'Settings → Privacy and connectors': 'Impostazioni → Privacy e connettori',
-  '). No provider is built in.': '). Nessun fornitore è incorporato.',
   'Use this tool': 'Usa questo strumento',
   'Set as research provider': 'Imposta come fornitore di ricerca',
   'New report': 'Nuovo resoconto',
@@ -1404,11 +1489,8 @@ const it = {
   'Configured, awaiting consent': 'Configurato, in attesa di consenso',
   'Not configured': 'Non configurato',
   'not yet consented': 'consenso non ancora dato',
-  'No external tools registered yet': 'Nessuno strumento esterno ancora registrato',
+  'No tools registered yet': 'Ancora nessuno strumento registrato',
   'Could not read provider status': 'Non è stato possibile leggere lo stato del fornitore',
-  'A research provider is registered the same way any other external tool is.': 'Un fornitore di ricerca si registra allo stesso modo di qualunque altro strumento esterno.',
-  'Register one in CodeN Evolution': 'Registrane uno in CodeN Evolution',
-  ', then come back here to pick it.': ', poi torna qui per sceglierlo.',
   'on this installation': 'su questa installazione',
   'known': 'conosciuti',
   'Page': 'Pagina',
@@ -1741,6 +1823,81 @@ const it = {
   'One sentence. It is what the model is asked to work towards.': 'Una frase. È ciò verso cui si chiede al modello di lavorare.',
   '[confirm]': '[confirm]',                   // literal: `logout confirm` is what the parser reads
   '[active|archived|bin]': '[active|archived|bin]',  // literal values, matched against the wire
+
+  // --- 2026-08-28 · defects n.1, n.2 and n.14, all three the same class ------------------
+  // A string the product WRITES rather than ships in markup was never covered, so three
+  // different surfaces stayed English inside an Italian interface. Each block below is
+  // declared in RUNTIME_ONLY above, per that block's own rule.
+
+  // n.1 — the auth card's heading, one per pane.
+  'Set up two-factor authentication': 'Configura l’autenticazione a due fattori',
+  'Two-factor authentication': 'Autenticazione a due fattori',
+  'Recover access': 'Recupera l’accesso',
+  'Complete Owner setup': 'Completa la configurazione del Proprietario',
+  'Initialize NOESAR securely': 'Inizializza NOESAR in sicurezza',
+
+  // n.2 — Home: the six entry cards, their details, the two counters and the ten goals.
+  'Resume the last session': 'Riprendi l’ultima sessione',
+  'No session yet. The first conversation you open becomes the one this resumes.': 'Ancora nessuna sessione. La prima conversazione che apri diventa quella che questo riprende.',
+  'Open a project': 'Apri un progetto',
+  'The projects you already have.': 'I progetti che hai già.',
+  'Start a new project': 'Comincia un progetto nuovo',
+  'A project owns its own chats, memory, files and tools.': 'Un progetto possiede le proprie chat, la propria memoria, i propri file e i propri strumenti.',
+  'Clone a repository': 'Clona un repository',
+  'Waiting on the backbone. Cloning writes a working tree, and writing one needs the executor that holds it — nothing on this layer may write to disk.': 'In attesa della dorsale. Clonare scrive un albero di lavoro, e scriverne uno richiede l’esecutore che lo tiene — nulla su questo livello può scrivere su disco.',
+  'Import an archive': 'Importa un archivio',
+  'Waiting on the backbone, for the same reason. Restoring a WORKSPACE backup is a different act and already exists in Settings → Storage.': 'In attesa della dorsale, per la stessa ragione. Ripristinare un backup dello SPAZIO DI LAVORO è un atto diverso ed esiste già in Impostazioni → Archiviazione.',
+  'Connect a remote repository': 'Collega un repository remoto',
+  'Waiting on the backbone and on the search gate: a remote is a way out to the network, and this build has nothing that classifies what goes through it.': 'In attesa della dorsale e del cancello di ricerca: un remoto è una via d’uscita verso la rete, e questa build non ha nulla che classifichi ciò che ci passa.',
+  'can act on this build': 'possono agire su questa build',
+  'goals': 'obiettivi',
+  'Analyse this repository and tell me how it is put together': 'Analizza questo repository e dimmi com’è fatto',
+  'Find a bug and fix it': 'Trova un difetto e riparalo',
+  'Implement a feature': 'Realizza una funzione',
+  'Generate the tests that are missing': 'Genera i test che mancano',
+  'Check the security of this code': 'Controlla la sicurezza di questo codice',
+  'Update the dependencies': 'Aggiorna le dipendenze',
+  'Explain the architecture': 'Spiega l’architettura',
+  'Improve the performance': 'Migliora le prestazioni',
+  'Prepare a release': 'Prepara una release',
+  'Review my changes': 'Rivedi le mie modifiche',
+
+  // n.14 — the whole Research renderer, in one pass.
+  'Excluded': 'Escluso',
+  'reviews': 'recensioni',
+  'over': 'su',
+  'days': 'giorni',
+  'verified purchase': 'acquisto verificato',
+  'as the source stated it · not verified': 'come l’ha dichiarato la fonte · non verificato',
+  'Sponsored — not an affiliate link': 'Sponsorizzato — non è un link di affiliazione',
+  'Observed': 'Osservato',
+  'Evidence quality:': 'Qualità delle prove:',
+  'Loading the report…': 'Caricamento del report…',
+  'The exact string sent to the provider:': 'La stringa esatta inviata al fornitore:',
+  'Link — it only opens for someone signed in to this installation:': 'Collegamento — si apre solo per chi ha una sessione su questa installazione:',
+  'Goal put back — change what you need, then press Run research.': 'Obiettivo rimesso — cambia ciò che ti serve, poi premi Avvia ricerca.',
+  'Refused': 'Rifiutato',
+  'intent check': 'controllo sull’intento',
+  'content check': 'controllo sul contenuto',
+  'Instructions for physical harm': 'Istruzioni per danno fisico',
+  'Instructions to harm an animal': 'Istruzioni per far male a un animale',
+  'Self-harm': 'Autolesionismo',
+  'Evading a legal control': 'Elusione di un controllo legale',
+  'Legislation, history, prevention and remediation about this topic remain reachable — what is refused is operational instructions.': 'Legislazione, storia, prevenzione e rimedio su questo argomento restano raggiungibili — ciò che viene rifiutato sono le istruzioni operative.',
+  'This wasn’t right — contest this decision': 'Non era giusto — contesta questa decisione',
+  'Why should this be reconsidered?': 'Perché andrebbe riconsiderato?',
+  'Recorded for review.': 'Registrato per revisione.',
+  'The gate needs more detail': 'Il cancello ha bisogno di più dettagli',
+  'Add what you actually need to the goal above — for example licensing requirements or authorised sellers — then run it again.': 'Aggiungi all’obiettivo qui sopra ciò che ti serve davvero — per esempio requisiti di licenza o venditori autorizzati — poi rilancia.',
+  'A goal is required.': 'Serve un obiettivo.',
+  'Report deleted.': 'Report eliminato.',
+  'Research provider updated.': 'Fornitore di ricerca aggiornato.',
+  'Running research': 'Esecuzione della ricerca',
+  'Deleting the report': 'Eliminazione del report',
+  'Setting the research provider': 'Impostazione del fornitore di ricerca',
+  'Contesting the refusal': 'Contestazione del rifiuto',
+  'Changing the picture setting': 'Modifica dell’impostazione sulle immagini',
+  'Changing the source-reading setting': 'Modifica dell’impostazione di lettura delle fonti',
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

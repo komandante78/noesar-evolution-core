@@ -86,7 +86,16 @@ test('with no tools the assistant is told so, and told not to pretend otherwise'
 test('enabled tools are named with their descriptions', () => {
   const text = describeCapabilities([{ name: 'List Projects', description: 'every project known to Debug Evolution' }]).join('\n');
   assert.match(text, /List Projects \(every project known to Debug Evolution\)/);
-  assert.match(text, /call the tool and answer from its real result/);
+  assert.match(text, /answer from its real result/);
+});
+
+// Defect n.7: asked for a SAS card the model answered with an invented product ("ASRock Rack
+// SAS2H2") and called nothing, because the instruction scoped tool use to "this installation" and
+// a question about the world is not about this installation. The boundary was the defect.
+test('tool use is not fenced to this installation', () => {
+  const text = describeCapabilities([{ name: 'Research', description: 'web search' }]).join('\n');
+  assert.match(text, /not limited to this installation/);
+  assert.match(text, /product names, model numbers, versions, prices/);
 });
 
 test('a very long tool list degrades to a count instead of eating the context', () => {
@@ -138,6 +147,15 @@ test('the answering register is present, since it is what makes this a chat rath
   assert.match(prompt, /Reply in the language the person used/);
   assert.match(prompt, /Never invent a file, a setting, a command, a path or a result/);
   assert.match(prompt, /No preamble/);
+});
+
+// The other half of n.7: the "never invent" line listed only things internal to the installation,
+// and the invention landed exactly in the space that left free. The sources line closes the circle
+// — the fix must not replace an invention with a confident citation of an unverified page.
+test('inventing a product name is forbidden as explicitly as inventing a path', () => {
+  const prompt = composeSystemPrompt({ installation: {} });
+  assert.match(prompt, /never invent a product name, a model number, a version or a price/);
+  assert.match(prompt, /name the addresses you used and say that they are not verified/);
 });
 
 /* ---- the same properties, proven on the wire rather than on the function ---- */

@@ -403,6 +403,28 @@ test('activateModel launches a present, described model end to end', async () =>
   await runtime.release();
 });
 
+// Defect n.9, seen live on 2026-08-27: the Owner swapped the served model from the interface and
+// `/workspace/config/local-model.json` still read `"profileId": "cpu"` while the model ran on the
+// GPU with `-ngl 99`. `activateModel` rewrote the constant on every activation, and `status()`
+// reported that pinned field as if it were the effective one. Both halves are pinned here.
+test('activateModel does not write a pinned CPU profile into an automatic runtime', async () => {
+  const { runtime, grants } = fresh();
+  await runtime.configure({ mode: RuntimeMode.AUTO, launchCommand: ['/bin/sleep', '60'] });
+  const descriptor = { id: 'test-model-3', launchCommand: ['/bin/sleep', '60'] };
+  const present = new Map([['test-model-3', { verified: true }]]);
+  await activateModel({ descriptor, present, runtime, grants, actor: 'test-owner', descriptorAuthenticity: SIGNED });
+  const status = runtime.status();
+  assert.equal(status.mode, RuntimeMode.AUTO);
+  assert.equal(status.profileId, null, 'automatic mode pins nothing; a written `cpu` here is the defect');
+  // Deliberately not a literal: on a host with a card this is `cuda:0`, on one without it is
+  // `cpu`, and pinning either would make the test a statement about the CI machine instead of
+  // about the product. What must hold on every host is that the effective profile is REPORTED
+  // and is not merely an echo of the pinned field — which is the whole of defect n.9.
+  assert.ok(status.launched.profileId, 'the profile it actually runs on must be reported');
+  assert.notEqual(status.launched.profileId, status.profileId);
+  await runtime.release();
+});
+
 test('activateModel replaces whatever was already running, not run alongside it', async () => {
   const { runtime, grants } = fresh();
   await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });

@@ -127,9 +127,9 @@
   "artifact_root": "/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS",
   "repository_name": "NOESAR-EVOLUTION",
   "repository_local_initialized": true,
-  "repository_remote_configured": false,
-  "github_status": "BLOCKED_AUTHENTICATION",
-  "git_push": "BLOCKED_NO_REMOTE",
+  "repository_remote_configured": true,
+  "github_status": "OK — remote 'origin' is git@github.com:komandante78/NOESAR-EVOLUTION.git over SSH. This field said BLOCKED_AUTHENTICATION while B-001 in this same file recorded the block as closed on 2026-07-28: the file was contradicting itself. Re-measured 2026-08-28.",
+  "git_push": "OK — pushing works and is used. Measured 2026-08-28: origin/main = HEAD = 9a94d858, eight commits dated that day. This field said BLOCKED_NO_REMOTE.",
   "secret_scan_method": "heuristic (host) + ESLint 9.39.5 over 136 files + syft 1.49.0 SBOM of image and source; earlier phases additionally used detect-secrets and semgrep via noesar-debuglab, which was NOT started in this gate",
   "source_zip_checksums_verified": true,
   "source_zip_filename_deviation": "all five archives carry a ' (2)' duplicate-download suffix; archives are identified by SHA-256 only, never by filename",
@@ -232,7 +232,7 @@
   "phase_2_source_fix": "INSTALLATION/install-unraid.sh hardcoded RUNTIME_SOURCE/ (package-02 layout) and aborted at its own test -f guard on a canonical checkout; fixed with layout detection; bash -n clean on all 10 installer scripts",
   "security_matrix": "41 requirements, no BROKEN remaining: seccomp moved to MITIGATED BY CONFIGURATION after the flag was removed from all three installers; prompt injection moved from an unsupported PARTIAL to IMPLEMENTED (structural); SSRF, path traversal, ZIP limits, CSP and file quarantine moved from UNVERIFIED to verified; package/update signature implemented client side",
   "build_requires_network": "YES - node:22-bookworm-slim is not present locally (only node:20) and the Dockerfile apt-get installs 5 packages; RUNTIME is fully offline; zero third-party npm dependencies",
-  "postgres_pgvector": "NOT INSTALLED - schemas 0001-0008 with pgvector and RLS ship; the Node runtime fails closed on NOESAR_DATA_PLANE=postgresql rather than claiming an adapter it does not have. B005=OPEN.",
+  "postgres_pgvector": "INSTALLED AND RUNNING — measured inside the live container on 2026-08-28: PostgreSQL 18.4 (Debian 18.4-1.pgdg12+1) serving on /workspace/postgresql/run/.s.PGSQL.5432, pgvector 0.8.5, NOESAR_DATA_PLANE=postgresql, /workspace/postgresql/ready.json {\"ready\":true}. The 'NOT INSTALLED, B005=OPEN' this field carried described the host as it was in phase 4 and stopped being true when the data plane shipped inside the image.",
   "atom_boundary_reverified": "PASS - verified against the built artefact, not only the source tree: zero ATOM references in package.json, services/reference-control-plane/ and apps/webui-static/, the only content the Dockerfile copies",
   "vps_access": false,
   "network_mutation": false,
@@ -882,7 +882,7 @@
     ],
     "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
   },
-  "gpu_runtime": "NOT_IMPLEMENTED",
+  "gpu_runtime": "IMPLEMENTED AND IN USE — measured 2026-08-28: qwen2.5-7b-instruct-q4_k_m served by llama-server with -ngl 99, 4927 MiB resident on the RTX 3060, endpoint http://127.0.0.1:8420. NOT_IMPLEMENTED was true of D-0032 and of phase 4, and the phase_4 records below are left as the dated measurements they are.",
   "next_phase_label": "ATOM_EVOLUTION_REPO_CREATED_EMPTY_SESSION_CLOSED",
   "phase_4_completion_gate": {
     "executed_utc": "2026-07-25",
@@ -965,9 +965,9 @@
     "implemented": true,
     "in_process_inference": false,
     "default_mode": "disabled",
-    "gpu_accessed": false,
-    "hardware_detected": "NVIDIA GeForce RTX 3060, 12288 MiB, driver 580.173.02 (observed, not allocated)",
-    "inference_test": "BLOCKED_NO_LOCAL_MODEL — no model weights and no inference runtime exist on this host that this gate may use"
+    "gpu_accessed": true,
+    "hardware_detected": "NVIDIA GeForce RTX 3060, 12288 MiB, driver 580.173.02 — allocated to the container and in use, 4927 MiB resident on 2026-08-28",
+    "inference_test": "PASS — qwen2.5-7b-instruct-q4_k_m runs on the GPU and answers: 67.3 tok/s generating, 650 tok/s on the prompt, measured 2026-08-27. BLOCKED_NO_LOCAL_MODEL described a host with no weights and no runtime, and both arrived since."
   },
   "static_analysis": {
     "tool": "eslint",

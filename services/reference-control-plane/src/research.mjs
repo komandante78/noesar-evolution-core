@@ -442,6 +442,31 @@ export function resolveResearchTool(tools, toolId) {
 }
 
 /**
+ * The same rule as `resolveResearchTool`, asked as a question rather than asserted.
+ *
+ * Defect n.10, 2026-08-27: when `resolveResearchTool` stopped demanding `tool.external === true`,
+ * the two Settings routes that describe the very same decision kept the old condition. The result
+ * was a panel declaring "configured, awaiting consent" and zero eligible tools out of twenty-four
+ * while the engine underneath was working — and sending the Owner off to register an external tool
+ * that would not have helped. This project has now paid twice for relaxing a rule in one caller and
+ * leaving it in the others, so the rule is asked for here instead of restated.
+ *
+ * The two questions are deliberately separate, because they are separate in time. `usable` is
+ * "could a report run right now"; `designatable` is "may this be chosen at all" — which must stay
+ * true for a tool that has not been consented yet, or the panel could never offer the tool whose
+ * consent is the next thing the person is about to give.
+ */
+export function researchToolStatus(tools, toolId) {
+  try {
+    resolveResearchTool(tools, toolId);
+    return { usable: true, designatable: true, kind: null, reason: null };
+  } catch (error) {
+    const kind = error.kind ?? 'UNCONFIGURED';
+    return { usable: false, designatable: kind === 'UNCONSENTED', kind, reason: error.message };
+  }
+}
+
+/**
  * The whole UI-080…096 pipeline for one request: intent gate → provider → content gate →
  * store. Every exit before "store" is a refusal or an unavailability, never a partial report.
  */

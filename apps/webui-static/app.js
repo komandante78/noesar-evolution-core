@@ -191,7 +191,10 @@ function reportError(error,context=''){
   const message=error?.status===403&&/csrf/i.test(error?.message??'')
     ?'Your session security token expired. Reload the page and try again.'
     :(error?.message||'Something went wrong.');
-  toast(context?`${context}: ${message}`:message,{kind:'error',correlationId:error?.correlationId??null});
+  // n.14: the context is an interface string and the message is the server's. Composed, the pair
+  // could never be looked up as a whole — so the half this product wrote is translated on its own
+  // and the half it received is left as it came. One line here covers every caller.
+  toast(context?`${t(context)}: ${message}`:message,{kind:'error',correlationId:error?.correlationId??null});
 }
 // A button that fires a request must not stay clickable while it is in flight, and
 // must come back even when the request throws.
@@ -223,7 +226,26 @@ async function api(path,options={}){
   }
   return value;
 }
-function showOnly(form){['#setupForm','#setupMfaForm','#loginForm','#loginMfaForm','#recoveryStartForm','#recoveryFinishForm'].forEach((selector)=>$(selector).classList.toggle('hidden',selector!==form));}
+// Defect n.1, seen 2026-08-27: the sign-in screen was titled «Inizializzazione sicura» on an
+// installation initialised on 2026-08-09. The markup ships one heading for the whole auth card and
+// only the not-yet-initialised branch of `initializeAuth` ever replaced it, so the four other panes
+// — sign-in among them — inherited a title describing something that had happened weeks earlier.
+// The heading belongs to the pane, so it is set where the pane is chosen: one place, every caller,
+// and no future pane can be added without a heading. Written as source-language strings, which the
+// translation walker picks up like any other text it paints.
+const AUTH_TITLES={
+  '#setupForm':'Secure initialization',
+  '#setupMfaForm':'Set up two-factor authentication',
+  '#loginForm':'Sign in',
+  '#loginMfaForm':'Two-factor authentication',
+  '#recoveryStartForm':'Recover access',
+  '#recoveryFinishForm':'Recover access',
+};
+function showOnly(form){
+  ['#setupForm','#setupMfaForm','#loginForm','#loginMfaForm','#recoveryStartForm','#recoveryFinishForm'].forEach((selector)=>$(selector).classList.toggle('hidden',selector!==form));
+  const title=AUTH_TITLES[form];
+  if(title)$('#authTitle').textContent=title;
+}
 function authError(message=''){$('#authError').textContent=message;}
 // --- routing ---------------------------------------------------------------
 // Views used to be toggled by a click handler alone, so the URL never changed: a
@@ -749,7 +771,7 @@ function optionList(items,{empty='None',label=(item)=>item.name,value=(item)=>it
 // guessed from the page alone -- `location.protocol` would be right here only by coincidence,
 // and wrong the moment TLS is terminated in front of the product.
 function showTransportWarning(status){const box=$('#authTransportWarning');if(!box)return;if(status?.browserSignInPossible===false){box.classList.remove('hidden');const link=$('#authSecureLink');if(link&&status.secureAddress){link.href=status.secureAddress;link.textContent=status.secureAddress;link.classList.remove('hidden');}}else{box.classList.add('hidden');}}
-async function initializeAuth(){const status=await api('/api/v1/auth/status');showTransportWarning(status);if(!status.initialized){$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';showOnly('#setupForm');return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
+async function initializeAuth(){const status=await api('/api/v1/auth/status');showTransportWarning(status);if(!status.initialized){showOnly('#setupForm');$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
 async function enterApplication(){$('#authGate').classList.add('hidden');$('#userAvatar').textContent=(currentUser?.displayName??currentUser?.username??'U').slice(0,1).toUpperCase();if(currentUser?.role!=='owner'){const bypass=$('[data-mode="OWNER_BYPASS"]');bypass.disabled=true;}
   // The router runs at boot, before the role is known, so every gated route resolved to
   // access-denied on a cold deep link — including for the Owner. Re-apply the nav and
@@ -4378,7 +4400,9 @@ function renderEntryActions(payload){
   // Declared rather than left to be counted, the same way the bench states how many of its
   // status fields have a source: two of six acting is the honest headline of this screen.
   const chip=$('#homeEntryWired');
-  if(chip)chip.textContent=`${payload.entryActionsWired} of ${actions.length} can act on this build`;
+  // n.2: composed with two counts, so it can never be matched whole in the catalogue — the words
+  // are translated, the numbers are not.
+  if(chip)chip.textContent=`${payload.entryActionsWired} ${t('of')} ${actions.length} ${t('can act on this build')}`;
   for(const button of host.querySelectorAll('[data-entry-action]')){
     const action=actions.find((item)=>item.id===button.dataset.entryAction);
     if(!action?.wired||!action.target)continue;
@@ -4393,7 +4417,7 @@ function renderQuickActions(payload){
   const host=$('#homeGoalActions');if(!host)return;
   const actions=payload.quickActions??[];
   host.innerHTML=actions.map((action)=>`<button class="goal-action" data-goal-action="${escapeHtml(action.id)}">${escapeHtml(action.goal)}</button>`).join('');
-  const count=$('#homeGoalCount');if(count)count.textContent=`${actions.length} goals`;
+  const count=$('#homeGoalCount');if(count)count.textContent=`${actions.length} ${t('goals')}`;
   for(const button of host.querySelectorAll('[data-goal-action]')){
     const action=actions.find((item)=>item.id===button.dataset.goalAction);
     button.addEventListener('click',()=>{
@@ -4982,7 +5006,11 @@ async function loadResearchProviderStatus(){
   const picker=$('#researchProviderPicker');
   try{
     const info=await api('/api/v1/settings/research');
-    status.textContent=info.consented?t('Configured and consented'):info.configured?t('Configured, awaiting consent'):t('Not configured');
+    // n.10: this said «Configured, awaiting consent» for a whole day about a provider consented on
+    // 2026-08-26 and answering queries — because the route computed `consented` from a rule the
+    // engine had already dropped. The route now asks `researchToolStatus()`, and when the answer is
+    // still no it carries WHY, so this line stops guessing at a reason it never had.
+    status.textContent=info.consented?t('Configured and consented'):info.configured?(info.unusableReason??t('Configured, awaiting consent')):t('Not configured');
     status.className=`badge ${info.consented?'badge-on':'badge-off'}`;
     if(currentPermissions.includes('provider.manage')){
       picker.classList.remove('hidden');
@@ -4992,12 +5020,17 @@ async function loadResearchProviderStatus(){
       // external tool (Agents → Tools), and an empty catalogue left this select showing an
       // unclickable placeholder OPTION as its only word on the subject. A person reading this
       // panel alone had no way to tell "go register one" from "this is broken".
+      //
+      // n.10, 2026-08-27: and then the list was empty for the OTHER reason — the route filtered on
+      // `external`, which the engine had stopped requiring, so twenty-four registered tools showed
+      // as zero and the panel sent the Owner off to register a twenty-fifth that would not have
+      // helped. The filter now lives in `research.mjs` with the rule it belongs to.
       if(info.eligibleTools.length){
         select.disabled=false;
         select.innerHTML=info.eligibleTools.map((tool)=>`<option value="${escapeHtml(tool.id)}" ${tool.id===info.toolId?'selected':''}>${escapeHtml(tool.name)}${tool.consented?'':` (${escapeHtml(t('not yet consented'))})`}</option>`).join('');
       }else{
         select.disabled=true;
-        select.innerHTML=`<option value="">${escapeHtml(t('No external tools registered yet'))}</option>`;
+        select.innerHTML=`<option value="">${escapeHtml(t('No tools registered yet'))}</option>`;
       }
       const hint=$('#researchProviderRegisterHint');
       if(hint)hint.hidden=info.eligibleTools.length>0;
@@ -5008,7 +5041,7 @@ async function loadResearchProviderStatus(){
 }
 $('#researchProviderSave').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
   const toolId=$('#researchProviderSelect').value||null;
-  try{await api('/api/v1/settings/research',{method:'PUT',body:JSON.stringify({toolId})});toast('Research provider updated.');await loadResearchProviderStatus();}
+  try{await api('/api/v1/settings/research',{method:'PUT',body:JSON.stringify({toolId})});toast(t('Research provider updated.'));await loadResearchProviderStatus();}
   catch(error){reportError(error,'Setting the research provider');}
 }));
 // Owner, 2026-08-27: «con immagini spiegazioni prezzi». Three of those four words are honest
@@ -5018,17 +5051,21 @@ $('#researchProviderSave').addEventListener('click',(event)=>withBusy(event.curr
 // pictures with it. A price appears only when a source states one in its own words — SearXNG
 // carries no price field, and a number this product invented would be the worst row on the page.
 function researchCandidateRow(candidate){
-  if(candidate.excluded)return `<article class="entity-card"><h3>${escapeHtml(candidate.name)} <span class="badge badge-off">Excluded</span></h3><p class="hint">${escapeHtml(candidate.excludedReason)}</p></article>`;
+  // n.14: every fixed word this function paints goes through `t()`. The composed lines are the
+  // reason it could not be done by adding catalogue entries alone — «Evidence quality: 12 reviews ·
+  // over 300 days» is one text node that no catalogue could ever match, so the halves this product
+  // wrote are translated separately from the numbers and the statements, which are the provider's.
+  if(candidate.excluded)return `<article class="entity-card"><h3>${escapeHtml(candidate.name)} <span class="badge badge-off">${escapeHtml(t('Excluded'))}</span></h3><p class="hint">${escapeHtml(candidate.excludedReason)}</p></article>`;
   const evidence=candidate.evidence.map((row)=>`<li><b>${escapeHtml(row.kind.replaceAll('_',' '))}</b> — ${escapeHtml(row.statement)}</li>`).join('');
   const q=candidate.evidenceQuality;
-  const quality=[`${q.reviewCount} reviews`,q.timeSpanDays!=null?`over ${q.timeSpanDays} days`:null,q.verifiedPurchaseShare!=null?`${Math.round(q.verifiedPurchaseShare*100)}% verified purchase`:null].filter(Boolean).join(' · ');
+  const quality=[`${q.reviewCount} ${t('reviews')}`,q.timeSpanDays!=null?`${t('over')} ${q.timeSpanDays} ${t('days')}`:null,q.verifiedPurchaseShare!=null?`${Math.round(q.verifiedPurchaseShare*100)}% ${t('verified purchase')}`:null].filter(Boolean).join(' · ');
   const image=candidate.image?`<img class="candidate-image" src="${escapeHtml(candidate.image)}" alt="" loading="lazy">`:'';
-  const price=candidate.price?`<p class="candidate-price">${escapeHtml(candidate.price)} <span class="badge badge-warn">as the source stated it · not verified</span></p>`:'';
+  const price=candidate.price?`<p class="candidate-price">${escapeHtml(candidate.price)} <span class="badge badge-warn">${escapeHtml(t('as the source stated it · not verified'))}</span></p>`:'';
   const source=candidate.url?`<p class="hint"><a href="${escapeHtml(candidate.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(candidate.sourceHost??candidate.url)}</a></p>`:'';
-  return `<article class="entity-card candidate">${image}<div class="candidate-body"><h3>${escapeHtml(candidate.name)}${candidate.sponsored?' <span class="badge badge-warn">Sponsored — not an affiliate link</span>':''}</h3>`
-    +(candidate.volatileObservedAt?`<small>Observed ${escapeHtml(isoToLocal(candidate.volatileObservedAt))}</small>`:'')
+  return `<article class="entity-card candidate">${image}<div class="candidate-body"><h3>${escapeHtml(candidate.name)}${candidate.sponsored?` <span class="badge badge-warn">${escapeHtml(t('Sponsored — not an affiliate link'))}</span>`:''}</h3>`
+    +(candidate.volatileObservedAt?`<small>${escapeHtml(t('Observed'))} ${escapeHtml(isoToLocal(candidate.volatileObservedAt))}</small>`:'')
     +price+source
-    +`<ul>${evidence}</ul><p class="hint">Evidence quality: ${escapeHtml(quality)}${q.anomalyFlag?` · <b>${escapeHtml(q.anomalyNote)}</b>`:''}</p></div></article>`;
+    +`<ul>${evidence}</ul><p class="hint">${escapeHtml(t('Evidence quality:'))} ${escapeHtml(quality)}${q.anomalyFlag?` · <b>${escapeHtml(q.anomalyNote)}</b>`:''}</p></div></article>`;
 }
 function researchReportLink(reportId){return `${location.origin}${location.pathname}#/research?report=${encodeURIComponent(reportId)}`;}
 // «eliminarla con doppia conferma» — Owner, 2026-08-27. No dialog box: the button itself says
@@ -5046,7 +5083,7 @@ function armOnce(button,armedLabel,run){
 }
 async function deleteResearchReport(reportId){
   await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`,{method:'DELETE'});
-  toast('Report deleted.');
+  toast(t('Report deleted.'));
   await loadResearchRecent();
 }
 // n.16 — the answer on top, declared as the model's, with the sources kept underneath carrying
@@ -5080,7 +5117,7 @@ async function renderResearchReport(reportId){
   const panel=$('#researchOutcomePanel');
   panel.classList.remove('hidden');
   $('#view-research')?.setAttribute('data-report-open','yes');
-  panel.innerHTML='<p class="hint">Loading the report…</p>';
+  panel.innerHTML=`<p class="hint">${escapeHtml(t('Loading the report…'))}</p>`;
   try{
     const report=await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`);
     panel.innerHTML=`<article class="research-page"><p class="hint"><a href="#/research">← ${escapeHtml(t('Saved reports'))}</a></p>`
@@ -5093,15 +5130,17 @@ async function renderResearchReport(reportId){
       +`<button type="button" id="researchDeleteButton" class="danger">${escapeHtml(t('Delete this report'))}</button></div>`
       +`<details class="research-sources"><summary translate="no">${escapeHtml(t('Sources the answer was written from'))} (${report.candidates.length})</summary>`
       +report.candidates.map(researchCandidateRow).join('')
-      +`<p class="hint">The exact string sent to the provider: <code>${escapeHtml(report.queryEcho)}</code></p>`
-      +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p></details></article>`;
+      +`<p class="hint">${escapeHtml(t('The exact string sent to the provider:'))} <code>${escapeHtml(report.queryEcho)}</code></p>`
+      // n.10's other half, and the Owner is right about it: `UI-082` is an internal reference and
+      // says nothing to the person reading the page. The sentence keeps the fact and drops the code.
+      +`<p class="hint">${escapeHtml(t('Link — it only opens for someone signed in to this installation:'))} <code>${escapeHtml(researchReportLink(report.id))}</code></p></details></article>`;
     // Edit refills the line and STOPS, on the page you came from: the person decides what to
     // change and presses Run themselves. Running on their behalf would send a query they never read.
     $('#researchReuseButton').addEventListener('click',()=>{
       location.hash='#/research';
       $('#researchObjective').value=[report.objective,...report.criteria].join(' ');
       $('#researchObjective').focus();
-      toast('Goal put back — change what you need, then press Run research.');
+      toast(t('Goal put back — change what you need, then press Run research.'));
     });
     // Re-run does NOT reuse the stored report: it asks again, through both gates, exactly as
     // pressing Run would. A saved page is a record of an answer, never a shortcut past the doors.
@@ -5120,19 +5159,21 @@ function renderResearchOutcome(outcome){
   panel.classList.remove('hidden');
   if(outcome.outcome==='REFUSE'){
     researchLastRefusalId=outcome.refusalId;
-    panel.innerHTML=`<div class="panel-title"><h2>Refused</h2><span class="badge badge-off">${escapeHtml(outcome.stage)} check</span></div>`
-      +`<p>${escapeHtml(researchCategoryLabel(outcome.category))}. Legislation, history, prevention and remediation about this topic remain reachable — what is refused is operational instructions.</p>`
-      +'<button id="researchContestButton" type="button">This wasn’t right — contest this decision</button>';
+    panel.innerHTML=`<div class="panel-title"><h2>${escapeHtml(t('Refused'))}</h2><span class="badge badge-off">${escapeHtml(t(outcome.stage==='intent'?'intent check':'content check'))}</span></div>`
+      +`<p>${escapeHtml(t(researchCategoryLabel(outcome.category)))}. ${escapeHtml(t('Legislation, history, prevention and remediation about this topic remain reachable — what is refused is operational instructions.'))}</p>`
+      +`<button id="researchContestButton" type="button">${escapeHtml(t('This wasn’t right — contest this decision'))}</button>`;
     $('#researchContestButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
-      const note=prompt('Why should this be reconsidered?');
+      // A native `prompt()` is never walked by the translator — it is not in the document. This is
+      // exactly the class n.14 names, and the only fix for it is the explicit call.
+      const note=prompt(t('Why should this be reconsidered?'));
       if(note===null)return;
-      try{await api('/api/v1/research/gate/contest',{method:'POST',body:JSON.stringify({refusalId:researchLastRefusalId,note})});toast('Recorded for review.');}
+      try{await api('/api/v1/research/gate/contest',{method:'POST',body:JSON.stringify({refusalId:researchLastRefusalId,note})});toast(t('Recorded for review.'));}
       catch(error){reportError(error,'Contesting the refusal');}
     }));
     return;
   }
   if(outcome.outcome==='ASK'){
-    panel.innerHTML='<div class="panel-title"><h2>The gate needs more detail</h2></div><p>Add what you actually need to the goal above — for example licensing requirements or authorised sellers — then run it again.</p>';
+    panel.innerHTML=`<div class="panel-title"><h2>${escapeHtml(t('The gate needs more detail'))}</h2></div><p>${escapeHtml(t('Add what you actually need to the goal above — for example licensing requirements or authorised sellers — then run it again.'))}</p>`;
     return;
   }
   // The address is the page (16-bis). Assigning the hash lets the router open it, so a run, a
@@ -5145,7 +5186,7 @@ function renderResearchOutcome(outcome){
 $('#researchObjective').addEventListener('keydown',(event)=>{ if(event.key==='Enter')$('#researchRunButton').click(); });
 $('#researchRunButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
   const objective=$('#researchObjective').value.trim();
-  if(!objective){toast('A goal is required.',{kind:'error'});return;}
+  if(!objective){toast(t('A goal is required.'),{kind:'error'});return;}
   $('#researchOutcomePanel').classList.add('hidden');
   try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:[],language:document.documentElement.lang})}));}
   catch(error){reportError(error,'Running research');}

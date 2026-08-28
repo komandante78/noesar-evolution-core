@@ -968,16 +968,33 @@
 
       <section class="view" id="view-research">
         <div class="section-header"><h1 class="visually-hidden">Research</h1></div>
-        <section class="panel"><p>Takes <b>one line, the way you would say it</b>, and returns a report that is <b>kept until you delete it</b>. Its link needs a session on this installation — it is <b>not public of itself</b> (<code>UI-080…UI-089</code>). Evidence quality is stated per candidate, because reviews can be bought and an average score is not evidence.</p><p class="hint">Two gates stand in front of it (<code>UI-090…UI-096</code>): on the intent before anything leaves, and on the content that comes back, before it is ever shown — three outcomes, not two (proceed · ask · refuse), each refusal naming its category. It refuses the <b>effect</b>, never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.</p></section>
+        <!-- n.10, Owner 2026-08-27: these two paragraphs stayed English inside an Italian page and
+             were full of `UI-080…UI-089` codes that say nothing to whoever is reading. Both are the
+             same cause: split across `<b>` and `<code>`, each fragment was its own text node and no
+             catalogue could match any of them. Written as one sentence each, they are one entry
+             each — and the internal references are gone, since they were never for the reader. -->
+        <section class="panel"><p>Takes one line, the way you would say it, and returns a report kept until you delete it. Its link opens only for someone signed in to this installation: it is not public of itself. Evidence quality is stated for each candidate, because reviews can be bought and an average score is not evidence.</p><p class="hint">Two gates stand in front of it: one on the intent, before anything leaves, and one on the content that comes back, before it is ever shown. There are three outcomes, not two — proceed, ask, refuse — and every refusal names its category. What it refuses is the effect, never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.</p></section>
         <section class="panel" id="researchProviderPanel">
           <div class="panel-title"><h2>Research provider</h2><span id="researchProviderStatus" class="badge badge-off">Checking…</span></div>
-          <p class="hint">This installation reaches the open web only through a provider you configure and consent to — the same external-tool mechanism as any other connector (<a href="#/settings/privacy">Settings → Privacy and connectors</a>). No provider is built in.</p>
+          <!-- n.10: this said the provider is «the same external-tool mechanism», which stopped
+               being true when `resolveResearchTool()` dropped that requirement so a search engine
+               running on this installation could serve. The sentence now says what is actually
+               required — consent — which is the part that never was relaxed. -->
+          <p class="hint">This installation reaches the open web only through a provider you choose and consent to. It can be a tool running here or one belonging to somebody else: what is required in both cases is your consent, because a search leaves this machine either way. Every consented provider is listed under Settings, Privacy and connectors.</p>
           <div class="inline-form hidden" id="researchProviderPicker"><label>Use this tool<select id="researchProviderSelect"></select></label><button id="researchProviderSave" type="button">Set as research provider</button></div>
           <div class="inline-form" id="researchImagesForm"><span id="researchImagesState" class="badge badge-off">Pictures off</span><button id="researchImagesToggle" type="button">Allow pictures in reports</button></div>
           <p class="hint">A result carries a picture, and showing it means reaching the site that hosts it — not just the search instance you already consented to. So it is its own switch, and it is off until you say otherwise. A picture is fetched once, when the report is made, and kept inside it: opening a saved report reaches nobody.</p>
           <div class="inline-form" id="researchPagesForm"><span id="researchPagesState" class="badge badge-off">Sources read as snippets</span><button id="researchPagesToggle" type="button">Read the pages, not the snippets</button></div>
           <p class="hint">A search result carries about two hundred characters, and most of them are the title of a forum thread. With this on, the first six sources are read in full — one request per site, made once when the report is made — and the answer is written from the pages instead of from their openings. It reaches those sites, which the search instance alone does not, so it is its own switch and it is off until you say otherwise.</p>
-          <p class="hint" id="researchProviderRegisterHint" hidden>A research provider is registered the same way any other external tool is. <a href="#/coden/bench/tools">Register one in CodeN Evolution</a>, then come back here to pick it.</p>
+          <!-- n.10: the old wording sent the Owner to register an external tool while a working
+               provider was already selected and answering — the list was empty for a reason that
+               had nothing to do with him. It is now shown only when there really is nothing to
+               choose, and says the one thing that is then true. -->
+          <!-- The link stays a link: `coden-addressable-panels.test.mjs` guards it, and F-NAV-001
+               is the reason — an instruction that names a destination without going there is the
+               defect this panel already had once. The sentence is split by it, so the catalogue
+               holds three runs for this one paragraph, deliberately. -->
+          <p class="hint" id="researchProviderRegisterHint" hidden>There is no tool on this installation that could serve as a research provider. <a href="#/coden/bench/tools">Register one in CodeN Evolution</a>, then come back here and pick it.</p>
         </section>
         <section class="panel">
           <div class="panel-title"><h2>New report</h2></div>
