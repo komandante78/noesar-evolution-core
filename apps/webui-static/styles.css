@@ -1748,3 +1748,6 @@ button.armed{border-color:var(--red);color:var(--red)}
 .placement-choice.is-disabled{opacity:.55;cursor:not-allowed}
 .placement-split{margin:.1rem 0 .1rem 1.5rem;font-size:.9rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
 .placement-split input{width:5rem}
+/* La riga di attesa mentre un modello si carica: minuti, non un istante. Distinta dalla nota di
+   rifiuto che le sta accanto, perche "sto lavorando" e "ho fallito" non devono somigliarsi. */
+.model-row-waiting{color:var(--text-label);font-size:calc(var(--text-scale)*12px);margin:6px 0 0}

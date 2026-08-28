@@ -574,13 +574,39 @@ const sessionDispatch = createSessionDispatch({
  * vanished, and blanking the recommendation on a transient miss would be the "declared empty vs
  * unreadable" confusion this file corrects elsewhere.
  */
+const ACCELERATOR_TTL_MS = 15_000;
 let acceleratorSnapshot = null;
+let acceleratorReadAtMs = 0;
+let acceleratorInFlight = null;
 async function refreshAccelerator() {
-  try {
-    const { profiles } = await localModels.profiles();
-    acceleratorSnapshot = profiles.find((profile) => profile.backend === 'cuda' && profile.memoryTotalMiB) ?? null;
-  } catch { /* keep the last reading rather than claiming there is no card */ }
-  return acceleratorSnapshot;
+  // TTL AND single-flight, both learned the hard way on 2026-08-28 within an hour of shipping
+  // the first version. `profiles()` calls `detect()`, which runs `nvidia-smi`, and on a card that
+  // is busy that call takes SECONDS. Reading it on every listing turned the chooser into an
+  // eleven-to-fifteen second wait, made the model activation time out at 502, and starved the
+  // container's own health check into failing — measured, in the live logs:
+  //
+  //     GET /api/v1/models/installed   14654 ms
+  //     GET /api/v1/models/installed   13843 ms
+  //     POST /api/v1/models/activate   502 after 14909 ms
+  //     health check                   exceeded timeout (5s) -> unhealthy
+  //
+  // This is the same shape `refreshActiveModel` above already had, for the same reason and with
+  // the same interval: a page opened in three tabs must make ONE probe, not three, and a fact
+  // this slow to read is a fact to hold rather than to re-ask.
+  if (Date.now() - acceleratorReadAtMs < ACCELERATOR_TTL_MS) return acceleratorSnapshot;
+  if (acceleratorInFlight) return acceleratorInFlight;
+  acceleratorInFlight = localModels.profiles()
+    .then(({ profiles }) => {
+      acceleratorSnapshot = profiles.find((profile) => profile.backend === 'cuda' && profile.memoryTotalMiB) ?? null;
+      acceleratorReadAtMs = Date.now();
+      return acceleratorSnapshot;
+    })
+    // Held on failure rather than blanked: a card that did not answer once is not a card that
+    // vanished, and the stamp is NOT moved, so the next reader retries instead of being served a
+    // miss for fifteen seconds.
+    .catch(() => acceleratorSnapshot)
+    .finally(() => { acceleratorInFlight = null; });
+  return acceleratorInFlight;
 }
 
 /**

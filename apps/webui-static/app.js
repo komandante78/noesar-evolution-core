@@ -5393,29 +5393,46 @@ function placementControl(item){
   if(item.lane!=='downloaded'&&item.lane!=='in-use')return '';
   const p=item.placement;
   if(!p||!p.known){
-    return `<p class="hint">${escapeHtml(t('Where it runs:'))} ${escapeHtml(p?.reason??t('not worked out for this model'))}</p>`;
+    // Same fault as the recommendation line had: `p.reason` is the server's sentence, built with
+    // numbers in it, so it can never match a catalogue entry and stays English forever. The
+    // product's own words instead, short and translated — and they say what to DO about it, which
+    // the server's sentence did not.
+    return `<p class="hint">${escapeHtml(t('Where it runs:'))} ${escapeHtml(t('this model was installed before this existed and does not state its size — reinstall it to choose where it runs'))}</p>`;
   }
   const id=escapeHtml(item.id);
   const layers=p.layers;
   // `chosen` null and never chosen means the model runs where its own descriptor says; the
   // recommendation is then shown as a suggestion, not as somebody's decision.
-  const current=p.chosenExplicitly?p.chosen:p.recommended;
+  // CLAMPED to what the card holds, and this is not cosmetic: the first version let the number
+  // reach the model's full layer count while only some of them fit, the Owner picked 65 of 65 on
+  // a 12 GiB card, and llama-server died on the spot —
+  //
+  //     allocating 14806.05 MiB on device 0: cudaMalloc failed: out of memory
+  //
+  // An input whose `max` is a number that cannot work is a trap with a spinner on it. A stored
+  // choice from before this fix is shown clamped, with a line saying so, rather than silently
+  // obeyed into the same failure or silently rewritten behind the person's back.
+  const stored=p.chosenExplicitly?p.chosen:p.recommended;
+  const ceiling=p.fitsEntirely?layers:p.maxLayers;
+  const current=stored==null?p.recommended:Math.min(stored,ceiling);
+  const clamped=stored!=null&&stored!==current;
   const mode=current===0?'ram':(current!=null&&current>=layers?'gpu':'hybrid');
   const radio=(value,label,{disabled=false,title=''}={})=>
     `<label class="placement-choice${disabled?' is-disabled':''}"${title?` title="${escapeHtml(title)}"`:''}>`
     +`<input type="radio" name="placement-${id}" value="${value}" data-placement="${id}" data-layer-count="${layers}"`
     +`${mode===value?' checked':''}${disabled?' disabled':''}> ${escapeHtml(label)}</label>`;
-  const hybridCount=mode==='hybrid'?(current??p.recommended):p.recommended;
+  const hybridCount=Math.min(mode==='hybrid'?(current??p.recommended):p.recommended,ceiling);
   return `<div class="model-placement">`
     +`<p class="placement-title">${escapeHtml(t('Where it runs'))}</p>`
     +radio('gpu',t('All on the card'),{disabled:!p.fitsEntirely,title:p.fitsEntirely?'':p.reason})
     +radio('ram',t('All in RAM'))
     +radio('hybrid',t('Split between card and RAM'))
     +(mode==='hybrid'
-      ?`<p class="placement-split"><input type="number" min="0" max="${layers}" value="${hybridCount}" `
+      ?`<p class="placement-split"><input type="number" min="0" max="${ceiling}" value="${hybridCount}" `
         +`data-placement-layers="${id}" aria-label="${escapeHtml(t('Layers on the card'))}"> `
         +`${escapeHtml(t('of'))} ${layers} ${escapeHtml(t('layers on the card, the rest in RAM'))}</p>`
       :'')
+    +(clamped?`<p class="hint">${escapeHtml(t('The saved choice does not fit on this card and was brought down to what does:'))} ${stored} → ${current}</p>`:'')
     // ONE short line, composed from the numbers rather than printed from the server's sentence.
     //
     // Owner, 2026-08-28, looking at the first version: «non si capisce nulla». He was right twice.
@@ -6277,6 +6294,19 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
     const list=$(listId);if(!list)return;
     const row=[...list.querySelectorAll('[data-model-id]')].find((node)=>node.dataset.modelId===id);
     for(const button of row?.querySelectorAll('button')??[])button.disabled=true;
+    // Owner, 2026-08-28: «altrimenti sembra bloccato». It is not a moment — fifteen gigabytes
+    // come off a disk and onto a card, and on this installation that is minutes. Disabled buttons
+    // alone say "nothing is happening" as loudly as they say "wait".
+    //
+    // `role="status"` and not a spinner: this is announced to a screen reader as well as drawn,
+    // and it says WHAT is loading and that it is slow, because "loading…" on its own is the thing
+    // that makes a person reach for the reload button at minute two. The line is removed by the
+    // repaint `load()` does, on both the success and the failure path.
+    const waiting=document.createElement('p');
+    waiting.className='model-row-note model-row-waiting';
+    waiting.setAttribute('role','status');
+    waiting.textContent=`${t('Loading')} ${id} — ${t('this takes minutes: the model is read from disk and moved onto the card. Leave this page open.')}`;
+    row?.append(waiting);
     try{
       await api('/api/v1/models/activate',{method:'POST',body:JSON.stringify({id})});
       pending=null;
@@ -6288,6 +6318,7 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
       // away the only part of the answer that says what to do next.
       pending=null;
       if(row){
+        waiting.remove();
         for(const button of row.querySelectorAll('button'))button.disabled=false;
         const note=document.createElement('p');
         note.className='model-row-note';
