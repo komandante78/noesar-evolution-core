@@ -286,16 +286,51 @@ export function buildWriteupPrompt(objective, criteria, candidates) {
     + `\nSources:\n${sources}`;
 }
 
+/** Money, in either order a model writes it: a mark and its digits, or digits and a mark. */
+const MONEY_PATTERN = /(?:[\u20AC$\u00A3]\s*\d(?:[\d.,]*\d)?|\d(?:[\d.,]*\d)?\s*(?:\u20AC|\u00A3|\$|EUR|USD|GBP))/gi;
+
+/** Digits only, so "\u20AC150", "150 EUR" and "150,00" are one fact rather than three strings. */
+const digitsOf = (value) => String(value).replace(/[^\d]/g, '');
+
+/**
+ * The amounts in an answer that the material never stated — the n.19 check.
+ *
+ * Owner, 2026-08-28: the answer said "available on Amazon for approximately \u20AC150" and the
+ * material contained no '150', no '\u20AC' and no 'EUR' at all. The product name around it was
+ * real, which is what made the price readable as a fact.
+ *
+ * This is deliberately NOT a fourth line of instruction. `WRITEUP_INSTRUCTION` already forbids
+ * it in capitals, and `WRITEUP_TEMPERATURE` was already lowered to 0.2 for this same defect and
+ * measured to work — then it happened anyway. Asking a third time in a louder voice is the method
+ * that has now failed twice. So the answer is checked instead, the way the refusal gate was
+ * repaired on 2026-08-27: demand the words be there, and verify in code that they are.
+ *
+ * Comparison is on digits, not on the literal string: a source saying "150 EUR" has stated the
+ * same price an answer writes as "\u20AC150", and refusing that would be a false accusation. The
+ * separator-stripped haystack can in principle join two neighbouring numbers into a match that
+ * was never written — the error it makes is therefore to let one through, never to suppress a
+ * sourced answer, which is the right way round for a check that can silence the page.
+ */
+export function unsourcedAmounts(answer, material) {
+  const haystack = String(material ?? '');
+  const bare = digitsOf(haystack);
+  return (String(answer ?? '').match(MONEY_PATTERN) ?? []).filter((amount) => {
+    const digits = digitsOf(amount);
+    return digits.length > 0 && !haystack.includes(digits) && !bare.includes(digits);
+  });
+}
+
 export async function writeResearchAnswer({
   complete, profileId, objective, criteria = [], candidates = [], language = null,
   maxOutputTokens = WRITEUP_MAX_OUTPUT_TOKENS,
 } = {}) {
   if (typeof complete !== 'function') return { text:'', reason:'no way to reach a model was supplied' };
-  try {
+  const material = buildWriteupPrompt(objective, criteria, candidates);
+  const ask = async () => {
     const result = await complete(profileId, {
       messages: [
         { role:'system', content:writeupInstructionFor(language) },
-        { role:'user', content:buildWriteupPrompt(objective, criteria, candidates) },
+        { role:'user', content:material },
       ],
       maxOutputTokens,
       temperature: WRITEUP_TEMPERATURE,
@@ -303,9 +338,31 @@ export async function writeResearchAnswer({
     // The bibliography line the model adds anyway, deleted rather than asked for again: a
     // trailing run of bare [1] [2] [3] is the sources listed twice, and the sources are already
     // printed under the answer. Only at the END, so a citation inside a sentence is untouched.
-    const text = String(result?.text ?? '').trim().replace(/(?:\s*\[\d+\])+\s*$/, '').trim();
-    if (!text) return { text:'', reason:'the model answered with nothing' };
-    return { text, model:result?.provider?.defaultModel ?? null };
+    return {
+      text: String(result?.text ?? '').trim().replace(/(?:\s*\[\d+\])+\s*$/, '').trim(),
+      model: result?.provider?.defaultModel ?? null,
+    };
+  };
+  try {
+    let attempt = await ask();
+    let invented = unsourcedAmounts(attempt.text, material);
+    // ONE retry, not a loop: the same prompt at 0.2 either lands or it does not, and a page that
+    // spends four and a half minutes per attempt cannot spend them three times over.
+    if (attempt.text && invented.length) {
+      attempt = await ask();
+      invented = unsourcedAmounts(attempt.text, material);
+    }
+    if (!attempt.text) return { text:'', reason:'the model answered with nothing' };
+    // Withheld, not repaired. Rewriting a model's prose with regular expressions to delete the
+    // price would leave the sentence around it — "available on Amazon for approximately" —
+    // standing as a claim nothing supports. `answer.reason` is a path the page already draws.
+    if (invented.length) {
+      return {
+        text:'',
+        reason:`the answer priced things the sources never mention (${invented.join(', ')}), twice in a row, so it is not shown`,
+      };
+    }
+    return { text:attempt.text, model:attempt.model };
   } catch (error) {
     return { text:'', reason:error?.message ?? String(error) };
   }

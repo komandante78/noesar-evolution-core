@@ -6386,7 +6386,7 @@ d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/ref
 159985a0cffbd85a11a08d80213740819bc9e54128365882df8e80286a7935ba  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
-fd35d414bc01874cb693e717e1d15dff6825771b48becab7893ce8372ced89c4  ./services/reference-control-plane/src/research.mjs
+642d28036ea74ae3e1832dc77b0af43ca4c3719beafded386be37b8bd3807907  ./services/reference-control-plane/src/research.mjs
 fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/reference-control-plane/src/review-latency.mjs
 54c1ca7109ba9abb1a8cad335ff9ea5cb8e87ce4ead67a12361af15bd1a7ebd7  ./services/reference-control-plane/src/run-store.mjs
 2793de6a4561fa732db0f3c4a83f7654a5b6da1507ab2fb69a7ad2b22813e652  ./services/reference-control-plane/src/sandbox-runner.mjs
@@ -6578,7 +6578,7 @@ a2ae87d6204ad1a78d07eb05150a927ef44c823ba47454a9e03ff20265ff10c4  ./services/ref
 993825730490cf06f52291b8a06978b20dd3517ec16b59c742af59108e2c04de  ./services/reference-control-plane/test/request-origin.test.mjs
 977ef559f66f651cf18773923463e3e83611115c6fa421c2ad33492634f4cda1  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs
 e5c01db43905e4d5851037a2a3c3bc24cd775520066db77e619714071ffb768f  ./services/reference-control-plane/test/research-gate.test.mjs
-19e9ce21e1d06aa84d10ff7578e2e0a8b55ba6615ef9889af56f008baf1bcd2a  ./services/reference-control-plane/test/research.test.mjs
+49fdd4b5f6c4839e50aa3b7de68afc43c7581cdb69cbeb03ac15f9ceb8a2d2d9  ./services/reference-control-plane/test/research.test.mjs
 797a453da8ef85e29682f7d92e55240fd33a888bb3b9ffc545b7c23d27d68954  ./services/reference-control-plane/test/review-latency.test.mjs
 ae917fff2735ed6569d0ef9689e48648302b900d2c0f4e6089634e260aa47b36  ./services/reference-control-plane/test/role-permissions-surface.test.mjs
 4532b78d59ecfbade04dddf13a0c49380df704f6388f0d8ffab90e0f8f99f6c3  ./services/reference-control-plane/test/run-retention.test.mjs

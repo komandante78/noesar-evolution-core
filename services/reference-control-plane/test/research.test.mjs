@@ -12,6 +12,7 @@ import {
   runResearchReport, validateCandidate, validateReportPayload,
   ResearchReportStore, RefusalRegistry, buildQueryEcho,
   writeResearchAnswer, buildWriteupPrompt, writeupInstructionFor, validateReportImages,
+  unsourcedAmounts,
 } from '../src/research.mjs';
 
 const goodCandidate = {
@@ -418,4 +419,63 @@ test('the report list is scoped to one person, drops what was removed, and carri
   const listed = store.list({ createdBy: 'me', nowMs: 3000 });
   assert.deepEqual(listed.map((row) => row.id), [newer.id, older.id], 'newest first, only this person, and not the removed one');
   assert.ok(!('candidates' in listed[0]), 'a list is a way back to a report, never a second copy of one');
+});
+
+// ── n.19: a price nobody stated ───────────────────────────────────────────────────────────
+//
+// Owner, 2026-08-28, on the first real research run: "This model is available on Amazon for
+// approximately \u20AC150, but the exact price may vary." Counted in the material the model was
+// handed: '150' zero times, '\u20AC' zero times, 'EUR' zero times. 'LSI' five times and '9207'
+// three, so the card was real and the price stapled to it was not.
+
+test('an amount the sources never state is caught (n.19, the measured sentence)', () => {
+  const material = 'Sources:\n[1] LSI 9207-8i — forum.example\n  IT mode flashing works on the 9207-8i.';
+  const answer = 'The LSI 9207-8i is available on Amazon for approximately \u20AC150, but prices vary.';
+  assert.deepEqual(unsourcedAmounts(answer, material), ['\u20AC150']);
+});
+
+test('a price the sources DO state is left alone, however it is written', () => {
+  // The check must not accuse the model of inventing what it correctly copied: a source saying
+  // "150 EUR" has stated the price an answer writes as "\u20AC150". A false accusation here
+  // silences a good answer, which is worse than the defect it guards against.
+  const material = 'Sources:\n[1] LSI 9207-8i — shop.example — 150 EUR';
+  assert.deepEqual(unsourcedAmounts('It costs about \u20AC150.', material), []);
+  assert.deepEqual(unsourcedAmounts('It costs about 150 EUR.', material), []);
+  // Thousands separators are a way of writing a number, not a different number.
+  assert.deepEqual(unsourcedAmounts('It costs \u20AC1299.', 'the card sells for 1.299 EUR'), []);
+});
+
+test('an answer with no money in it is never questioned', () => {
+  assert.deepEqual(unsourcedAmounts('Choose the 9207-8i; it flashes to IT mode.', 'anything'), []);
+});
+
+test('an invented price is retried ONCE and then withheld, with a reason (n.19)', async () => {
+  const asked = [];
+  const complete = async () => {
+    asked.push(1);
+    return { text: 'Buy the LSI 9207-8i for \u20AC150.' };
+  };
+  const result = await writeResearchAnswer({
+    complete, profileId: 'local-runtime', objective: 'best HBA',
+    candidates: [{ name: 'LSI 9207-8i', evidence: [{ statement: 'IT mode flashing works.' }] }],
+  });
+  assert.equal(asked.length, 2, 'exactly one retry — a four-minute answer cannot be asked three times');
+  assert.equal(result.text, '', 'an answer that priced what nothing states is not shown');
+  assert.match(result.reason, /never mention/);
+  assert.match(result.reason, /\u20AC150/, 'the reason names the amount, so the person can judge it');
+});
+
+test('a model that gets it right on the second attempt is shown, not punished', async () => {
+  let attempt = 0;
+  const complete = async () => {
+    attempt += 1;
+    return { text: attempt === 1 ? 'Buy it for \u20AC150.' : 'Buy the LSI 9207-8i; no source gives a price.' };
+  };
+  const result = await writeResearchAnswer({
+    complete, profileId: 'local-runtime', objective: 'best HBA',
+    candidates: [{ name: 'LSI 9207-8i', evidence: [{ statement: 'IT mode flashing works.' }] }],
+  });
+  assert.equal(attempt, 2);
+  assert.match(result.text, /no source gives a price/);
+  assert.equal(result.reason, undefined);
 });
