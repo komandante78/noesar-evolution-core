@@ -519,17 +519,19 @@ test('a caller that names no sources gets no pictures, not every picture (n.21)'
 // nothing on it. That source was the only one of four whose page this installation never
 // managed to read — it had a search-engine fragment and nothing else.
 
-test('a picture from a source whose page could not be read is dropped (n.21b)', () => {
+// REVERTED, 2026-08-29. This once demanded that a picture's source had also been READ, and the
+// measured result was zero pictures on every report — the picture of a product lives on the shop
+// page, and the shop page is the one that refuses an automated reader. "Read" and "has a picture"
+// select for opposite things. The host rule alone stands.
+
+test('a picture from a cited source is kept even if that page could not be read (n.21b, reverted)', () => {
   const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
   const kept = validateReportImages({ images: [
-    { image: PIXEL, sourceUrl: 'https://unread.test/x' },
-    { image: PIXEL, sourceUrl: 'https://read.test/y' },
-  ] }, [
-    { sourceHost: 'unread.test' },
-    { sourceHost: 'read.test', pageText: 'the page this installation actually opened' },
-  ]);
-  assert.deepEqual(kept.map((row) => row.sourceHost), ['read.test'],
-    'a page we could not open is not a place to send a person');
+    { image: PIXEL, sourceUrl: 'https://shop.test/card' },
+    { image: PIXEL, sourceUrl: 'https://findacarlease.co.uk/x' },
+  ] }, [{ sourceHost: 'shop.test' }, { sourceHost: 'blog.test', pageText: 'read' }]);
+  assert.deepEqual(kept.map((row) => row.sourceHost), ['shop.test'],
+    'the shop is a cited source and keeps its picture; the car-leasing site is not and does not');
 });
 
 test('with page reading off, pictures still come from the sources (n.21b)', () => {
@@ -546,25 +548,20 @@ test('with page reading off, pictures still come from the sources (n.21b)', () =
 // Owner, 2026-08-29: the model recommended off the one source whose page had never been read.
 // It had no way to know — read pages and search fragments arrived looking identical.
 
-test('a source whose page could not be read is not handed to the model at all (n.21d)', () => {
+// REVERTED, 2026-08-29, measured on the live question: withholding unread sources removed the
+// two shop pages and the r/unRAID thread — the only three that named an actual SAS card — and
+// left six articles about NAS boxes in general. The answer then correctly reported that it had
+// been given nothing about SAS cards. A filter can empty the material; the ordering that replaced
+// it (`sourceRank`) cannot.
+
+test('every source is handed to the model, the weak ones marked rather than withheld (n.21d, reverted)', () => {
   const prompt = buildWriteupPrompt('best HBA', [], [
     { name: 'Listed only', sourceHost: 'shop.test', evidence: [{ statement: '3 days ago ... perfect for UnRAID ...' }] },
     { name: 'Read in full', sourceHost: 'blog.test', pageText: 'the whole page, opened and read', evidence: [] },
   ]);
-  assert.ok(!prompt.includes('Listed only'), 'marking it was measured losing; it is withheld instead');
-  assert.ok(prompt.includes('Read in full'));
-});
-
-test('the bracket numbers keep their original positions, gaps and all (n.21d)', () => {
-  // The report under the answer lists EVERY candidate. Renumbering here would make [2] in the
-  // prose point at a different source than [2] on the page — a number with two sources, which
-  // is the defect this project repaired the same morning on the Models page.
-  const prompt = buildWriteupPrompt('best HBA', [], [
-    { name: 'Fragment', sourceHost: 'a.test', evidence: [{ statement: 'x' }] },
-    { name: 'Real page', sourceHost: 'b.test', pageText: 'opened and read', evidence: [] },
-  ]);
-  assert.ok(prompt.includes('[2] Real page'), 'the read page is the SECOND candidate and stays [2]');
-  assert.ok(!prompt.includes('[1]'), 'the dropped source takes its number with it');
+  assert.ok(prompt.includes('Listed only'), 'a page that refuses a reader still names the product');
+  assert.ok(prompt.includes('SEARCH RESULT ONLY, page not read'), 'and it is marked, because that is true');
+  assert.ok(prompt.includes('[1]') && prompt.includes('[2]'), 'both keep their numbers');
 });
 
 test('with nothing read, every source is still handed over (n.21d)', () => {

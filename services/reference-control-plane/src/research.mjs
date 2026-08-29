@@ -170,12 +170,12 @@ export function validateReportImages(payload, candidates) {
   // Guarded by `anyRead`: when nobody was read the rule cannot apply — page reading is a
   // consent and it may simply be off — and without this the switch being off would silently
   // mean "never show a picture again".
-  const rows_ = (candidates ?? []);
-  const anyRead = rows_.some((candidate) => candidate.pageText);
-  const sourced = new Set(rows_
-    .filter((candidate) => !anyRead || candidate.pageText)
-    .map((candidate) => candidate.sourceHost)
-    .filter(Boolean));
+  // REVERTED, 2026-08-29: this also demanded the source had been READ, and the result was zero
+  // pictures on every report. The picture of a product lives on the shop page, and the shop page
+  // is the one that refuses a reader — so "read" and "has a picture" select for opposite things.
+  // The host rule alone stands, and it is the one that removed the car-leasing site and the
+  // stock photo of a woman: a picture must come from a host one of the SOURCES came from.
+  const sourced = new Set((candidates ?? []).map((candidate) => candidate.sourceHost).filter(Boolean));
   return rows
     .filter((row) => DATA_IMAGE.test(String(row?.image ?? '')) && httpUrl(row?.sourceUrl))
     .map((row) => ({
@@ -341,13 +341,21 @@ export function buildWriteupPrompt(objective, criteria, candidates) {
       : candidate.pageText
         ? [`  ${candidate.pageText}`]
         : candidate.evidence.map((row) => `  ${String(row.statement).slice(0, 400)}`);
-    // An excluded candidate stays: it is the record of something REFUSED, which is a fact about
-    // the search rather than unread material, and the gate above owns that decision.
+    // MEASURED WRONG, 2026-08-29, and reverted the same day: this used to withhold every source
+    // whose page could not be read. On the live question it removed the shop pages and the
+    // r/unRAID thread — the only three sources naming an actual SAS card — and left six articles
+    // about NAS boxes, so the answer truthfully said it had been given nothing about SAS cards.
+    //
+    // The lesson, worth more than the code: "the page did not open" does NOT mean "the source is
+    // worthless". Shops and Reddit refuse automated readers, and those are exactly the pages that
+    // carry product names, prices and pictures. Weakness is now handled by ORDERING the sources
+    // (`sourceRank` in searxng-provider.mjs), which cannot empty the material.
+    //
+    // The mark stays: it is true, it is cheap, and a model that ignores it is no worse off than
+    // one that never knew.
     const unread = anyRead && !candidate.pageText && !candidate.excluded;
-    return { unread, text: [head, ...body].join('\n') };
+    return [head + (unread ? ' — SEARCH RESULT ONLY, page not read' : ''), ...body].join('\n');
   })
-    .filter((row) => !row.unread)
-    .map((row) => row.text)
     .join('\n')
     .slice(0, WRITEUP_MAX_PROMPT_CHARS);
   return `Question: ${objective}\n`

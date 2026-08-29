@@ -285,10 +285,67 @@ export async function searchImages({ endpoint, objective, criteria = [], fetchIm
 
 /** The report payload for a set of hits: deduplicated by name, capped, order preserved because
  *  the engine's ranking is the only ranking anyone here has. */
-export function hitsToReport(hits) {
+/**
+ * How much a source is worth, lowest first. Owner, 2026-08-29: «fallo cercare su fonti di
+ * unraid, fonti ufficiali o forum, o su github con recensioni alte, e poi metti amazon e siti
+ * verificati — non mettere tutto».
+ *
+ * This is an ORDERING, never a filter, and that distinction is the whole design. The two
+ * repairs it replaces were filters, and both made the product worse in a way a filter always
+ * can: the first measurement of "drop what could not be read" removed ghidinicipriano,
+ * trovaprezzi and r/unRAID — the only three sources that named an actual SAS card — and left
+ * six articles about NAS boxes in general, so the answer correctly reported that it had been
+ * given nothing about SAS cards. An ordering cannot empty the material. The worst it can do is
+ * put a weak source last, where the cut takes it only if something better exists.
+ *
+ * The ranks:
+ *
+ *   0  the OFFICIAL site of whatever the question names. Derived, not listed: a word of five or
+ *      more letters from the question appearing in the hostname — "unraid" finds unraid.net and
+ *      forums.unraid.net without anybody maintaining a list of products.
+ *   1  forums and community. This is where hardware compatibility is actually settled, and the
+ *      one genuinely load-bearing sentence of the last good report came from forums.unraid.net.
+ *   2  code hosts. What the Owner meant by «github con recensioni alte»: the stars are not
+ *      readable from a URL, but the host is, and a repository beats a content farm.
+ *   3  shops and price comparison. They carry the product names, the pictures and the prices —
+ *      and they are also the pages most likely to refuse a reader, which is exactly why they
+ *      must not be dropped for being unreadable.
+ *   4  everything else.
+ *
+ * ponytail: a heuristic on the address, not a fetch — the same posture `isListingUrl` takes
+ * beside it. A five-letter word is a crude proxy for "the thing being asked about" and will
+ * occasionally miss (a product named with a short word) or hit by accident. It costs a position
+ * in an ordering, never a source, which is the right size of consequence for a guess.
+ */
+export const SOURCE_RANK = Object.freeze({ OFFICIAL: 0, COMMUNITY: 1, CODE: 2, SHOP: 3, OTHER: 4 });
+
+const COMMUNITY_HOSTS = ['reddit.com', 'stackexchange.com', 'stackoverflow.com', 'serverfault.com', 'discourse.org', 'lemmy.world'];
+const CODE_HOSTS = ['github.com', 'gitlab.com', 'codeberg.org', 'sourceforge.net'];
+const SHOP_HOSTS = ['amazon.', 'ebay.', 'newegg.', 'trovaprezzi.', 'idealo.', 'geizhals.', 'digitec.', 'galaxus.', 'bhphotovideo.', 'servershop', 'ldlc.'];
+
+export function sourceRank(url, objective = '') {
+  let host;
+  try { host = new URL(String(url)).hostname.toLowerCase(); } catch { return SOURCE_RANK.OTHER; }
+  const words = String(objective).toLowerCase().match(/[a-z0-9]{5,}/g) ?? [];
+  if (words.some((word) => host.includes(word))) return SOURCE_RANK.OFFICIAL;
+  if (host.startsWith('forum') || host.includes('.forum') || COMMUNITY_HOSTS.some((known) => host.endsWith(known))) return SOURCE_RANK.COMMUNITY;
+  if (CODE_HOSTS.some((known) => host.endsWith(known))) return SOURCE_RANK.CODE;
+  if (SHOP_HOSTS.some((known) => host.includes(known))) return SOURCE_RANK.SHOP;
+  return SOURCE_RANK.OTHER;
+}
+
+export function hitsToReport(hits, objective = '') {
   const seen = new Set();
   const candidates = [];
-  for (const hit of Array.isArray(hits) ? hits : []) {
+  // Sorted before the cut, and STABLY: `Array.prototype.sort` has been stable since ES2019, so
+  // within one rank the order SearXNG chose is preserved — its relevance is not thrown away,
+  // it is only outranked. Sorting after the cut would rank ten arbitrary hits instead of
+  // choosing which ten.
+  const ordered = (Array.isArray(hits) ? [...hits] : [])
+    .map((hit, position) => ({ hit, position, rank: sourceRank(hit?.url, objective) }))
+    .sort((a, b) => a.rank - b.rank || a.position - b.position)
+    .map((row) => row.hit);
+  for (const hit of ordered) {
     const candidate = hitToCandidate(hit);
     if (!candidate || seen.has(candidate.name)) continue;
     seen.add(candidate.name);
@@ -327,7 +384,7 @@ export async function searchWith({ endpoint, objective, criteria = [], fetchImpl
     throw error;
   }
   const payload = await response.json();
-  const report = hitsToReport(payload?.results);
+  const report = hitsToReport(payload?.results, objective);
   // The pictures ride on the same switch and the same instance as the thumbnails below, and
   // they are asked for only when it is on.
   report.images = withImages

@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildSearchQuery, repositoryFrom, hitToCandidate, hitsToReport, searchWith, MAX_CANDIDATES,
+  sourceRank, SOURCE_RANK,
   priceFrom, isListingUrl, searchImages, MAX_IMAGES,
   pageTextFrom, readPage, MAX_PAGE_CHARS, MAX_PAGES_READ,
 } from '../src/searxng-provider.mjs';
@@ -256,4 +257,56 @@ test('a provider that answers with an error says so as an error, not as an empty
     }),
     (error) => error.status === 502 && /503/.test(error.message),
   );
+});
+
+// ── the ordering, Owner 2026-08-29 ────────────────────────────────────────────────────────
+//
+// «fallo cercare su fonti di unraid, fonti ufficiali o forum, o su github con recensioni alte,
+// e poi metti amazon e siti verificati — non mettere tutto». An ORDERING, not a filter: the two
+// filters tried before it both made the product worse by emptying the material.
+
+test('the official site of whatever the question names ranks first, without a list to maintain', () => {
+  assert.equal(sourceRank('https://forums.unraid.net/topic/1', 'miglior scheda SAS per unraid'), SOURCE_RANK.OFFICIAL);
+  assert.equal(sourceRank('https://unraid.net/download', 'unraid'), SOURCE_RANK.OFFICIAL);
+  // Derived from the question, so a different product needs no code change.
+  assert.equal(sourceRank('https://truenas.com/docs', 'best HBA for truenas'), SOURCE_RANK.OFFICIAL);
+});
+
+test('community, code hosts and shops rank in that order, and everything else last', () => {
+  assert.equal(sourceRank('https://www.reddit.com/r/homelab/x', 'scheda SAS'), SOURCE_RANK.COMMUNITY);
+  assert.equal(sourceRank('https://github.com/openzfs/zfs', 'scheda SAS'), SOURCE_RANK.CODE);
+  assert.equal(sourceRank('https://www.amazon.it/dp/X', 'scheda SAS'), SOURCE_RANK.SHOP);
+  assert.equal(sourceRank('https://www.trovaprezzi.it/x', 'scheda SAS'), SOURCE_RANK.SHOP);
+  assert.equal(sourceRank('https://some-blog.example/post', 'scheda SAS'), SOURCE_RANK.OTHER);
+  assert.equal(sourceRank('not a url', 'scheda SAS'), SOURCE_RANK.OTHER);
+});
+
+test('a short word in the question cannot promote an unrelated host', () => {
+  // "mini" is four letters and would match minicaravan.example. The five-letter floor is a crude
+  // guard and is asserted so that loosening it is a decision rather than an accident.
+  assert.equal(sourceRank('https://minicaravan.example/x', 'scheda mini SAS'), SOURCE_RANK.OTHER);
+});
+
+test('the hits are ordered before the cut, so the ten kept are the best ten', () => {
+  const hit = (url, title) => ({ url, title, content: 'a statement about the thing' });
+  const report = hitsToReport([
+    hit('https://blog.example/a', 'A blog'),
+    hit('https://www.amazon.it/dp/A', 'A card on Amazon'),
+    hit('https://forums.unraid.net/t/1', 'The forum thread'),
+    hit('https://github.com/x/y', 'A repository'),
+  ], 'miglior scheda SAS per unraid');
+  assert.deepEqual(
+    report.candidates.map((candidate) => candidate.name),
+    ['The forum thread', 'A repository', 'A card on Amazon', 'A blog'],
+  );
+});
+
+test('within one rank the order the search engine chose is preserved', () => {
+  // Its relevance is not thrown away, only outranked. Array.prototype.sort is stable (ES2019).
+  const hit = (url, title) => ({ url, title, content: 'a statement about the thing' });
+  const report = hitsToReport([
+    hit('https://one.example/a', 'First blog'),
+    hit('https://two.example/b', 'Second blog'),
+  ], 'unraid');
+  assert.deepEqual(report.candidates.map((candidate) => candidate.name), ['First blog', 'Second blog']);
 });
