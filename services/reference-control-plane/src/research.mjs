@@ -276,6 +276,10 @@ export const WRITEUP_INSTRUCTION = [
   'nothing about prices at all rather than repeating that none was found. Never mention a detail',
   'that nobody asked about just because a source happened to carry it.',
   '',
+  'A source marked SEARCH RESULT ONLY is a fragment of a page nobody could open, not a page.',
+  'Never let one lead your answer, and never build a recommendation on one while a source whose',
+  'page was read says something you could use instead.',
+  '',
   'Never walk the sources one by one, and never write one line per source: the',
   'material is raw search results, several of them forum questions and listing pages that state',
   'nothing, and those are to be ignored rather than described. Put a source number in brackets',
@@ -305,8 +309,22 @@ export const WRITEUP_TEMPERATURE = 0.2;
  *  repeated beneath it — the snippet is an extract of that same text, and printing both would
  *  spend the context saying one thing twice. */
 export function buildWriteupPrompt(objective, criteria, candidates) {
+  // Owner, 2026-08-29: four sources went in, three of them pages this installation had read in
+  // full and one of them a search-engine fragment with the ellipses still in it. Nothing marked
+  // which was which, so the model could not tell — and it built its main recommendation on the
+  // fragment while the three real pages supplied the supporting sentences.
+  //
+  // The instruction already said the material contains "listing pages that state nothing" and
+  // that those are to be ignored. It could not be obeyed: the fact needed to obey it was not in
+  // the material. This adds the FACT, not another rule — the difference matters, because the
+  // rule-shaped repair is the one this file has already measured failing twice (see n.19).
+  //
+  // Marked only when there is a difference to mark: if nothing was read the label is on every
+  // source, which is noise rather than information.
+  const anyRead = candidates.some((candidate) => candidate.pageText);
   const sources = candidates.map((candidate, index) => {
-    const head = `[${index + 1}] ${candidate.name}${candidate.sourceHost ? ` — ${candidate.sourceHost}` : ''}${candidate.price ? ` — ${candidate.price}` : ''}`;
+    const unread = anyRead && !candidate.pageText && !candidate.excluded;
+    const head = `[${index + 1}] ${candidate.name}${candidate.sourceHost ? ` — ${candidate.sourceHost}` : ''}${candidate.price ? ` — ${candidate.price}` : ''}${unread ? ' — SEARCH RESULT ONLY, page not read' : ''}`;
     const body = candidate.excluded
       ? [`  excluded: ${candidate.excludedReason}`]
       : candidate.pageText

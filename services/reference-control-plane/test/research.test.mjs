@@ -542,3 +542,25 @@ test('with page reading off, pictures still come from the sources (n.21b)', () =
   ] }, [{ sourceHost: 'shop.test' }]);
   assert.deepEqual(kept.map((row) => row.sourceHost), ['shop.test']);
 });
+
+// Owner, 2026-08-29: the model recommended off the one source whose page had never been read.
+// It had no way to know — read pages and search fragments arrived looking identical.
+
+test('a source whose page was not read is marked as such in the material (n.21c)', () => {
+  const prompt = buildWriteupPrompt('best HBA', [], [
+    { name: 'Listed only', sourceHost: 'shop.test', evidence: [{ statement: '3 days ago ... perfect for UnRAID ...' }] },
+    { name: 'Read in full', sourceHost: 'blog.test', pageText: 'the whole page, opened and read', evidence: [] },
+  ]);
+  assert.match(prompt, /\[1\] Listed only — shop\.test — SEARCH RESULT ONLY, page not read/);
+  assert.ok(!/\[2\][^\n]*SEARCH RESULT ONLY/.test(prompt), 'a page that WAS read must not carry the mark');
+});
+
+test('with nothing read, no source is marked (n.21c)', () => {
+  // The label is a DIFFERENCE. When every source is a fragment there is no difference to draw,
+  // and marking all of them is noise in a prompt that is already at its limit.
+  const prompt = buildWriteupPrompt('best HBA', [], [
+    { name: 'One', sourceHost: 'a.test', evidence: [{ statement: 'x' }] },
+    { name: 'Two', sourceHost: 'b.test', evidence: [{ statement: 'y' }] },
+  ]);
+  assert.ok(!prompt.includes('SEARCH RESULT ONLY'));
+});
