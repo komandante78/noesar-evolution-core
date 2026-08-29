@@ -203,7 +203,11 @@ export async function withBusy(button,work,{busyLabel='Working…'}={}){
   const original=button.textContent;const wasDisabled=button.disabled;
   button.disabled=true;button.dataset.busy='true';button.textContent=busyLabel;
   try{return await work();}
-  finally{button.disabled=wasDisabled;delete button.dataset.busy;button.textContent=original;}
+  // Restore only what nobody else claimed. A toggle renames ITSELF inside `work` — the
+  // research and picture switches read back the new state and write the opposite verb — and
+  // an unconditional restore here put the stale verb back, so the badge said "Sources read in
+  // full" beside a button still offering to start reading them. Owner, 2026-08-29.
+  finally{button.disabled=wasDisabled;delete button.dataset.busy;if(button.textContent===busyLabel)button.textContent=original;}
 }
 async function api(path,options={}){
   // Re-read the cookie on every call rather than trusting the captured value: the
