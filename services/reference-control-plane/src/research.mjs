@@ -157,7 +157,25 @@ export function validateReportImages(payload, candidates) {
   //
   // `candidates` has no default ON PURPOSE: a caller that forgets it gets no pictures rather
   // than every picture, so this defect cannot come back by omission — which is how it arrived.
-  const sourced = new Set((candidates ?? []).map((candidate) => candidate.sourceHost).filter(Boolean));
+  //
+  // Owner, 2026-08-29, second look: the one surviving picture linked to a page that opens on
+  // nothing. Measured in the report — that source is the ONLY one of the four whose page was
+  // never read (`pageText` absent; the other three carried 4000 characters each). All the
+  // product had of it was a search-engine fragment with the ellipses still in it, and the model
+  // built its main recommendation on that fragment and gave it the picture.
+  //
+  // A page this installation could not open is not a place to send a person. So a picture must
+  // come from a source that was actually READ, not merely listed.
+  //
+  // Guarded by `anyRead`: when nobody was read the rule cannot apply — page reading is a
+  // consent and it may simply be off — and without this the switch being off would silently
+  // mean "never show a picture again".
+  const rows_ = (candidates ?? []);
+  const anyRead = rows_.some((candidate) => candidate.pageText);
+  const sourced = new Set(rows_
+    .filter((candidate) => !anyRead || candidate.pageText)
+    .map((candidate) => candidate.sourceHost)
+    .filter(Boolean));
   return rows
     .filter((row) => DATA_IMAGE.test(String(row?.image ?? '')) && httpUrl(row?.sourceUrl))
     .map((row) => ({

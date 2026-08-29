@@ -514,3 +514,31 @@ test('a caller that names no sources gets no pictures, not every picture (n.21)'
   assert.deepEqual(validateReportImages({ images }), [], 'fail closed: the omission is how this defect arrived');
   assert.deepEqual(validateReportImages({ images }, []), []);
 });
+
+// Owner, 2026-08-29: clicking the one picture that survived the host filter led to a page with
+// nothing on it. That source was the only one of four whose page this installation never
+// managed to read — it had a search-engine fragment and nothing else.
+
+test('a picture from a source whose page could not be read is dropped (n.21b)', () => {
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const kept = validateReportImages({ images: [
+    { image: PIXEL, sourceUrl: 'https://unread.test/x' },
+    { image: PIXEL, sourceUrl: 'https://read.test/y' },
+  ] }, [
+    { sourceHost: 'unread.test' },
+    { sourceHost: 'read.test', pageText: 'the page this installation actually opened' },
+  ]);
+  assert.deepEqual(kept.map((row) => row.sourceHost), ['read.test'],
+    'a page we could not open is not a place to send a person');
+});
+
+test('with page reading off, pictures still come from the sources (n.21b)', () => {
+  // Reading pages is a consent and may be switched off. If "was it read" silently became
+  // "show nothing", turning that consent off would delete a feature nobody asked to lose.
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const kept = validateReportImages({ images: [
+    { image: PIXEL, sourceUrl: 'https://shop.test/card' },
+    { image: PIXEL, sourceUrl: 'https://stranger.test/x' },
+  ] }, [{ sourceHost: 'shop.test' }]);
+  assert.deepEqual(kept.map((row) => row.sourceHost), ['shop.test']);
+});
