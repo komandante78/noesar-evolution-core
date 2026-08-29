@@ -6307,7 +6307,7 @@ dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/ref
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
 ff5f88b591558d276a1e6bc2e39b8b23e1c0a9b9ea1c5c0db183a630d03c1f28  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
 e9b8bb511a5f9f29a8f9f8267dc40d16d04c43034644d162aa64b5adab8fe16d  ./services/reference-control-plane/src/ai-workspace/privacy-redaction.mjs
-b80ad3a2d87451d2efba3e846542443078ff64f4a48f02343f703126a1989c6b  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
+6a4af02b15184ef9158277973893d9678e97793ef65047c46d36a633fb079caa  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
 0f8f4f23bed3fc681851fc647acacd24ad67de241dd9d44f428f2016ae109010  ./services/reference-control-plane/src/ai-workspace/search.mjs
 e3d905867839a527a995c86fbb711f26375c089d7e9e00407b0ab6baa841675c  ./services/reference-control-plane/src/ai-workspace/tool-call-stream.mjs
 9550748da15180f83387f167d08adfd0bb6909114e0fa177b0609d62b959bf86  ./services/reference-control-plane/src/ai-workspace/tool-executor.mjs
@@ -6420,7 +6420,7 @@ c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/ref
 62914deb8793bb673db805fa1a0f626c4852fbea2523d83771138e406cb5b7c7  ./services/reference-control-plane/test/account-security.test.mjs
 296ee04ba874bb4e0cb53a32b4376f30a2f31e6d134618206abf74aa7bfda2bb  ./services/reference-control-plane/test/active-model-truth.test.mjs
 a3f5116bc284e43b9b7101ab48dad3dd1178643e79eadb525fa9dcd0325b48e9  ./services/reference-control-plane/test/active-model.test.mjs
-8eb51d09dd1b51ad43188aeee8f366d65fadfd2aa27abe59882e7358007cfcba  ./services/reference-control-plane/test/active-runtime-provider.test.mjs
+fd599a8bef7ba4d81a9f7779e1289d55c889923f238a9582cb461046c433ace7  ./services/reference-control-plane/test/active-runtime-provider.test.mjs
 39738b01db1b088a5d7c1c34c59d1e3284f9037e053169482a1369f298b3f009  ./services/reference-control-plane/test/adapter-capability-http-adversarial.test.mjs
 188b142b50cd4dd1d8e5d5850b055661158e5a16ff013fcc6eab781fd03a19e9  ./services/reference-control-plane/test/adapter-capability.test.mjs
 09466f4b4e26761cfd9bbc9505b43520a21ea3dce7cee5bac3da55ec649c9373  ./services/reference-control-plane/test/address-guard.test.mjs

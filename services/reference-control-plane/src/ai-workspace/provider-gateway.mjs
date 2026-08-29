@@ -377,7 +377,13 @@ export class ProviderGateway {
     // `stream_options.include_usage` is what makes an OpenAI-compatible streaming response
     // carry a final usage-bearing chunk at all — without it the field is simply absent, not
     // zero, and a reader could not tell "no usage was requested" from "the provider has none".
-    return { url:`${profile.baseUrl}/chat/completions`, body:{ model:selectedModel, messages:mapOpenAiMessages(messages), tools:tools.length ? tools : undefined, temperature, max_tokens:maxOutputTokens, stream, stream_options:stream ? { include_usage:true } : undefined } };
+    // A local reasoning model (Qwen3.8-27B) spends the whole token budget inside
+    // `reasoning_content` and returns `content: ""` — which every reader here reports as
+    // ReasoningUnavailable, so a working engine looks unreachable. The thinking was already
+    // being discarded (`extractOpenAiChat` reads `content`, the stream reads `delta.content`):
+    // it was generated and paid for in seconds, then thrown away. Local runtime ONLY — an
+    // external provider rejects an unknown field.
+    return { url:`${profile.baseUrl}/chat/completions`, body:{ model:selectedModel, messages:mapOpenAiMessages(messages), tools:tools.length ? tools : undefined, temperature, max_tokens:maxOutputTokens, stream, stream_options:stream ? { include_usage:true } : undefined, ...(profile.id === LOCAL_RUNTIME_PROFILE_ID ? { chat_template_kwargs:{ enable_thinking:false } } : {}) } };
   }
   #headers(profile, credential) {
     const headers = { 'content-type':'application/json', 'user-agent':'NOESAR-Evolution/1.0', ...profile.headers };

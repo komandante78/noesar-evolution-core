@@ -122,6 +122,7 @@ function upstream() {
         return res.end(JSON.stringify({ data: [{ id: 'test-model' }] }));
       }
       const payload = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+      server.lastPayload = payload;
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end(JSON.stringify({
         model: payload.model,
@@ -329,4 +330,30 @@ test('probes are rate-limited to one per interval, however many readers ask', as
     // generating: the second reading inside the interval is served from what is already known.
     assert.equal(runtime.lastLivenessAtMs, now, 'the window did not move for the nine that followed');
   } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+// The 27B is a REASONING model: it spends the token budget in `reasoning_content` and returns
+// `content: ""`, which every reader in the gateway turns into ReasoningUnavailable — a 503 that
+// says "engine unavailable" about an engine that answered 200 in six seconds. Measured on the
+// Tower, 2026-08-29: 30 tokens bought half a sentence of thinking and no answer at all.
+// The thinking was already being discarded, so asking for it was pure cost.
+test('the local runtime is asked NOT to think, and an external provider is never told about it', async () => {
+  const { server, port } = await upstream();
+  const f = fixture(serving(port));
+  try {
+    await f.gateway.complete(LOCAL_RUNTIME_PROFILE_ID, {
+      messages: [{ role: 'user', content: 'hello' }], actorId: 'tester',
+    });
+    assert.equal(server.lastPayload.chat_template_kwargs?.enable_thinking, false,
+      'without this the local reasoning model answers with an empty string');
+
+    // The same field sent to somebody else's OpenAI endpoint is an unknown parameter, which is
+    // a 400 — so the switch must be tied to the reserved local id, not to the API style.
+    const stored = f.gateway.create({ type: 'custom-openai-compatible', name: 'stored', external: false,
+      apiStyle: 'openai-chat', baseUrl: `http://127.0.0.1:${port}/v1`, defaultModel: 'stored-model' });
+    f.gateway.update(stored.id, { enabled: true });
+    await f.gateway.complete(stored.id, { messages: [{ role: 'user', content: 'hello' }], actorId: 'tester' });
+    assert.equal(server.lastPayload.chat_template_kwargs, undefined,
+      'a provider that is not the local runtime must not receive this field');
+  } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
 });
