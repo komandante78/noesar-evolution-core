@@ -546,21 +546,41 @@ test('with page reading off, pictures still come from the sources (n.21b)', () =
 // Owner, 2026-08-29: the model recommended off the one source whose page had never been read.
 // It had no way to know — read pages and search fragments arrived looking identical.
 
-test('a source whose page was not read is marked as such in the material (n.21c)', () => {
+test('a source whose page could not be read is not handed to the model at all (n.21d)', () => {
   const prompt = buildWriteupPrompt('best HBA', [], [
     { name: 'Listed only', sourceHost: 'shop.test', evidence: [{ statement: '3 days ago ... perfect for UnRAID ...' }] },
     { name: 'Read in full', sourceHost: 'blog.test', pageText: 'the whole page, opened and read', evidence: [] },
   ]);
-  assert.match(prompt, /\[1\] Listed only — shop\.test — SEARCH RESULT ONLY, page not read/);
-  assert.ok(!/\[2\][^\n]*SEARCH RESULT ONLY/.test(prompt), 'a page that WAS read must not carry the mark');
+  assert.ok(!prompt.includes('Listed only'), 'marking it was measured losing; it is withheld instead');
+  assert.ok(prompt.includes('Read in full'));
 });
 
-test('with nothing read, no source is marked (n.21c)', () => {
-  // The label is a DIFFERENCE. When every source is a fragment there is no difference to draw,
-  // and marking all of them is noise in a prompt that is already at its limit.
+test('the bracket numbers keep their original positions, gaps and all (n.21d)', () => {
+  // The report under the answer lists EVERY candidate. Renumbering here would make [2] in the
+  // prose point at a different source than [2] on the page — a number with two sources, which
+  // is the defect this project repaired the same morning on the Models page.
+  const prompt = buildWriteupPrompt('best HBA', [], [
+    { name: 'Fragment', sourceHost: 'a.test', evidence: [{ statement: 'x' }] },
+    { name: 'Real page', sourceHost: 'b.test', pageText: 'opened and read', evidence: [] },
+  ]);
+  assert.ok(prompt.includes('[2] Real page'), 'the read page is the SECOND candidate and stays [2]');
+  assert.ok(!prompt.includes('[1]'), 'the dropped source takes its number with it');
+});
+
+test('with nothing read, every source is still handed over (n.21d)', () => {
+  // Reading pages is a consent and may be off. Dropping unread sources when NOTHING was read
+  // would leave the model an empty prompt, which is worse than a weak one.
   const prompt = buildWriteupPrompt('best HBA', [], [
     { name: 'One', sourceHost: 'a.test', evidence: [{ statement: 'x' }] },
     { name: 'Two', sourceHost: 'b.test', evidence: [{ statement: 'y' }] },
   ]);
-  assert.ok(!prompt.includes('SEARCH RESULT ONLY'));
+  assert.ok(prompt.includes('One') && prompt.includes('Two'));
+});
+
+test('a refused candidate is kept: it is a fact about the search, not unread material (n.21d)', () => {
+  const prompt = buildWriteupPrompt('best HBA', [], [
+    { name: 'Refused', sourceHost: 'a.test', excluded: true, excludedReason: 'the gate refused it', evidence: [] },
+    { name: 'Read', sourceHost: 'b.test', pageText: 'opened and read', evidence: [] },
+  ]);
+  assert.ok(prompt.includes('excluded: the gate refused it'));
 });

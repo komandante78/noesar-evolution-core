@@ -276,10 +276,6 @@ export const WRITEUP_INSTRUCTION = [
   'nothing about prices at all rather than repeating that none was found. Never mention a detail',
   'that nobody asked about just because a source happened to carry it.',
   '',
-  'A source marked SEARCH RESULT ONLY is a fragment of a page nobody could open, not a page.',
-  'Never let one lead your answer, and never build a recommendation on one while a source whose',
-  'page was read says something you could use instead.',
-  '',
   'Never walk the sources one by one, and never write one line per source: the',
   'material is raw search results, several of them forum questions and listing pages that state',
   'nothing, and those are to be ignored rather than described. Put a source number in brackets',
@@ -309,29 +305,51 @@ export const WRITEUP_TEMPERATURE = 0.2;
  *  repeated beneath it — the snippet is an extract of that same text, and printing both would
  *  spend the context saying one thing twice. */
 export function buildWriteupPrompt(objective, criteria, candidates) {
-  // Owner, 2026-08-29: four sources went in, three of them pages this installation had read in
-  // full and one of them a search-engine fragment with the ellipses still in it. Nothing marked
-  // which was which, so the model could not tell — and it built its main recommendation on the
-  // fragment while the three real pages supplied the supporting sentences.
+  // Owner, 2026-08-29, measured twice on the same question.
   //
-  // The instruction already said the material contains "listing pages that state nothing" and
-  // that those are to be ignored. It could not be obeyed: the fact needed to obey it was not in
-  // the material. This adds the FACT, not another rule — the difference matters, because the
-  // rule-shaped repair is the one this file has already measured failing twice (see n.19).
+  // FIRST attempt: read pages and search-engine fragments went in looking identical, and the
+  // model built its main recommendation on a fragment from a page that could not be opened.
+  // So the fragments were MARKED — `SEARCH RESULT ONLY, page not read` — on the argument that
+  // the instruction forbidding their use could not be obeyed while the fact needed to obey it
+  // was missing. That was right about the diagnosis and wrong about the remedy.
   //
-  // Marked only when there is a difference to mark: if nothing was read the label is on every
-  // source, which is noise rather than information.
+  // SECOND attempt, measured: the mark arrived correctly ([1], [5] and [8] carried it, the six
+  // read pages did not), the model saw it, and it recommended off [1] anyway. Telling a model
+  // which material is weak is still asking it to choose, and this is now the THIRD time in this
+  // file that asking has lost — `WRITEUP_INSTRUCTION`'s capitals about prices, the temperature
+  // already lowered to 0.2 for the same defect, and now this.
+  //
+  // So the material is not marked, it is not handed over. A page this installation could not
+  // open cannot lead an answer if it is not in the answer's material. Same shape as the
+  // pictures beside it: what could not be read is not shown and not used.
+  //
+  // TWO things this must not break, both of them measured rather than assumed:
+  //
+  //  1. `anyRead` — reading pages is a CONSENT and may be off, in which case every source is a
+  //     fragment. Dropping them all would leave an empty prompt, which is worse than a weak one.
+  //     With nothing read the material stands as it always did.
+  //  2. The bracket numbers are the ORIGINAL positions and keep their gaps. The report under the
+  //     answer lists every candidate, so a renumbered prompt would make [1] in the prose point
+  //     at a different source than [1] on the page — the exact class of defect this project
+  //     repaired on 2026-08-29 (the placement a person read and the one the process got). The
+  //     model sees [2] [3] [4] [6] [7] [9]; the gaps cost nothing and the numbers stay true.
   const anyRead = candidates.some((candidate) => candidate.pageText);
   const sources = candidates.map((candidate, index) => {
-    const unread = anyRead && !candidate.pageText && !candidate.excluded;
-    const head = `[${index + 1}] ${candidate.name}${candidate.sourceHost ? ` — ${candidate.sourceHost}` : ''}${candidate.price ? ` — ${candidate.price}` : ''}${unread ? ' — SEARCH RESULT ONLY, page not read' : ''}`;
+    const head = `[${index + 1}] ${candidate.name}${candidate.sourceHost ? ` — ${candidate.sourceHost}` : ''}${candidate.price ? ` — ${candidate.price}` : ''}`;
     const body = candidate.excluded
       ? [`  excluded: ${candidate.excludedReason}`]
       : candidate.pageText
         ? [`  ${candidate.pageText}`]
         : candidate.evidence.map((row) => `  ${String(row.statement).slice(0, 400)}`);
-    return [head, ...body].join('\n');
-  }).join('\n').slice(0, WRITEUP_MAX_PROMPT_CHARS);
+    // An excluded candidate stays: it is the record of something REFUSED, which is a fact about
+    // the search rather than unread material, and the gate above owns that decision.
+    const unread = anyRead && !candidate.pageText && !candidate.excluded;
+    return { unread, text: [head, ...body].join('\n') };
+  })
+    .filter((row) => !row.unread)
+    .map((row) => row.text)
+    .join('\n')
+    .slice(0, WRITEUP_MAX_PROMPT_CHARS);
   return `Question: ${objective}\n`
     + (criteria.length ? `Requirements: ${criteria.join(', ')}\n` : '')
     + `\nSources:\n${sources}`;
