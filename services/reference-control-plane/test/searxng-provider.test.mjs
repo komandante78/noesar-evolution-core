@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildSearchQuery, repositoryFrom, hitToCandidate, hitsToReport, searchWith, MAX_CANDIDATES,
-  sourceRank, SOURCE_RANK,
+  sourceRank, SOURCE_RANK, chooseHits, MAX_PER_HOST,
   priceFrom, isListingUrl, searchImages, MAX_IMAGES,
   pageTextFrom, readPage, MAX_PAGE_CHARS, MAX_PAGES_READ,
 } from '../src/searxng-provider.mjs';
@@ -287,21 +287,42 @@ test('a short word in the question cannot promote an unrelated host', () => {
   assert.equal(sourceRank('https://minicaravan.example/x', 'scheda mini SAS'), SOURCE_RANK.OTHER);
 });
 
-test('the hits are ordered before the cut, so the ten kept are the best ten', () => {
+test('the best source leads, but every kind gets a seat (Owner, 2026-08-29)', () => {
+  // Measured failure this replaces: ranking alone gave ten sources that were five threads from
+  // forums.unraid.net and five from reddit.com. No shop meant no price, no picture and no
+  // product link — one defect with three symptoms. A pure sort cannot say "best first AND all
+  // kinds present"; a round-robin over the lanes can.
   const hit = (url, title) => ({ url, title, content: 'a statement about the thing' });
-  const report = hitsToReport([
-    hit('https://blog.example/a', 'A blog'),
-    hit('https://www.amazon.it/dp/A', 'A card on Amazon'),
-    hit('https://forums.unraid.net/t/1', 'The forum thread'),
-    hit('https://github.com/x/y', 'A repository'),
-  ], 'miglior scheda SAS per unraid');
-  assert.deepEqual(
-    report.candidates.map((candidate) => candidate.name),
-    ['The forum thread', 'A repository', 'A card on Amazon', 'A blog'],
-  );
+  const hits = [
+    ...Array.from({ length: 5 }, (_, i) => hit(`https://forums.unraid.net/t/${i}`, `forum ${i}`)),
+    ...Array.from({ length: 5 }, (_, i) => hit(`https://www.reddit.com/r/unRAID/${i}`, `reddit ${i}`)),
+    hit('https://www.amazon.it/dp/A', 'amazon'),
+    hit('https://github.com/a/b', 'github'),
+  ];
+  const names = hitsToReport(hits, 'miglior scheda mini SAS per unraid').candidates.map((c) => c.name);
+  assert.equal(names[0], 'forum 0', 'the official source still leads');
+  assert.ok(names.includes('amazon'), 'the shop is no longer crowded out — this is where prices and pictures come from');
+  assert.ok(names.includes('github'), 'and so is the code host');
 });
 
-test('within one rank the order the search engine chose is preserved', () => {
+test('no more than two hits from one host, before the overflow', () => {
+  const hit = (url, title) => ({ url, title, content: 'a statement about the thing' });
+  const hits = Array.from({ length: 6 }, (_, i) => hit(`https://forums.unraid.net/t/${i}`, `forum ${i}`));
+  const chosen = chooseHits(hits, 'unraid');
+  assert.equal(MAX_PER_HOST, 2);
+  assert.deepEqual(chosen.slice(0, 2).map((h) => h.title), ['forum 0', 'forum 1']);
+});
+
+test('the count never drops: what the cap holds back is appended, not discarded', () => {
+  // Five threads from one forum and nothing else must still report five sources. A cap that
+  // silently shrank the report would trade one defect for another.
+  const hit = (url, title) => ({ url, title, content: 'a statement about the thing' });
+  const hits = Array.from({ length: 5 }, (_, i) => hit(`https://forums.unraid.net/t/${i}`, `forum ${i}`));
+  assert.equal(chooseHits(hits, 'unraid').length, 5);
+  assert.equal(hitsToReport(hits, 'unraid').candidates.length, 5);
+});
+
+test('within one lane the order the search engine chose is preserved', () => {
   // Its relevance is not thrown away, only outranked. Array.prototype.sort is stable (ES2019).
   const hit = (url, title) => ({ url, title, content: 'a statement about the thing' });
   const report = hitsToReport([

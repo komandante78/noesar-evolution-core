@@ -334,17 +334,56 @@ export function sourceRank(url, objective = '') {
   return SOURCE_RANK.OTHER;
 }
 
+/** At most this many hits from one host. Five threads from one forum is one source, five times. */
+export const MAX_PER_HOST = 2;
+
+/**
+ * Which hits become the ten, and in what order.
+ *
+ * Owner, 2026-08-29, on the first report after ranking was introduced: «immagini 0 link prezzi 0
+ * ma poi non solo unraid, tutto deve funzionare come richiesto». Measured — the ten sources were
+ * five threads from forums.unraid.net and five from reddit.com. The ranking had worked so well
+ * that ranks 0 and 1 took every seat, and one defect produced three symptoms at once: no shop
+ * meant no price (prices are read from shop snippets), no picture (a picture is kept only if its
+ * host is a cited source) and no product link.
+ *
+ * A pure sort cannot express "best first AND all kinds present". Round-robin across the lanes
+ * can, in the same few lines: one from the best lane, one from the next, and around again. The
+ * first seat still goes to the official source and the shops still come after the forums — they
+ * just stop being crowded out entirely, which is exactly «e POI metti amazon e siti verificati».
+ *
+ * Two properties this keeps, both asserted:
+ *   · the count never drops. Hits held back by the per-host cap are appended at the end rather
+ *     than discarded, so a search that found ten things still reports ten.
+ *   · within a lane, SearXNG's own relevance order survives untouched.
+ */
+export function chooseHits(hits, objective = '') {
+  const lanes = [[], [], [], [], []];
+  for (const hit of Array.isArray(hits) ? hits : []) lanes[sourceRank(hit?.url, objective)].push(hit);
+  const hostOf = (url) => { try { return new URL(String(url)).hostname.toLowerCase(); } catch { return ''; } };
+
+  const chosen = [];
+  const overflow = [];
+  const perHost = new Map();
+  // Round-robin: one pass takes the head of every non-empty lane, best rank first.
+  while (lanes.some((lane) => lane.length)) {
+    for (const lane of lanes) {
+      const hit = lane.shift();
+      if (!hit) continue;
+      const host = hostOf(hit.url);
+      const taken = perHost.get(host) ?? 0;
+      if (taken >= MAX_PER_HOST) { overflow.push(hit); continue; }
+      perHost.set(host, taken + 1);
+      chosen.push(hit);
+    }
+  }
+  return [...chosen, ...overflow];
+}
+
 export function hitsToReport(hits, objective = '') {
   const seen = new Set();
   const candidates = [];
-  // Sorted before the cut, and STABLY: `Array.prototype.sort` has been stable since ES2019, so
-  // within one rank the order SearXNG chose is preserved — its relevance is not thrown away,
-  // it is only outranked. Sorting after the cut would rank ten arbitrary hits instead of
-  // choosing which ten.
-  const ordered = (Array.isArray(hits) ? [...hits] : [])
-    .map((hit, position) => ({ hit, position, rank: sourceRank(hit?.url, objective) }))
-    .sort((a, b) => a.rank - b.rank || a.position - b.position)
-    .map((row) => row.hit);
+  const ordered = chooseHits(hits, objective);
   for (const hit of ordered) {
     const candidate = hitToCandidate(hit);
     if (!candidate || seen.has(candidate.name)) continue;

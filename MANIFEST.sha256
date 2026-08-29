@@ -6391,7 +6391,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 54c1ca7109ba9abb1a8cad335ff9ea5cb8e87ce4ead67a12361af15bd1a7ebd7  ./services/reference-control-plane/src/run-store.mjs
 2793de6a4561fa732db0f3c4a83f7654a5b6da1507ab2fb69a7ad2b22813e652  ./services/reference-control-plane/src/sandbox-runner.mjs
 536bbea9e3530530f58222f027d7215906f655a3f3ba1757ae0a9f8315eb5792  ./services/reference-control-plane/src/scim.mjs
-9dd1587e9b6efbfbbfab27cf81923243a4590e4602c1e0ccfa4814407ad1d978  ./services/reference-control-plane/src/searxng-provider.mjs
+bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
 440a632d6dc0f3d7c87fe61bf39e83357ee9e9b8036e704d6f0be1c08814421b  ./services/reference-control-plane/src/server.mjs
@@ -6586,7 +6586,7 @@ ae917fff2735ed6569d0ef9689e48648302b900d2c0f4e6089634e260aa47b36  ./services/ref
 9e503c30124a71c94783e3af58ea7a840d1c4f8c39ae95d3263b863e23ca212a  ./services/reference-control-plane/test/sandbox-runner.test.mjs
 83812d7fe892f11f1e4320098e000a1a48261b05ff5f52d8f2c6b0674d467da4  ./services/reference-control-plane/test/scim-http.test.mjs
 9ae2a57fa8b150e932e4c17938523fd67612352484c4331fbca0d04e60ca3de1  ./services/reference-control-plane/test/scim.test.mjs
-fb87591b11bb254702a0acf73e717e7303ca6531cf08f2e4a9bee93de17d6a54  ./services/reference-control-plane/test/searxng-provider.test.mjs
+03dedb95b52ad166278018a7baec0ccd9502615363ebc9f88ee4fea3461faa73  ./services/reference-control-plane/test/searxng-provider.test.mjs
 564be5b684daa2afaf7c9eeb5749d780f35d9d2fd15456fafbb9cb6448fb0053  ./services/reference-control-plane/test/sector-modules-activation.test.mjs
 b8e3eeef6cab990beba0eeafaab9d575a9e61e992105d510cfdcd55556228137  ./services/reference-control-plane/test/sector-modules.test.mjs
 21d1a434bd937c6d83242e61a5be3af1359ef7310e72cc6004dd32a9781cb405  ./services/reference-control-plane/test/secure-address.test.mjs
