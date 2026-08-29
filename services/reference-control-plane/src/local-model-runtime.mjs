@@ -103,6 +103,35 @@ export function withGpuLayers(argv, gpuLayers) {
 }
 
 /**
+ * Put `--reasoning off` into an argv, unless the descriptor already decided.
+ *
+ * Owner, 2026-08-29. `qwen3.8-27b-q4_k_m` is a REASONING model: it spends the token budget in
+ * `reasoning_content` and hands back `content: ""`. Measured against this very runtime: 30
+ * tokens bought half a sentence of thinking and no answer; with thinking off the same question
+ * answered in 1787ms instead of 6429ms for nothing.
+ *
+ * It is switched off HERE, at the launch door, and not in each client, because the clients are
+ * not one thing. The gateway is JavaScript and was repaired first; the research gate is asked by
+ * `atomd`, which is Rust and calls the model itself — it never passes through that gateway, and
+ * it turned the empty string into `INTERNAL: unparseable answer: ""`, surfacing to the person as
+ * "reasoning_unavailable" about an engine that was answering 200 in four seconds. One flag on the
+ * process every client shares covers both, and covers the next client without being edited.
+ *
+ * Nothing is lost by it: no reader in this product has ever read `reasoning_content`. The
+ * thinking was generated, paid for in seconds of a 4.9 tok/s model, and discarded.
+ *
+ * The client-side switch in `provider-gateway.mjs` stays and is not duplication: `attach()`
+ * binds to a server somebody else started, where this door is not ours to set.
+ *
+ * A descriptor that says `--reasoning` (or `-rea`) itself is left alone — same posture as
+ * `withGpuLayers`: this decides only what nobody decided.
+ */
+export function withoutReasoning(argv) {
+  if (argv.some((part) => part === '--reasoning' || part === '-rea')) return argv;
+  return [...argv, '--reasoning', 'off'];
+}
+
+/**
  * How many layers this configuration will actually put on the card — the setting when there is
  * one, otherwise whatever the descriptor's own command already said, otherwise none.
  *
@@ -680,7 +709,7 @@ export class LocalModelRuntime {
     const selection = await this.select();
     if (selection.error) throw fail(selection.error, 409);
 
-    const [command, ...args] = withGpuLayers(config.launchCommand, config.gpuLayers);
+    const [command, ...args] = withoutReasoning(withGpuLayers(config.launchCommand, config.gpuLayers));
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {

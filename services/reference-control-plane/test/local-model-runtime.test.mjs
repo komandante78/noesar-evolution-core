@@ -15,8 +15,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   LocalModelRuntime, RuntimeMode, Backend, activateModel,
-  withGpuLayers, effectiveGpuLayers, placementOf, recommendPlacement, declaredSize,
-} from '../src/local-model-runtime.mjs';
+  withGpuLayers, effectiveGpuLayers, placementOf, recommendPlacement, declaredSize, withoutReasoning } from '../src/local-model-runtime.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
 import { freshTempDir } from './support/workspace.mjs';
@@ -710,4 +709,39 @@ describe('D-0535 — an unchecked or unattested model is not started', () => {
     });
     assert.equal(result.activated, true);
   });
+});
+
+// ── the launch door decides whether the model thinks ──────────────────────────────────────
+//
+// Owner, 2026-08-29: the research gate answered INTERNAL "unparseable answer" and the page said
+// reasoning_unavailable, about an engine that was answering 200 in under four seconds. The 27B
+// spends its budget in reasoning_content and returns content: "". The gateway had already been
+// taught to ask for no thinking — but the gate is asked by atomd, which is Rust and calls the
+// model itself, so the JavaScript switch never touched it. One flag on the shared process does.
+
+test('a launch argv is given --reasoning off', () => {
+  assert.deepEqual(
+    withoutReasoning(['llama-server', '-m', '/models/x.gguf']),
+    ['llama-server', '-m', '/models/x.gguf', '--reasoning', 'off'],
+  );
+});
+
+test('a descriptor that already decided is left alone, in either spelling', () => {
+  // Same posture as withGpuLayers: this settles only what nobody settled. A second --reasoning
+  // would leave the answer to whichever one llama.cpp happens to read last.
+  const on = ['llama-server', '--reasoning', 'on'];
+  assert.deepEqual(withoutReasoning(on), on);
+  const short = ['llama-server', '-rea', 'auto'];
+  assert.deepEqual(withoutReasoning(short), short);
+});
+
+test('it does not accumulate when applied twice', () => {
+  const once = withoutReasoning(['llama-server']);
+  assert.deepEqual(withoutReasoning(once), once);
+});
+
+test('the argv is not mutated in place', () => {
+  const argv = ['llama-server'];
+  withoutReasoning(argv);
+  assert.deepEqual(argv, ['llama-server'], 'a caller must not find its own array changed');
 });
