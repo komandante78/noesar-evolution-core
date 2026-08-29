@@ -72,15 +72,16 @@ test('an excluded candidate must name why (UI-086)', () => {
 
 test('a picture is an inlined one or none: a remote address never reaches a saved report', () => {
   const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const sources = [{ sourceHost: 'shop.test' }];
   const validated = validateReportImages({ images: [
     { image: PIXEL, title: 'A card', sourceUrl: 'https://shop.test/card' },
     { image: 'https://cdn.test/remote.png', title: 'remote', sourceUrl: 'https://shop.test/x' },
     { image: PIXEL, title: 'no source', sourceUrl: 'javascript:alert(1)' },
-  ] });
+  ] }, sources);
   assert.equal(validated.length, 1, 'a remote address and a non-http source are both dropped');
   assert.equal(validated[0].sourceHost, 'shop.test', 'the host under a picture is derived from its link, never taken');
-  assert.deepEqual(validateReportImages({}), [], 'a provider that sends no pictures is not an error');
-  assert.equal(validateReportImages({ images: Array.from({ length: 20 }, () => ({ image: PIXEL, sourceUrl: 'https://shop.test/x' })) }).length, 6,
+  assert.deepEqual(validateReportImages({}, sources), [], 'a provider that sends no pictures is not an error');
+  assert.equal(validateReportImages({ images: Array.from({ length: 20 }, () => ({ image: PIXEL, sourceUrl: 'https://shop.test/x' })) }, sources).length, 6,
     'a provider cannot fill the page with pictures');
 });
 
@@ -478,4 +479,38 @@ test('a model that gets it right on the second attempt is shown, not punished', 
   assert.equal(attempt, 2);
   assert.match(result.text, /no source gives a price/);
   assert.equal(result.reason, undefined);
+});
+
+// ── n.21: a picture from a host no source came from ───────────────────────────────────────
+//
+// Owner, 2026-08-29. The report on SAS cards carried four pictures, one of them from
+// findacarlease.co.uk — a car leasing site — none of them from a cited source, all of them
+// above the answer at twice its size.
+
+test('a picture whose host is not among the sources never reaches the report (n.21)', () => {
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const kept = validateReportImages({ images: [
+    { image: PIXEL, title: 'the card', sourceUrl: 'https://shop.test/card' },
+    { image: PIXEL, title: 'a car lease', sourceUrl: 'https://findacarlease.co.uk/x' },
+  ] }, [{ sourceHost: 'shop.test' }]);
+  assert.deepEqual(kept.map((row) => row.sourceHost), ['shop.test']);
+});
+
+test('unsourced pictures do not crowd out a sourced one at the cap (n.21)', () => {
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  // Ten strangers first, then the one picture that belongs: filtering after the cap of six
+  // would have thrown the real one away and kept nothing.
+  const images = [
+    ...Array.from({ length: 10 }, () => ({ image: PIXEL, sourceUrl: 'https://stranger.test/x' })),
+    { image: PIXEL, sourceUrl: 'https://shop.test/card' },
+  ];
+  const kept = validateReportImages({ images }, [{ sourceHost: 'shop.test' }]);
+  assert.deepEqual(kept.map((row) => row.sourceHost), ['shop.test']);
+});
+
+test('a caller that names no sources gets no pictures, not every picture (n.21)', () => {
+  const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const images = [{ image: PIXEL, sourceUrl: 'https://shop.test/card' }];
+  assert.deepEqual(validateReportImages({ images }), [], 'fail closed: the omission is how this defect arrived');
+  assert.deepEqual(validateReportImages({ images }, []), []);
 });

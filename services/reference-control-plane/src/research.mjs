@@ -143,18 +143,33 @@ const MAX_REPORT_IMAGES = 6;
  * candidates it decorates have already passed two gates. That is the opposite posture to
  * `validateCandidate`, deliberately — there, a missing field means evidence nobody checked.
  */
-export function validateReportImages(payload) {
+export function validateReportImages(payload, candidates) {
   const rows = Array.isArray(payload?.images) ? payload.images : [];
+  // n.21. Owner, 2026-08-29, on a report about SAS cards: the four pictures above the answer
+  // came from amazon.it, storage.googleapis.com, ghidinicipriano.it and findacarlease.co.uk —
+  // a CAR LEASING site — and none of the four was among the sources the answer cited. They sit
+  // at the top of the page, twice the size of the text, so they are the part a person reads
+  // first, and they were the only part connected to nothing.
+  //
+  // A picture is now admitted only if it comes from a host one of the CANDIDATES came from.
+  // The provider does not get to introduce a host of its own through the picture lane after
+  // the candidate lane refused it.
+  //
+  // `candidates` has no default ON PURPOSE: a caller that forgets it gets no pictures rather
+  // than every picture, so this defect cannot come back by omission — which is how it arrived.
+  const sourced = new Set((candidates ?? []).map((candidate) => candidate.sourceHost).filter(Boolean));
   return rows
     .filter((row) => DATA_IMAGE.test(String(row?.image ?? '')) && httpUrl(row?.sourceUrl))
-    .slice(0, MAX_REPORT_IMAGES)
     .map((row) => ({
       image: String(row.image),
       title: String(row.title ?? '').slice(0, 120),
       sourceUrl: httpUrl(row.sourceUrl),
       // Derived, never taken — the same rule as a candidate's host.
       sourceHost: new URL(String(httpUrl(row.sourceUrl))).hostname,
-    }));
+    }))
+    // Before the cap, not after: six unsourced pictures must not crowd out a sourced one.
+    .filter((row) => sourced.has(row.sourceHost))
+    .slice(0, MAX_REPORT_IMAGES);
 }
 
 export function validateReportPayload(payload) {
@@ -553,7 +568,7 @@ export async function runResearchReport({
   const tool = resolveResearchTool(tools, toolId);
   const { result } = await executor.execute(tool, { objective:trimmedObjective, criteria:normalizedCriteria }, { actorId, projectId, can });
   const candidates = validateReportPayload(result);
-  const images = validateReportImages(result);
+  const images = validateReportImages(result, candidates);
 
   // Gate 2 — content, on what came back, before it is ever stored or shown (UI-091 second door).
   const contentSummary = [
