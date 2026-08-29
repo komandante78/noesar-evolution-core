@@ -5419,7 +5419,7 @@ function placementControl(item){
   const mode=current===0?'ram':(current!=null&&current>=layers?'gpu':'hybrid');
   const radio=(value,label,{disabled=false,title=''}={})=>
     `<label class="placement-choice${disabled?' is-disabled':''}"${title?` title="${escapeHtml(title)}"`:''}>`
-    +`<input type="radio" name="placement-${id}" value="${value}" data-placement="${id}" data-layer-count="${layers}"`
+    +`<input type="radio" name="placement-${id}" value="${value}" data-placement="${id}" data-layer-count="${layers}" data-hybrid="${hybridCount}"`
     +`${mode===value?' checked':''}${disabled?' disabled':''}> ${escapeHtml(label)}</label>`;
   const hybridCount=Math.min(mode==='hybrid'?(current??p.recommended):p.recommended,ceiling);
   return `<div class="model-placement">`
@@ -5873,6 +5873,16 @@ function closeRemoveConfirm(id){
  * kept for the next start when it is not — `configure()` decides which, since it is the side that
  * knows what is loaded.
  */
+/** The line that says a slow thing is happening, in the place the gesture was made.
+ *  `role="status"` so it is announced and not merely drawn — the same shape the compact
+ *  chooser's activation line already uses, lifted here rather than written a third time. */
+function waitingNote(text){
+  const node=document.createElement('p');
+  node.className='model-row-waiting';
+  node.setAttribute('role','status');
+  node.textContent=text;
+  return node;
+}
 async function placeModel(id,mode,layers,layerCount=layers){
   // "All on the card" is the model's OWN layer count, not 99: a number that means "all of them"
   // by being larger than any of them reads back as a hybrid split of 99 the next time somebody
@@ -5881,11 +5891,28 @@ async function placeModel(id,mode,layers,layerCount=layers){
     :mode==='gpu'?(Number.isInteger(layerCount)&&layerCount>0?layerCount:99)
       :Number.isInteger(layers)&&layers>=0?Math.min(layers,layerCount||layers):null;
   if(gpuLayers===null)return;
+  // Owner, 2026-08-29: second consent here too. A radio is one click away from moving fifteen
+  // gigabytes off a card, and the click that does it looks exactly like the click that reads the
+  // page. Native `confirm` for the same reason `loadModel` uses it: the repaint every caller
+  // does afterwards puts the control back to what is stored, so a cancel leaves nothing behind.
+  if(!confirm(t('Change where this model runs? It takes effect the next time this model starts.')))return;
+  // And it must LOOK busy while it saves. Found from the id rather than passed in, so both
+  // surfaces — the models page and the compact chooser — get it from the one function.
+  const block=findByData('placement',id)?.closest('.model-placement');
+  const note=waitingNote(t('Saving where this model runs…'));
+  if(block){
+    for(const input of block.querySelectorAll('input'))input.disabled=true;
+    block.append(note);
+  }
   try{
     await api('/api/v1/runtime/local-model',{method:'PUT',body:JSON.stringify({placeModel:{id,gpuLayers}})});
     toast(t('Saved. It takes effect the next time this model starts.'),{kind:'success'});
   }catch(error){
     toast(`${t('This placement could not be saved:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+  }finally{
+    // The repaint each caller does removes this with the markup; removed here as well so a
+    // caller that does not repaint cannot leave a "saving…" line lying about the truth.
+    note.remove();
   }
   // Deliberately refreshes NOTHING here. Two surfaces call this — the page and the compact
   // chooser — and each repaints itself afterwards; reloading the page's catalogue from inside a
@@ -5895,6 +5922,11 @@ async function loadModel(id){
   if(!confirm(t('Loading a model into memory replaces whatever is answering now and takes a moment. Load this one?')))return;
   const button=findByData('load-model',id);
   if(button)button.disabled=true;
+  // Owner, 2026-08-29: «deve apparire un caricatore». A disabled button says "nothing is
+  // happening" as loudly as it says "wait", and this wait is minutes — fifteen gigabytes from
+  // disk onto the card. The compact chooser already said so; this surface did not.
+  const waiting=waitingNote(`${t('Loading')} ${id} — ${t('this takes minutes: the model is read from disk and moved onto the card. Leave this page open.')}`);
+  button?.insertAdjacentElement('afterend',waiting);
   try{
     await api('/api/v1/models/activate',{method:'POST',body:JSON.stringify({id})});
     toast(t('Loaded — this is what answers now.'),{kind:'success'});
@@ -5903,6 +5935,8 @@ async function loadModel(id){
   }catch(error){
     toast(`${t('This model could not be loaded:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
     if(button)button.disabled=false;
+  }finally{
+    waiting.remove();
   }
 }
 async function openRemoveConfirm(id){
@@ -6029,7 +6063,7 @@ function wireModelCatalogue(){
   // Apply button to press and no debounce to get wrong.
   $('#modelForegroundLanes')?.addEventListener('change',(event)=>{
     const radioId=event.target?.dataset?.placement;
-    if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.layerCount)).then(()=>loadModelCatalogue());
+    if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.hybrid),Number(event.target.dataset.layerCount)).then(()=>loadModelCatalogue());
     const numberId=event.target?.dataset?.placementLayers;
     if(numberId)return placeModel(numberId,'hybrid',Number(event.target.value),Number(event.target.max)).then(()=>loadModelCatalogue());
     return undefined;
@@ -6359,7 +6393,7 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
     // keyboard reaches it exactly as the mouse does, and the number commits on Enter or on blur.
     $(listId)?.addEventListener('change',(event)=>{
       const radioId=event.target?.dataset?.placement;
-      if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.layerCount)).then(()=>load());
+      if(radioId)return placeModel(radioId,event.target.value,Number(event.target.dataset.hybrid),Number(event.target.dataset.layerCount)).then(()=>load());
       const numberId=event.target?.dataset?.placementLayers;
       if(numberId)return placeModel(numberId,'hybrid',Number(event.target.value),Number(event.target.max)).then(()=>load());
       return undefined;

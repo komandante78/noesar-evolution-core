@@ -1743,6 +1743,11 @@ button.armed{border-color:var(--red);color:var(--red)}
    l'etichetta al bordo destro: tre pallini soli in mezzo al nulla. Il radio torna della sua
    dimensione, e l'etichetta gli sta accanto. */
 .placement-choice input[type=radio]{width:auto;flex:0 0 auto;margin:0}
+/* La scelta attiva si deve VEDERE: il pallino da solo, su questo fondo scuro, non si distingue.
+   Riga accesa con il colore accento, niente stato in JS: :has() legge il radio nativo. */
+.placement-choice input[type=radio]{accent-color:var(--accent-brand)}
+.placement-choice:has(input:checked){color:var(--accent-brand);font-weight:600;background:color-mix(in srgb,var(--accent-brand) 14%,transparent);border-radius:.4rem;padding:.15rem .4rem;margin:-.15rem -.4rem}
+
 /* Fermata, non nascosta: una scelta che non entra deve restare leggibile con la sua ragione,
    che e la stessa postura di MC-006 altrove in questa pagina. */
 .placement-choice.is-disabled{opacity:.55;cursor:not-allowed}

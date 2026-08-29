@@ -516,6 +516,9 @@ export const RUNTIME_ONLY = Object.freeze([
   'Right now only',
   'free the model in use first',
   'The saved choice does not fit on this card and was brought down to what does:',
+  // Second consent and the line that says it is saving — Owner, 2026-08-29.
+  'Change where this model runs? It takes effect the next time this model starts.',
+  'Saving where this model runs…',
   'Loading',
   'this takes minutes: the model is read from disk and moved onto the card. Leave this page open.',
   'this model was installed before this existed and does not state its size — reinstall it to choose where it runs',
@@ -1936,6 +1939,8 @@ const it = {
   'Right now only': 'Adesso ne entrerebbero solo',
   'free the model in use first': 'libera prima il modello in uso',
   'The saved choice does not fit on this card and was brought down to what does:': 'La scelta salvata non ci sta su questa scheda ed è stata riportata a quanto ci sta:',
+  'Change where this model runs? It takes effect the next time this model starts.': 'Cambiare dove gira questo modello? Ha effetto al prossimo avvio di questo modello.',
+  'Saving where this model runs…': 'Salvataggio di dove gira questo modello…',
   'Loading': 'Caricamento di',
   'this takes minutes: the model is read from disk and moved onto the card. Leave this page open.': 'ci vogliono minuti: il modello viene letto dal disco e spostato sulla scheda. Lascia aperta questa pagina.',
   'this model was installed before this existed and does not state its size — reinstall it to choose where it runs': 'questo modello è stato installato prima che tutto ciò esistesse e non dichiara la propria dimensione — reinstallalo per poter scegliere dove gira',

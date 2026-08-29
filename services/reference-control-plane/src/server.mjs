@@ -732,8 +732,16 @@ function chatAnswerFrom() {
 async function activateInstalledModelById(id, actor) {
   const descriptors = readModelDescriptors();
   const descriptor = descriptors.find((entry) => entry.id === id) ?? null;
+  // What this card actually holds, worked out the way the page works it out — same function,
+  // same denominator (the card's TOTAL, since a model frees its own memory before it restarts).
+  // Passed in because `activateModel` asks the hardware nothing, which is MC-005.
+  const sized = descriptor ? declaredSize(descriptor) : null;
+  const fits = sized
+    ? recommendPlacement({ ...sized, freeVramMiB: acceleratorSnapshot?.memoryTotalMiB ?? null })
+    : null;
   const activated = await activateModel({
     descriptor,
+    maxGpuLayers: fits?.known ? fits.maxLayers : null,
     present: readPresentModels(descriptors),
     runtime: localModels, grants: adapterGrants, actor,
     // `D-0535`: computed by `readModelDescriptors` against the LIVE registry on this read, so a

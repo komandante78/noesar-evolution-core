@@ -565,6 +565,33 @@ test('activateModel does not write a pinned CPU profile into an automatic runtim
   await runtime.release();
 });
 
+// Owner report, 2026-08-29: the page showed "46 of 65 layers on the card" and llama-server still
+// died with `allocating 14806.05 MiB on device 0: cudaMalloc failed: out of memory` — the whole
+// model. The saved choice was 65, from before the card was measured; the browser clamped it for
+// DISPLAY and the runtime launched the 65 anyway. The clamp belongs on the start path, where the
+// number the person reads and the number the process gets become the same number.
+test('activateModel brings a saved placement down to what the card holds', async () => {
+  const { runtime, grants } = fresh();
+  await runtime.configure({ mode: RuntimeMode.AUTO, launchCommand: ['/bin/sleep', '60'] });
+  await runtime.configure({ placeModel: { id: 'test-model-oom', gpuLayers: 65 } });
+  const descriptor = { id: 'test-model-oom', launchCommand: ['/bin/sleep', '60'] };
+  const present = new Map([['test-model-oom', { verified: true }]]);
+  await activateModel({
+    descriptor, present, runtime, grants, actor: 'test-owner',
+    descriptorAuthenticity: SIGNED, maxGpuLayers: 46,
+  });
+  assert.equal(runtime.status().gpuLayers, 46, 'a stored 65 on a card that holds 46 must launch as 46');
+  await runtime.release();
+  // And a card that could not be measured decides nothing: the saved choice is obeyed as it is.
+  await runtime.configure({ placeModel: { id: 'test-model-oom', gpuLayers: 30 } });
+  await activateModel({
+    descriptor, present, runtime, grants, actor: 'test-owner',
+    descriptorAuthenticity: SIGNED, maxGpuLayers: null,
+  });
+  assert.equal(runtime.status().gpuLayers, 30);
+  await runtime.release();
+});
+
 test('activateModel replaces whatever was already running, not run alongside it', async () => {
   const { runtime, grants } = fresh();
   await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });

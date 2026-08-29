@@ -882,7 +882,7 @@ export class LocalModelRuntime {
  * all already holds `model.manage`, so a second, separate human approval step here would be
  * confirming a decision already made rather than gating a new one.
  */
-export async function activateModel({ descriptor, present, runtime, grants, actor, nowUnix = Math.floor(Date.now() / 1000), descriptorAuthenticity = undefined }) {
+export async function activateModel({ descriptor, present, runtime, grants, actor, nowUnix = Math.floor(Date.now() / 1000), descriptorAuthenticity = undefined, maxGpuLayers = null }) {
   if (!descriptor) throw fail('no such model is known to this installation', 404);
   const state = present.get(descriptor.id);
   if (!state?.verified) {
@@ -928,9 +928,16 @@ export async function activateModel({ descriptor, present, runtime, grants, acto
   // because a 27B was put there yesterday. `undefined` means this model was never placed by hand,
   // and then `null` hands the decision back to its own descriptor.
   const remembered = current.placements?.[descriptor.id];
+  // CLAMPED here, not only where it is drawn. The page already showed a stored 65 brought down to
+  // the 46 this card holds, but that clamp lived in the browser: the runtime still launched with
+  // the 65 that was saved, and llama-server died with `cudaMalloc failed: out of memory` while the
+  // screen said 46. A number a person is shown and a number the process is given must be the same
+  // number, and the only place both can come from is here — the one door every start goes through.
+  const placed = remembered === undefined ? null
+    : (maxGpuLayers != null && remembered > maxGpuLayers ? maxGpuLayers : remembered);
   await runtime.configure({
     mode,
-    gpuLayers: remembered === undefined ? null : remembered,
+    gpuLayers: placed,
     // Defect n.9: this was `current.profileId ?? 'cpu'` unconditionally, so every activation
     // rewrote `cpu` into the config of an installation running in `auto` on the GPU. `auto`
     // ignores this field entirely — inventing a value for it only produced a false one for a
