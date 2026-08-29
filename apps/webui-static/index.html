@@ -867,6 +867,22 @@
              what is checked is the origin, using publisher-registry.mjs and not a second registry
              of its own: two places to revoke is worse than one, because revoking in one of them
              looks like it worked. -->
+        <!-- Owner, 2026-08-29: «a modelli dobbiamo mettere anche un tasto sfoglia per
+             selezionare modello che hanno scaricato e farlo implementare come vogliono … deve
+             essere semplice non fare 1000 passaggi».
+
+             Browse lists what is ALREADY on the server rather than opening a file picker: a
+             GGUF is fifteen gigabytes and it lives on the machine the runtime runs on, so
+             sending one through a browser would be the slowest possible way to move a file
+             that is already there. Nothing is asked beyond which file: the layer split, the
+             context length and the port are read from the file itself. -->
+        <section class="panel" id="modelAddPanel">
+          <div class="panel-title"><h2>Add a model</h2></div>
+          <p class="hint">These are the model files present on this server. Installing one reads its header, refuses it if this runtime cannot open it, and signs it — nothing else is asked of you.</p>
+          <div class="inline-form"><button id="modelBrowseRefresh" type="button">Browse the model files</button></div>
+          <ul id="modelInstallableList" class="empty-state"></ul>
+          <p class="hint" id="modelInstallOutput" hidden></p>
+        </section>
         <section class="panel" id="modelCatalogPanel">
           <div class="panel-title"><h2>Catalogue</h2>
             <!-- §4#2, OWNER_REVIEW_2026-08-21: «manca un'icona informativa ("i") con spiegazione

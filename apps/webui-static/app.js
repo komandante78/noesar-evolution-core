@@ -5234,6 +5234,60 @@ async function loadResearchPagesSwitch(){
     });
   }catch{state.textContent=t('Sources read as snippets');state.className='badge badge-off';toggle.hidden=true;}
 }
+// Owner, 2026-08-29. Two gestures, and the second is a confirmation — that is the whole of
+// "non fare 1000 passaggi". Everything the installer needs beyond the file name it reads from
+// the file, so there is no form here and nothing to fill in.
+async function loadInstallableModels(){
+  const list=$('#modelInstallableList');if(!list)return;
+  try{
+    const {files=[],directory,reason}=await api('/api/v1/models/installable');
+    list.replaceChildren();
+    if(!files.length){
+      list.className='empty-state';
+      list.textContent=reason?`${t('No model files could be read from')} ${directory}: ${reason}`:`${t('No model files are present in')} ${directory}`;
+      return;
+    }
+    list.className='';
+    for(const file of files){
+      const row=document.createElement('li');
+      const size=file.sizeBytes?` — ${(file.sizeBytes/1024**3).toFixed(2)} GiB`:'';
+      const name=document.createElement('span');name.textContent=`${file.name}${size}`;
+      row.append(name);
+      if(file.installed){
+        const done=document.createElement('span');done.className='badge badge-on';done.textContent=t('Installed');
+        row.append(done);
+      }else{
+        const install=document.createElement('button');install.type='button';install.textContent=t('Install this one');
+        install.onclick=(event)=>withBusy(event.currentTarget,()=>installModel(file.name));
+        row.append(install);
+      }
+      list.append(row);
+    }
+  }catch(error){reportError(error,'Reading the model files on this server');}
+}
+
+async function installModel(name){
+  const output=$('#modelInstallOutput');
+  // Native confirm, the same as `placeModel` and `loadModel` beside it: installing signs a
+  // descriptor with the owner key, and the repaint afterwards puts the list back as it is,
+  // so a cancel leaves nothing behind.
+  if(!confirm(`${t('Install this model on this installation?')}\n\n${name}`))return;
+  try{
+    const result=await api('/api/v1/models/install',{method:'POST',body:JSON.stringify({file:name})});
+    toast(`${t('Installed:')} ${result.installed}`,{kind:'success'});
+    // What the installer measured — architecture, layers, context, the split it recommends —
+    // shown rather than summarised: it is the only place those numbers are stated, and a
+    // person choosing a placement next needs them.
+    if(output){output.hidden=false;output.textContent=result.output||'';}
+    await loadInstallableModels();
+  }catch(error){
+    // A refusal here is usually the runtime not knowing the architecture, which is the whole
+    // point of refusing BEFORE signing — so it is shown as itself, not as "something failed".
+    if(output){output.hidden=false;output.textContent=`${error.value?.reason??error.message}\n${error.value?.output??''}`.trim();}
+    reportError(error,'Installing that model');
+  }
+}
+
 async function loadResearchRecent(){
   const list=$('#researchRecentList');const count=$('#researchRecentCount');
   try{
@@ -5694,6 +5748,7 @@ function renderModelLanes(catalog){
   }
 }
 async function loadModelCatalogue(){
+  loadInstallableModels();
   const foreground=$('#modelForegroundLanes');
   if(!foreground)return;
   // Read once per page, and NOT fatal: the suggestions need to know what this machine has, but

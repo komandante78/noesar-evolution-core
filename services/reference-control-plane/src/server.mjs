@@ -2,6 +2,7 @@
 import { createServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, openSync, readSync, closeSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { execFile } from 'node:child_process';
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -949,6 +950,15 @@ const MODEL_ARTEFACT_DIR = join(workspace, 'models', 'artefacts');
 // or when an acquisition is interrupted. Not a bin: rule 12 forbids deleting it, and MC-004
 // forbids leaving it anywhere a reader would take it for a model. Both duties, one directory.
 const MODEL_QUARANTINE_DIR = join(workspace, 'models', 'quarantine');
+// Owner, 2026-08-29: «a modelli dobbiamo mettere anche un tasto sfoglia per selezionare modello
+// che hanno scaricato e farlo implementare come vogliono … deve essere semplice non fare 1000
+// passaggi». The GGUF files themselves live outside the workspace — the store is mounted
+// read-only — and until now their location existed ONLY inside each descriptor's runtime path,
+// which is why nothing could list what is present but not yet installed.
+const MODEL_GGUF_DIR = process.env.NOESAR_MODEL_STORE ?? '/models';
+// The bundled runtime, so an architecture it cannot open is refused BEFORE a descriptor is
+// signed rather than at the first failed start. `model-install.mjs` says why in its own header.
+const MODEL_RUNTIME_LIB = process.env.NOESAR_LLAMA_LIB ?? '/opt/noesar/llama-runtime/libllama.so';
 // The ceiling written into the acquisition grant. A model is large; a grant with no ceiling is
 // not a grant, it is permission to fill the disk.
 const MODEL_ACQUIRE_MAX_BYTES = 64 * 1024 * 1024 * 1024;
@@ -2295,6 +2305,84 @@ const requestListener = async (req, res) => {
       const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
       await refreshActiveModel({ force: url.searchParams.get('refresh') === '1' });
       return json(res, 200, activeModelReport(activeModelSnapshot, { usedBy: activeModelConsumers() }));
+    }
+    // The files sitting in the model store that are NOT yet installed — the list behind the
+    // Owner's "browse" button. Deliberately not a file picker: a GGUF is fifteen gigabytes and
+    // it is on the SERVER, so what a person needs is to see what is already there, not to send
+    // one through a browser.
+    //
+    // `model.read`, the same permission the catalogue beside it asks: this says what is on a
+    // disk the catalogue already describes, and nothing more.
+    if (req.method === 'GET' && url.pathname === '/api/v1/models/installable') {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      const installed = new Set();
+      for (const descriptor of readModelDescriptors()) {
+        const runtimePath = descriptor?.artefact?.runtimePath ?? descriptor?.runtimePath ?? null;
+        if (runtimePath) installed.add(String(runtimePath).split('/').pop());
+      }
+      let files = [];
+      try {
+        files = readdirSync(MODEL_GGUF_DIR)
+          .filter((name) => name.toLowerCase().endsWith('.gguf'))
+          .map((name) => {
+            let sizeBytes = null;
+            try { sizeBytes = statSync(join(MODEL_GGUF_DIR, name)).size; } catch { /* unreadable is still listable */ }
+            return { name, sizeBytes, installed: installed.has(name) };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } catch (error) {
+        // A missing store is an empty list and a reason, never a 500: a fresh installation has
+        // no models, and that is not a fault of the page that asked.
+        return json(res, 200, { files: [], directory: MODEL_GGUF_DIR, reason: error.message });
+      }
+      return json(res, 200, { files, directory: MODEL_GGUF_DIR });
+    }
+    // Install one of them. Everything hard about this — reading the GGUF header before trusting
+    // it, refusing an architecture the runtime does not know, signing the descriptor with the
+    // owner key, and working out the layer split with the SAME `recommendPlacement()` the page
+    // uses — already lives in `tools/model-install.mjs`, written for the command line on
+    // 2026-08-28. This RUNS that tool rather than reimplementing 334 lines of it beside itself:
+    // two implementations of "what may be installed" is exactly how a check comes to be enforced
+    // in one place and not in the other.
+    //
+    // No layer count, context or port is accepted from the browser. The tool reads all three
+    // from the file itself, and asking a person for a number the machine already knows is the
+    // "1000 passaggi" the Owner asked not to have.
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/install') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const name = String(request.file ?? '');
+      // A NAME, never a path: `..` or a slash here would reach outside the store, and this is
+      // the only place a caller supplies one.
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]*\.gguf$/.test(name)) {
+        return json(res, 400, { error:'invalid_file', reason:'that is not the name of a file in the model store' });
+      }
+      const id = String(request.id ?? '').trim() || name.replace(/\.gguf$/i, '').toLowerCase();
+      if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(id)) {
+        return json(res, 400, { error:'invalid_id', reason:'the name must be short and filesystem-safe' });
+      }
+      const ggufPath = join(MODEL_GGUF_DIR, name);
+      if (!existsSync(ggufPath)) return json(res, 404, { error:'not_found', reason:`no such file in the model store: ${name}` });
+      const args = [
+        join(repoRoot, 'tools', 'model-install.mjs'),
+        '--gguf', ggufPath, '--id', id, '--workspace', workspace,
+        ...(existsSync(MODEL_RUNTIME_LIB) ? ['--llama-lib', MODEL_RUNTIME_LIB] : []),
+        ...(request.force === true ? ['--force'] : []),
+      ];
+      const outcome = await new Promise((settle) => {
+        // Bounded: a header read plus a signature is seconds. A tool that hangs must not become
+        // a request that hangs, and a person is watching this one.
+        execFile(process.execPath, args, { timeout: 120_000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+          settle({ ok: !error, output: String(stdout ?? ''), reason: String(stderr ?? '').trim() || error?.message || null });
+        });
+      });
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.install',
+        result: outcome.ok ? 'success' : 'failed', details: { file: name, id },
+      });
+      if (!outcome.ok) return json(res, 422, { error:'install_refused', reason: outcome.reason, output: outcome.output });
+      return json(res, 200, { installed: id, output: outcome.output });
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/models/catalog') {
       const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;

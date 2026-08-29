@@ -58,6 +58,16 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // Adding a model (Owner, 2026-08-29). The panel ships its title, its explanation and the
+  // browse button in the markup; everything below is written per file by
+  // `loadInstallableModels()` — one row per GGUF found on the server — so none of it can
+  // appear in `index.html` to be counted there.
+  'Install this one',
+  'Installed',
+  'Install this model on this installation?',
+  'Installed:',
+  'No model files are present in',
+  'No model files could be read from',
   // The picture switch (Owner, 2026-08-27) paints the OTHER half of each pair: the markup ships
   // the off state and the offer to allow, `loadResearchImagesSwitch()` writes these two when the
   // consent has been given. Listed rather than tolerated, per this block own rule.
@@ -1384,6 +1394,16 @@ const it = {
 
   'ZERO AT REST · SEARCHABLE · NEVER A LOAD': 'ZERO A RIPOSO · CERCABILI · MAI UN CARICAMENTO',
   'A skill tells the agent how to do something. Its payload is instructions, so its cost is context — which is why nothing here is loaded until a session adopts it. Searching the catalogue returns what a skill is and what adopting it would cost in bytes, never the instructions themselves. At rest this installation carries none, and the count below is read from the live registry rather than claimed.': 'Una competenza dice all’agente come fare qualcosa. Il suo carico sono istruzioni, quindi il suo costo è contesto — ed è per questo che qui nulla viene caricato finché una sessione non l’adotta. Cercare nel catalogo restituisce che cos’è una competenza e quanto costerebbe adottarla in byte, mai le istruzioni stesse. A riposo questa installazione non ne porta nessuna, e il conteggio qui sotto è letto dal registro vivo invece che affermato.',
+  // ——— Models · adding one, Owner 2026-08-29 ———
+  'Add a model': 'Aggiungi un modello',
+  'These are the model files present on this server. Installing one reads its header, refuses it if this runtime cannot open it, and signs it — nothing else is asked of you.': 'Questi sono i file dei modelli presenti su questo server. Installarne uno ne legge l’intestazione, lo rifiuta se questo runtime non sa aprirlo, e lo firma — non ti viene chiesto altro.',
+  'Browse the model files': 'Sfoglia i file dei modelli',
+  'Install this one': 'Installa questo',
+  'Installed': 'Installato',
+  'Install this model on this installation?': 'Installare questo modello su questa installazione?',
+  'Installed:': 'Installato:',
+  'No model files are present in': 'Nessun file di modello presente in',
+  'No model files could be read from': 'Non è stato possibile leggere i file dei modelli da',
   // ——— Models · the catalogue, s333 point 5 ———
   'Catalogue': 'Catalogo',
   'Any type': 'Qualsiasi tipo',
