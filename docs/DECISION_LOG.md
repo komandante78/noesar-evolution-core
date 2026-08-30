@@ -16381,3 +16381,43 @@ of a private server belonging to the applicant, flagged in the disclosure for th
 decide on, not silently redacted: the policy asks for *unedited* output.
 **Status.** applied. Two obligations remain and both are in the disclosure: regenerate the log
 immediately before submitting, since the snapshot stops mid-session, and read it first.
+
+## D-0701 · What the application actually consists of, and the transcript gap measured over it — 2026-08-30
+**Decision.** The submitted set is defined in `FUNDING/00_SUBMISSION_SET.md`: twenty files plus
+`PROMPT_LOG.md` as the disclosure's attachment. `19_WORK_PLAN_TO_BETA.md` is internal and out;
+`21_QUESTION_FOR_NLNET.md` is a message to a funder, not a page of the proposal. The test applied
+to each file was one question - *would this be handed to a reviewer as part of the proposal?* - and
+`19` fails it on its own terms, its first section being headed "Phase A - This dossier (DONE, this
+session)". It is not out because its transcript is missing: it would fail the same test with a
+complete transcript beside it. It stays public in the repository, and `08` and `09` now say so
+where they point at it, because a reviewer must never follow a pointer into something they cannot
+see.
+**Why this had to be decided before the disclosure could be correct.** A percentage is a share of
+something. Three pages measured or asserted things about "the application" while no page said what
+the application was, so every share in `20` was a share of an undefined set.
+**What the measurement says now**, `git blame` at commit `183e0a17` over the submitted set, 1 504
+lines: 1 064 from session `e71e6579` and 264 from session `1fc5f34f`, both 2026-08-30 and both
+with transcripts retained - 88.3% coverable; 122 lines from 2026-08-14 with no transcript, 8.1%,
+of which 46 are blank lines, headings or table delimiters and 76 are prose; and 54 lines from
+2026-07-25. Over the whole directory with `19` included the same command gives 259 of 1 711, 15.1%,
+and `20` prints that figure too so the subtraction is checkable.
+**The 2026-07-25 lines are not a gap and are no longer declared as one.** Opened one at a time they
+are 34 blank lines, 18 headings and 2 code-fence delimiters - zero prose. A heading is not generated
+content requiring a declaration. The disclosure written hours earlier had counted them, overstating
+the gap by 3.6 points against the applicant's own case.
+**`18` was realigned, and not for the log.** It was written on 2026-08-14 as four proposals ending
+in a question for the Owner, under a budget-governance rule the Owner abolished on 2026-08-25; the
+question was answered by `D-0698` and `D-0699`. It now carries `F1`-`F5` with the acceptance
+condition from `08` and the costed line from `10`, a table reconciling the two numbering schemes -
+`F1` is `WP4`, they are not in the same order - and a build order starting at `F4`. The argument
+- why each component is original and who adopts it - is unchanged. `17` stopped offering the
+pentest and cross-platform evidence as things this grant buys, since `D-0699` requests the audit as
+an NLnet support service and defers `WP2`. In both cases the log arrived as a by-product of
+correcting something that had stopped being true, which is the only order in which it may arrive.
+**The residue is declared and the question is written, not sent.** `21_QUESTION_FOR_NLNET.md` asks
+NLnet what evidence it accepts for 2026-08-14 and offers what can be given without rewriting
+anything. It goes to a third party in the applicant's name: the applicant sends it, after
+2026-09-03, and files the answer in `20` with its date.
+**Status.** applied. Obligations unchanged and now numbered in `20`: regenerate the log over all
+three transcripts including this session's, read it, send the question, re-run the measurement if
+the dossier moves again.
