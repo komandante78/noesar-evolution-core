@@ -178,6 +178,29 @@ describe('SEC-003 · the authorization endpoint recomputes the plan it is given'
     assert.match(authorized.json.error, /reauthentication/i);
   });
 
+  // The refusal above is only half the claim. This product's argument IS an append-only,
+  // hash-chained log, so a privileged attempt that is denied and leaves nothing behind is a
+  // hole in the argument, not a missing nicety. Owner, gate B 2026-08-27: the 403 was right
+  // and the ledger held only the `coden.path-plan` that preceded it.
+  test('a refused Owner Bypass is written to the audit ledger, not only answered with 403', async () => {
+    const planned = await post('/api/v1/coden/path-plan',
+      { mode: 'NORMAL', operation: 'write', path: `${workspace}/audited-bypass.txt` });
+    assert.equal(planned.status, 200);
+
+    const refused = await post('/api/v1/coden/authorize',
+      { plan: { ...planned.json, mode: 'OWNER_BYPASS' }, consentScope: 'ONE_OPERATION' });
+    assert.equal(refused.status, 403);
+
+    const audit = await fetch(`${base}/api/v1/audit`, { headers: { ...(cookie ? { cookie } : {}) } });
+    assert.equal(audit.status, 200, 'the ledger must be readable to be evidence');
+    const entries = (await audit.json()).events ?? [];
+    const written = entries.filter((entry) => entry.action === 'coden.authorize' && entry.result === 'refused'
+      && String(entry.details?.canonicalPath ?? '').endsWith('audited-bypass.txt'));
+    assert.equal(written.length, 1, `the refusal must appear exactly once: ${JSON.stringify(entries.slice(-4))}`);
+    assert.equal(written[0].details.mode, 'OWNER_BYPASS', 'the entry says which mode was attempted');
+    assert.match(written[0].details.reason, /reauthentication/i, 'and why it was refused');
+  });
+
   // Negative control. A closure that also breaks the working path is not a closure.
   test('the ordinary in-workspace path still authorizes end to end', async () => {
     const planned = await post('/api/v1/coden/path-plan',

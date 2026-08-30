@@ -16123,3 +16123,93 @@ throughout. The Navigator count moves 7→6 with the reason recorded beside it; 
 protects (every list renders rows with a destination) is unchanged.
 **Reversal cost.** None — the move is markup, and the id stays.
 **Status.** applied.
+
+## D-0693 · `B-015` and `B-016` closed by measurement, and the `P2` acceptance met against the real model — 2026-08-30
+**Decision.** Both remaining blockers are closed, neither by building anything. `B-015` (19
+commits unpushed) had been dead since the push earlier the same day: `origin/main` = `HEAD` =
+`0556cdb4`, `git rev-list --count origin/main..HEAD` = 0. `B-016` claimed the configured model
+could not emit tool calls and that the container serving it belonged to another project and was
+out of bounds; both halves are false now. The provider is the **local 27B this product launches
+itself**, and `--jinja` sits in the persisted `launchCommand` in `config/local-model.json`, so
+it survives a restart rather than depending on how someone started a container.
+**What was measured, weakest first.** (1) A raw request carrying a `tools` array returns
+`finish_reason: "tool_calls"`. (2) The **exact stimulus `probeToolCalling()` sends** returns
+`tool_calls[0] = noesar_probe_echo({"word":"ok"})` — `supported:true` where the same probe once
+returned `false`, which is the measurement `B-016` was written from. (3)
+`tools/acceptance/live-model-tool-loop.mjs`, new, drives the **real `ChatOrchestrator`**, the
+real scope gate and the real SSE contract against that model: 6/6 in 14.1 s — the model asks
+for the tool, the tool runs, `tool-call` is streamed before `tool-result`, the final answer
+carries the tool's own number, and the call is in the ledger.
+**Why the third one matters and the first two do not.** `P2`'s acceptance is *"a chat turn that
+needs a tool calls it, shows the call, and answers from the result — measured, not asserted"*.
+A raw `curl` proves a server capability, not a product one. The handoff of 2026-08-25 was right
+that everything below the model was proven only by scripted suite; that half is now closed with
+a script that can be re-run rather than a claim.
+**The recurring defect this exposes.** `docs/LINEA_DI_STATO.md` recorded `B-015`, `B-016`,
+`F-ROT-001` and `F4-012` as closed on 2026-08-25 at 18:05. `docs/SESSION_HANDOFF.md`, written
+**seventeen minutes later**, still declared `B-015` and `B-016` open, and `PROJECT_STATE.json`
+still carried them as blockers five days on. Three registers, one tree, three answers.
+`PROJECT_STATE.json` now carries a `last_battery` block with the date of its numbers, so a
+stale claim in it is visible rather than inferred.
+**Status.** applied.
+
+## D-0694 · Six acceptance checks brought level with two reversals the Owner made after the last run — 2026-08-30
+**Decision.** The browser suite ran for the first time since 2026-08-23 and reported six
+undeclared failures. **None is a product defect.** All six assert behaviour the Owner
+deliberately reversed, and the reversals are in the code with his words beside them.
+**The two reversals.** (1) 2026-08-27, point n.6: *«`#/coden` nudo va eliminato; deve mostrare
+cio che oggi mostra `#/coden/agent/authority`»* — shipped in `ddc6c565`. This undoes the part of
+phase 3c that made a bare address open no panel. Five checks still asserted the empty page.
+(2) 2026-08-26: the `/` menu offers **only what runs**. `menuEntriesFor` returns commands and
+ignores addresses (`void addresses`), because `/models` (leaves for the Models page) sitting one
+row from `/model` (loads a model) meant arrowing to the command and pressing Enter moved the
+page instead — he reported it twice. One check still asserted the addresses were there.
+**What was changed and what was not.** Only the six assertions, each rewritten to the contract
+that exists and each carrying the decision that changed it. The parts of phase 3c the Owner did
+**not** reverse keep their teeth: the check on the bare address still requires no tabs, no agent
+menu and no Navigator, so it fails if the dashboard comes back. One check that hard-coded
+`'#/coden'` now captures the hash before the gesture and compares against that, because its
+claim is *"does not navigate"* — a literal string made it a test of the address instead.
+**The finding underneath.** A suite that has not run for five days does not report the product;
+it reports the distance between the product and the last person who ran it. The failures were
+not silent — nobody was listening.
+**Status.** applied; re-run to confirm.
+
+## D-0695 · A refused Owner Bypass is written to the audit ledger — 2026-08-30
+**Decision.** The two refusals in the `OWNER_BYPASS` branch of `/api/v1/coden/authorize` now
+append to the ledger before answering 403, as every neighbouring refusal on that route already
+did (`coden.plan-mismatch`, `coden.authorize/blocked`, the consent-scope refusal).
+**What was measured.** Owner, gate B 2026-08-27: he pressed *Authorize plan* in `OWNER_BYPASS`
+without having unlocked the scope. The server answered **403 «Recent strong reauthentication is
+required.»** — correct — and the ledger read immediately afterwards held only the
+`coden.path-plan` that preceded it. No `request.error` either: those are emitted for 409s, not
+for this. A privileged attempt that is **denied** is exactly what a reviewer opens an
+append-only hash-chained log to find, and it was the one thing that log did not contain.
+**Why it is not cosmetic.** This product's public argument is auditability. An audit trail that
+records grants and drops denials describes a system that never refuses anything.
+**Evidence, proven able to fail.** `coden-path-authorization.test.mjs` gains one test that
+plans a path, attempts `OWNER_BYPASS` without elevation, and asserts the refusal appears
+**exactly once** in `GET /api/v1/audit` carrying the mode attempted and the reason. Run against
+the previous `server.mjs` it fails (`0 !== 1`); against this one the file is 7/7.
+**Reversal cost.** None — two ledger lines, no behaviour change to the refusal itself.
+**Status.** applied.
+
+## D-0696 · The funding dossier is rewritten against measured state, and three of its files wait on the Owner — 2026-08-30
+**Decision.** `P9` starts from the measurement, not from the previous text. `FUNDING/` was
+written on 2026-08-14; the product has since moved **446 commits, 406 files, +62161/−13437**,
+and five of the nineteen files still claimed *"2547 tests"* against a real 3151. Sixteen files
+are being brought level. Three are not, because they encode a decision that is not technical.
+**The three that wait.** `04_FOSS_SCOPE_AND_PROPRIETARY_BOUNDARIES`, the final shape of
+`08_MILESTONES_AND_DELIVERABLES`, and all of `10_BUDGET_STRUCTURE` — which is still a template
+of `<TO_BE_SET>` fields. `docs/FUNDING_ALIGNMENT.md` states the open question plainly: public
+programmes commonly require the funded work to be open source **in its entirety**, and an
+open-core model with a permanently reserved ATOM may not qualify as-is. Nothing in the tree
+assumes an outcome, and this entry does not either.
+**What was corrected first, because it was the worst.** `16_EVIDENCE_INDEX.md` indexed
+`RELEASE/MASTER_V4_*` — evidence for the baseline retired on 2026-07-26 (`D-0096`). For a month
+the dossier's index of proof pointed at a project of record that no longer existed. Rewritten
+to rows that can be re-run or re-opened, each checked to exist.
+**The deadline, corrected.** NLnet's calls reopen 2026-09-03 and applications are submitted
+until **2026-11-03**. The `2026-09-04` written through these documents was a target the Owner
+set himself, not a hard date.
+**Status.** in progress — sixteen files; three declared as waiting.

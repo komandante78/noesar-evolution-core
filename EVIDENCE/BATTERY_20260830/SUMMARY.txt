@@ -1,0 +1,33 @@
+BATTERY 2026-08-30 — the run every number in FUNDING/ comes from
+================================================================
+
+  unit-final.log.gz            npm test
+                               3152 tests, 344 suites, 3151 pass, 0 fail, 1 skip
+
+  suite-final.log.gz           sh scripts/test.sh
+                               TEST_SUMMARY pass=22 fail=0 partial=0 unavailable=0
+
+  lint-final.log               npm run lint  (ESLint 9.39.5, digest-pinned image)
+                               ESLINT_FILES=493 ERRORS=0 WARNINGS=0 NO_UNDEF=0
+
+  e2e-after-corrections.log.gz bash tools/run-browser-e2e.sh
+                               TOTAL=504 PASS=503 FAIL=1 DECLARED=1 UNDECLARED=0
+                               (the one failure is the declared i18n ratchet F-I18N-002)
+
+  e2e-before-corrections.log.gz  the same suite, run before D-0694
+                               TOTAL=504 PASS=497 FAIL=7 DECLARED=1 UNDECLARED=6
+                               Kept deliberately. The six undeclared failures were not
+                               product defects: they were the suite asserting behaviour
+                               the Owner had reversed on 2026-08-26 and 2026-08-27, in a
+                               suite nobody had run since 2026-08-23. Deleting this file
+                               would delete the evidence for the risk in
+                               FUNDING/11_RISK_REGISTER.md.
+
+  not in this directory        node tools/acceptance/live-model-tool-loop.mjs
+                               6/6 in 14.1 s against the real 27B — the P2 acceptance,
+                               met live for the first time. Re-run it rather than trust
+                               a log: it needs the model loaded, which is the point.
+
+Exit codes: the browser suite exits non-zero for a declared gap as well as an undeclared
+one, on purpose. A suite that could report green while carrying a known gap is a suite
+people learn to ignore.

@@ -2820,9 +2820,22 @@ const requestListener = async (req, res) => {
         ledger.append({ actor:authenticated.user.id, action:'coden.authorize', result:'blocked', details:{ canonicalPath:plan.canonicalPath, risk:plan.risk, mode:plan.mode } });
         return json(res, 403, { error:'Blocked path cannot be authorized' });
       }
+      // A privileged attempt that is DENIED is precisely what a reviewer opens an append-only
+      // log to find, and these were the only two refusals on this route that wrote nothing —
+      // their neighbours (`plan-mismatch`, `blocked`, the consent-scope refusal below) all
+      // append. Owner, gate B 2026-08-27: he pressed Authorize in OWNER_BYPASS without having
+      // unlocked the scope, the server correctly answered 403, and the ledger read back
+      // afterwards held only the `coden.path-plan` that preceded it. The refusal is the event.
       if (plan.mode === 'OWNER_BYPASS') {
-        if (!auth.hasPermission(authenticated.user, 'coden.owner-bypass')) return json(res, 403, { error:'Owner role required.' });
-        if (authenticated.session.elevatedUntil < Date.now()) return json(res, 403, { error:'Recent strong reauthentication is required.' });
+        const bypassRefusal = !auth.hasPermission(authenticated.user, 'coden.owner-bypass')
+          ? { status:403, error:'Owner role required.', reason:'owner-bypass permission required' }
+          : authenticated.session.elevatedUntil < Date.now()
+            ? { status:403, error:'Recent strong reauthentication is required.', reason:'recent strong reauthentication required' }
+            : null;
+        if (bypassRefusal) {
+          ledger.append({ actor:authenticated.user.id, action:'coden.authorize', result:'refused', details:{ canonicalPath:plan.canonicalPath, risk:plan.risk, mode:plan.mode, reason:bypassRefusal.reason } });
+          return json(res, bypassRefusal.status, { error:bypassRefusal.error });
+        }
       }
       // SEC-003 · destructive_action_confirmation. The consent scope was previously
       // copied onto the stored approval unvalidated, so `DENY` — the plan's own refusal

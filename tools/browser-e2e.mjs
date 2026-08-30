@@ -1098,12 +1098,13 @@ try {
   const afterJump = await page.evaluate(() => ({ hash: location.hash, title: document.title }));
   check('jumping to a panel of this page moves the address', afterJump.hash === '#/coden/bench/map', JSON.stringify(afterJump));
 
-  // PHASE 3c. A bare `#/coden` used to be COMPLETED to whichever panel happened to be showing,
-  // because a panel was always showing — which is exactly what made this page a dashboard.
-  // `16` §4b.3: the panels "smettono di essere riquadri sempre presenti e restano posti dove si
-  // va". So a bare address now opens none, stays short because that is honest, and the bench is
-  // not on the screen at all. Nothing became unreachable: every one of the twenty-five is an
-  // address the prompt opens, measured one by one in 3c-1 before any of this was removed.
+  // PHASE 3c, AND ITS REVERSAL. 3c made a bare `#/coden` open no panel — `16` §4b.3, the panels
+  // "smettono di essere riquadri sempre presenti e restano posti dove si va". The Owner walked
+  // that page on 2026-08-27 and asked for the opposite (n.6): a bare address must show what
+  // `#/coden/agent/authority` shows. What SURVIVES 3c is the part he did not reverse — the bench
+  // is no longer a dashboard of always-present boxes, there are no tabs, no agent menu and no
+  // Navigator, and every one of the twenty-five is an address the prompt opens. What changed is
+  // only which panel the bare address lands on: one, from the region's own default, not none.
   await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#view-coden.active', { timeout: 15000 });
   const bare = await page.evaluate(() => ({
@@ -1112,8 +1113,13 @@ try {
     benchHeight: document.querySelector('#bench').getBoundingClientRect().height,
     promptOnScreen: document.querySelector('#codenPrompt').getBoundingClientRect().height > 0,
   }));
-  check('phase 3c — a bare #/coden opens no panel and stays a bare address',
-    bare.hash === '#/coden' && bare.open === 0 && bare.benchHeight === 0 && bare.promptOnScreen,
+  // REVERSED by the Owner on 2026-08-27, point n.6, shipped in `ddc6c565`: «`#/coden` nudo va
+  // eliminato; deve mostrare cio che oggi mostra `#/coden/agent/authority`». The bare address now
+  // names the agent region and takes that region's own default, in one replaceState. What phase 3c
+  // was really protecting — that the address bar and the screen say the same thing, and that the
+  // prompt is never pushed off — is asserted here against the contract that exists.
+  check('a bare #/coden completes to the Authority panel the Owner asked for',
+    bare.hash === '#/coden/agent/authority' && bare.open === 1 && bare.benchHeight > 0 && bare.promptOnScreen,
     JSON.stringify(bare));
 
   // pushState with no way back would leave the address ahead of the screen: the Back button
@@ -1156,8 +1162,11 @@ try {
   // PHASE 3c. The bench markup STAYS — the address book derives all twenty-five addresses
   // from those very attributes, and the panels hold real forms. What is removed is the
   // dashboard: it is not on the screen until an address opens a panel in it.
-  check('phase 3c — the bench markup stays, and is off the screen on a bare address',
-    regions.bench === true && regions.benchOnScreen === false, JSON.stringify(regions));
+  // Same reversal (`ddc6c565`). The markup always stayed — the address book derives all
+  // twenty-five addresses from those attributes. What changed is that a bare address now opens one
+  // of them, so the bench is on the screen from the first paint instead of after a jump.
+  check('the bench markup stays, and the bare address opens it',
+    regions.bench === true && regions.benchOnScreen === true, JSON.stringify(regions));
   check('the transcript opens with its note rather than empty',
     regions.opening.includes('CodeN Evolution'), regions.opening.slice(0, 80));
 
@@ -1543,6 +1552,10 @@ try {
     await page.keyboard.press('KeyU');
     await page.keyboard.up('Control');
     await new Promise((resolve) => setTimeout(resolve, 200));
+    // Captured, not hard-coded: this block starts from a bare `#/coden`, which since
+    // `ddc6c565` completes to `#/coden/agent/authority`. The claim is "does not navigate", so it
+    // is measured against wherever the page actually was a moment ago.
+    const hashBeforeAddress = await page.evaluate(() => location.hash);
     await typeIntoTerminal('/memory');
     await page.keyboard.press('Enter');
     const addressRan = await soft('an address renders inline in the terminal', async () => {
@@ -1555,8 +1568,8 @@ try {
       const afterAddress = (await screenText()).replace(/\s+/g, ' ');
       const hashUnchanged = await page.evaluate(() => location.hash);
       check('an address goes into the transcript, and the page does not navigate',
-        /Memory/.test(afterAddress) && !/error|refused/i.test(afterAddress) && hashUnchanged === '#/coden',
-        `hash=${hashUnchanged} ${afterAddress.slice(-200)}`);
+        /Memory/.test(afterAddress) && !/error|refused/i.test(afterAddress) && hashUnchanged === hashBeforeAddress,
+        `hash=${hashUnchanged} was=${hashBeforeAddress} ${afterAddress.slice(-200)}`);
     }
 
     // Leaving the destination destroys the document, and with it the socket, the observer and
@@ -1649,8 +1662,13 @@ try {
   });
   check('the bench tabs, the agent menu and the Navigator are off the screen',
     switchers.tabs === 0 && switchers.agentMenu === 0 && switchers.navigator === 0, JSON.stringify(switchers));
-  check('phase 3c — a bare #/coden is the four regions and no fixed panel',
-    !switchers.benchOnScreen && switchers.regions.transcript && switchers.regions.prompt && switchers.regions.status,
+  // Same reversal (`ddc6c565`). The four regions are still the page; what the Owner added back is
+  // ONE panel open on arrival. The switchers above must still be gone — that part of phase 3c was
+  // never reversed — so this check keeps its teeth: no tabs, no agent menu, no Navigator, and a
+  // bench that is on the screen because an address opened it, not because it is always there.
+  check('a bare #/coden is the four regions plus the region default, and no switchers',
+    switchers.benchOnScreen && switchers.tabs === 0 && switchers.agentMenu === 0 && switchers.navigator === 0
+      && switchers.regions.transcript && switchers.regions.prompt && switchers.regions.status,
     JSON.stringify(switchers));
   check('phase 3c — the top address bar is gone from the destination that has a prompt',
     !switchers.addressBar, JSON.stringify(switchers));
@@ -1727,8 +1745,14 @@ try {
       addresses: options.filter((node) => (node.dataset.codenCommand ?? '').startsWith('coden/')).length,
     };
   });
-  check('phase 3c — typing brings the address space into the same menu',
-    viaTyping.addresses >= 15, JSON.stringify(viaTyping));
+  // REVERSED by the Owner on 2026-08-26, and the reason is written into `menuEntriesFor`:
+  // addresses beside commands put `/models` (leaves for the Models page) one row from `/model`
+  // (loads a model), so arrowing to the command and pressing Enter moved the page instead. He
+  // reported it twice. `menuEntriesFor` now returns commands only — `void addresses` — and this
+  // check asserts that rule rather than the one it replaced. Nothing became unreachable: typing an
+  // address IN FULL still resolves, which is driven for real a few lines below.
+  check('the address space stays OUT of the / menu, which offers only what runs',
+    viaTyping.addresses === 0, JSON.stringify(viaTyping));
   check('and the open panel still names itself', viaPrompt.where === 'Diff', JSON.stringify(viaPrompt));
 
 
@@ -3095,8 +3119,11 @@ try {
     panelOpen: document.querySelector('#view-coden')?.hasAttribute('data-panel-open') ?? false,
     benchWidth: document.querySelector('.bench')?.getBoundingClientRect().width ?? 0,
   }));
-  check('UI-030 a bare #/coden opens no panel, and the bench has no box until one is addressed',
-    bareBench.viewActive && !bareBench.panelOpen && bareBench.benchWidth === 0, JSON.stringify(bareBench));
+  // And REVERSED once more on 2026-08-27 (n.6, `ddc6c565`): the bare address opens Authority. The
+  // single-column bench `D-0319` built is unchanged; what this now measures is that the
+  // completion happened and gave the one region a real width, instead of that nothing opened.
+  check('UI-030 a bare #/coden opens the Authority panel, and the bench has one real box',
+    bareBench.viewActive && bareBench.panelOpen && bareBench.benchWidth > 0, JSON.stringify(bareBench));
 
   await jump('bench/shadow', 'shadow');
   // WAITED FOR, not sampled. `renderBenchStatus()` is fired unawaited by the view loader and

@@ -1,17 +1,17 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "P3 delivered AND DEPLOYED (p3-engine-tools-20260825T030536Z): the chat can call the engine it lives in — 20 read-only engine methods registered as tools, executed through the same dispatch the terminal uses, with the caller's own authority.",
+  "current_phase": "P4 delivered. Search repaired and «Browse» shipped (2026-08-29, commits 906b9334..0556cdb4). P2 acceptance MET LIVE 2026-08-30 against the real 27B, not a scripted upstream. Open: P9 (the funding dossier), P7, P8.",
   "phase_status": "delivered-and-deployed",
-  "next_phase": "P6 (re-measure, do not build) or P7 (closable open findings), unless the Owner names one of his OWNER_REVIEW §4 rows.",
+  "next_phase": "P9 — bring FUNDING/ level with what the product now does. The abstract, milestones and budget (D-0631) wait on one Owner decision: how much of the system is claimed as funded FOSS work (docs/FUNDING_ALIGNMENT.md, «Known open question»).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "fc216f4",
-  "last_updated_utc": "2026-08-25T04:11:49.872Z",
-  "last_commit_note": "59cddb23a7475b85a77acfdf319f0f7f3c629abd = \"docs(phase-D-0671): record D-0671 deployed live, close B-014\" (2026-08-23), 4 files, +51/-20. Deployed d0671-toolbar-border-20260823T160319Z, SS5a cleanup done. Preceded by 981c92d (D-0671 fix commit state record).",
+  "last_commit": "0556cdb4",
+  "last_updated_utc": "2026-08-30T09:26:04.513Z",
+  "last_commit_note": "0556cdb4 = \"The best source leads, but every kind gets a seat\" (2026-08-29). The 19 commits 9a94d858..0556cdb4 were pushed 2026-08-30: 23 files, +2458/-155. Measured the same day (D-0693): origin/main = HEAD, git rev-list --count origin/main..HEAD = 0, which closed B-015; the same session closed B-016 by disproving its premise and met the P2 acceptance live (D-0693), corrected six stale acceptance checks (D-0694), made a refused Owner Bypass auditable (D-0695) and began the dossier rewrite (D-0696).",
   "blockers": [
     {
       "id": "B-001",
@@ -108,17 +108,19 @@
     },
     {
       "id": "B-016",
-      "severity": "medium",
-      "status": "open",
-      "summary": "The configured model cannot emit tool calls, so the D-0674 tool loop has nothing to drive it on THIS installation. Measured live twice (raw request and probeToolCalling run from the deployed code): a healthy llama.cpp server accepts a tools array and answers in prose. llama.cpp honours tools only when started with --jinja and a template that has them. That container belongs to a separate project and is out of bounds from here (CLAUDE10.md rules 16-21, REGOLA ZERO), so the Owner must restart it with --jinja or configure a tool-capable provider. The loop is proven by suite (14/14 end to end) and the gap is DECLARED, not hidden.",
-      "opened_utc": "2026-08-24T09:45:21Z"
+      "severity": "resolved",
+      "status": "closed",
+      "summary": "CLOSED 2026-08-30 — the premise was disproven, not worked around. The model that serves this installation is now the local 27B (Qwen3.8-27B-UD-Q4_K_M) launched by the product itself, and --jinja is in the persisted launchCommand in config/local-model.json, so it survives a restart. Three measurements, weakest first: (1) a raw tools request returns finish_reason=tool_calls; (2) the exact stimulus probeToolCalling() sends returns tool_calls[0]={noesar_probe_echo,{\"word\":\"ok\"}}, i.e. supported:true where it once returned false; (3) tools/acceptance/live-model-tool-loop.mjs drives the REAL ChatOrchestrator, the real scope gate and the real SSE contract against that model and passes 6/6 in 14.1 s — the model asks for the tool, the tool runs, the call and result are streamed in order, the final answer carries the tool own number, and the call is in the ledger. This is the P2 acceptance («a chat turn that needs a tool calls it, shows the call, and answers from the result — measured, not asserted»), met live. The old entry blamed a container belonging to another project; that container is no longer the provider.",
+      "opened_utc": "2026-08-24T09:45:21Z",
+      "closed_utc": "2026-08-30T08:59:55.373Z"
     },
     {
       "id": "B-015",
-      "severity": "low",
-      "status": "recurring",
-      "summary": "REOPENED 2026-08-24 for every phase-D-0680 commit from 5d45639 onward (git log origin/main..HEAD). git push fails: \"could not read Username for https://github.com: No such device or address\" -- no credential helper is persisted, exactly the recurring condition this blocker describes. The local repository is complete and the working tree is clean; only the remote is behind. Owner action: push directly, as on 2026-08-24 for 49cc252..9b433dd.",
-      "opened_utc": "2026-08-24T12:17:32Z"
+      "severity": "resolved",
+      "status": "closed",
+      "summary": "CLOSED 2026-08-30. The 19 commits were pushed. Measured: origin/main = HEAD = 0556cdb4 and git rev-list --count origin/main..HEAD = 0. The entry stood as \"recurring\" for six days after the cause (no persisted credential helper) had been removed; a blocker is closed by a measurement, not by the absence of a new failure.",
+      "opened_utc": "2026-08-24T12:17:32Z",
+      "closed_utc": "2026-08-30T08:59:55.373Z"
     }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
@@ -129,7 +131,7 @@
   "repository_local_initialized": true,
   "repository_remote_configured": true,
   "github_status": "OK — remote 'origin' is git@github.com:komandante78/NOESAR-EVOLUTION.git over SSH. This field said BLOCKED_AUTHENTICATION while B-001 in this same file recorded the block as closed on 2026-07-28: the file was contradicting itself. Re-measured 2026-08-28.",
-  "git_push": "OK — pushing works and is used. Measured 2026-08-28: origin/main = HEAD = 9a94d858, eight commits dated that day. This field said BLOCKED_NO_REMOTE.",
+  "git_push": "OK — measured 2026-08-30: origin/main = HEAD = 0556cdb4, zero commits ahead. B-015 is closed, not recurring.",
   "secret_scan_method": "heuristic (host) + ESLint 9.39.5 over 136 files + syft 1.49.0 SBOM of image and source; earlier phases additionally used detect-secrets and semgrep via noesar-debuglab, which was NOT started in this gate",
   "source_zip_checksums_verified": true,
   "source_zip_filename_deviation": "all five archives carry a ' (2)' duplicate-download suffix; archives are identified by SHA-256 only, never by filename",
@@ -1758,5 +1760,14 @@
     "security_surface_change": "AI_SERVICE_ACCOUNT + workspace.write (= set di client_restricted). Motivo: provider.use gia scriveva (chat/stream chiama addMessage 2 volte a turno), quindi il set stretto era contraddittorio non restrittivo. Reversibile con una riga in auth.mjs.",
     "verified_live": "2 turni reali attraverso il relay (ASK 4.4s, ACT piano reale), visibili in state/ai-workspace.json di NOESAR come 4 messaggi; browser reale 0 errori console.",
     "not_unit_tested": "ensureModuleServiceAccounts() e codice di boot in server.mjs, non importabile senza avviare listener e PostgreSQL — verificato solo dal vivo, dichiarato."
+  },
+  "last_battery": {
+    "measured_utc": "2026-08-30T09:26:04.514Z",
+    "evidence": "EVIDENCE/BATTERY_20260830/",
+    "unit": "3152 tests, 344 suites, 3151 pass, 0 fail, 1 skip",
+    "suite": "scripts/test.sh - pass=22 fail=0 partial=0 unavailable=0",
+    "eslint": "ESLint 9.39.5 - 493 files, 0 errors, 0 warnings, 0 no-undef",
+    "browser_e2e": "504 checks, 503 pass, 1 failure - the declared gap F-I18N-002; BROWSER_E2E_FAIL_UNDECLARED=0",
+    "live_tool_loop": "tools/acceptance/live-model-tool-loop.mjs - 6/6 against the real 27B, 14.1 s"
   }
 }
