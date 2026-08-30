@@ -16343,3 +16343,41 @@ condition**: a deliverable whose "done" is an opinion cannot be costed.
 class when `WP2` is prepared for the second submission — and the prompt log that NLnet's
 generative-AI policy requires to accompany the application, which does not exist yet.
 **Status.** applied.
+
+## D-0700 · The generative-AI disclosure, and the 28.5% of the dossier whose transcripts no longer exist — 2026-08-30
+**Decision.** The application carries a full generative-AI disclosure — `FUNDING/20_GENAI_DISCLOSURE.md`
+plus `FUNDING/PROMPT_LOG.md`, **68 prompts and 274 outputs verbatim** with a timestamp and a model
+identifier on every one — built by `tools/extract-prompt-log.mjs`. NLnet's policy requires it:
+*"Applicants may use GenAI tools in preparing applications, but any such use must be disclosed"*,
+with a log of the model, the dates and times, the prompts themselves and the **unedited** output
+(<https://nlnet.nl/foundation/policies/generativeAI/>, read 2026-08-30).
+**What was measured before anything was written.** `git blame --line-porcelain` over `FUNDING/*.md`,
+bucketed by author date: 2026-08-30 → 984 lines; 2026-08-14 → 355; 2026-07-25 → 55; 2026-08-23 →
+45. Total 1 439. Transcript retention on the applicant's workstation **begins 2026-08-18**, so
+**71.5% of the dossier is covered by the attached log and 28.5% cannot be.** The gap is located
+file by file — `19` 137 lines, `18` 99, `17` 38, `15` 18, `08` 17, `09` 16, `07` 15 — rather than
+estimated.
+**What was deliberately NOT done, and why.** Those sections were not rewritten to manufacture a
+log for them. `19_WORK_PLAN_TO_BETA.md` is largely a **historical record** of executed phases, and
+rewriting a record to give it a provenance trail would falsify the record. For the rest,
+regenerating text that has been reviewed and refined over two weeks, purely to satisfy paperwork,
+would make the dossier worse without making the disclosure any truer. The gap is declared, and
+NLnet is to be asked what evidence it wants for that period — a question their own *"licensing
+advice, mentoring"* support exists to answer.
+**The one judgement in the tool, and it is pinned by a check.** In the transcript format **a tool
+result is also a `user` record**. Counting those as prompts reports 322 "user turns" for a session
+in which a person typed **20**, burying the real ones in machine output. `--self-test` asserts that
+a `tool_result` record and a subagent turn are not prompts, and that only `text` parts are output.
+It fails if that filter is ever loosened.
+**A snapshot is committed as well as the script**, against the project's instinct that derived
+artefacts need not be stored. The 2026-08-14 gap **is** what "we can regenerate it later" produces.
+**Scope, including one exclusion made openly.** The log covers the two sessions that produced text
+now in `FUNDING/`. A third session on 2026-08-29/30 ran on the same days but concerned GPU
+measurement and an unrelated design study; `git blame` confirms it contributed no line to the
+dossier, and it is named as excluded rather than silently dropped.
+**Checked before committing.** The extracted log contains **no credential of any kind** — zero
+matches for password, passphrase, API key or private-key headers. It contains one public IP address
+of a private server belonging to the applicant, flagged in the disclosure for the applicant to
+decide on, not silently redacted: the policy asks for *unedited* output.
+**Status.** applied. Two obligations remain and both are in the disclosure: regenerate the log
+immediately before submitting, since the snapshot stops mid-session, and read it first.
