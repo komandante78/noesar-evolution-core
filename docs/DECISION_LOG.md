@@ -16213,3 +16213,133 @@ to rows that can be re-run or re-opened, each checked to exist.
 until **2026-11-03**. The `2026-09-04` written through these documents was a target the Owner
 set himself, not a hard date.
 **Status.** in progress — sixteen files; three declared as waiting.
+
+## D-0697 · The funding scope is settled: Restack, FOSS only, ATOM outside and separate — 2026-08-30
+**Decision (Owner, 2026-08-30).** The application targets **Restack**. The funded scope is
+**FOSS only**. **ATOM stays proprietary, outside the scope, and continues as its own project**
+with no call deadline attached to it. The **first application is deliberately small**, to open
+the door to larger ones rather than to ask for everything at once.
+**What settled it — the programme's own rules, read that day at their URLs.** The question had
+been recorded as open since inception: public programmes commonly require funded work to be
+open source *in its entirety*, which would disqualify an open-core project. The wording is
+real — the Restack Guide for Applicants says *"any software and hardware must be published
+under a recognised open source license in its entirety."* But the same programme's FAQ answers
+the exact question: *"If the part you want to develop and release as free and open source is
+relevant and **is not itself dependent on your (or other) proprietary technology**, sure."*
+So *"in its entirety"* governs the **deliverable**, and the binding condition is a
+**dependency** condition — which is `FOSS_CORE_DEPENDS_ON_ATOM=false`, enforced by
+`docs/ATOM_ABSENT_ACCEPTANCE.md` rather than by a sentence. Dual licensing is permitted
+explicitly, so the commercial route is untouched.
+**Why ATOM is out, in the order the reasons matter.** (1) It was never a candidate — funded work
+must be FOSS and ATOM is proprietary by `D-0633`, so excluding it costs the application nothing
+it could have had. (2) *Depending* on it would be the actual disqualifier, and the core does not:
+it never imports, links, vendors or special-cases ATOM, and does not degrade when it is absent.
+(3) **It is not demonstrable.** Measured today: `ATOM_EVOLUTION` has 28 commits and 637 files,
+its last commit is 2026-08-09, and `atomd` has not run for three weeks. *Technical excellence and
+feasibility* is 30% of the first-stage score; proposing work that cannot be shown running is how
+a proposal falls under the 5.0/7 threshold.
+**Why small is not a concession.** The Guide caps a first proposal at **€50 000**, any proposal
+at €150 000, and one applicant's lifetime at €500 000 — and allows larger amounts only after
+smaller projects have been *completed successfully*. A tight first submission that is delivered
+is the mechanism for asking for more later, not a reduced ambition.
+**The line that governs what is given and what is sold:** the contracts are given away, the
+implementations are sold. The capability-token spec, the `ReasoningProvider` conformance suite,
+the Proof-of-Session format and verifier, the sandbox crate and the module signing mechanism are
+FOSS; ATOM's implementation, the additional commercial licence on the core, and the "NOESAR
+Official" sector modules are not. This is also what the 40% "Relevance/Impact" band measures —
+utility to developers beyond the origin product.
+**Two stale documents corrected as part of this.** `docs/FUNDING_ALIGNMENT.md` still carried the
+question as open; `docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md` §2 still said *"Both sides are now
+public and AGPL-3.0-or-later"* — text left over from `D-0468`, superseded by `D-0633` on
+2026-08-21, contradicting that same file's own header. A boundary document holding two answers
+is the worst place in the tree for one to be stale.
+**What is still open, and is the Owner's.** Which work packages go in the **first** application —
+`09` puts all eight at 10-19 person-months, which does not fit €50 000 — and the figures in
+`10_BUDGET_STRUCTURE.md`.
+**The rule that outlives this entry.** A funding criterion is not a fact about the world; it is
+a fact about a programme on a date. Everything above was read on **2026-08-30**, when **no call
+was open** and the programme page still described its guide as *preliminary*. Restack opens
+**2026-09-03**, deadline **2026-11-03 12:00 CEST**. **Re-read then, and correct this if it
+changed.** This project has already published a funding document built around a programme that
+had closed six weeks earlier.
+**Status.** applied.
+
+## D-0698 · What the first application asks for: four extractions, one portability proof, and an audit requested rather than bought — 2026-08-30
+**Decision (Owner, 2026-08-30).** The first Restack submission carries `WP3`, `WP4`, `WP5` and
+`WP6` — the four extractions — plus `WP2` portability and a documentation slice of `WP8`. `WP1`,
+the independent security audit, is **requested as one of NLnet's own support services rather
+than budgeted as cash**. `WP7` and the remainder of `WP8` are deferred to a second application.
+**Why a subset at all.** The Guide caps a first proposal at €50 000 and allows larger amounts
+only after smaller ones are *completed successfully*. `09` puts all eight packages at 10-19
+person-months. A first submission that is delivered is the mechanism for a larger second one.
+**Why these.** The first-stage weights are 30% technical excellence and feasibility, **40%
+relevance, impact and strategic potential**, 30% cost effectiveness. The four extractions *are*
+the 40% band: they are the only deliverables useful to a developer who never runs this product.
+`WP6` also carries the feasibility argument for the other three, because **that extraction has
+already been done once** — the sandbox crate built and passed its 21 tests from a copy outside
+this repository, `tools/verify-crate-extraction.sh` generalises the procedure, and a CI workflow
+runs it (`D-0450`, `D-0451`). Being able to write *"we have done this before, here is the script
+and the CI"* is the strongest feasibility evidence available to us.
+**Why `WP2` is in, and what it is not.** It removes the most visible weakness in the dossier —
+"measured on exactly one host". The Owner asked whether this meant renting a machine with a
+bigger GPU; it does not, and proposing that would have been damaging twice over. The claim under
+test is not performance but that **confinement fails closed where a kernel primitive is absent**,
+which has never been observed on a host with a different set. And NLnet does not fund *"basic
+operational IT cost, such as regular laptops, desktops/workstations"*
+(<https://nlnet.nl/foundation/policies/externalspending/>); a compute request would also read as
+*AI as a commercial product*, which the programme says it does not fund. The second host class is
+therefore **a cloud VM the Owner already runs** — different distribution, different kernel,
+different primitives, no GPU. The absence of a GPU is a feature here, not a limitation.
+**Why the audit is requested rather than bought.** NLnet states it offers *"support services such
+as accessibility and security audits, licensing advice, mentoring, packaging"*
+(<https://nlnet.nl/restack/faq/>) at its own cost. Asking for it as support frees the budget for
+work and removes the one line nobody here could estimate. **A fallback cash line is kept** in
+case their service does not cover the scope in `docs/security/INDEPENDENT_PENTEST_SCOPE.md` —
+the FAQ says these services are offered, not that any particular audit is guaranteed.
+**The arithmetic that is stated rather than hidden.** The chosen subset is **6.5-12
+person-months**. At €50 000 it fits at the low end of that range and does **not** fit at the high
+end. Which is true depends on the hourly rate and on how tightly each extraction is scoped, and
+both are open in `10_BUDGET_STRUCTURE.md`. A budget that only works at the optimistic end of its
+own estimate will overrun, and it is cheaper to say so now than in month four.
+**Still open, and the Owner's:** the hourly rates, the contingency percentage, and confirmation
+that the existing VPS may be used as the second host class.
+**Status.** applied to `07`, `08`, `09`, `10`.
+
+## D-0699 · The first application is costed: four extractions, €40/h, €42 550 — and portability is traded for margin — 2026-08-30
+**Decision (Owner, 2026-08-30).** Rates: **€40/hour development, €25/hour documentation.** The
+first submission carries **`WP3`, `WP4`, `WP5`, `WP6` — the four extractions — plus a
+documentation slice of `WP8`**. Total requested: **€42 550 for 1 120 hours**, €7 450 below the
+€50 000 first-proposal cap. `WP1` is requested as an NLnet support service rather than budgeted.
+**`WP2` (portability) moves to a second submission**, narrowing `D-0698`.
+**The arithmetic that forced the trade.** At €40/hour the €50 000 cap buys **1 250 hours — 7.8
+person-months — whatever the scope**. `D-0698`'s subset was estimated at 6.5-12 person-months,
+so it fitted only at the optimistic end of its own range. Margin was therefore purchasable in
+exactly two ways: **lower the rate** (€35/h buys 8.9 person-months) or **narrow the scope**. The
+Owner asked which, and chose to keep the rate and narrow the scope.
+**Why `WP2` was the right thing to drop rather than an extraction.** It is the only candidate
+that produces nothing a third party can adopt, and *relevance, impact and strategic potential*
+is the **40%** band of the first-stage score — the four extractions **are** that band. `WP2` is
+also the natural content of a second submission, and Restack permits larger amounts only after
+smaller ones are *completed successfully*: a delivered first grant is the mechanism that makes
+the second askable. Nothing is lost; the order changed.
+**The effect on the estimate, which is the actual point.** The subset is now **4.5-9
+person-months** and the budget buys **7** — the upper middle of its own range instead of the
+bottom of a wider one. Removing a deliverable did not make the work cheaper; it made the
+estimate honest.
+**What was corrected along the way.** The Owner initially read `WP2` as "rent a machine with a
+bigger GPU". It is not, and proposing that would have been damaging twice: NLnet does not fund
+*"basic operational IT cost, such as regular laptops, desktops/workstations"*, and a compute
+request would read as *AI as a commercial product*, which the programme says it does not fund.
+`WP2` is about a **different operating system**, not a larger one — specifically that confinement
+**fails closed where a kernel primitive is absent**, which has never been observed on a host with
+a different set. When it is proposed, it will be proposed as work on a host already running.
+**Three zeroes in the budget, each an argument.** No hardware; no cash for the audit; **no
+contingency line** — on a cost-recovery grant a contingency percentage is a request to be paid
+for risk, so the risk is absorbed instead and any overrun is the applicant's. What protects the
+estimate is not padding but that every deliverable in `08` carries a **written acceptance
+condition**: a deliverable whose "done" is an opinion cannot be costed.
+**Applied to:** `07`, `08`, `09`, `10`.
+**Still open, and small:** confirmation that the existing VPS may be read as the second host
+class when `WP2` is prepared for the second submission — and the prompt log that NLnet's
+generative-AI policy requires to accompany the application, which does not exist yet.
+**Status.** applied.

@@ -35,8 +35,15 @@ is a blocker — not a known limitation, not a follow-up item.
 
 ## 2. What lives on each side
 
-Both sides are now public and AGPL-3.0-or-later. The split is about **repository and
-dependency direction**, not about what may be seen.
+**Corrected 2026-08-30.** This section still carried the sentence *"Both sides are now public
+and AGPL-3.0-or-later"* — text left over from `D-0468`, which `D-0633` **superseded on
+2026-08-21** and which this file's own header already records as superseded. A boundary
+document giving two answers is the worst place in the tree for one to be stale.
+
+**What is true:** ATOM's implementation is **proprietary**, in its own repository. The split is
+about repository and dependency direction — and, since `D-0633`, about licence as well. What
+has never depended on ATOM's licence, and still does not, is the invariant in §1: the core must
+not depend on it either way.
 
 **Open core (this repository):**
 - the product's own functionality end to end;
