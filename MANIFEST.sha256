@@ -6306,7 +6306,7 @@ e7ef0cf8658aec40e2518dc8072c82b04bda13ddcea24ef6cdeb77a44e42f3f2  ./services/ref
 f370efff5022df4b9bb1683c21a29563612b9f2feb2ed97ca72e5eefd7fa9428  ./services/reference-control-plane/src/ai-workspace/agent-service.mjs
 e3dbec2389e0a5a82b424ff6d5e017a10dd5da001575fca8ede83d207b327321  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
 cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/reference-control-plane/src/ai-workspace/atomic-store.mjs
-e38f016825c2ea58d871bdcb3887f53ae1be41a2aa81f267b70a3e728736b904  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
+ca89eb7e7f6f7100508d4fbdff5086b8ccc4d6a83211e9bffa60f71f970364bb  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
 e516ee93019edb4303083c2c0e5a1cee881fc59208db3f58de9d92c2a5c93fd1  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
 dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/reference-control-plane/src/ai-workspace/context-graph.mjs
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
@@ -6453,7 +6453,7 @@ a251900909efd5b7d2eec868a58a7b07221166d5ca9f4c6649cbe67696cce8d1  ./services/ref
 e0ad4ac9a964432baeaf0c1fba0f8d7f1774e50af29529d9ea92d644c3732744  ./services/reference-control-plane/test/authority.test.mjs
 c195ad5c0a2e7190c9daa0f261b27ae9c64ac8ad82fa7397a7deb3a938a7d3b1  ./services/reference-control-plane/test/bootstrap-feature-claims.test.mjs
 9565379d4fa99d1f8479053d18f95a417f7e54b3b2836491107855811782534e  ./services/reference-control-plane/test/build-provenance-signature.test.mjs
-effc78fa23137d134345fab1b93c614b72ff3902b741459bcda537dee5c8f674  ./services/reference-control-plane/test/builtin-tools.test.mjs
+d8318fa545f516024f82347545bb863f29d29e7d8caf297e1fd5fbd9f0a1c135  ./services/reference-control-plane/test/builtin-tools.test.mjs
 adf8f804389293a33ee2ed70f515090e31e43907dee9ab4e6bb7d2266eed3d26  ./services/reference-control-plane/test/canonical-json.test.mjs
 a0b75b159bc4ec1b5ea62000f1120eabd35a121d13d9febbcb94b5fd76bcdda0  ./services/reference-control-plane/test/capability-http-adversarial.test.mjs
 f35aeb773da426a47b196075accbb37652d5b6f51154372dfbb5757b6e844989  ./services/reference-control-plane/test/capability-revocation.test.mjs

@@ -26,10 +26,13 @@
 //    `can`, rather than running it unchecked: that is the accident `D-0302` found in the socket
 //    transport, and an optional gate is how a new transport inherits it.
 //
-// 2. **Only reads ship enabled.** `EFFECT` classifies all thirty methods; `builtinToolRecords()`
-//    seeds the twenty whose effect is `read`. The eight writes and the two destructive verbs are
-//    classified, tested and NOT registered — see `WRITE_TOOLS_ARE_NOT_SEEDED` below for why that
-//    is an Owner decision and not a gap this file may close on its own.
+// 2. **Reads run, writes ask, destroy does not ship.** `EFFECT` classifies every method in
+//    `SESSION_METHOD_POLICY`. `builtinToolRecords()` seeds every `read` one and — since the Owner
+//    decision of 2026-08-31 — every `write` one, the latter carrying `mutative:true`. That field is
+//    not decoration: `ChatOrchestrator` stops the turn on it and waits for a person before the
+//    call runs, which is the approval `D-0687` required before any write could ship at all.
+//    The two `destroy` verbs stay classified, schema-d and UNREGISTERED — see
+//    `DESTROY_IS_NOT_SEEDED` below for why that line did not move with the others.
 //
 // 3. **The resting cost is measured, not assumed.** Twenty schemas ride in every chat turn that
 //    names no tool. `builtin-tools.test.mjs` pins the serialized size against a declared budget,
@@ -250,34 +253,44 @@ export function builtinToolCatalogue() {
       command: command ? `/${command.name}` : null,
       description: OWN_DESCRIPTION[method] ?? command?.summary ?? '',
       inputSchema: SCHEMA[method] ?? null,
-      seeded: effect === 'read',
+      // Derived from SEEDED_EFFECTS, not restated. This read `effect === 'read'` — the same rule
+      // written a second time, thirty lines from the first, which is the hand-kept second list
+      // this file's own header calls the project's most expensive recurring lesson. It agreed
+      // until the day the rule changed, and then reported every write as unregistered while the
+      // seeder registered it.
+      seeded: SEEDED_EFFECTS.includes(effect),
     };
   });
 }
 
 /**
- * WRITE_TOOLS_ARE_NOT_SEEDED.
+ * DESTROY_IS_NOT_SEEDED.
  *
- * The eight `write` methods and the two `destroy` ones are classified above, carry schemas, and
- * are NOT registered as tools. This is a scope line, drawn deliberately and stated rather than
- * left to be discovered:
+ * The `write` methods ARE registered, as of the Owner decision of 2026-08-31. What this
+ * block used to say — that no write could ship because the chat executed a granted tool
+ * immediately and read `tool.mutative` without acting on it — was true when it was written and
+ * stopped being true when `ChatOrchestrator.approve()` landed. The condition it named was met,
+ * so the line moved. It is rewritten rather than deleted because what it still refuses is the
+ * more interesting half.
  *
- *  - P3's acceptance criterion is a READ — "the chat answers *what is broken here* by calling a
- *    real tool". Reads deliver that whole, end to end.
- *  - Letting a model approve a plan, promote a shadow or activate a model changes what the product
- *    IS, which `noesar-evolution-engineering-depth` §6 reserves for the Owner. Shipping it because
- *    the mechanism happens to work would be the widening `noesar-evolution-budget` §5 forbids.
- *  - Nothing architectural is deferred: turning a write on is one word in `EFFECT`'s neighbour
- *    below, not a new transport, a new gate or a new surface. The authority path, the refusal
- *    path, the audit line and the schema already exist and are already tested.
+ * The two `destroy` verbs stay classified, schema-d and UNREGISTERED — and not out of timidity
+ * about the mechanism, which is the very one the writes now use:
  *
- * What is NOT ready and would have to be built first, said now rather than on the day it is asked
- * for: the chat executes a granted tool immediately, and `tool.mutative`/`tool.requiresApproval`
- * — fields the store has carried since the beginning — are read by `AgentService` and ignored by
- * `ChatOrchestrator`. A write tool wants a mid-turn approval the person actually gives. That is a
- * real slice of work, not a flag.
+ *  - A write changes recoverable state: a plan, a shadow, an approval, a recorded closure. If a
+ *    person approves one they should not have, `workspace.restore` is right there and the ledger
+ *    says what happened. `replay.sweep` deletes bytes and `sessions.action` purges: afterwards
+ *    there is nothing to restore, and the ledger can only say that it happened.
+ *  - The command shell already demands the literal word `confirm` for these two — see
+ *    `agent-commands.js`: "in un terminale `y` è a un incollaggio di distanza dall'essere digitato
+ *    da qualcosa che non sei tu". A model emitting JSON has no equivalent of typing a word on
+ *    purpose, and an approval button is a `y`, not a `confirm`.
+ *  - Neither verb becomes unreachable: the Owner runs both from the terminal, where that word is
+ *    typed by a person who meant it.
+ *
+ * Nothing architectural stands in the way if that judgement changes — it is one string below,
+ * exactly as this block used to say about the writes.
  */
-export const SEEDED_EFFECTS = Object.freeze(['read']);
+export const SEEDED_EFFECTS = Object.freeze(['read', 'write']);
 
 /** The store records for the tools this product registers on its own behalf. Shaped exactly like
  *  `AgentService.registerTool` writes them, because everything downstream — the scope
@@ -305,8 +318,13 @@ export function builtinToolRecords(nowIso = new Date().toISOString()) {
     // what a tool costs to use. It is a DESCRIPTION and never the gate: the gate is `can`, checked
     // inside the dispatch, and a record edited to claim a smaller permission would change nothing.
     permissions: entry.permission ? [entry.permission] : [],
-    mutative: false,
-    requiresApproval: false,
+    // Derived, never written flat. These were both a hard `false`, which was honest while only
+    // reads were seeded and would have become a lie the instant a write was: the record would
+    // have told `ChatOrchestrator` that `workspace.approve` changes nothing, and the approval
+    // would never have fired for the very calls it exists for. `mutative` is in PRODUCT_OWNED,
+    // so an installation that seeded these before this change has them corrected on next start.
+    mutative: entry.effect !== 'read',
+    requiresApproval: entry.effect !== 'read',
     disabled: false,
     builtin: true,
     createdAt: nowIso,

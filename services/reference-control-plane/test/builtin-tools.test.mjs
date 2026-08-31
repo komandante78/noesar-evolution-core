@@ -57,18 +57,35 @@ test('every engine method is classified — a new one fails this suite until som
   assert.equal(builtinToolCatalogue().length, methods.length, 'the catalogue must carry one row per engine method, never a subset');
 });
 
-test('the two destroying verbs are named as such and are not registered', () => {
+test('destroy, and only destroy, is held back from the tool list', () => {
   const catalogue = builtinToolCatalogue();
   const destroying = catalogue.filter((entry) => entry.effect === 'destroy').map((entry) => entry.method).sort();
   assert.deepEqual(destroying, ['replay.sweep', 'sessions.action'],
     'the set of methods that remove something unrecoverable changed — classify the new one deliberately');
+  // Owner decision, 2026-08-31: the eight writes ship, the two destroying verbs do not. This
+  // assertion used to read "non-read is unregistered"; the replacement is sharper, not looser —
+  // it pins BOTH halves, so seeding a destroy fails here and un-seeding a write fails here too.
   for (const entry of catalogue) {
-    if (entry.effect !== 'read') assert.equal(entry.seeded, false, `${entry.method} is ${entry.effect} and must not be registered as a tool`);
+    assert.equal(entry.seeded, entry.effect !== 'destroy',
+      `${entry.method} is ${entry.effect} and its seeded flag disagrees with SEEDED_EFFECTS`);
   }
   const seeded = builtinToolRecords();
-  assert.equal(seeded.length, catalogue.filter((entry) => entry.effect === 'read').length);
-  assert.ok(seeded.length >= 20, `only ${seeded.length} read tools were registered — the chat is meant to be able to look at this installation`);
-  assert.deepEqual(seeded.filter((record) => record.mutative), [], 'a registered built-in must not be mutative');
+  assert.equal(seeded.length, catalogue.filter((entry) => entry.effect !== 'destroy').length);
+  assert.ok(seeded.length >= 28, `only ${seeded.length} tools were registered — the chat is meant to look at this installation AND act on it`);
+  for (const method of destroying) {
+    assert.equal(seeded.find((record) => record.config.method === method), undefined,
+      `${method} removes something no later act can bring back and must not be a tool a model can call`);
+  }
+  // The flag the mid-turn approval fires on. A write registered as non-mutative would run with
+  // nobody asked — the exact accident `ChatOrchestrator.approve()` exists to prevent — and a read
+  // registered as mutative would put a question in front of merely looking.
+  for (const record of seeded) {
+    const entry = catalogue.find((item) => item.method === record.config.method);
+    assert.equal(record.mutative, entry.effect === 'write',
+      `${record.name} is ${entry.effect} but its mutative flag says otherwise — the approval gates on this field`);
+    assert.equal(record.requiresApproval, entry.effect === 'write',
+      `${record.name} declares a requiresApproval that contradicts its effect`);
+  }
 });
 
 test('tool names are legal function names, unique, and reversible to their method', () => {
