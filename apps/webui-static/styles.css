@@ -1325,7 +1325,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* Height is the other half of "widen": a terminal is tall. This leaves room for the status row,
    the prompt, the legend and the bench heading below, and grows with the window instead of
    stopping at a fixed 420px. */
-#view-coden .agent-transcript{height:auto;padding-inline:24px}
+#view-coden .agent-transcript{height:min(74vh,820px);padding-inline:24px}
 #view-coden .agent-prompt,#view-coden .agent-hint{padding-inline:24px}
 @media(max-width:850px){
   #view-coden .bench,#view-coden .coden-bar,#view-coden .agent-transcript,
