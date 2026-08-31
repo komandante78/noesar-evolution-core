@@ -424,7 +424,7 @@
              AA and a view with no h1 is a worse page, not a tidier one. What is gone is the
              three-line block occupying the row the terminal spends on state. -->
         <h1 class="visually-hidden">CodeN Evolution</h1>
-        <div id="codenDivergence" class="divergence hidden" aria-live="polite"></div><div class="coden-bar"><div class="chip-list" id="codenTopChips"><span class="chip" id="codenProjectChip" title="Active project for this workspace, same value as the global Project chip">project —</span><span class="chip" id="codenGitChip" title="Branch of the active workspace root, from git itself — not tracked separately by this product">git —</span><span class="chip" id="codenModelChip" title="Active model, same value as the global Model chip, plus the accelerator it runs on when hardware discovery reports one"><span id="codenModelChipLabel">model —</span><button type="button" id="codenModelPickerOpen" aria-expanded="false" aria-controls="codenModelPicker" aria-label="Choose the model this installation uses" title="Choose the model this installation uses">▾</button></span><span class="chip" id="codenCtxChip" title="Total tokens of the most recent turn against the active provider's declared context window. Reads '—' when the provider has not declared one in Settings › Models &amp; External APIs, rather than guessing.">ctx —</span><span class="chip" id="codenReasoningChip" title="Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.">reasoning —</span><span class="chip" id="codenSandboxChip" title="Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below">sandbox —</span></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
+        <div id="codenDivergence" class="divergence hidden" aria-live="polite"></div><div class="coden-bar"><!-- The six status chips that used to sit here (project · git · model · ctx · reasoning · sandbox) were removed on 2026-08-31: they are fields of `footerText()` in tui-screen.mjs, and the terminal above already paints every one of them. Three of the six said so themselves, in their own title attribute. The mode switch below is a CONTROL, not a readout, and stays. --><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
         <!-- s336 · the model chooser, opened from the `model` chip above.
              Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e
              fa scegliere quale usare». It is deliberately NOT a second catalogue: it lists what
@@ -447,11 +447,19 @@
         <!-- PHASE 3a · the four regions — `16` §4b.2. "La WebUI È la TUI, resa in un browser."
              The canonical form is the terminal's, and this page renders it:
 
-               riga di stato   the `.coden-bar` chips ABOVE — region one, and deliberately
-                               not a second one: the terminal carries the same facts on one
-                               dim footer line, and adding a status strip of our own here
-                               would be the fourth navigation widget `D-0299` spent a phase
-                               removing. Same facts, one place, each shell's own idiom.
+               riga di stato   the terminal's own footer line, and only that. This used to
+                               read "the `.coden-bar` chips ABOVE — region one, and
+                               deliberately not a second one… Same facts, one place, each
+                               shell's own idiom", which was the intent and never the
+                               outcome. `coden-terminal.js` mounts xterm.js and paints
+                               `renderFrame`'s whole frame — footer included — so the chips
+                               were a SECOND rendering of region one, sitting three
+                               centimetres above the first, and three of the six said as
+                               much in their own title attribute. Owner, 2026-08-31, looking
+                               at the screen: the chips go, the facts stay where the terminal
+                               already puts them. This REVERSES a phase 3a decision (`16`
+                               §4b.2) and is a change of course, not a repair — the
+                               `DECISION_LOG` line is the Owner's to write.
                trascrizione    what you asked, what it did, the result — newest at the bottom
                prompt          one box, always in the same place
                menu            ONLY while the prompt begins with `/`, and it is the ONE menu

@@ -545,6 +545,10 @@ export const RUNTIME_ONLY = Object.freeze([
 ]);
 
 const it = {
+  // 2026-08-31: the six CodeN bar chips were removed from the markup (they were a second
+  // rendering of the terminal's own footer line), and their twelve entries — six labels, six
+  // titles — went with them in the same commit. A catalogue outliving its screen is the same
+  // defect as a comment outliving its code.
   // The mid-turn approval of a mutative tool. Written by `renderToolApproval()`, so none of these
   // five can appear in the markup — they are listed in RUNTIME_ONLY above for that reason.
   'waiting for your approval': 'in attesa della tua approvazione',
@@ -744,12 +748,6 @@ const it = {
   'Slash commands': 'Comandi con barra',
 
   // ——— CodeN Evolution bench ———
-  'project —': 'progetto —',
-  'git —': 'git —',
-  'model —': 'modello —',
-  'ctx —': 'ctx —',
-  'reasoning —': 'ragionamento —',
-  'sandbox —': 'sandbox —',
   'Normal': 'Normale',
   'Owner Bypass': 'Bypass del proprietario',
   'Enter sends ·': 'Invio manda ·',
@@ -873,12 +871,6 @@ const it = {
   'What you did not do, could not do, or chose not to do.': 'Che cosa non hai fatto, non hai potuto fare o hai scelto di non fare.',
   'What could still go wrong. "None" is an answer; silence is not.': 'Che cosa può ancora andare storto. «Nulla» è una risposta; il silenzio no.',
   'One sentence: what should become true.': 'Una frase: che cosa deve diventare vero.',
-  'Active project for this workspace, same value as the global Project chip': 'Progetto attivo per questo spazio di lavoro, stesso valore del chip Progetto globale',
-  'Branch of the active workspace root, from git itself — not tracked separately by this product': 'Ramo della radice dello spazio di lavoro attivo, letto da git stesso — non tracciato separatamente da questo prodotto',
-  'Active model, same value as the global Model chip, plus the accelerator it runs on when hardware discovery reports one': 'Modello attivo, stesso valore del chip Modello globale, più l’acceleratore su cui gira quando la scoperta hardware ne segnala uno',
-  'Total tokens of the most recent turn against the active provider\'s declared context window. Reads \'—\' when the provider has not declared one in Settings › Models & External APIs, rather than guessing.': 'Token totali dell’ultimo turno rispetto alla finestra di contesto dichiarata dal fornitore attivo. Mostra «—» quando il fornitore non ne ha dichiarata una in Impostazioni › Modelli e API esterne, invece di indovinare.',
-  'Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.': 'Quale fornitore ha risposto in questa sessione: atom quando la catena ha funzionato, reference quando ATOM non è stato raggiungibile.',
-  'Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below': 'Bypass del proprietario contro modalità Normale per le operazioni sui percorsi — lo stesso segnale del campo Sandbox nella riga di stato del banco qui sotto',
   'Open the menu — the same thing typing / does': 'Apri il menu — la stessa cosa che fa digitare /',
   // s336 — the model chooser opened from the `model` chip.
   'Choose the model this installation uses': 'Scegli il modello che questa installazione usa',
