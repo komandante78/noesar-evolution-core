@@ -27,7 +27,7 @@
 // here should be read as "macOS is verified" or "Podman is verified" — what is verified is
 // that the script does what it claims when its external commands are observed.
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, statSync, symlinkSync, realpathSync, rmSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, existsSync, statSync, symlinkSync, realpathSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -371,6 +371,28 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
     start: readFileSync(join(repoRoot, 'deployment/windows/Start-Noesar.ps1'), 'utf8'),
     test: readFileSync(join(repoRoot, 'deployment/windows/Test-Noesar.ps1'), 'utf8'),
   };
+
+  // DERIVED, never listed: whatever the control plane imports from outside its own tree must
+  // be installed with it. The check below this one runs the other way — it proves every path
+  // the installer copies exists — and a check in that direction cannot notice a path the
+  // installer never copies. That is how packages/ was missing from every Windows install
+  // until someone ran one: ERR_MODULE_NOT_FOUND on
+  // packages/verified-acquisition/src/transport.mjs, first start, 2026-08-31.
+  //
+  // A hand-kept list is what tui-import-closure.test.mjs was written about, and this file
+  // cites that test while carrying one. The list below is gone; the imports are followed.
+  const planeRoot = join(repoRoot, 'services/reference-control-plane/src');
+  const outOfTree = new Set();
+  for (const name of readdirSync(planeRoot, { recursive: true, encoding: 'utf8' })) {
+    if (!name.endsWith('.mjs')) continue;
+    const body = readFileSync(join(planeRoot, name), 'utf8');
+    for (const hit of body.matchAll(/from\s+['"](?:\.\.\/)+([a-z][a-z-]*)\//g)) outOfTree.add(hit[1]);
+  }
+  check(outOfTree.size > 0, 'the out-of-tree import scan found nothing — the scan itself is broken');
+  for (const directory of [...outOfTree].sort()) {
+    check(windows.install.includes(directory),
+      `Install-Noesar.ps1 must install ${directory}/ — the control plane imports from it`);
+  }
 
   // Every repository path a Windows script copies must actually exist here.
   for (const relative of ['package.json', 'services/reference-control-plane', 'apps/webui-static',

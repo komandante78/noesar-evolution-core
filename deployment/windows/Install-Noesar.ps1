@@ -41,6 +41,16 @@ Install-Tree -Source (Join-Path $Root "services\reference-control-plane") `
   -Target (Join-Path $NoesarRoot "services\reference-control-plane") -Guard $NoesarRoot
 Install-Tree -Source (Join-Path $Root "apps\webui-static") `
   -Target (Join-Path $NoesarRoot "apps\webui-static") -Guard $NoesarRoot
+
+# The control plane imports from packages/ — verified-acquisition today, through
+# model-transport.mjs. Without this the server threw ERR_MODULE_NOT_FOUND on its first
+# start, and had done so for every Windows installation ever attempted; measured on real
+# Windows on 2026-08-31, which is also the first time anyone ran this installer.
+#
+# The WHOLE tree, not the one package in use, for the same reason the tools copy is whole:
+# a hand-kept list of imports does not track the import graph. 412 KB, all four packages.
+Install-Tree -Source (Join-Path $Root "packages") `
+  -Target (Join-Path $NoesarRoot "packages") -Guard $NoesarRoot
 Copy-Item -Force (Join-Path $Root "deployment\windows\Start-Noesar.ps1") $Destination
 
 # The session, in one word — for a from-source installation on this platform too. Until
