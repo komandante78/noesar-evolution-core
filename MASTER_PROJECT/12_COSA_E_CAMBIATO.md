@@ -60,17 +60,13 @@ Era la parte fatta meglio.
 **Prima:** *"ATOM è un provider di ragionamento e orchestrazione proprietario"*. Vero, ma non
 dice **cosa fa**, quindi non si può costruire e non si può vendere.
 
-**Adesso:** ATOM ha una definizione operativa che viene dal laboratorio — **il livello atomico
-è quello in cui esiste una tabella finita**, cioè dove verificare significa *ricalcolare* e non
-*giudicare*. Da lì discendono dieci superfici di contratto, un ciclo, e una regola che vale
-ovunque nel prodotto: **scomponi finché verificare non è più un'opinione.**
-
-E non sono idee: **38 esperimenti già misurati**. Decomposizione atomica 0,790 → 1,000 esatto.
-Verificatore che ricalcola: 100% cattura / 0% falsi positivi — quello che giudica: 37-95% di
-falsi allarmi. Comporre esperti piccoli batte del 46% un blocco della stessa dimensione.
+**Adesso:** ATOM ha una definizione operativa, misurata in laboratorio — non più solo un nome.
+Il dettaglio (la definizione operativa, i numeri dei 38 esperimenti) sta nel blueprint privato
+(`NOESAR-ATOM-PRIVATE/`), non qui, per la stessa ragione per cui `02_ATOM.md` e
+`13_IL_VERIFICATORE.md` sono stati svuotati.
 
 > **Questa è la differenza più grande di tutte.** Il V4 aveva ATOM come nome. Adesso ha ATOM
-> come macchina, con i numeri.
+> come macchina, misurata — solo non qui il come.
 
 ### 3.2 · Dodici componenti di sicurezza sono diventati uno
 

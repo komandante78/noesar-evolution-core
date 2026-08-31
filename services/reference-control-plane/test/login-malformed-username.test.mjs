@@ -21,7 +21,7 @@ import { totpCode } from '../src/auth-crypto.mjs';
 import { freshTempDir } from './support/workspace.mjs';
 
 const MALFORMED = [
-  ['an email address', 'barciale1978@gmail.com'],
+  ['an email address', 'probe-value@example.invalid'],
   ['an address with a plus tag', 'someone+tag@example.org'],
   ['too short', 'ab'],
   ['a leading dot', '.owner'],
@@ -73,7 +73,7 @@ describe('sign-in refuses without teaching the format', () => {
     const { auth, ledgerPath } = realService();
     let error;
     try {
-      auth.beginLogin({ username: 'barciale1978@gmail.com', password: 'whatever', ip: '10.0.0.9' });
+      auth.beginLogin({ username: 'probe-value@example.invalid', password: 'whatever', ip: '10.0.0.9' });
     } catch (thrown) { error = thrown; }
 
     assert.ok(error, 'a malformed username must still be refused');
@@ -82,7 +82,7 @@ describe('sign-in refuses without teaching the format', () => {
 
     // What somebody typed into a sign-in box is not ours to keep: here it was an email address.
     const written = readFileSync(ledgerPath, 'utf8');
-    assert.ok(!written.includes('barciale1978'), 'the attempted value must not be written to the ledger');
+    assert.ok(!written.includes('probe-value'), 'the attempted value must not be written to the ledger');
     assert.match(written, /malformed-username/, 'but the attempt itself must be recorded');
   });
 
@@ -94,7 +94,7 @@ describe('sign-in refuses without teaching the format', () => {
       try { auth.beginLogin({ username, password: 'wrong', ip: '10.0.0.10' }); return null; }
       catch (error) { return error.message; }
     };
-    assert.equal(say('barciale1978@gmail.com'), say('koma78'));
-    assert.equal(say('barciale1978@gmail.com'), say('nosuchaccount'));
+    assert.equal(say('probe-value@example.invalid'), say('koma78'));
+    assert.equal(say('probe-value@example.invalid'), say('nosuchaccount'));
   });
 });
