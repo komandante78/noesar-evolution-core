@@ -403,9 +403,23 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
   check(/\$result\.local/.test(windows.test) && /status -ne "healthy"/.test(windows.test),
     'Test-Noesar.ps1 must assert the fields /healthz really returns');
 
-  note('Install-Noesar.ps1 has no equivalent of the `rm -rf "$DESTINATION/noesar"` that the Linux and macOS installers perform before copying. PowerShell Copy-Item -Recurse into an EXISTING destination directory copies the source INTO it rather than over it, so a reinstall or upgrade is expected to nest the tree. NOT REPRODUCED — there is no PowerShell on this host — and therefore not repaired here rather than repaired blind.');
+  // This note said the Windows installer had no equivalent of the POSIX installers' pre-copy
+  // removal, so a reinstall would nest the tree. It was true when written and FALSE since:
+  // `Install-Tree` clears the destination before copying, guarded so it cannot fire outside
+  // $NoesarRoot, and its own comment records the nesting bug reproduced on real PowerShell on
+  // 2026-07-27 and repaired. The note outlived the repair by more than a month, inside the
+  // instrument built to catch exactly that. Asserted now, so the next repair cannot be missed
+  // and the next regression cannot be silent.
+  check(/Remove-Item -Recurse -Force/.test(windows.install),
+    'Install-Noesar.ps1 must clear the destination before copying, or a reinstall nests the tree');
+  check(/refusing to install outside/.test(windows.install),
+    'that removal must be guarded to a path under the install root');
   note('Uninstall-Noesar.ps1 removes nothing; it prints two advisory lines. Whether that is deliberate caution or an unfinished script is an Owner question.');
-  note('Start-Noesar.ps1 carries a NOTE referencing REPORTS/BUILD_PREPARATION_V1/03_PATH_DECISIONS.tsv, which this repository does not contain — a dangling reference in a shipped script.');
+  // Was a fixed note, printed on every run whether or not it was still true. It described a
+  // real defect (a shipped script citing a report this repository does not carry), the defect
+  // was repaired on 2026-08-31, and a note cannot notice that. A check can.
+  check(!/BUILD_PREPARATION_V1/.test(windows.start),
+    'Start-Noesar.ps1 must not cite a build-preparation report this repository does not contain');
   note('No Windows, macOS or Podman installation was performed. OPS-002 cannot be closed from this host: what is verified is script behaviour under observed external commands, not installation on the platform.');
 }
 

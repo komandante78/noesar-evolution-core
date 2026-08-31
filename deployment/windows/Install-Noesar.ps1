@@ -64,5 +64,10 @@ Copy-Item -Force (Join-Path $Root "tools\coden-evolution.ps1") (Join-Path $Tools
 "@ | Set-Content -Path (Join-Path $Destination "coden_evolution.ps1") -Encoding UTF8
 
 Write-Host "Installed to $Destination"
-Write-Host "Open the session with: $(Join-Path $Destination 'coden_evolution.ps1')"
-Write-Host "Or in a browser, with nothing installed: http://localhost:8100/"
+# Start-Noesar.ps1 is copied above and was never named here, so nothing in this output
+# started anything. It prints the address it serves, which is why no port appears below:
+# the previous line named 8100 — the port the Unraid container is published on, not the one
+# this launcher listens to — and sent people to an address where nothing answers.
+Write-Host "Start it with: $(Join-Path $Destination 'Start-Noesar.ps1')"
+Write-Host "It prints the address to open in a browser."
+Write-Host "Or work in the terminal: $(Join-Path $Destination 'coden_evolution.ps1')"
