@@ -185,3 +185,70 @@ describe('CE-033 — the RUNNING ssh shell paints exactly those regions', () => 
     await finished.catch(() => {});
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* The `/` menu sits ABOVE the prompt (Owner, 2026-08-31).             */
+/*                                                                     */
+/* CE-033 finds its regions with `rows.some(...)` — presence, never    */
+/* position — so it is satisfied with the menu on either side of the   */
+/* prompt and cannot notice this. That is correct for the criterion it */
+/* states, and it is exactly why the property below needs its own      */
+/* test: without one, putting the menu back underneath turns nothing   */
+/* red, and the reason for the order is a comment nobody has to obey.  */
+
+describe('the `/` menu is painted above the prompt', () => {
+  /** Which row the prompt's caret line is on. -1 when it is not painted at all. */
+  const promptRow = (rows) => rows.findIndex((row) => row.includes('>') && row.includes('▍'));
+
+  const menuState = {
+    hits: [
+      { name: 'plan', argument: '<goal>', summary: 'start a plan' },
+      { name: 'approve', argument: '<run>', summary: 'promote what you were shown' },
+    ],
+    selected: 0,
+    note: null,
+  };
+
+  test('opening the menu does not move the prompt', () => {
+    const quiet = frameFor({ prompt: 'plan something', height: 24 });
+    const listing = frameFor({ prompt: '/', menu: menuState, height: 24 });
+
+    assert.ok(promptRow(quiet) > 0, 'the prompt was not painted with the menu closed');
+    assert.ok(listing.some((row) => row.includes('/plan')), 'the menu did not paint');
+    // THE point of the order. With the menu below, it sat between the prompt and the status
+    // line, so opening it pushed the prompt up — the caret moving out from under the eye of
+    // the person typing into it, while they read a list to choose from.
+    assert.equal(promptRow(listing), promptRow(quiet),
+      `the prompt moved from row ${promptRow(quiet)} to ${promptRow(listing)} when the menu opened`);
+  });
+
+  test('the menu is painted before the prompt, and the status line after it', () => {
+    const rows = frameFor({ prompt: '/', menu: menuState, height: 24 });
+    const menuAt = rows.findIndex((row) => row.includes('/plan'));
+    const statusAt = rows.findIndex((row) => /normal|owner bypass/.test(row));
+    assert.ok(menuAt >= 0 && statusAt >= 0, 'menu or status line missing from the frame');
+    assert.ok(menuAt < promptRow(rows), `the menu painted at row ${menuAt}, below the prompt at ${promptRow(rows)}`);
+    assert.ok(promptRow(rows) < statusAt, 'the prompt is no longer above the status line');
+  });
+
+  test('the menu takes ten rows at most, however tall the terminal is', () => {
+    // Forty commands on a sixty-row terminal: half the screen would have been thirty.
+    const many = Array.from({ length: 40 }, (unused, index) => ({
+      name: `cmd${index}`, argument: '', summary: `command number ${index}`,
+    }));
+    const rows = frameFor({ prompt: '/', menu: { hits: many, selected: 0, note: null }, height: 60 });
+    const painted = rows.filter((row) => /\/cmd\d+/.test(row)).length;
+    assert.ok(painted > 0, 'no command was painted');
+    assert.ok(painted <= 10, `the menu painted ${painted} command rows; ten is the budget`);
+    // Scrolling is what makes a ten-row budget honest, and it must SAY it is scrolling —
+    // a menu showing part of a list without declaring it is indistinguishable from a broken one.
+    assert.ok(rows.some((row) => row.includes(`of ${many.length}`)),
+      'the menu windowed the list without saying how much of it is off-screen');
+  });
+
+  test('a short terminal keeps a row of transcript rather than a full menu', () => {
+    const rows = frameFor({ prompt: '/', menu: menuState, height: 10 });
+    assert.equal(rows.length, 10, 'the frame is no longer exactly the height it was given');
+    assert.ok(promptRow(rows) > 0, 'the prompt was pushed off a short frame');
+  });
+});

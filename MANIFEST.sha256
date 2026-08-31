@@ -399,7 +399,7 @@ c9966eb8edd80a4e4c3a47f8f99301d07259e3187ba8ef5bf90177a4db82e103  ./apps/shared/
 e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/coden/coden-address-views.mjs
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
-2b52b3bf08af80911e350a956dbba14b6f2d507add9c772a0871d77feab86e5a  ./apps/shared/coden/tui-screen.mjs
+fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
 15872aa71145f09a1f6dbba70f2c2de8251b2cf3b2d2dd108523e4ab0cf9ba94  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
@@ -6483,9 +6483,9 @@ ff184fd02fc7b8fbfad6ea8a30f4452c30c698afdc9f548972eaefd0bbe82177  ./services/ref
 bfc38e9e571a70cbd713367f6b495768cba57f3d6ca9ec4ff4eeaffad3f10231  ./services/reference-control-plane/test/ce-028-opposite-conventions-diverge.test.mjs
 d2427279ed9b3c6e1f903311fd3d87503285bb9c3e90d7c592c2168903ac30b3  ./services/reference-control-plane/test/ce-029-no-model-refuses-to-author.test.mjs
 0da76cafdecc5cf24360ace617f90e3e310cea23363c5d2649594162866cd68f  ./services/reference-control-plane/test/ce-030-a-repeat-is-not-an-attempt.test.mjs
-fd454a8d0d6770e7a7a27827031062dbfddd2c1d2287c7b3674ead778fd9762b  ./services/reference-control-plane/test/ce-033-the-two-shells-have-the-same-regions.test.mjs
+2bcaae90270df4692bdf4805a188d6f34fbee1c6bc552227dbe2f05a6c176012  ./services/reference-control-plane/test/ce-033-the-two-shells-have-the-same-regions.test.mjs
 64ae9ad2bf8f4f0fe84212e484c2efadd8af240dce0133033bfc399ff915d88a  ./services/reference-control-plane/test/ce-034-the-same-names-in-both-shells.test.mjs
-41ea9ce9471b7855c1555d52898ff62df147a9c2f7cfeb6f6605dea717a94e6d  ./services/reference-control-plane/test/ce-036-one-menu-filtered-by-permission.test.mjs
+fda65813149624b9bc176c24510afaad0d2138b0edc3ac21a1c0487fadfa6b9a  ./services/reference-control-plane/test/ce-036-one-menu-filtered-by-permission.test.mjs
 460d3f81a9ada2d82f9eaa5bdd9bad84f3bd6303805c5705ea3a87be3863698b  ./services/reference-control-plane/test/chat-agent-directive.test.mjs
 4842299a8862a9d790d285900ffe89edf2d80a4edf5f612d822b2ce63b6b4bd1  ./services/reference-control-plane/test/chat-send-button-routes-commands.test.mjs
 88416aae6f2182916d70a140303cf57da575810f5a11490bff13404164228810  ./services/reference-control-plane/test/chat-tool-loop.test.mjs

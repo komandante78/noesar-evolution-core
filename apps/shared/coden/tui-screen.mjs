@@ -311,19 +311,27 @@ export function footerText(state) {
  * the BOTTOM — the newest turn is the one you are reading, so it is the one that must never
  * be the part that scrolls away.
  */
+/** How many rows the `/` menu may take. Ten, because `commandMenuRows` scrolls: the list does
+ *  not need to fit, only to be steerable, and the window follows the selection. */
+const MENU_ROWS = 10;
+
 export function renderFrame({ width, height, state }) {
   const w = Math.max(40, width | 0);
   const h = Math.max(10, height | 0);
   const rows = [];
 
   const prompt = promptRows(state.prompt ?? '', w);
-  // Half the screen, not a third — phase 3c. The menu is drawn ONLY while the prompt begins
-  // with `/`, so what it costs is what it costs at the moment you are choosing, and nothing at
-  // any other time. A third of thirty rows is ten, which after four headings and the filtered
-  // note leaves one entry per group: the whole product, one item at a time. The transcript is
-  // still anchored above the prompt and the prompt still cannot be pushed off the bottom —
-  // `commandMenuRows` never returns more rows than it was given.
-  const menu = state.menu ? commandMenuRows({ ...state.menu, rowLimit: Math.max(1, Math.floor(h / 2)) }, w) : [];
+  // A fixed ten rows, not half the screen — and the half was reasoning that had outlived its
+  // own subject. It read: "a third of thirty rows is ten, which after four headings and the
+  // filtered note leaves one entry per group". There are no headings any more: the grouped
+  // renderer was replaced by one flat scrolling list (see `commandMenuRows`, which windows the
+  // whole list at once and says "1-8 of 41" when it does). The budget stayed; the reason for it
+  // did not. Ten rows scroll perfectly well, and the sixteen they give back to the transcript
+  // are the conversation you were reading when you reached for a command.
+  //
+  // The floor keeps a short terminal honest: `h - 6` is what remains once the prompt (3), the
+  // footer (1), the blank (1) and one row of transcript are paid for.
+  const menu = state.menu ? commandMenuRows({ ...state.menu, rowLimit: Math.min(MENU_ROWS, Math.max(1, h - 6)) }, w) : [];
   const footer = wrapLines([footerText(state)], w - 2);
   const chromeHeight = prompt.length + menu.length + footer.length + 1;
   const transcriptHeight = Math.max(1, h - chromeHeight);
@@ -340,8 +348,18 @@ export function renderFrame({ width, height, state }) {
   }
 
   rows.push('');
-  for (const row of prompt) rows.push(row);
+  // The menu is painted ABOVE the prompt, and the order is the feature. Below it, the menu sat
+  // between the prompt and the status line, so opening it pushed the prompt UP — the caret
+  // moved out from under the eye of the person typing into it, at the exact moment they were
+  // reading a list to choose from. Above it, the prompt is always the row before the footer and
+  // never moves; the menu grows upward and what pays for it is the transcript, which is the
+  // right thing to spend while you are choosing a command.
+  //
+  // `CE-033` is satisfied either way and this was checked, not assumed: it finds each region
+  // with `rows.some(...)` — presence, not position — and asks only that the menu displace none
+  // of them.
   for (const row of menu) rows.push(row);
+  for (const row of prompt) rows.push(row);
   for (const row of footer) rows.push(padToWidth(` ${row}`, w));
 
   return rows.slice(0, h).map((row) => clipToWidth(row, w));

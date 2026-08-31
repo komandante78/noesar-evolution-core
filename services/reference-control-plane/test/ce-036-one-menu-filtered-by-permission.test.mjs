@@ -149,7 +149,19 @@ describe('CE-036 — one menu, four groups, filtered by permission and declared'
         + 'form D-0437 removed on the Owner\'s instruction, and CE-036\'s verdict says it is flat');
     }
     // Flat, and still the WHOLE product: entries and the declaration are both on screen.
-    assert.match(screen, /\/logout/, `the flat menu did not paint its entries: ${screen.slice(-300)}`);
+    // Entries are painted — asserted by COUNT, not by naming one. This named `/logout`, which
+    // sat in the visible window while the menu was allowed half the screen and fell out of it
+    // when the budget became ten rows (Owner, 2026-08-31). WHICH entry is on screen at a given
+    // terminal height was never the claim; pinning one made this line measure the row budget by
+    // accident, and fail for a menu that was working.
+    const painted = screen.match(/\/[a-z][a-z-]{2,}/g) ?? [];
+    assert.ok(painted.length >= 5,
+      `the flat menu did not paint its entries: ${screen.slice(-300)}`);
+    // The whole product is still DECLARED when the window shows part of it. Same rule as the
+    // permission note below, applied to the other way a list can shorten itself: nineteen
+    // entries in ten rows is legitimate, nineteen entries silently shown as eight is not.
+    assert.match(screen, /1-\d+ of \d+/,
+      'the menu windowed its entries without saying how many there are');
     assert.match(screen, /hidden — they need/,
       'the running shell painted a filtered menu without declaring that it was filtered');
 
