@@ -403,7 +403,7 @@ fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/
 15872aa71145f09a1f6dbba70f2c2de8251b2cf3b2d2dd108523e4ab0cf9ba94  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
-7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
+da962a06e8875138a22b878f6b0a60ef08e039d32503aeb559bef0ae983706ca  ./apps/webui-static/coden-terminal.js
 a4d9655442160562219252223738d384f5d5bfad03c3f80b7c8bd0f7e33b1046  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
 e1fa0421b9e4370a2cd44d8bd38705660d054cc92c006c0e5cd0abb0d1e316bc  ./apps/webui-static/i18n-catalog.js
@@ -412,7 +412,7 @@ a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-s
 b509c8b1da2d63d94b364ed9969082d8e3ca35dd19c268b34a7bfdfb4d716d41  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
-b4b7f6e33831092223249a05fb2eb965061ba038a466f6385c7acfa9c2793af3  ./apps/webui-static/styles.css
+62b9bdabcbc153d2b26515dc2d1588d96dda1fc1f1afb3bb6d3a4087836f297c  ./apps/webui-static/styles.css
 b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd  ./apps/webui-static/vendor/xterm/LICENSE
 70cf8efd07e7e8a60fdcb4ba09f142f7ba8ac53f0f54cd4317bde25fe8730851  ./apps/webui-static/vendor/xterm/PROVENANCE.md
 854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6  ./apps/webui-static/vendor/xterm/xterm.css

@@ -142,7 +142,31 @@ export function mountCodenTerminal({
     if (onState) { try { onState(next, detail || DEFAULT_STATUS[next]); } catch { /* the caller's problem, not this terminal's */ } }
   };
 
+  /** The tallest and shortest this box may get, in rows. The cap is a screenful of work; the
+   *  floor keeps the prompt and its status line from being the entire surface on an empty
+   *  session. Both are rows rather than pixels because rows are what the frame speaks. */
+  const MAX_CONTENT_ROWS = 34;
+  const MIN_CONTENT_ROWS = 9;
+
+  /** How many rows the frame is actually carrying, asked OF THE FRAME rather than recomputed.
+   *  renderFrame pads the top when the transcript is short, so rendering it tall and counting
+   *  from the first row with anything on it gives the content height exactly, including the
+   *  prompt, the menu when it is open, and the status line.
+   *  ponytail: one extra render per draw, ~200 rows of string building. Cheap next to a second
+   *  copy of the frame height arithmetic living here and drifting from the real one. */
+  const PROBE_ROWS = 200;
+  const contentRows = () => {
+    const probe = renderFrame({ width: terminal.cols, height: PROBE_ROWS, state: view });
+    const first = probe.findIndex((row) => String(row).trim() !== '');
+    return first < 0 ? MIN_CONTENT_ROWS : PROBE_ROWS - first;
+  };
+
   const draw = () => {
+    // The height follows the CONTENT; only the width follows the box (see `resize`). A frame
+    // that fills its host with blank rows is what a full-screen terminal is supposed to do and
+    // what a panel on a page must not.
+    const wanted = Math.min(MAX_CONTENT_ROWS, Math.max(MIN_CONTENT_ROWS, contentRows()));
+    if (wanted !== terminal.rows) { terminal.resize(terminal.cols, wanted); sendGeometry(); }
     const rows = renderFrame({ width: terminal.cols, height: terminal.rows, state: view });
     // `\r\n`, not `\n`: without the carriage return every row after the first starts at the
     // column the previous one ended on, and the frame walks diagonally off the screen. The
@@ -482,10 +506,14 @@ export function mountCodenTerminal({
     return geometryFor({ width: box.width, height: box.height, cellWidth: cell?.width, cellHeight: cell?.height });
   }
 
+  // WIDTH only, since `draw` owns the height. Two owners for the row count would fight: the
+  // box grows because the content did, the observer reads the taller box and asks for more
+  // rows, the frame pads them, and the box grows again. Splitting the axes ends that without
+  // a guard flag — the observer simply has nothing to say about rows.
   function resize() {
-    const { columns, rows } = measure();
-    if (columns === terminal.cols && rows === terminal.rows) return;
-    terminal.resize(columns, rows);
+    const { columns } = measure();
+    if (columns === terminal.cols) return;
+    terminal.resize(columns, terminal.rows);
     sendGeometry();
     draw();
   }
