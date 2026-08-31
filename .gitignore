@@ -158,3 +158,6 @@ Thumbs.db
 
 # Compiled WebAssembly modules (see docs/INSTALLABLE_ARTIFACT_MAP.md for restore)
 *.wasm
+.claude/
+CLAUDE.md
+CLAUDE10.md
