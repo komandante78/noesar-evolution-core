@@ -335,3 +335,130 @@ test('an installation with no tool executor refuses by name instead of crashing'
   assert.equal(res.eventsNamed('error').length, 0);
   assert.equal(res.eventsNamed('tool-result')[0].data.detail, 'out-of-scope');
 });
+
+/* ------------------------------------------------------------------ */
+/* The mid-turn approval (D-0687).                                     */
+/*                                                                     */
+/* `tool.mutative` has ridden on every store record since the beginning */
+/* and `AgentService` has always enforced it; `ChatOrchestrator` read   */
+/* it and did nothing, which is why `builtin-tools.mjs` refused to seed */
+/* a single one of the eight engine writes. These drive the REAL        */
+/* orchestrator, and the approval arrives the way it does in life: from */
+/* a second caller, while the turn is still streaming.                  */
+
+/** Poll until `fn` returns something truthy. The turn is mid-flight and nothing resolves until
+ *  the approval lands, so there is no promise to await here — only the frames it has written. */
+async function waitFor(fn, what) {
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    const value = fn();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`timed out waiting for ${what}`);
+}
+
+const mutativeFixture = (port, executed) => fixture(port, {
+  executor: { async execute(tool, input) { executed.push({ name: tool.name, input }); return { ok: true }; } },
+  tools: [{ name: 'writeThing', mutative: true }],
+});
+
+test('a mutative tool stops the turn and runs only once the person approves', async () => {
+  const upstream = await scriptedModel([[callFrame('writeThing', '{"x":1}')], [textFrame('fatto')]]);
+  const executed = [];
+  const fx = mutativeFixture(upstream.port, executed);
+  const res = recordingResponse();
+  const turn = run(fx, res);
+
+  const asked = await waitFor(() => res.eventsNamed('tool-approval')[0], 'the approval request');
+  assert.equal(executed.length, 0, 'NOTHING ran before the person decided — this is the whole point');
+  assert.equal(asked.data.name, 'writeThing');
+  assert.deepEqual(asked.data.arguments, { x: 1 }, 'the person is shown what the tool was asked to do');
+  assert.ok(asked.data.timeoutMs > 0, 'and how long they have');
+
+  assert.equal(fx.orchestrator.approve(asked.data.runId, asked.data.id, true, 'owner-001'), true);
+  await turn;
+  upstream.server.close();
+
+  assert.deepEqual(executed, [{ name: 'writeThing', input: { x: 1 } }], 'it ran, once, after the approval');
+  const complete = res.eventsNamed('complete').at(-1).data;
+  assert.deepEqual(complete.toolCalls, [{ name: 'writeThing', ok: true, detail: null }]);
+});
+
+test('a refusal is a result, not an exception: the tool does not run and the model is told', async () => {
+  const upstream = await scriptedModel([[callFrame('writeThing', '{"x":1}')], [textFrame('va bene, non lo faccio')]]);
+  const executed = [];
+  const fx = mutativeFixture(upstream.port, executed);
+  const res = recordingResponse();
+  const turn = run(fx, res);
+
+  const asked = await waitFor(() => res.eventsNamed('tool-approval')[0], 'the approval request');
+  assert.equal(fx.orchestrator.approve(asked.data.runId, asked.data.id, false, 'owner-001'), true);
+  await turn;
+  upstream.server.close();
+
+  assert.deepEqual(executed, [], 'the tool never ran');
+  // The turn CONTINUES. A refusal that threw would end the conversation and hand the person a
+  // stack trace for having said no.
+  assert.equal(upstream.rounds, 2, 'the model got another round to answer around the refusal');
+  const answered = upstream.seen[1].messages.find((message) => message.role === 'tool');
+  assert.match(answered.content, /did not approve/, 'and it was told why, in words it can act on');
+  const complete = res.eventsNamed('complete').at(-1).data;
+  assert.deepEqual(complete.toolCalls, [{ name: 'writeThing', ok: false, detail: 'not-approved' }]);
+  assert.deepEqual(complete.message.metadata.toolCalls, [{ name: 'writeThing', ok: false, detail: 'not-approved' }],
+    'a refusal is provenance too, and is persisted with the message');
+});
+
+test('only the person whose turn it is may approve a write in it', async () => {
+  const upstream = await scriptedModel([[callFrame('writeThing', '{"x":1}')], [textFrame('fatto')]]);
+  const executed = [];
+  const fx = mutativeFixture(upstream.port, executed);
+  const res = recordingResponse();
+  const turn = run(fx, res);
+
+  const asked = await waitFor(() => res.eventsNamed('tool-approval')[0], 'the approval request');
+  // Two people holding the same permission are still two people. `stop()` may be called by
+  // anyone because stopping is harmless; approving a write is not.
+  assert.equal(fx.orchestrator.approve(asked.data.runId, asked.data.id, true, 'somebody-else'), false,
+    'a different actor is refused, and gets the same answer as a run that does not exist');
+  assert.equal(executed.length, 0, 'and the call is still waiting, not consumed by the attempt');
+
+  assert.equal(fx.orchestrator.approve(asked.data.runId, asked.data.id, true, 'owner-001'), true);
+  await turn;
+  upstream.server.close();
+  assert.deepEqual(executed, [{ name: 'writeThing', input: { x: 1 } }]);
+});
+
+test('a read tool is not gated: no approval is asked for and nothing waits', async () => {
+  const upstream = await scriptedModel([[callFrame('readThing', '{}')], [textFrame('ecco')]]);
+  const executed = [];
+  const fx = fixture(upstream.port, {
+    executor: { async execute(tool, input) { executed.push({ name: tool.name, input }); return { ok: true }; } },
+    tools: [{ name: 'readThing' }],
+  });
+  const res = recordingResponse();
+  await run(fx, res);
+  upstream.server.close();
+
+  assert.equal(res.eventsNamed('tool-approval').length, 0, 'a read is not something a person is asked about');
+  assert.equal(executed.length, 1, 'and it ran without waiting for anyone');
+});
+
+test('stopping the turn releases a call that was waiting for approval', async () => {
+  const upstream = await scriptedModel([[callFrame('writeThing', '{"x":1}')], [textFrame('interrotto')]]);
+  const executed = [];
+  const fx = mutativeFixture(upstream.port, executed);
+  const res = recordingResponse();
+  const turn = run(fx, res);
+
+  const asked = await waitFor(() => res.eventsNamed('tool-approval')[0], 'the approval request');
+  assert.equal(fx.orchestrator.stop(asked.data.runId, 'owner-001'), true);
+
+  // The assertion IS that this returns. Without the abort listener the pending promise is never
+  // settled, the tool loop never resumes, and this file stops terminating — reported by the full
+  // suite as a hang with zero failures, exactly as this file's own header warns.
+  await turn;
+  upstream.server.close();
+
+  assert.deepEqual(executed, [], 'a stopped turn does not run the write it was holding');
+  assert.equal(fx.orchestrator.pending.size, 0, 'and nothing is left pending, timer included');
+});

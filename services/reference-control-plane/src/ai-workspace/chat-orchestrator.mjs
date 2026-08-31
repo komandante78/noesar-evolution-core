@@ -11,6 +11,13 @@ function sse(res,event,data){res.write(`event: ${event}\ndata: ${JSON.stringify(
  *  short enough that a model stuck in a loop bills the operator's own hardware for seconds rather
  *  than minutes. Unbounded is not an option: the loop runs on the person's own machine. */
 const MAX_TOOL_ROUNDS=4;
+/** How long a mutative call waits for the person before the turn refuses it on their behalf.
+ *  Not unbounded, and the direction of the default is the safeguard: the turn holding this is
+ *  an open SSE stream, so an abandoned tab would otherwise keep one alive for ever — and a
+ *  write nobody approved must not happen because nobody was looking.
+ *  ponytail: one value for every tool; make it per-tool if a slow approval ever becomes a real
+ *  complaint rather than an imagined one. */
+const APPROVAL_TIMEOUT_MS=5*60_000;
 function dataClassesFor({history,projectInstructions,memoryText,evidence,tools}){
   return ['prompt',history&&'selected messages',projectInstructions&&'project instructions',memoryText&&'selected memory',evidence.length&&'selected sources',tools.length&&'tool schemas'].filter(Boolean);
 }
@@ -25,7 +32,7 @@ export class ChatOrchestrator{
   // array is empty, so no model can emit a call in the first place — but the loop still refuses
   // by name rather than crashing, because "no executor" and "no such tool" must not be the same
   // stack trace.
-  constructor({graph,workspace,providers,store,ledger,agentService=null,installationSnapshot=null,toolExecutor=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.installationSnapshot=installationSnapshot;this.toolExecutor=toolExecutor;this.active=new Map();}
+  constructor({graph,workspace,providers,store,ledger,agentService=null,installationSnapshot=null,toolExecutor=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.installationSnapshot=installationSnapshot;this.toolExecutor=toolExecutor;this.active=new Map();this.pending=new Map();}
   // A snapshot that throws must never take the turn down with it: the assistant is worse without
   // its grounding, but it still answers, and an installation fact is not worth a 500.
   #installationFacts(){
@@ -33,6 +40,39 @@ export class ChatOrchestrator{
     catch(error){this.ledger?.append({actor:'system',action:'chat.identity',result:'degraded',details:{message:error.message}});return{};}
   }
   stop(runId,actorId='system'){const active=this.active.get(runId);if(!active)return false;active.controller.abort();this.ledger?.append({actor:actorId,action:'chat.stop',result:'stopped',details:{runId}});return true;}
+  /**
+   * The mid-turn gesture a person actually gives, and the thing `D-0687` said had to exist
+   * before a write tool could ship. Twin of `stop()` on purpose: same map-of-live-work shape,
+   * same "false when there is nothing to act on" answer that the route turns into a 404.
+   *
+   * One deliberate difference from its twin: this checks WHO is asking. Stopping somebody
+   * else's turn is harmless and `stop()` rightly does not care; approving a write inside it is
+   * not, so an approval is accepted only from the actor whose turn it is. Two people with the
+   * same permission are still two people.
+   */
+  approve(runId,callId,approved,actorId='system'){
+    const waiting=this.pending.get(`${runId}:${callId}`);
+    if(!waiting||waiting.actorId!==actorId)return false;
+    this.ledger?.append({actor:actorId,action:'chat.tool-approval',result:approved?'approved':'refused',details:{runId,callId,name:waiting.name}});
+    waiting.settle(Boolean(approved));return true;
+  }
+  /**
+   * Wait for that gesture. Resolves false three ways — the person refuses, the timeout fires,
+   * or the turn is stopped — and every one of them goes through the same `settle`, so there is
+   * exactly one place that clears the timer and the map entry. A pending entry that outlives
+   * its turn is not only a leak: its timer holds the event loop open, which is how a test file
+   * stops terminating (this suite has already been bitten by that once, see its own header).
+   */
+  #awaitApproval({runId,call,tool,actorId,res,signal}){
+    const key=`${runId}:${call.id}`;
+    sse(res,'tool-approval',{runId,id:call.id,name:tool.name,arguments:call.arguments??null,timeoutMs:APPROVAL_TIMEOUT_MS});
+    return new Promise((resolve)=>{
+      const settle=(value)=>{const waiting=this.pending.get(key);if(!waiting)return;this.pending.delete(key);clearTimeout(waiting.timer);resolve(value);};
+      const timer=setTimeout(()=>settle(false),APPROVAL_TIMEOUT_MS);
+      this.pending.set(key,{settle,actorId,timer,name:tool.name});
+      signal?.addEventListener('abort',()=>settle(false),{once:true});
+    });
+  }
   #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[]}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??inspection.conversation.mode??'ASK').toUpperCase();
@@ -147,6 +187,24 @@ export class ChatOrchestrator{
       if(!tool){
         this.ledger?.append({actor:actorId,action:'chat.tool-call',result:'refused',details:{runId,conversationId,name:call.name,reason:'out-of-scope'}});
         record(false,`No tool named "${call.name}" is available in this conversation. Available: ${[...granted.keys()].join(', ')||'none'}.`,'out-of-scope');
+        continue;
+      }
+      // The mid-turn approval, and the whole reason a write tool may ship at all. `mutative` has
+      // ridden on every store record since the beginning and `AgentService` has always enforced
+      // it (agent-service.mjs); THIS is the surface that read it and did nothing — `D-0687` named
+      // the gap and `builtin-tools.mjs` refused to seed a single write until it was closed.
+      //
+      // A refusal is a RESULT, not an exception: the model is told the person declined and
+      // answers around it, exactly as it already does for a tool that failed. Throwing would end
+      // the turn and leave the person with a stack trace for having said no.
+      //
+      // `tool.mutative` alone, deliberately not `||tool.requiresApproval`: `registerTool` writes
+      // `requiresApproval:input.requiresApproval!==false`, i.e. TRUE by default, so reading it
+      // here would put an approval in front of every tool an operator has ever registered. That
+      // is a different decision, and not one this change is entitled to make.
+      if(tool.mutative&&!(await this.#awaitApproval({runId,call,tool,actorId,res,signal}))){
+        this.ledger?.append({actor:actorId,action:'chat.tool-call',result:'refused',details:{runId,conversationId,toolId:tool.id,name:tool.name,reason:'not-approved'}});
+        record(false,`The person did not approve "${tool.name}", so it did not run. Do not call it again this turn: continue without it, or say what you would need.`,'not-approved');
         continue;
       }
       const started=Date.now();
@@ -274,6 +332,6 @@ export class ChatOrchestrator{
       const assistant=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'assistant',content:cleanAnswer||'[Provider returned no text]',metadata:{runId,providerId:selectedProvider,providerRoute,model,mode:selectedMode,usage,agentCreated,toolCalls:toolTrace.length?toolTrace:undefined},citations});
       sse(res,'complete',{runId,message:assistant,providerId:selectedProvider,citations,usage,agentCreated,toolCalls:toolTrace});this.ledger?.append({actor:actorId,action:'chat.complete',result:'success',details:{runId,conversationId,providerId:selectedProvider,providerRoute}});
     }catch(error){const stopped=error.name==='AbortError'||controller.signal.aborted;sse(res,stopped?'stopped':'error',{runId,error:stopped?'Generation stopped.':error.message});this.ledger?.append({actor:actorId,action:'chat.complete',result:stopped?'stopped':'error',details:{runId,message:error.message}});
-    }finally{this.active.delete(runId);res.end();}
+    }finally{this.active.delete(runId);for(const [key,waiting] of this.pending)if(key.startsWith(`${runId}:`)){clearTimeout(waiting.timer);this.pending.delete(key);}res.end();}
   }
 }

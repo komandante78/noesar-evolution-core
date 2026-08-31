@@ -58,6 +58,13 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // The mid-turn approval of a mutative tool: the row, its two buttons and the two words it
+  // settles into are all written by `renderToolApproval()` when the server asks, so there is no
+  // markup for the measurement tool to find them in.
+  'waiting for your approval',
+  'Approve',
+  'approved',
+  'refused',
   // Adding a model (Owner, 2026-08-29). The panel ships its title, its explanation and the
   // browse button in the markup; everything below is written per file by
   // `loadInstallableModels()` — one row per GGUF found on the server — so none of it can
@@ -538,6 +545,12 @@ export const RUNTIME_ONLY = Object.freeze([
 ]);
 
 const it = {
+  // The mid-turn approval of a mutative tool. Written by `renderToolApproval()`, so none of these
+  // five can appear in the markup — they are listed in RUNTIME_ONLY above for that reason.
+  'waiting for your approval': 'in attesa della tua approvazione',
+  'Approve': 'Approva',
+  'approved': 'approvata',
+  'refused': 'rifiutata',
   // ——— chrome: sign-in gate, top bar, sidebar, command box ———
   'NOESAR Evolution': 'NOESAR Evolution',
   'Secure initialization': 'Inizializzazione sicura',

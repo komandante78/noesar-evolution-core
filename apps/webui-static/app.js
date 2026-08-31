@@ -1313,6 +1313,31 @@ function renderToolActivity(article,data){
   return row;
 }
 
+// The two buttons that make a write tool possible. Deliberately built ON TOP of
+// `renderToolActivity` rather than beside it: a waiting call has to sit in the same list, in the
+// same `role="status"` region, or the wait is announced by nothing and reads as a hang — which is
+// the exact failure that list was created to prevent.
+//
+// No form, no dialog, no third choice. Doing nothing is already a decision here and the server
+// makes it for you after five minutes, in the safe direction.
+function renderToolApproval(article,data){
+  const row=renderToolActivity(article,{name:data.name});
+  if(!row)return null;
+  row.classList.remove('running');row.classList.add('awaiting');
+  row.querySelector('.tool-activity-icon').textContent='⏸';
+  row.querySelector('.tool-activity-state').textContent=t('waiting for your approval');
+  const decide=async(approved)=>{
+    for(const button of row.querySelectorAll('button'))button.disabled=true;
+    row.querySelector('.tool-activity-state').textContent=approved?t('approved'):t('refused');
+    await api('/api/v1/chat/runs/'+data.runId+'/approve',{method:'POST',body:JSON.stringify({callId:data.id,approved})}).catch(()=>{});
+  };
+  const yes=document.createElement('button');yes.type='button';yes.className='primary';yes.textContent=t('Approve');
+  const no=document.createElement('button');no.type='button';no.className='secondary';no.textContent=t('Reject');
+  yes.addEventListener('click',()=>decide(true));no.addEventListener('click',()=>decide(false));
+  row.append(yes,no);
+  return row;
+}
+
 function resolveToolActivity(row,data){
   if(!row)return;
   row.classList.remove('running');
@@ -1391,6 +1416,10 @@ async function sendChat({signal=null,onDelta=null}={}){
           // The row is created here and RESOLVED by the matching `tool-result`, so a tool that
           // never answers still leaves a visible "running" rather than nothing at all.
           toolRow=renderToolActivity(article,data);
+        }else if(event==='tool-approval'){
+          // A mutative tool has stopped the turn and is waiting for this person. Rendered into
+          // the same list a running tool uses, so the wait appears where the work appears.
+          renderToolApproval(article,data);
         }else if(event==='tool-result'){
           // Resolved in place, and deliberately NOT announced from here. UI-043 forbids the
           // streaming branch from announcing, and its own test caught this line: announcing

@@ -4885,6 +4885,17 @@ const requestListener = async (req, res) => {
     if(match&&req.method==='POST'){
       const authenticated=requireSession(req,res,'provider.use');if(!authenticated||!requireCsrf(req,res,authenticated))return;const stopped=chatOrchestrator.stop(match[1],authenticated.user.id);return json(res,stopped?200:404,{stopped,runId:match[1]});
     }
+    // The other half of the mid-turn approval. Shaped exactly like its neighbour above, and
+    // guarded the same way, because it IS the same kind of act: a second request reaching into a
+    // turn that is already streaming. `approved===true` and nothing looser — missing, absent, or
+    // truthy-but-not-true is a refusal, which is the safe direction for a write.
+    match=url.pathname.match(/^\/api\/v1\/chat\/runs\/([^/]+)\/approve$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'provider.use');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const payload=await body(req);
+      const resolved=chatOrchestrator.approve(match[1],String(payload.callId??''),payload.approved===true,authenticated.user.id);
+      return json(res,resolved?200:404,{resolved,runId:match[1]});
+    }
     if(req.method==='GET'&&url.pathname==='/api/v1/tools'){
       const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,{tools:aiWorkspace.snapshot().tools});
     }
