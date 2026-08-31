@@ -381,17 +381,34 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
   //
   // A hand-kept list is what tui-import-closure.test.mjs was written about, and this file
   // cites that test while carrying one. The list below is gone; the imports are followed.
-  const planeRoot = join(repoRoot, 'services/reference-control-plane/src');
-  const outOfTree = new Set();
-  for (const name of readdirSync(planeRoot, { recursive: true, encoding: 'utf8' })) {
+  // The first version of this compared the FIRST SEGMENT of each import ("apps") against the
+  // installer text, which mentions apps\webui-static — so "apps" matched while apps/shared was
+  // never installed, and the second Windows start died on agent-commands.js. A check that
+  // compares a directory name to a path agrees with itself, not with the filesystem.
+  //
+  // Both sides are paths now: every out-of-tree import as a repo-relative path, and every tree
+  // the recipe copies. One must cover the other.
+  const planeRoot = 'services/reference-control-plane/src';
+  const copies = [...windows.install.matchAll(/Join-Path \$Root "([^"]+)"/g)]
+    .map((hit) => hit[1].replace(/\\/g, '/'));
+  check(copies.length > 0, 'no copied tree was parsed out of Install-Noesar.ps1 — the parse is broken');
+  const needed = new Set();
+  for (const name of readdirSync(join(repoRoot, planeRoot), { recursive: true, encoding: 'utf8' })) {
     if (!name.endsWith('.mjs')) continue;
-    const body = readFileSync(join(planeRoot, name), 'utf8');
-    for (const hit of body.matchAll(/from\s+['"](?:\.\.\/)+([a-z][a-z-]*)\//g)) outOfTree.add(hit[1]);
+    const here = [planeRoot, dirname(name.replace(/\\/g, '/'))].join('/').replace(/\/\.$/, '');
+    for (const hit of readFileSync(join(repoRoot, planeRoot, name), 'utf8')
+      .matchAll(/from\s+['"]((?:\.\.\/)+[^'"]+)['"]/g)) {
+      const parts = here.split('/');
+      let rest = hit[1];
+      while (rest.startsWith('../')) { parts.pop(); rest = rest.slice(3); }
+      const resolved = [...parts, rest].join('/');
+      if (!resolved.startsWith('services/')) needed.add(resolved);
+    }
   }
-  check(outOfTree.size > 0, 'the out-of-tree import scan found nothing — the scan itself is broken');
-  for (const directory of [...outOfTree].sort()) {
-    check(windows.install.includes(directory),
-      `Install-Noesar.ps1 must install ${directory}/ — the control plane imports from it`);
+  check(needed.size > 0, 'the out-of-tree import scan found nothing — the scan itself is broken');
+  for (const path of [...needed].sort()) {
+    check(copies.some((tree) => path === tree || path.startsWith(`${tree}/`)),
+      `Install-Noesar.ps1 must carry ${path} — the control plane imports it`);
   }
 
   // Every repository path a Windows script copies must actually exist here.

@@ -39,8 +39,12 @@ function Install-Tree {
 
 Install-Tree -Source (Join-Path $Root "services\reference-control-plane") `
   -Target (Join-Path $NoesarRoot "services\reference-control-plane") -Guard $NoesarRoot
-Install-Tree -Source (Join-Path $Root "apps\webui-static") `
-  -Target (Join-Path $NoesarRoot "apps\webui-static") -Guard $NoesarRoot
+# apps/ WHOLE, not apps\webui-static. The control plane imports apps/shared/coden/*.js as
+# well — measured on real Windows on 2026-08-31, second start, ERR_MODULE_NOT_FOUND on
+# agent-commands.js — and naming one subdirectory is the hand-kept list this installer
+# already refuses for tools/. 1.5 MB, both directories.
+Install-Tree -Source (Join-Path $Root "apps") `
+  -Target (Join-Path $NoesarRoot "apps") -Guard $NoesarRoot
 
 # The control plane imports from packages/ — verified-acquisition today, through
 # model-transport.mjs. Without this the server threw ERR_MODULE_NOT_FOUND on its first

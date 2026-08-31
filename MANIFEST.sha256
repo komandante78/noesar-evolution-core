@@ -545,7 +545,7 @@ a6f6be42fe1d898c08ca01813423d57e8b0f612dbb2be0f1137320d1f877c03c  ./deployment/p
 6d9fce76a14d97e21dbe6c809ec88426e20ed22c30c7c77574bbd00b7767d508  ./deployment/reverse-proxy/nginx.conf.example
 4bb350993f691f3323a691000893dad36765a2ea09caf1e7f1180586fdb31136  ./deployment/unraid/install-complete.sh
 aa9c9ce3bcff71f9b2b918025e325e7090064bb8ccb83195c174909719474380  ./deployment/unraid/noesar-evolution.xml
-672037253b71c986de7ff497039643b1fc0db55cd2458480252910c790910022  ./deployment/windows/Install-Noesar.ps1
+613c2f0beb5a1453634e124c7f511b9883805fd04b42eafa5a16927a1c048d8f  ./deployment/windows/Install-Noesar.ps1
 7c48dc5ccd801686bfb00e7de7043345dd5c411ed97670c42fc38568df5253bf  ./deployment/windows/Show-FirstOwnerToken.ps1
 ea5a9867be585d6b9f548706017d7d069a49606f6897adecb313537685884b58  ./deployment/windows/Start-Noesar.ps1
 6d80172a53ff39fb51f0d6d2d7886c935013f8beb31873f80c71b1bdc7666edc  ./deployment/windows/Test-Noesar.ps1
@@ -6737,7 +6737,7 @@ ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-u
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
-f52ba7f217cb53a6bb4fd72b451a7665148c635bc338f20e08e51d5da2194dc3  ./tools/test-cross-platform-installers.mjs
+09e9252ec4e2cfac42d59fe47da27ce44f93b576fa5a29a53f7866f580b29351  ./tools/test-cross-platform-installers.mjs
 89f8d7634a65596cfa8ece1a192d8ec61e3edfe756dcaccbc601281652087379  ./tools/test-e2e-retention.sh
 90c25b2dc354d76851de0fbc954470199733e569fb490d2e5c7e792f3b6639c1  ./tools/test-installer-hardening.mjs
 78f979fc518db9ae7f12e5c2335131cb09982e62ea1301189234ee6bb9e35a52  ./tools/test-packaging-filters.mjs
