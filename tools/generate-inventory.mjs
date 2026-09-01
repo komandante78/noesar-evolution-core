@@ -174,7 +174,7 @@ const inventory = {
     inventoryRows: licenceInventory,
     firstPartyDeclared: firstParty.filter((c) => c.license).length,
     firstPartyUndeclared: firstParty.filter((c) => !c.license).length,
-    note: 'The root LICENSE and NOTICE exist since D-0453 (2026-08-14) and every package in packages/ carries its own licence text; this note claimed otherwise until 2026-09-03. What is still open is per-crate declaration: firstPartyUndeclared above counts the Rust crates that declare none. docs/LICENSE_STRATEGY.md section 5 tracks the rest.',
+    note: 'The root LICENSE and NOTICE exist since D-0453 (2026-08-14) and every package in packages/ carries its own licence text; this note claimed otherwise until 2026-09-01. What is still open is per-crate declaration: firstPartyUndeclared above counts the Rust crates that declare none. docs/LICENSE_STRATEGY.md section 5 tracks the rest.',
   },
 };
 

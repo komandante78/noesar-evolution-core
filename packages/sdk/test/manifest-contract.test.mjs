@@ -3,7 +3,7 @@
 // The SDK is a typed mirror of a contract that lives elsewhere as JSON: the manifest template
 // and the permission catalogue under `capabilities/`. A mirror nothing checks stops being one
 // quietly — this package sat unchanged from 2026-07-25 while `capabilities/` moved until
-// 2026-08-21, and lost `compatibility` and `rollback` without any gate noticing (2026-09-03).
+// 2026-08-21, and lost `compatibility` and `rollback` without any gate noticing (2026-09-01).
 //
 // The assertion is one-directional on purpose: the SDK may declare OPTIONAL fields the template
 // does not show (`industry`), but it may never omit something the live contract declares.
