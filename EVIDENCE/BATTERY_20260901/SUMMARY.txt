@@ -1,0 +1,66 @@
+BATTERY 2026-09-01 — the run every number in FUNDING/ comes from
+================================================================
+
+Supersedes BATTERY_20260830 as the source of the figures in the submitted set.
+That directory is kept: it is the evidence for the risk in FUNDING/11.
+
+  unit.log                     npm test
+                               3161 tests, 345 suites, 3160 pass, 0 fail, 1 skip
+
+  suite.log                    sh scripts/test.sh
+                               TEST_SUMMARY pass=22 fail=0 partial=0 unavailable=0
+
+  lint.log                     npm run lint  (ESLint 9.39.5, digest-pinned image)
+                               ESLINT_FILES=494 ERRORS=0 WARNINGS=0 NO_UNDEF=0
+
+  e2e.log                      bash tools/run-browser-e2e.sh
+                               TOTAL=399 PASS=398 FAIL=1 DECLARED=0 UNDECLARED=1
+
+                               Read this one carefully, because it changed direction
+                               since 2026-08-30. Then, the single failure was the
+                               DECLARED i18n ratchet and the undeclared count was zero.
+                               Now the ratchet no longer fails and a different check
+                               does, undeclared: the workspace-actions step.
+
+                               It is the test, not the product. The step drives the
+                               address through the legacy composer, and once the modern
+                               terminal is lastingly live that composer stays retired --
+                               codenTerminalState() doing what D-0413 asked for. The
+                               diagnosis is written in tools/browser-e2e.mjs itself, and
+                               the repair is the test-strategy decision named in D-0456.
+                               Same class as F-CE021-001.
+
+                               It is still counted undeclared, and that is correct. The
+                               harness has a mechanism for declaring a known failure and
+                               this one is explained in a source comment instead. A
+                               comment is not a declaration.
+
+                               Run twice on this date, 20260901T115427Z and
+                               20260901T115810Z, identical output. Not a flake.
+
+  not in this directory        node tools/acceptance/live-model-tool-loop.mjs
+                               NOT re-run on this date. The 27B it drives is not loaded,
+                               and a figure that cannot be re-measured keeps its own
+                               date rather than borrowing today's: 6/6 in 14.1 s on
+                               2026-08-30. Re-run it rather than trust a log -- it needs
+                               the model loaded, which is the point.
+
+  not a log, but measured      docker inspect noesar-evolution
+                               Seven of eleven hardening properties absent on the
+                               running container: cap-drop ALL, no-new-privileges,
+                               pids-limit, memory, cpus, tmpfs /run noexec, tmpfs /tmp.
+                               Present: uid 10001, read-only rootfs, shm-size 64m, no
+                               docker socket. Recorded as F-HARD-001 (high). Second
+                               occurrence -- D-0240 found and restored the same set once
+                               before. Found by re-measuring a sentence FUNDING/06 and
+                               FUNDING/12 had been printing as live-inspected, not by a
+                               test noticing, and the absence of that test is the defect.
+
+Exit codes: the browser suite exits non-zero for a declared gap as well as an undeclared
+one, on purpose. A suite that could report green while carrying a known gap is a suite
+people learn to ignore.
+
+Why this directory exists at all: on 2026-09-01 the dossier's figures were re-run rather
+than re-dated. Two of them moved in the unflattering direction and both are printed here
+at their measured value. A battery kept only when it agrees with the prose is not a
+battery.
