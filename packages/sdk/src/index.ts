@@ -61,6 +61,14 @@ export interface CapabilityManifest {
   };
   permissions: Permission[];
   payload: Array<{ path: string; sha256: string; bytes: number }>;
+  compatibility: {
+    noesar: string;
+    platforms: Array<"linux" | "windows" | "macos">;
+  };
+  rollback: {
+    supported: boolean;
+    strategy?: string;
+  };
   industry?: {
     riskClass: "standard" | "elevated" | "high" | "safety-critical";
     intendedUse: string[];
