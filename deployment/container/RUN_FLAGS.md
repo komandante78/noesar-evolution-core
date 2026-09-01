@@ -109,7 +109,7 @@ XFS su `nvme1n1p1`, pool cache **senza parità**) e non esisteva altrove.
 ## Come funziona
 
 `/mnt/cachec/NOESAR/SCRIPTS/backup_auto.sh <componente>` — tar → `openssl enc -aes-256-cbc
--pbkdf2 -iter 100000` → `scp` verso `root@5.189.167.44:/root/backups/<componente>/` → rotazione
+-pbkdf2 -iter 100000` → `scp` verso `root@<backup-host>:/root/backups/<componente>/` → rotazione
 remota `find -mtime +7 -delete`.
 
 Le pianificazioni stanno in **`/boot/config/plugins/dynamix/noesar-backup.cron`**, non nel

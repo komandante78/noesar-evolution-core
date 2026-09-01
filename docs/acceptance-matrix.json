@@ -1016,7 +1016,7 @@
         ],
         "text": "✅ COSTRUITO (`D-0255`) — `session-proof.mjs` assembla i dieci campi da un run reale plan()→approve() e dai suoi eventi correlati; `provenienza` dichiara onestamente `UNTRACKED` (CUBE non esiste), `fixture` dichiara `DECISION_LAYER_ONLY` (nessun output di modello esterno da fissare — provider di riferimento)"
       },
-      "source": "MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md:167"
+      "source": "MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md:175"
     },
     {
       "id": "SESS-002",
@@ -1031,7 +1031,7 @@
         ],
         "text": "✅ COSTRUITO (`D-0259`) — `replay(runId)` su `WorkspaceActionOrchestrator`: solo provider di riferimento → ricomputo diretto e confronto strutturale (provato a divergere su un caso reale); almeno una superficie esterna → il pack catturato a `plan()` è rigiocato sul `/v1/replay` dello STESSO provider (D-0227, mai rigenerato da un altro)"
       },
-      "source": "MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md:168"
+      "source": "MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md:176"
     },
     {
       "id": "SESS-003",
@@ -1045,7 +1045,7 @@
         ],
         "text": "✅ COSTRUITO (`D-0259`) — `replayHistoricalFixture()`: un fixture esterno (non legato a un run in memoria) rigiocato contro il codice ATTUALE, `policyDrift` riporta was/now/changed; provato sia sul caso senza deriva sia sul caso in cui il codice attuale rifiuta ciò che la storia dichiarava permesso"
       },
-      "source": "MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md:169"
+      "source": "MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md:177"
     }
   ]
 }

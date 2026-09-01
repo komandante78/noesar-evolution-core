@@ -100,10 +100,18 @@ Non perché sia furbo, ma perché **sta a valle dell'architettura**:
 Non è una funzione da aggiungere. È ciò che **cade fuori** dall'aver costruito le sei cose
 sotto — e ognuna di quelle, per loro, è una riscrittura.
 
-### Perché ATOM ne è il centro e non un accessorio
+### Perché serve un provider di ragionamento — e perché ATOM non è quello obbligatorio
 
 Senza un provider di ragionamento che produce un **oggetto piano**, non c'è niente da
-dimostrare. Il valore del pacchetto è esattamente la qualità del ragionamento che registra.
+dimostrare. Ma quel provider può essere **qualunque** implementazione del contratto
+`ReasoningProvider`, e quello di riferimento — interamente aperto, dentro questo repository —
+lo soddisfa per intero. Non è una promessa, è una run di accettazione:
+`FOSS_CORE_DEPENDS_ON_ATOM=false`, misurata in `docs/ATOM_ABSENT_ACCEPTANCE.md` (J1‑J5 —
+immagine costruita senza rete, container che parte e serve, suite verdi, zero riferimenti ad
+ATOM in ciò che gira).
+
+Quello che cambia con un provider migliore non è **se** l'evidenza esiste, ma **quanto vale
+leggerla**: il valore del pacchetto è esattamente la qualità del ragionamento che registra.
 
 Questo rovescia l'imbarazzo tipico di un pezzo proprietario dentro un prodotto aperto:
 **ATOM smette di essere "il pezzo che devi comprare" e diventa "il pezzo che rende l'evidenza

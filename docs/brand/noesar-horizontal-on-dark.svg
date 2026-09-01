@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300" role="img" aria-label="NOESAR — AI self hosted">
+  <title>NOESAR — AI self hosted</title>
+  <defs>
+    <linearGradient id="faceL" x1="232" y1="0" x2="292" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E2ECFC"/>
+      <stop offset="0.20" stop-color="#FFFFFF"/>
+      <stop offset="0.64" stop-color="#EBF2FD"/>
+      <stop offset="1" stop-color="#A2BADC"/>
+    </linearGradient>
+    <linearGradient id="faceR" x1="508" y1="0" x2="568" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E2ECFC"/>
+      <stop offset="0.20" stop-color="#FFFFFF"/>
+      <stop offset="0.64" stop-color="#EBF2FD"/>
+      <stop offset="1" stop-color="#A2BADC"/>
+    </linearGradient>
+    <linearGradient id="vshade" x1="0" y1="152" x2="0" y2="548" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#283D61" stop-opacity="0.32"/>
+    </linearGradient>
+    <linearGradient id="diag" x1="303" y1="538" x2="497" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12C8EC"/>
+      <stop offset="0.34" stop-color="#4E7BF0"/>
+      <stop offset="0.68" stop-color="#8B4FEA"/>
+      <stop offset="1" stop-color="#F2318C"/>
+    </linearGradient>
+    <linearGradient id="nodeA" x1="286" y1="554" x2="320" y2="522" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12C8EC"/>
+      <stop offset="1" stop-color="#6A5BEE"/>
+    </linearGradient>
+    <linearGradient id="nodeB" x1="480" y1="176" x2="514" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8B4FEA"/>
+      <stop offset="1" stop-color="#F2318C"/>
+    </linearGradient>
+    <linearGradient id="word" x1="175" y1="0" x2="625" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F86EA"/>
+      <stop offset="0.30" stop-color="#E4EEFF"/>
+      <stop offset="0.55" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#BCA1F2"/>
+    </linearGradient>
+
+    <clipPath id="panels">
+      <rect x="232" y="152" width="60" height="396"/>
+      <rect x="508" y="152" width="60" height="396"/>
+    </clipPath>
+    <filter id="contact" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <filter id="bloom" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+
+    <!-- NOESAR as outlines: no font is required to render this file -->
+    <mask id="wordmask">
+      <rect width="800" height="800" fill="#000"/>
+      <g fill="#FFF" fill-rule="evenodd">
+        <g transform="translate(175 583) scale(0.62)"><path d="M0 100 V0 H18 L58 68 V0 H76 V100 H58 L18 32 V100 Z"/></g>
+        <g transform="translate(497.56 583) scale(0.62)"><path d="M0 100 L30 0 L48 0 L78 100 L57 100 L52 82 L26 82 L21 100 Z M30.5 66 L47.5 66 L39 22 Z"/></g>
+      </g>
+      <g fill="none" stroke="#FFF" stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="8">
+        <g transform="translate(258.12 583) scale(0.62)"><ellipse cx="40" cy="50" rx="31" ry="41"/></g>
+        <g transform="translate(343.72 583) scale(0.62)"><path d="M55 9 L9 9 L9 91 L55 91"/><path d="M9 50 L50 50"/></g>
+        <g transform="translate(419.4 583) scale(0.62)"><path d="M59 26 C59 13 47.5 4.5 34 4.5 C20.5 4.5 9 12 9 24 C9 36 19 41 34 45 C49 49 59 55 59 69 C59 83 47.5 95.5 34 95.5 C20.5 95.5 9 87 9 74"/></g>
+        <g transform="translate(581.92 583) scale(0.62)"><path d="M9 100 L9 9 L40 9 C52 9 60 17.5 60 28 C60 38.5 52 47 40 47 L9 47"/><path d="M37 47 L61 100"/></g>
+      </g>
+    </mask>
+  </defs>
+
+  <!-- mark -->
+  <g transform="translate(-77.6 -42.55) scale(0.55)">
+    <rect x="232" y="152" width="60" height="396" fill="url(#faceL)"/>
+    <rect x="508" y="152" width="60" height="396" fill="url(#faceR)"/>
+    <rect x="232" y="152" width="60" height="396" fill="url(#vshade)"/>
+    <rect x="508" y="152" width="60" height="396" fill="url(#vshade)"/>
+    <g>
+      <rect x="232" y="152" width="2.5" height="396" fill="#FFFFFF" opacity="0.95"/>
+      <rect x="508" y="152" width="2.5" height="396" fill="#FFFFFF" opacity="0.95"/>
+      <rect x="289.5" y="152" width="2.5" height="396" fill="#6F88B2" opacity="0.55"/>
+      <rect x="565.5" y="152" width="2.5" height="396" fill="#6F88B2" opacity="0.55"/>
+    </g>
+    <g clip-path="url(#panels)" filter="url(#contact)" opacity="0.36">
+      <path d="M310 548 L504 170" stroke="#132038" stroke-width="15" stroke-linecap="round" fill="none"/>
+      <circle cx="310" cy="548" r="16" fill="#132038"/>
+      <circle cx="504" cy="170" r="16" fill="#132038"/>
+    </g>
+    <g filter="url(#bloom)" opacity="0.62">
+      <path d="M303 538 L497 160" stroke="url(#diag)" stroke-width="15" stroke-linecap="round" fill="none"/>
+    </g>
+    <g stroke-linecap="round" fill="none" opacity="0.85">
+      <path d="M410 274 L441 303" stroke="#EC4A72" stroke-width="5"/>
+      <path d="M436 360 L404 378" stroke="#7B5CF0" stroke-width="5"/>
+      <path d="M325 450 L357 472" stroke="#1FC5E8" stroke-width="5"/>
+    </g>
+    <circle cx="400" cy="263" r="8" fill="#EC4A72"/>
+    <circle cx="447" cy="351" r="8" fill="#7B5CF0"/>
+    <circle cx="315" cy="440" r="8" fill="#1FC5E8"/>
+    <path d="M303 538 L497 160" stroke="url(#diag)" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <path d="M303 538 L497 160" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="303" cy="538" r="19" fill="none" stroke="url(#nodeA)" stroke-width="8"/>
+    <path d="M284.3 534.7 A19 19 0 0 1 312.5 521.6" fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="3.4" stroke-linecap="round"/>
+    <circle cx="303" cy="538" r="7.5" fill="#FFFFFF"/>
+    <circle cx="497" cy="160" r="19" fill="none" stroke="url(#nodeB)" stroke-width="8"/>
+    <path d="M478.3 156.7 A19 19 0 0 1 506.5 143.6" fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="3.4" stroke-linecap="round"/>
+    <circle cx="497" cy="160" r="7.5" fill="#FFFFFF"/>
+  </g>
+
+  <!-- wordmark -->
+  <g transform="translate(125 -486)">
+    <rect x="170" y="576" width="460" height="76" fill="url(#word)" mask="url(#wordmask)"/>
+  </g>
+
+  <!-- tagline -->
+  <text x="525" y="201" text-anchor="middle" fill="#22B4DC"
+        font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif"
+        font-size="24" font-weight="500" letter-spacing="11">AI SELF HOSTED</text>
+</svg>

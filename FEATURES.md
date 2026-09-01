@@ -12,9 +12,7 @@ Every line below describes something built and tested, not a plan — see
 | **Multi-turn chat** | A versioned context graph, not a flat message list — fork, edit, regenerate, exclude, merge, compare and undo any part of a conversation's history. |
 | **Provider-neutral models** | Local OpenAI-compatible servers by default; OpenAI, Anthropic Claude, Moonshot/Kimi or a custom OpenAI-compatible endpoint as opt-in, disabled-by-default, credential-encrypted, consent-scoped additions. |
 | **Document ingestion** | PDF, Office and plain-text files are extracted into the conversation's context, with content-type sniffing that never trusts a file extension alone. |
-| **Audio transcription** | Voice notes and audio attachments are transcribed through the same speech engine the live microphone uses. |
 | **Vision fallback for images** | When OCR finds no text in an image, an operator-declared vision-capable provider is asked to caption it — never inferred, never guessed. |
-| **Hands-free voice** | Wake-word activation and voice input/output for the chat surface. |
 
 ## Documents, code and creation
 

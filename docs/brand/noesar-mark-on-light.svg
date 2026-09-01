@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="180 129 440 440" width="440" height="440" role="img" aria-label="NOESAR">
+  <title>NOESAR</title>
+  <defs>
+    <!-- panel faces: light falls from the upper left -->
+    <linearGradient id="faceL" x1="232" y1="0" x2="292" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3A5DB0"/>
+      <stop offset="0.18" stop-color="#2F4E9A"/>
+      <stop offset="0.62" stop-color="#26407F"/>
+      <stop offset="1" stop-color="#16264F"/>
+    </linearGradient>
+    <linearGradient id="faceR" x1="508" y1="0" x2="568" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3A5DB0"/>
+      <stop offset="0.18" stop-color="#2F4E9A"/>
+      <stop offset="0.62" stop-color="#26407F"/>
+      <stop offset="1" stop-color="#16264F"/>
+    </linearGradient>
+    <linearGradient id="vshade" x1="0" y1="152" x2="0" y2="548" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#050C22" stop-opacity="0.30"/>
+    </linearGradient>
+
+    <linearGradient id="diag" x1="303" y1="538" x2="497" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12C0E4"/>
+      <stop offset="0.34" stop-color="#4A72EC"/>
+      <stop offset="0.68" stop-color="#8642E6"/>
+      <stop offset="1" stop-color="#EE2A88"/>
+    </linearGradient>
+    <linearGradient id="nodeA" x1="286" y1="554" x2="320" y2="522" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12C0E4"/>
+      <stop offset="1" stop-color="#6152EA"/>
+    </linearGradient>
+    <linearGradient id="nodeB" x1="480" y1="176" x2="514" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8642E6"/>
+      <stop offset="1" stop-color="#EE2A88"/>
+    </linearGradient>
+
+    <clipPath id="panels">
+      <rect x="232" y="152" width="60" height="396"/>
+      <rect x="508" y="152" width="60" height="396"/>
+    </clipPath>
+    <filter id="contact" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <filter id="bloom" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="cast" x="-40%" y="-40%" width="200%" height="200%">
+      <feDropShadow dx="7" dy="13" stdDeviation="9" flood-color="#16264F" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+
+  <!-- raised panels -->
+  <g filter="url(#cast)">
+    <rect x="232" y="152" width="60" height="396" fill="url(#faceL)"/>
+    <rect x="508" y="152" width="60" height="396" fill="url(#faceR)"/>
+  </g>
+  <rect x="232" y="152" width="60" height="396" fill="url(#vshade)"/>
+  <rect x="508" y="152" width="60" height="396" fill="url(#vshade)"/>
+  <!-- lit edge left, shaded edge right -->
+  <g shape-rendering="crispEdges">
+    <rect x="232" y="152" width="2.5" height="396" fill="#6E92DC" opacity="0.85"/>
+    <rect x="508" y="152" width="2.5" height="396" fill="#6E92DC" opacity="0.85"/>
+    <rect x="289.5" y="152" width="2.5" height="396" fill="#0B1631" opacity="0.55"/>
+    <rect x="565.5" y="152" width="2.5" height="396" fill="#0B1631" opacity="0.55"/>
+  </g>
+
+  <!-- the filament casts its shadow onto the panels -->
+  <g clip-path="url(#panels)" filter="url(#contact)" opacity="0.42">
+    <path d="M310 548 L504 170" stroke="#050C22" stroke-width="15" stroke-linecap="round" fill="none"/>
+    <circle cx="310" cy="548" r="16" fill="#050C22"/>
+    <circle cx="504" cy="170" r="16" fill="#050C22"/>
+  </g>
+
+  <!-- bloom -->
+  <g filter="url(#bloom)" opacity="0.34">
+    <path d="M303 538 L497 160" stroke="url(#diag)" stroke-width="15" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- synapses -->
+  <g stroke-linecap="round" fill="none" opacity="0.9">
+    <path d="M410 274 L441 303" stroke="#E63A66" stroke-width="5"/>
+    <path d="M436 360 L404 378" stroke="#6F4EEC" stroke-width="5"/>
+    <path d="M325 450 L357 472" stroke="#12B8E0" stroke-width="5"/>
+  </g>
+  <circle cx="400" cy="263" r="8" fill="#E63A66"/>
+  <circle cx="447" cy="351" r="8" fill="#6F4EEC"/>
+  <circle cx="315" cy="440" r="8" fill="#12B8E0"/>
+
+  <!-- the filament -->
+  <path d="M303 538 L497 160" stroke="url(#diag)" stroke-width="13" stroke-linecap="round" fill="none"/>
+  <path d="M303 538 L497 160" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+
+  <!-- terminal nodes, with a specular on the lit side -->
+  <circle cx="303" cy="538" r="19" fill="none" stroke="url(#nodeA)" stroke-width="8"/>
+  <path d="M284.3 534.7 A19 19 0 0 1 312.5 521.6" fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="3.4" stroke-linecap="round"/>
+  <circle cx="303" cy="538" r="7.5" fill="#FFFFFF"/>
+  <circle cx="497" cy="160" r="19" fill="none" stroke="url(#nodeB)" stroke-width="8"/>
+  <path d="M478.3 156.7 A19 19 0 0 1 506.5 143.6" fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="3.4" stroke-linecap="round"/>
+  <circle cx="497" cy="160" r="7.5" fill="#FFFFFF"/>
+</svg>
