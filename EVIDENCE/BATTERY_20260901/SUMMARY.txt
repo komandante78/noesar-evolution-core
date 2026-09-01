@@ -49,7 +49,7 @@ That directory is kept: it is the evidence for the risk in FUNDING/11.
                                Seven of eleven hardening properties absent on the
                                running container: cap-drop ALL, no-new-privileges,
                                pids-limit, memory, cpus, tmpfs /run noexec, tmpfs /tmp.
-                               Present: uid 10001, read-only rootfs, shm-size 64m, no
+                               Present: uid 10001, read-only rootfs, no
                                docker socket. Recorded as F-HARD-001 (high). Second
                                occurrence -- D-0240 found and restored the same set once
                                before. Found by re-measuring a sentence FUNDING/06 and
