@@ -58,6 +58,27 @@ That directory is kept: it is the evidence for the risk in FUNDING/11.
 
 Exit codes: the browser suite exits non-zero for a declared gap as well as an undeclared
 one, on purpose. A suite that could report green while carrying a known gap is a suite
+
+  CLOSED THE SAME DAY       F-HARD-001, and the measurement above is left as it was taken.
+                            redeploy.sh now DECLARES the hardening set instead of reading it
+                            back from the container it replaces -- reading it back is what let
+                            a degraded container hand its degradation to its replacement -- and
+                            inspects the replacement after creating it, rolling back one that
+                            started without the set (08a876c6, fixture section 13; oracle: with
+                            the flags removed the fixture fails 30 checks and the deploy exits
+                            non-zero rather than leave the container running unhardened).
+
+                            The Owner deployed noesar-evolution:hardening-20260901T123336Z.
+                            Verified afterwards, independently of the tool's own report:
+                            CapDrop=[ALL], SecurityOpt=[no-new-privileges:true], PidsLimit=512,
+                            /run=mode=1777,rw,nosuid,nodev,noexec -- the application's mode
+                            survived the security options being added -- /tmp=rw,nosuid,nodev,
+                            noexec, User=10001:10001, ReadonlyRootfs=true, no docker socket,
+                            running healthy, exactly one predecessor kept.
+
+                            Memory=0 and NanoCpus=0 are unchanged and deliberate: they depend on
+                            the host, property 5 of redeploy.sh forbids presuming one, and the
+                            deploy printed a warning for each rather than inventing a limit.
 people learn to ignore.
 
 Why this directory exists at all: on 2026-09-01 the dossier's figures were re-run rather
