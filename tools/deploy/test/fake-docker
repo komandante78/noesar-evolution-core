@@ -43,6 +43,21 @@ if [ "${1:-}" = "inspect" ]; then
     *"NetworkMode"*)                       echo "fake-net" ;;
     *"RestartPolicy.Name"*)                echo "unless-stopped" ;;
     *"ReadonlyRootfs"*)                    echo "true" ;;
+    # `F-HARD-001`. These answer from the recipe THIS fake was actually called with, never from a
+    # constant, because the property under test is "the tool passes them" and a fake that says
+    # `ALL` regardless would pass whether or not it did. A container this fixture did not create —
+    # the pre-existing source — has no recipe and answers empty, which is exactly the degraded
+    # state the real installation was found in: the point of the repair is that the replacement is
+    # hardened even when its predecessor is not.
+    *"HostConfig.CapDrop"*)
+        grep -q -- '--cap-drop ALL' "$C/$name/recipe" 2>/dev/null && echo "ALL" || true ;;
+    *"HostConfig.SecurityOpt"*)
+        grep -q -- 'no-new-privileges' "$C/$name/recipe" 2>/dev/null \
+          && echo "no-new-privileges:true" || true ;;
+    *"HostConfig.PidsLimit"*)
+        sed -n 's/.*--pids-limit \([0-9]*\).*/\1/p' "$C/$name/recipe" 2>/dev/null | grep . || echo 0 ;;
+    *"HostConfig.Memory"*)                 echo 0 ;;
+    *"HostConfig.NanoCpus"*)               echo 0 ;;
     *"State.Status"*"exit="*)              echo "$(get "$name" status) exit=$(get "$name" exit)" ;;
     *"State.Health"*)
         # The health faults apply ONLY to a container this fixture CREATED with `run`. Applying
@@ -122,6 +137,10 @@ if [ "${1:-}" = "run" ]; then
       --name) name="$2"; shift 2 ;;
       --env-file) envfile="$2"; shift 2 ;;
       --network|--restart|--stop-timeout|--log-driver|--log-opt|-p|-v|--tmpfs) shift 2 ;;
+      # `F-HARD-001`. Without these four here they fall through to `*)` and are mistaken for the
+      # image name, which is how adding them to the tool turned 99 green fixture checks into 24
+      # red ones that had nothing to do with the change being tested.
+      --cap-drop|--security-opt|--pids-limit|--memory|--cpus) shift 2 ;;
       *) image="$1"; shift ;;
     esac
   done

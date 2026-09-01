@@ -528,11 +528,68 @@ trap 'fail_after_rename "an unexpected command failed after the rename"' ERR
 RO_FLAG=(); [ "$RO_ROOTFS" = "true" ] && RO_FLAG=(--read-only)
 IP_FLAG=(); [ -n "$IP" ] && IP_FLAG=(--ip "$IP")
 GPU_FLAG=(); [ "$WANT_GPU" = "1" ] && GPU_FLAG=(--gpus all)
+# `F-HARD-001`. These three are DECLARED here and deliberately NOT read back from the predecessor,
+# which is the whole of the repair. They had never appeared in this file at all, so no replacement
+# has ever carried them: `D-0240` restored them by hand once, a later recreate dropped them again,
+# and on 2026-09-01 the running container had none of them while two funding documents described
+# them as live-inspected. Reading them back would have been the obvious fix and the wrong one — it
+# teaches a degraded container to hand its degradation to its replacement, which is exactly how
+# the second occurrence happened. They are properties of the product and independent of any host,
+# so they are stated, applied, and asserted after the start.
+#
+# `--memory` and `--cpus` are NOT here on purpose. They depend on the machine, and property 5 of
+# this file forbids presuming one; they stay carried from the predecessor and reported below.
+HARDENING=(--cap-drop ALL --security-opt no-new-privileges:true --pids-limit 512)
+# The tmpfs DESTINATIONS come from the predecessor; their mount OPTIONS are a security property and
+# come from here. The two are joined rather than one replacing the other: `mode=1777` is the
+# application's requirement on `/run` and survives, `noexec,nosuid,nodev` is the invariant and is
+# appended. Index 0,2,4… are the literal `--tmpfs`; the odd entries are the values.
+for _i in "${!TMPFS_FLAGS[@]}"; do
+  [ "${TMPFS_FLAGS[$_i]}" = "--tmpfs" ] && continue
+  case "${TMPFS_FLAGS[$_i]}" in
+    *:*) TMPFS_FLAGS[$_i]="${TMPFS_FLAGS[$_i]},rw,nosuid,nodev,noexec" ;;
+    *)   TMPFS_FLAGS[$_i]="${TMPFS_FLAGS[$_i]}:rw,nosuid,nodev,noexec" ;;
+  esac
+done
 docker run -d --name "$SOURCE" --env-file "$ENVFILE" --network "$NETWORK" --restart "$RESTART" \
   "${RO_FLAG[@]}" "${IP_FLAG[@]}" "${GPU_FLAG[@]}" "${STOP_FLAG[@]}" "${LOGDRIVER_FLAG[@]}" "${LOG_FLAGS[@]}" \
+  "${HARDENING[@]}" \
   "${PORT_FLAGS[@]}" "${BIND_FLAGS[@]}" "${TMPFS_FLAGS[@]}" "$IMAGE" >/dev/null \
   || fail_after_rename "the replacement could not be created"
 ok "replacement created from $IMAGE"
+
+# ── STEP 7b · ASSERT THE HARDENING LANDED — `F-HARD-001` ──────────────────────────────────────
+# The absence of this check IS the finding. A property nothing asserts is a property that is only
+# ever noticed by someone looking, and across two occurrences nobody did. Passing the flag is not
+# the same as the flag taking effect, so what is checked is the container Docker actually built.
+# Every test is written as `if ! …` rather than `… || x=1`: under `set -e` with the ERR trap armed
+# a bare failing test rolls back a good deployment, which this file has already paid for once.
+hard_missing=""
+if [ "$(docker inspect "$SOURCE" --format '{{range .HostConfig.CapDrop}}{{.}}{{end}}')" != "ALL" ]; then
+  hard_missing="$hard_missing cap-drop=ALL"
+fi
+if ! docker inspect "$SOURCE" --format '{{range .HostConfig.SecurityOpt}}{{.}}{{end}}' \
+     | grep -q 'no-new-privileges'; then
+  hard_missing="$hard_missing no-new-privileges"
+fi
+if [ "$(docker inspect "$SOURCE" --format '{{.HostConfig.PidsLimit}}')" = "0" ]; then
+  hard_missing="$hard_missing pids-limit"
+fi
+if [ "$RO_ROOTFS" = "true" ] \
+   && [ "$(docker inspect "$SOURCE" --format '{{.HostConfig.ReadonlyRootfs}}')" != "true" ]; then
+  hard_missing="$hard_missing read-only"
+fi
+if [ -n "$hard_missing" ]; then
+  fail_after_rename "the replacement started without:$hard_missing — rolled back rather than left running unhardened"
+fi
+ok "hardening asserted on the replacement: cap-drop ALL · no-new-privileges · pids-limit · tmpfs noexec"
+# Resource limits are reported, never enforced from here — they are the host's business.
+if [ "$(docker inspect "$SOURCE" --format '{{.HostConfig.Memory}}')" = "0" ]; then
+  warn "no --memory limit carried: this container may consume the host's memory (--memory sets one)"
+fi
+if [ "$(docker inspect "$SOURCE" --format '{{.HostConfig.NanoCpus}}')" = "0" ]; then
+  warn "no --cpus limit carried: this container may consume every core (--cpus sets one)"
+fi
 
 # ── STEP 8 · HEALTH AND THE SUPERVISED CHILDREN, PROVEN NOT ASSUMED ───────────────────────────
 deadline=$(( $(date +%s) + HEALTH_TIMEOUT )); status=""

@@ -336,6 +336,57 @@ rename_at="$(grep -n '^docker rename "\$SOURCE" "\$PREDECESSOR"' "$TOOL" | head 
   && pass "the address is read before the first mutation, with every other read" \
   || fail "address read precedes the rename" "ip=$ip_at rename=$rename_at"
 
+echo "=== 13. the hardening set is applied and asserted, never inherited — F-HARD-001 ==="
+# The finding this section exists for: --cap-drop, --security-opt and --pids-limit had never
+# appeared in the tool at all, so every replacement started without them. They were restored by
+# hand once (D-0240) and lost again on a later recreate, and on 2026-09-01 the running container
+# had none of them while two funding documents called them live-inspected.
+#
+# The property is NOT "they are carried forward". Carrying them forward is the trap: it teaches a
+# degraded predecessor to hand its degradation to its replacement, which is how the second
+# occurrence happened. The property is that they are DECLARED by the tool and land regardless of
+# what the predecessor had.
+new_world hardening
+run_tool -- --apply --authorized-by-owner --rotate-secret SECRET_A
+[ "$(code)" = "0" ] && pass "hardening: exit 0" || fail "hardening: exit 0" "got $(code)"
+recipe="$(cat "$FAKE_ROOT/c/inst/recipe" 2>/dev/null)"
+case "$recipe" in
+  *"--cap-drop ALL"*) pass "hardening: --cap-drop ALL is in the recipe" ;;
+  *)                  fail "hardening: --cap-drop ALL" "absent from the recipe" ;;
+esac
+case "$recipe" in
+  *"--security-opt no-new-privileges:true"*) pass "hardening: --security-opt no-new-privileges" ;;
+  *)                                         fail "hardening: --security-opt" "absent from the recipe" ;;
+esac
+case "$recipe" in
+  *"--pids-limit"*) pass "hardening: --pids-limit is in the recipe" ;;
+  *)                fail "hardening: --pids-limit" "absent from the recipe" ;;
+esac
+# The tmpfs destinations come from the predecessor, the mount options from the tool. `/run` in this
+# fixture's source carries `mode=1777`, which the application needs and which must survive the
+# security options being added rather than be replaced by them.
+case "$recipe" in
+  *"/run:mode=1777,rw,nosuid,nodev,noexec"*)
+      pass "hardening: tmpfs options are appended, and mode=1777 survives" ;;
+  *)  fail "hardening: tmpfs options appended" "got: $(printf '%s' "$recipe" | tr ' ' '\n' | grep '^/run' || echo none)" ;;
+esac
+# The one that matters most: the SOURCE in this fixture has no recipe file and therefore reports no
+# hardening at all -- the exact state the real installation was found in. The replacement must come
+# out hardened anyway. If this ever fails, the tool has started inheriting instead of declaring.
+case "$recipe" in
+  *"--cap-drop ALL"*) pass "hardening: a predecessor with none still yields a hardened replacement" ;;
+  *)                  fail "hardening: degraded predecessor" "the replacement inherited the degradation" ;;
+esac
+# And the assertion itself must sit after the creation and before the tool reports success, so a
+# replacement that started unhardened is rolled back rather than left running.
+assert_at="$(grep -n 'the replacement started without' "$TOOL" | head -1 | cut -d: -f1)"
+run_at="$(grep -n '^docker run -d --name "\$SOURCE"' "$TOOL" | head -1 | cut -d: -f1)"
+if [ -n "$assert_at" ] && [ -n "$run_at" ] && [ "$assert_at" -gt "$run_at" ]; then
+  pass "hardening: the assertion runs after the creation, so a failure rolls back"
+else
+  fail "hardening: assertion placement" "assert=$assert_at run=$run_at"
+fi
+
 echo
 echo "================================================================"
 echo "redeploy fixture: $PASS passed, $FAIL failed"
