@@ -28,6 +28,23 @@ crippled build, not a trial, not a shell that requires a proprietary component t
 become useful. This is a hard architectural requirement, not a marketing posture,
 and it is what makes the open-core split defensible.
 
+## 1a. The one directory that is not AGPL — `packages/sdk/`
+
+`packages/sdk/` is **Apache-2.0**: declared in `package.json` and `python/pyproject.toml`, carried
+as an `SPDX-License-Identifier` header on every source file, with the licence text at
+`packages/sdk/LICENSE`. Apache-2.0 is on the approved list in
+`capabilities/security/license-policy.json`.
+
+It is deliberate, and it is the only such directory. The SDK is **contracts** — the type and
+schema definitions a third party writes code against. Under AGPL those definitions would carry
+copyleft into every client that imports them, which is the opposite of what publishing a contract
+is for: `FUNDING/04_FOSS_SCOPE_AND_PROPRIETARY_BOUNDARIES.md` gives the contracts away precisely
+so that anyone may implement them, including implementers who cannot accept AGPL. A copyleft SDK
+would defeat its own purpose.
+
+It is **not published**: it carries `"private": true` like every other package in `packages/`.
+Publishing `@noesar/sdk` is a separate decision and is not taken here.
+
 ## 2. Additional commercial license
 
 A separate commercial license is **planned** for parties who cannot accept AGPL

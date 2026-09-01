@@ -128,4 +128,4 @@ security/license-policy.json	license-file	SEE-FILE	file header	capabilities/secu
 @noesar/webui	node-package	NOT-DECLARED	package.json	apps/webui-react/package.json	no license field
 @noesar/sdk	node-package	Apache-2.0	package.json	evidence/history/v0.5.0/packages/sdk-skeleton/package.json	
 noesar-evolution-source-v4-implementation	node-package	NOT-DECLARED	package.json	package.json	no license field
-@noesar/sdk	node-package	Apache-2.0	package.json	packages/sdk/package.json	
+@noesar/sdk	node-package	Apache-2.0	LICENSE;package.json	packages/sdk/package.json	
