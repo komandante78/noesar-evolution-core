@@ -49,6 +49,19 @@ if (process.argv[2] === '--self-test') { selfTest(); process.exit(0); }
 const files = process.argv.slice(2);
 if (files.length === 0) { process.stderr.write('usage: extract-prompt-log.mjs <session.jsonl> [...]\n'); process.exit(2); }
 
+// A transcript that never names FUNDING/ wrote no part of the dossier, so its prompts are not the
+// log the policy asks for. Selecting sessions by DATE rather than by content is how a session
+// belonging to a different application of the same applicant spent eight days inside this log
+// (D-0702, 2026-09-02): a date bucket had a transcript from that date, and nobody opened it.
+// ponytail: necessary, not sufficient — a session that only READ these files passes this check
+// too. The session list in FUNDING/20_GENAI_DISCLOSURE.md stays a measurement; this is its floor.
+for (const file of files) {
+  if (!readFileSync(file, 'utf8').includes('FUNDING/')) {
+    process.stderr.write(`refusing ${file}: it never names FUNDING/, so it wrote no part of this dossier\n`);
+    process.exit(3);
+  }
+}
+
 process.stdout.write(`# Prompt log
 
 Generated ${new Date().toISOString()} by \`tools/extract-prompt-log.mjs\`.

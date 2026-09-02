@@ -16421,3 +16421,34 @@ anything. It goes to a third party in the applicant's name: the applicant sends 
 **Status.** applied. Obligations unchanged and now numbered in `20`: regenerate the log over all
 three transcripts including this session's, read it, send the question, re-run the measurement if
 the dossier moves again.
+
+## D-0702 · A date does not identify a session, and the prompt log paid for the assumption — 2026-09-02
+**Decision.** `cfd8b4ac` is removed from `FUNDING/PROMPT_LOG.md` and the log is regenerated over
+`e71e6579` and `1fc5f34f` alone: 28 prompts, 54 outputs, down from 76 and 291. The removed session
+is not a session of this project. It is 2026-08-22/23 spent on Argonyx Trader, a different
+application of the same applicant; its transcript is 5.9 MB and names `NOESAR` zero times and
+`FUNDING/` zero times, and the submitted set contains no line dated 2026-08-23 at all.
+**Why it was in there, which is the part worth keeping.** The first version of `20` bucketed
+`git blame` by author date and asked of each bucket a question whose column heading was
+*"Transcript retained?"*. A transcript from 2026-08-23 existed in the applicant's folder, so it was
+named — answering *does a transcript from that date exist*, never *did that session write these
+lines*. Two sessions ran that day, one per project. The session was never opened; its first line
+reads `verifica il programma di trining argonyx trader a che punto e`.
+**Why reading the log did not catch it.** It was read on 2026-08-31 against a checklist — IPs,
+tokens, keys, personal addresses. One IP was found and redacted. *Is this even this project* was
+not on the checklist, so 237 outputs about another product passed underneath a reading that caught
+a single IP address.
+**What was not done.** History is not rewritten (rule 14): the withdrawn snapshot stays in the
+commits that carried it. The repository is private, so this is not a publication; it becomes one
+at `M6`, which is where a check belongs before the repository is opened.
+**How the removal was proved to be only a removal.** The retained half of the new log was compared
+byte-for-byte with the corresponding half of the withdrawn one and is identical. For a log whose
+whole claim is *unedited output*, "we regenerated it" is not an acceptable account of what changed.
+**The general repair.** The session list in `20` is now a measurement over all 43 local
+transcripts — ten name `FUNDING/` — with every date carrying submitted lines matched to the commits
+that carry them. Four transcripts that mention `FUNDING/` wrote zero submitted lines and are named
+as measured absences. `tools/extract-prompt-log.mjs` refuses a transcript that never names
+`FUNDING/`, which is what would have stopped this one; the check is necessary and not sufficient,
+and says so in its own comment.
+**Reversal cost.** Nil. The withdrawn snapshot is in git history and the regeneration command is
+one line.
