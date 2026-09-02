@@ -1459,6 +1459,17 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   .coden-terminal-host .xterm-cursor-blink { animation: none !important; }
 }
 
+/* Owner, 2026-09-02: la porta del selettore modelli, rimessa in questa barra.
+   Quando i sei chip sono stati tolti (2026-08-31) e sparito con loro `#codenModelPickerOpen`,
+   mentre `createModelPicker` (app.js) e il bottone della riga di suggerimento continuavano a
+   chiederlo con quel nome: il selettore era diventato irraggiungibile da questa pagina. Torna
+   come CONTROLLO accanto all'interruttore di modo — che e la regola che questa barra dichiara
+   gia per se stessa — e sta in fondo alla barra perche `.model-picker` si apre allineato a
+   destra sotto il controllo che l'ha aperto. */
+.coden-bar .coden-model-open{margin-inline-start:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;min-height:24px;font-size:calc(var(--text-scale)*10px);border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--text-chip);cursor:pointer}
+.coden-bar .coden-model-open:hover{background:var(--surface-selected)}
+.coden-bar .coden-model-open+.mode-switch{margin-inline-start:0}
+
 /* s336 · the model chooser on the CodeN page.
    Anchored to the `.coden-bar` it opens from rather than floating over the terminal: the
    emulator is the working surface and a panel covering it is a panel people close before

@@ -1,5 +1,10 @@
 # Security — CANONICAL_CANDIDATE_V1 (V0.6.0 base + V0.5.0 consolidated material)
 
+## Reporting a vulnerability
+
+Email **barciale1978@gmail.com**. Please do not open a public issue for a vulnerability that
+is not yet fixed. Reports are answered by the author.
+
 Authority additions:
 
 - no TCP authority transport;

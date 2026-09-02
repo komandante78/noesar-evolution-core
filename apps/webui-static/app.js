@@ -6345,7 +6345,10 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
       // no descriptor describes IS answering chat while nothing here is startable, and a panel
       // that went blank in that state would hide the one fact the operator came for.
       list.innerHTML=codenChatAnswerMarkup(data?.chat)
-        +`<p class="empty-state">${escapeHtml(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'))}</p>`;
+        +`<p class="empty-state">${escapeHtml(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'))}</p>`
+        // Anche qui: un elenco vuoto e proprio il caso in cui la scheda puo essere occupata da
+        // qualcosa che questa installazione non ha avviato.
+        +releaseMarkup(activeId);
       return undefined;
     }
     list.innerHTML=codenChatAnswerMarkup(data?.chat)+models.map((entry)=>rowMarkup(entry,activeId)).join('')+releaseMarkup(activeId);
@@ -6369,15 +6372,23 @@ function createModelPicker({panelId,openId,closeId,countId,listId}){
    * Drawn only when something is actually loaded: an installation serving nothing has nothing
    * to free, and a button that always answers "nothing was loaded" teaches people to ignore it.
    */
+  // Owner, 2026-09-02: «mi servono quei pulsanti sempre attivi con doppia conferma». Disegnata
+  // ora ANCHE senza nulla di avviato, contro la postura precedente: il caso dell'Owner e una
+  // scheda tenuta da un modello che questa installazione non ha avviato, e un controllo che si
+  // nasconde proprio allora e un controllo che sparisce nell'unico momento in cui lo si cerca.
+  // `POST /api/v1/models/deactivate` e idempotente — `release()` risponde
+  // `{released:true, alreadyStopped:true}` — quindi il gesto e innocuo quando non c'e nulla da
+  // fermare, e la riga dice quale dei due casi e invece di lasciarlo indovinare.
   function releaseMarkup(activeId){
-    if(!activeId)return '';
     const confirming=pending==='\u0000release'
       ?`<div class="model-row-confirm"><span>${escapeHtml(t('This unloads the model from memory. Chat cannot answer until one is started again.'))}</span>`
         +`<button type="button" class="danger" data-model-release-confirm="1">${escapeHtml(t('Free it'))}</button>`
         +`<button type="button" class="text-button" data-model-cancel="1">${escapeHtml(t('Cancel'))}</button></div>`
       :'';
     return `<div class="model-row model-release" role="listitem">`
-      +`<div><b>${escapeHtml(t('Free the loaded model'))}</b><small translate="no">${escapeHtml(activeId)}</small></div>`
+      +`<div><b>${escapeHtml(t('Free the loaded model'))}</b>${activeId
+        ?`<small translate="no">${escapeHtml(activeId)}</small>`
+        :`<small>${escapeHtml(t('Nothing was started from here. This frees only what this installation loaded: a model served by another container is not stopped from here.'))}</small>`}</div>`
       +`<div><button type="button" class="secondary" data-model-release="1">${escapeHtml(t('Free'))}</button></div>`
       +`${confirming}</div>`;
   }

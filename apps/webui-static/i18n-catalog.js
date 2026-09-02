@@ -108,6 +108,7 @@ export const RUNTIME_ONLY = Object.freeze([
   // The release row (Owner, 2026-08-26): freeing the loaded model is composed by the same
   // factory that composes the rows above it, so it belongs in the same list for the same reason.
   'Free the loaded model',
+  'Nothing was started from here. This frees only what this installation loaded: a model served by another container is not stopped from here.',
   // The hardware-aware suggestions (Owner, 2026-08-26) — composed in app.js from the catalogue
   // and the hardware probe, so no markup scan can find them.
   'no accelerator found',
@@ -888,6 +889,7 @@ const it = {
   'Starting this stops the model that is answering now.': 'Avviarlo ferma il modello che sta rispondendo adesso.',
   'Start it': 'Avvialo',
   'Free the loaded model': 'Libera il modello caricato',
+  'Nothing was started from here. This frees only what this installation loaded: a model served by another container is not stopped from here.': 'Non e stato avviato niente da qui. Questo libera solo cio che ha caricato questa installazione: un modello servito da un altro container non viene fermato da qui.',
   'Suggested for this machine': 'Consigliati per questa macchina',
   'Reading what this machine has…': 'Leggo cosa ha questa macchina…',
   'no accelerator found': 'nessun acceleratore trovato',

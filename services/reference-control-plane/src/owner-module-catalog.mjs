@@ -58,6 +58,42 @@ export const OWNER_MODULE_CATALOG = Object.freeze([
       safety_interlock: { required: false, emergencyStop: false, externalController: false },
     }),
   }),
+  Object.freeze({
+    id: 'agenti',
+    name: 'Agenti',
+    description: 'Multi-agent analysis of the repositories on this host — a central planner splits a request into specialised agents (debug, line-by-line review, attack surface, vulnerabilities, secrets, supply chain, document truth, grant readiness) that may delegate sub-agents. Read-only by construction, opened as an external link.',
+    externalUrl: 'http://192.168.178.100:8099',
+    buildManifest: () => ({
+      id: 'agenti',
+      version: '1.0.0',
+      publisher: OWNER_PUBLISHER_ID,
+      trust_level: OWNER_PUBLISHER_TRUST_LEVEL,
+      sector: ['software-development', 'code-security'],
+      intended_use: [
+        'read-only analysis, by specialised agents, of the repositories the Owner declares in AGENTI_ROOTS',
+        'conversational commands over those same repositories from the module\'s own WebUI',
+      ],
+      excluded_use: [
+        'any write to the repositories it reads: the module carries four read-only tools (list, tree, read, grep) and no write path',
+        'running arbitrary commands on the host',
+        'reading anything outside the declared roots — path traversal and absolute paths are refused',
+        'treating a finding as established without a human reading the file and line it cites',
+      ],
+      jurisdictions: [],
+      data_classes: ['source-code'],
+      // Declared for the same reason Debug Evolution declares it: the sidebar entry is a
+      // plain link and the browser's navigation to it is egress to a LAN service this
+      // repository does not operate. The module itself has NO authentication of its own —
+      // whoever reaches port 8099 on the LAN reaches it without a NOESAR session.
+      permissions: ['network.external'],
+      evidence: [
+        { kind: 'module-source', ref: '/mnt/cachec/AGENTI/', note: 'five files, zero dependencies, deliberately outside this repository' },
+        { kind: 'self-test', ref: 'node /mnt/cachec/AGENTI/server.mjs --selftest', note: 'path jail, context bound and finding verification asserted before the server will start' },
+      ],
+      human_oversight: { required: true, decisionAuthority: 'Owner', overrideAvailable: true },
+      safety_interlock: { required: false, emergencyStop: false, externalController: false },
+    }),
+  }),
 ]);
 
 export function findCatalogEntry(id) {

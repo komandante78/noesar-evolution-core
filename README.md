@@ -18,13 +18,15 @@
 [![offline](https://img.shields.io/badge/OFFLINE-NO%20API%20KEY-12C8EC?style=for-the-badge&labelColor=0F1B33)](#offline-by-default)
 [![no proprietary component](https://img.shields.io/badge/CORE%20RUNS-WITH%20NOTHING%20PROPRIETARY-F2318C?style=for-the-badge&labelColor=0F1B33)](docs/ATOM_ABSENT_ACCEPTANCE.md)
 
-[![tests](https://img.shields.io/badge/tests-3160%20passing%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
-[![eslint](https://img.shields.io/badge/eslint-494%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![tests](https://img.shields.io/badge/tests-3163%20passing%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![eslint](https://img.shields.io/badge/eslint-495%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
 [![engine methods](https://img.shields.io/badge/engine%20methods-32-1E3A6E?style=flat-square)](#what-the-model-may-do)
 [![mutative](https://img.shields.io/badge/mutative%20tools-9%20%7C%20approval%20gated-DB8B00?style=flat-square)](#what-the-model-may-do)
 [![destroy](https://img.shields.io/badge/destroying%20tools-0%20shipped-2EA043?style=flat-square)](#what-the-model-may-do)
 
 📄 **[Architecture](ARCHITECTURE.md)** · **[Everything it does](FEATURES.md)** · **[Every decision, with its evidence](docs/DECISION_LOG.md)** · **[Security](SECURITY.md)**
+
+Built in Italy by **Alessandro Barci**
 
 </div>
 
@@ -131,15 +133,15 @@ Assets for Podman, Linux, macOS and Windows live under `deployment/`.
 
 ## Every badge above has a command behind it
 
-Measured on **2026-09-01**, on the development host, from this repository:
+Measured on **2026-09-02**, on the development host, from this repository, except where a row says otherwise:
 
 | Claim | Command | Result |
 |---|---|---|
-| Unit suite | `npm test` | 3161 tests, 345 suites — **3160 pass, 0 fail, 1 skip** |
-| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **494 files, 0 errors, 0 warnings** |
+| Unit suite | `npm test` | 3164 tests, 346 suites — **3163 pass, 0 fail, 1 skip** |
+| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **495 files, 0 errors, 0 warnings** |
 | Verification battery | `sh scripts/test.sh` | **pass=22, fail=0, partial=0, unavailable=0** |
-| Rust workspace | `cargo test --workspace --offline` | vendored, no network |
-| Repository manifest | `node tools/generate-manifest.mjs` | 6 738 files |
+| Rust workspace | `cargo test --workspace --offline` | vendored, no network — last measured 2026-09-01, in `rust:1-bookworm` |
+| Repository manifest | `node tools/generate-manifest.mjs` | 6 748 files |
 
 A number in this README that a reader cannot reproduce is a defect. If one of the commands above
 disagrees with the badge, the badge is wrong — open an issue.
@@ -165,6 +167,30 @@ README-authoring time.
 | [`SECURITY.md`](SECURITY.md) | security posture and reporting |
 | [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md) | every non-trivial decision, with its evidence |
 | [`MASTER_PROJECT/`](MASTER_PROJECT/) | the design documents this rewrite is built from |
+
+## Generative AI
+
+This project uses generative AI, and declares it here because
+[NLnet's policy on the use of generative AI](https://nlnet.nl/foundation/policies/generativeAI/)
+(version 1.1, valid as of 26 January 2026) asks a codebase to state, in its readme, how it does so.
+
+**Which model.** Claude Opus 5 and Claude Sonnet 5 (Anthropic), through Claude Code, directed turn
+by turn by the author.
+
+**What for.** Implementation, tests, refactoring, measurement and documentation. The author reviews
+what is merged and remains accountable for it; design, security and licensing decisions are the
+author's and are recorded with their evidence in [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md).
+
+**Per commit.** Commits carrying generated work name the model and its version in a
+`Co-Authored-By` trailer, so provenance is attached to the change rather than to this page.
+Count them yourself:
+
+```
+git log --format=%B | grep -ci "co-authored-by:.*claude"
+```
+
+The disclosure written for the grant application, including the sessions whose transcripts no
+longer exist, is [`FUNDING/20_GENAI_DISCLOSURE.md`](FUNDING/20_GENAI_DISCLOSURE.md).
 
 ## License
 
