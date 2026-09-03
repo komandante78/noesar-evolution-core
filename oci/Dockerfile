@@ -236,23 +236,13 @@ RUN chmod 0755 /opt/noesar/bin/noesar-supervisord /opt/noesar/bin/noesar-sandbox
 
 # ATOM, inside the product — Owner, s335.
 #
-# «Quando installano deve esserci tutto.» Until this line, this file contained the string
-# `atom` zero times: the product's distinguishing chain (model → ATOM checks and regenerates →
-# answer) was configured on one machine by hand and did not exist for anyone who installed the
-# image. ATOM keeps its own repository — a source-control boundary is not a delivery boundary —
-# and what ships here is its BUILT artefact with a recorded origin
-# (`oci/vendor/atom/atomd.provenance.json`, and `REFRESH.md` beside it for replacing it).
+# ATOM is proprietary (Owner's decision, D-0633) and is not part of this public tree: the funded,
+# open scope neither imports nor links it, and does not degrade when it is absent — the
+# acceptance run that proves that condition runs with no ATOM present at all. See
+# FUNDING/04_FOSS_SCOPE_AND_PROPRIETARY_BOUNDARIES.md for the boundary this reflects.
 #
-# The digest is asserted AFTER the copy and inside the image, not before it in the repository.
-# A test proves what is in the tree; only this proves what is in the layer — and this project has
-# already been bitten by a build that reported `CACHED` while carrying different bytes.
-COPY --chown=10001:10001 oci/vendor/atom/atomd /opt/noesar/bin/atomd
-COPY --chown=10001:10001 oci/vendor/atom/atomd.provenance.json /opt/noesar/bin/atomd.provenance.json
-RUN chmod 0755 /opt/noesar/bin/atomd \
- && DECLARED="$(sed -n 's/.*"sha256": *"\([0-9a-f]\{64\}\)".*/\1/p' /opt/noesar/bin/atomd.provenance.json)" \
- && ACTUAL="$(sha256sum /opt/noesar/bin/atomd | cut -d' ' -f1)" \
- && [ -n "$DECLARED" ] || { echo "atomd provenance declares no sha256" >&2; exit 1; } \
- && [ "$DECLARED" = "$ACTUAL" ] || { echo "atomd digest mismatch: declared=$DECLARED image=$ACTUAL" >&2; exit 1; }
+# The private build vendors its own built artefact at oci/vendor/atom/ (git-ignored here) and
+# restores the two COPY and one RUN step that used to stand in this place.
 
 # The inference engine, inside the product too — Owner, 2026-08-26.
 #
