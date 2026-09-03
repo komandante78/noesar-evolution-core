@@ -1,0 +1,51 @@
+BATTERY 2026-09-03 — the run three rows of FUNDING/ come from
+=============================================================
+
+Supersedes BATTERY_20260901 for the three rows below, and ONLY those three.
+That directory stays: it is still the evidence for the browser acceptance run, the
+container inspection and the live tool-call turn, none of which was re-run today.
+
+  unit.log                     npm test
+                               3164 tests, 346 suites, 3163 pass, 0 fail, 1 skip
+
+  suite.log                    bash scripts/test.sh
+                               TEST_SUMMARY pass=22 fail=0 partial=0 unavailable=0
+
+  lint.log                     npm run lint  (ESLint 9.39.5, digest-pinned image)
+                               ESLINT_FILES=473 ERRORS=0 WARNINGS=0 NO_UNDEF=0
+
+NOT re-run on this date, and still carried at their own earlier dates in FUNDING/:
+
+  browser acceptance           bash tools/run-browser-e2e.sh
+                               2026-09-01: TOTAL=399 PASS=398 FAIL=1 DECLARED=0 UNDECLARED=1
+
+  live tool-call turn          node tools/acceptance/live-model-tool-loop.mjs
+                               2026-08-30: 6/6 in 14.1 s. The 27B it drives is not loaded.
+
+  container hardening          docker ps, docker inspect
+                               2026-09-01, after the F-HARD-001 repair.
+
+WHY THIS DIRECTORY EXISTS, and it is not a formality
+----------------------------------------------------
+Earlier on 2026-09-03 the figures in five files of the dossier were updated to numbers
+taken from two places that are NOT the commands printed beside them: a summation of the
+per-step counts inside scripts/test.sh (3173 tests, 342 suites) and the ESLint count from
+the pre-commit gate (495 files), which lints a different set from `npm run lint`.
+
+Both numbers were real. Neither reproduced with the command it was printed next to.
+A reader running `npm test` would have got 3164 and concluded the dossier was padded.
+
+The repair is this directory: every figure now comes from a log written by the exact
+command named beside it, and the log is committed. A figure whose command produces a
+different number is worse than a stale figure, because a stale one is at least true of
+some run.
+
+Two commands, two counts, both correct
+--------------------------------------
+  npm test          3164 tests   — the reference control plane and the packages
+  scripts/test.sh   22 steps     — the whole battery, of which the unit step is one
+
+  npm run lint      473 files    — the source that ships
+  pre-commit gate   495 files    — a wider set, including tooling not shipped
+
+They are different questions. The dossier now asks each one with its own command.
