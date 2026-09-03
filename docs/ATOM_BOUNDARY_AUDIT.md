@@ -67,6 +67,15 @@ regulated-industry modules, commercial release builder.
 | Interface published, method withheld | **PASS** | schema + docs published; no method disclosed |
 | Core does not require ATOM | **HOLDS BY DESIGN** | a functional `ReferenceReasoningProvider` ships in the core; **not yet executed** |
 
+**[Errata 2026-09-03]** the row *"No vendored/bundled ATOM build"* is no longer true of the
+tree, and this audit is left exactly as it was run. `oci/vendor/atom/atomd` — a **built**
+artefact of ATOM, added by `6be732df` on **2026-08-08** so that one `docker build` produces a
+complete product (Owner, s335) — is a vendored ATOM build. Its sha256 and source commit are
+recorded in `oci/vendor/atom/atomd.provenance.json`, the core neither imports nor links it, and
+`docs/ATOM_ABSENT_ACCEPTANCE.md` still measures the invariant with it **absent**. The current
+statement of the boundary is §3 of `docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md`, which now names the
+exception instead of denying it.
+
 ## 5. The one claim that is not yet proven
 
 `FOSS_CORE_MUST_REMAIN_AUTONOMOUS` is satisfied *by design*: the core ships its own

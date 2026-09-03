@@ -14,3 +14,10 @@ under active revision, not a final legal determination.
 ATOM's implementation is proprietary and separate from this program. It is
 not licensed under AGPL-3.0-or-later, and its source is never included in
 this repository. See docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md.
+
+One BUILT artefact of that implementation, oci/vendor/atom/atomd, is distributed in
+this repository so that a single build produces a complete product. It is not covered
+by the AGPL-3.0-or-later grant above; its sha256 and the ATOM commit it was built from
+are recorded in oci/vendor/atom/atomd.provenance.json, and oci/vendor/atom/REFRESH.md
+records why it is here. This program builds, starts and passes its test suite with that
+artefact absent -- docs/ATOM_ABSENT_ACCEPTANCE.md.

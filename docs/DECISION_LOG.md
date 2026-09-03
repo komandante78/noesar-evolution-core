@@ -16264,6 +16264,16 @@ changed.** This project has already published a funding document built around a 
 had closed six weeks earlier.
 **Status.** applied.
 
+**[Errata 2026-09-03]** reason (2) above says the core "never imports, links, vendors or
+special-cases ATOM". Three of the four hold; **vendors** does not, and did not on the day this
+entry was written: `oci/vendor/atom/atomd`, a built artefact of ATOM, was added by `6be732df`
+on 2026-08-08 — twenty-two days earlier — so that one build produces a complete product
+(Owner, s335). The entry is left as written. What it should have said, and what
+`docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md` §3, `NOTICE` and `FUNDING/04` now say, is this: the core
+neither imports nor links ATOM, the repository carries one built artefact of it for delivery
+with its digest and source commit recorded, and the dependency condition is measured with ATOM
+absent rather than asserted.
+
 ## D-0698 · What the first application asks for: four extractions, one portability proof, and an audit requested rather than bought — 2026-08-30
 **Decision (Owner, 2026-08-30).** The first Restack submission carries `WP3`, `WP4`, `WP5` and
 `WP6` — the four extractions — plus `WP2` portability and a documentation slice of `WP8`. `WP1`,

@@ -54,7 +54,7 @@ not depend on it either way.
 - documentation of the interface sufficient for an independent third party to write
   their own implementation.
 
-**ATOM (`ATOM_EVOLUTION`, its own public repository):**
+**ATOM (`ATOM_EVOLUTION`, its own separate repository — private since `D-0633`):**
 - the ATOM implementation itself — algorithms, design documents, benchmark harnesses;
 - built from scratch against the public `ReasoningProvider` contract
   (`MASTER_PROJECT/02_ATOM.md`) and Owner direction given in session;
@@ -69,19 +69,28 @@ Integration happens through **public interfaces only**.
 The core defines the contract. ATOM satisfies it, as may any other implementation.
 The core must never:
 
-- import, link, or vendor ATOM code;
+- import, link, or vendor ATOM source;
 - special-case ATOM by name in control flow;
 - assume ATOM's behaviour, performance, or output shape beyond the published
   contract;
 - degrade below its documented functionality when ATOM is absent.
+
+**One exception, declared here rather than left to be discovered:** `oci/vendor/atom/atomd` is
+a **built** artefact of ATOM, vendored for delivery so that `docker build -f oci/Dockerfile .`
+produces a complete product (Owner, s335; `oci/vendor/atom/REFRESH.md` records why, and how to
+replace it). It is not ATOM source, the core neither imports nor links it, its digest and source
+commit are recorded in `oci/vendor/atom/atomd.provenance.json`, and the invariant in §1 is
+measured with it **absent**. The prohibition above is about source; this is the one place the
+repository carries a compiled artefact, and it is named here so that nobody has to find it.
 
 Discovery of a provider is configuration-driven and **disabled by default**,
 consistent with §8 of `CLAUDE10.md` (external integrations off by default).
 
 ## 4. What may never enter either repository
 
-Not proprietary-ATOM material in general any more — `ATOM_EVOLUTION` is itself meant
-to be public. What remains prohibited, in **either** repository, is material sourced
+`ATOM_EVOLUTION` is proprietary and private (`D-0633`); its own material is governed by §2
+and §3 above, not by this section. What this section prohibits, in **either** repository, is
+material sourced
 from the old, separate, still-closed ATOM projects on this host — `ATOM`,
 `ATOM_MODEL`, `ATOM_INTERNAL`, `NOESAR-ATOM-PRIVATE` — in any form:
 
