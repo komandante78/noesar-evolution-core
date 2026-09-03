@@ -47,6 +47,8 @@ cargo test
 
 ## License
 
-AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial — see the containing repository,
-[NOESAR-EVOLUTION](https://github.com/komandante78/NOESAR-EVOLUTION), for the commercial license
-text and the project's licensing posture.
+AGPL-3.0-or-later. An additional commercial licence is planned for parties who cannot accept
+those terms, but its mechanism, terms and scope are undecided and it is **not yet available**,
+so AGPL-3.0-or-later is today the only licence under which this crate is offered. The SPDX
+expression in `Cargo.toml` names the planned option; `NOTICE`, at the root of this repository,
+records that it does not exist yet.
