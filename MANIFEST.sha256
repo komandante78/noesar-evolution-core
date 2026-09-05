@@ -6561,7 +6561,7 @@ e22f6b8012379f173282243cb48908d5e9e90a6dc6565594579a86fa8aea2da9  ./services/ref
 66f1525b9946e61f2932df27cee921067f6de3c85e5aeecf3577eb87223d210c  ./services/reference-control-plane/test/updates-channel-key-http.test.mjs
 f6fe51051f4d1e9546140dedc4ad8b8b485179f894261fc77c01343d639e2964  ./services/reference-control-plane/test/user-directory.test.mjs
 a30ca6cb60b8dec0d8fd98501308dbf7a337d206a7c467650df1a3fb95cc60ef  ./services/reference-control-plane/test/vendor-provenance.test.mjs
-b1d0853c8932951125dd57cca857566ca103765b03ff617edd763ca8abfcf1df  ./services/reference-control-plane/test/vendored-atom.test.mjs
+3cdbf596b734e7dc44c0ffc8422ac2f7d509ca89b20008d49ebd411e935ccf23  ./services/reference-control-plane/test/vendored-atom.test.mjs
 2ffd1356297551b6f13bedd10ddbc6605c5d50c8dbdd642d57bcabab29ff14dd  ./services/reference-control-plane/test/verifiability.test.mjs
 39cde063c090493b881877cd3165bd1e45e20d74b520cf53e2a658adb40a0e6c  ./services/reference-control-plane/test/verification.test.mjs
 84f5be2a6713f5471fc41fe6e419f0ad9f0c95f9bff17a6103ec35e30490300b  ./services/reference-control-plane/test/vision-caption.test.mjs
