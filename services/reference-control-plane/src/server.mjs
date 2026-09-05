@@ -473,9 +473,10 @@ const auth = new AuthService({
   ledger,
   secureCookies,
 });
-// ponytail: fixed default credentials (root/noesar) replace the setup-token bootstrap
-// entirely, on the Owner's explicit instruction - no more reading a token off the host
-// before the first login. No-op once an installation is already initialized.
+// ponytail: fixed default credentials (root/noesar) replace the setup-token bootstrap for
+// the case it was meant to fix - a fresh clone with nothing configured (source 'none'). A
+// token configured on purpose means the operator chose that flow, so leave it alone: seeding
+// there pre-initializes the install and /api/v1/auth/setup then answers 409.
 if (setupTokenState.source === 'none') auth.seedDefaultOwnerIfNeeded();
 
 // The session protocol (docs/CODEN_EVOLUTION_DESIGN_V1.md §17): one dispatch, closed over
