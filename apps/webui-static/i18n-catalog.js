@@ -1251,6 +1251,7 @@ const it = {
   'Change password': 'Cambia la password',
   'Current password': 'Password attuale',
   'New password': 'Nuova password',
+  'At least 14 characters, up to 256. No symbols, digits or capitals are required — a long phrase is enough.': 'Almeno 14 caratteri, fino a 256. Non servono simboli, numeri o maiuscole — basta una frase lunga.',
   'Sign out my other sessions': 'Disconnetti le mie altre sessioni',
   'Recovery codes': 'Codici di recupero',
   'New codes replace the old ones immediately. They are shown once and stored only as digests.': 'I nuovi codici sostituiscono subito i vecchi. Sono mostrati una volta sola e conservati solo come impronte.',

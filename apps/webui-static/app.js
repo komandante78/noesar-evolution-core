@@ -777,6 +777,13 @@ function optionList(items,{empty='None',label=(item)=>item.name,value=(item)=>it
 function showTransportWarning(status){const box=$('#authTransportWarning');if(!box)return;if(status?.browserSignInPossible===false){box.classList.remove('hidden');const link=$('#authSecureLink');if(link&&status.secureAddress){link.href=status.secureAddress;link.textContent=status.secureAddress;link.classList.remove('hidden');}}else{box.classList.add('hidden');}}
 async function initializeAuth(){const status=await api('/api/v1/auth/status');showTransportWarning(status);if(!status.initialized){showOnly('#setupForm');$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
 async function enterApplication(){$('#authGate').classList.add('hidden');$('#userAvatar').textContent=(currentUser?.displayName??currentUser?.username??'U').slice(0,1).toUpperCase();if(currentUser?.role!=='owner'){const bypass=$('[data-mode="OWNER_BYPASS"]');bypass.disabled=true;}
+  // ponytail: fixed a persistent banner (not a dismissible toast) until the default
+  // password is changed in Settings - the Owner's own words were "avviso fisso finche
+  // non cambia password nelle impostazioni".
+  let banner=$('#defaultPasswordBanner');
+  if(currentUser?.mustChangePassword){
+    if(!banner){banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.setAttribute('role','alert');banner.style.cssText='position:sticky;top:0;z-index:9999;background:#b45309;color:#fff;padding:.6rem 1rem;text-align:center;font-weight:600;';banner.innerHTML='This account is still using the default password. <a href="#settings" style="color:#fff;text-decoration:underline;">Change it in Settings</a> now.';document.body.prepend(banner);}
+  }else if(banner){banner.remove();}
   // The router runs at boot, before the role is known, so every gated route resolved to
   // access-denied on a cold deep link — including for the Owner. Re-apply the nav and
   // re-activate the requested route now that we know who is signed in.
@@ -791,7 +798,7 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets()]);}
 $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;renderSetupQr(result.otpauthUri);showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];showFirstRunRecoveryCodes(result.recoveryCodes);await enterApplication();}catch(error){authError(error.message);}});
-$('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
+$('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});if(result.mfaRequired){loginChallenge=result.challenge;showOnly('#loginMfaForm');}else{csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}}catch(error){authError(error.message);}});
 $('#loginMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login/mfa',{method:'POST',body:JSON.stringify({challenge:loginChallenge,totpCode:$('#loginTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
 /* Recupero (D-0369). Prima del recupero il prodotto aveva la FORMA di un recupero e nessuna
  * via d ingresso: i codici non li emetteva il setup, e nessuna rotta ne consumava uno. */
@@ -2483,6 +2490,10 @@ async function loadSecurity(){
       ['Passkeys',(data.passkeys??[]).length],
     ]);
     badge($('#securityMfaBadge'),data.mfaEnabled?'MFA enrolled':'MFA missing',data.mfaEnabled?'on':'danger');
+    // Mirrors the window auth.mjs opens: password-only proof, and only while it is open.
+    const passwordOnly=!data.mfaEnabled;
+    $('#secTotpCode').required=!passwordOnly;
+    $('#secTotpCode').closest('label').classList.toggle('hidden',passwordOnly);
     renderSessions(data.sessions??[]);
     renderPasskeys(data.passkeys??[]);
   });

@@ -134,6 +134,7 @@ function publicUser(user) {
     createdAt: user.createdAt,
     disabledAt: user.disabledAt ?? null,
     lastLoginAt: user.lastLoginAt ?? null,
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
 }
 
@@ -310,6 +311,27 @@ export class AuthService {
     return key;
   }
 
+  /**
+   * ponytail: replaces the setup-token bootstrap with a fixed default account, on the
+   * Owner's explicit instruction to drop the "read a file on the host" first step. The
+   * account has no TOTP yet on purpose - #assertPresence and completeLogin() both require
+   * one, so beginLogin() and changePassword() below carry a matching bypass for exactly
+   * this transitional state (mustChangePassword true, totp null). The bypass closes itself
+   * the moment the password is changed: changePassword() clears mustChangePassword and the
+   * normal MFA-required path applies to every login after that.
+   */
+  seedDefaultOwnerIfNeeded() {
+    const state = this.store.read();
+    if (state.initialized) return;
+    const user = {
+      id: randomUUID(), username: 'root', displayName: 'Owner', role: 'owner',
+      password: hashPassword('noesar'), totp: null, mustChangePassword: true,
+      createdAt: nowIso(), failedLoginCount: 0, lockedUntil: 0,
+    };
+    this.store.update((next) => { next.users = [user]; next.initialized = true; });
+    this.ledger.append({ actor:'system', action:'auth.default-owner-seeded', result:'success', details:{ username:'root' } });
+  }
+
   status() {
     const state = this.store.read();
     return {
@@ -457,6 +479,18 @@ export class AuthService {
       }
       this.ledger.append({ actor:user?.id ?? 'anonymous', action:'auth.login-failed', result:'denied', details:{ username:normalized } });
       throw Object.assign(new Error('Invalid credentials or account temporarily locked.'), { status:401 });
+    }
+
+    // ponytail: the seeded default owner has no TOTP yet - MFA cannot be required of an
+    // account that has nothing to prove it with. Skips straight to a session, same as any
+    // other successful login; changePassword() closes this window.
+    if (!user.totp) {
+      this.store.update((next) => {
+        const target = next.users.find((item) => item.id === user.id);
+        target.failedLoginCount = 0; target.lockedUntil = 0;
+      });
+      this.ledger.append({ actor:user.id, action:'auth.login', result:'success', details:{ role:user.role, mfa:false, reason:'no-authenticator-enrolled' } });
+      return this.createSession(user, { mfa:false });
     }
 
     const challenge = randomToken(24);
@@ -1103,13 +1137,19 @@ export class AuthService {
     if (verifyPassword(newPassword, user.password)) {
       throw Object.assign(new Error('The new password must differ from the current one.'), { status:400 });
     }
-    const step = this.#assertPresence(user, currentPassword, totpCode, 'auth.password-change');
+    // ponytail: the seeded default owner has no TOTP to present yet - #assertPresence would
+    // crash on decryptSecret(null). Password-only proof closes exactly the same window
+    // beginLogin() opened, nothing wider: every other account still goes through #assertPresence.
+    const step = (!user.totp)
+      ? (() => { if (!verifyPassword(currentPassword, user.password)) throw Object.assign(new Error('Current password is incorrect.'), { status:403 }); return null; })()
+      : this.#assertPresence(user, currentPassword, totpCode, 'auth.password-change');
     const descriptor = hashPassword(newPassword);
     let revoked = 0;
     this.store.update((next) => {
       const target = next.users.find((item) => item.id === userId);
       target.password = descriptor; target.passwordUpdatedAt = Date.now();
       target.lastTotpStep = step; target.failedLoginCount = 0; target.lockedUntil = 0;
+      target.mustChangePassword = false;
       if (revokeOtherSessions) {
         const before = next.sessions.length;
         next.sessions = next.sessions.filter((item) => item.userId !== userId || item.id === sessionId);

@@ -1260,7 +1260,8 @@
             <h2>Change password</h2>
             <label>Current password<input id="secCurrentPassword" type="password" autocomplete="current-password" required></label>
             <label>Authenticator code<input id="secTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
-            <label>New password<input id="secNewPassword" type="password" autocomplete="new-password" minlength="16" required></label>
+            <label>New password<input id="secNewPassword" type="password" autocomplete="new-password" minlength="14" required></label>
+            <p class="hint">At least 14 characters, up to 256. No symbols, digits or capitals are required — a long phrase is enough.</p>
             <label class="check"><input id="secRevokeOthers" type="checkbox" checked> Sign out my other sessions</label>
             <button class="primary">Change password</button>
           </form>

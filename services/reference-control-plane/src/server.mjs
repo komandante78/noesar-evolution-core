@@ -473,6 +473,10 @@ const auth = new AuthService({
   ledger,
   secureCookies,
 });
+// ponytail: fixed default credentials (root/noesar) replace the setup-token bootstrap
+// entirely, on the Owner's explicit instruction - no more reading a token off the host
+// before the first login. No-op once an installation is already initialized.
+if (setupTokenState.source === 'none') auth.seedDefaultOwnerIfNeeded();
 
 // The session protocol (docs/CODEN_EVOLUTION_DESIGN_V1.md §17): one dispatch, closed over
 // these exact instances, reached by two transports below — the unix socket (a real
@@ -2054,7 +2058,13 @@ const requestListener = async (req, res) => {
       const value = auth.confirmSetup(await body(req));
       return sessionResponse(req, res, value, 201);
     }
-    if (req.method === 'POST' && url.pathname === '/api/v1/auth/login') return json(res, 202, auth.beginLogin({ ...(await body(req)), ip:clientIp(req) }));
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/login') {
+      // ponytail: beginLogin() now returns a full session directly for the transitional
+      // default-owner account (no TOTP yet) instead of an MFA challenge - branch on which
+      // shape came back rather than assuming every login needs a second step.
+      const loginResult = auth.beginLogin({ ...(await body(req)), ip:clientIp(req) });
+      return loginResult.mfaRequired ? json(res, 202, loginResult) : sessionResponse(req, res, loginResult, 200);
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/login/mfa') {
       const value = auth.completeLogin({ ...(await body(req)), ip:clientIp(req) });
       return sessionResponse(req, res, value);
