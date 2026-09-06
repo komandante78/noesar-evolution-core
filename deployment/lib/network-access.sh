@@ -139,7 +139,7 @@ noesar_persist_access_choice() {
 }
 EOF
   chmod 0600 "$_file" 2>/dev/null || true
-  chown "$_uidgid" "$_file" 2>/dev/null || true
+  noesar_own_workspace_file "$_file" "$_uidgid"
   return 0
 }
 
@@ -334,6 +334,17 @@ NOESAR_CONSENT_CONFIG_BASENAME='install-consent.json'
 NOESAR_DEFAULT_USERNAME='root'
 NOESAR_DEFAULT_PASSWORD='noesar'
 
+# Every file this installer writes inside the workspace passes through here, and it
+# chowns the CONTAINING DIRECTORY as well as the file. Chowning only the file is the
+# defect that survived the first repair: `mkdir -p "$(dirname ...)"` creates
+# <workspace>/config owned by root, the container then cannot open
+# /workspace/config/provider-credentials.key, and the runtime dies exactly as before —
+# one directory deeper. Measured on a clean Ubuntu host, 2026-09-06.
+noesar_own_workspace_file() {
+  chown "$2" "$1" 2>/dev/null || true
+  chown "$2" "$(dirname "$1")" 2>/dev/null || true
+}
+
 noesar_consent_config_path() {
   printf '%s/config/%s\n' "$1" "$NOESAR_CONSENT_CONFIG_BASENAME"
 }
@@ -359,6 +370,7 @@ noesar_print_welcome() {
 # is that the file never claims a person accepted when none did.
 noesar_take_consent() {
   _workspace="$1"
+  _uidgid="${2:-10001:10001}"
   _file=$(noesar_consent_config_path "$_workspace")
 
   if [ -r "$_file" ]; then
@@ -393,6 +405,7 @@ noesar_take_consent() {
 }
 EOF
   chmod 0600 "$_file" 2>/dev/null || true
+  noesar_own_workspace_file "$_file" "$_uidgid"
   return 0
 }
 
@@ -477,8 +490,9 @@ noesar_install_intro() {
   _workspace="$1"
   _root="$2"
   _default_port="${3:-8088}"
+  _uidgid="${4:-10001:10001}"
   noesar_print_welcome "$_root" || return 1
-  noesar_take_consent "$_workspace" || return 1
+  noesar_take_consent "$_workspace" "$_uidgid" || return 1
   noesar_resolve_port "$_workspace" "$_default_port" || return 1
   return 0
 }

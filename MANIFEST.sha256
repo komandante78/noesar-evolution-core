@@ -172,7 +172,7 @@ a22d66826ca83181f35dd037faf6a6691e295f954b82599b5152dfebee3d0902  ./EVIDENCE/pha
 4278a0e66cc967a07dd7748d5c0b8ba84f12f61b2f7d7cfe7aded7773224dd3f  ./FEATURES.md
 f0a9b642417b1333b839e845300fd8c24b88a9769fb2ca21cc5954f9e0cb6d81  ./INSTALLATION/README.md
 18585c42a4161815028ff25ddc24b223f9cb18fdcee22f42452b60f552db86c5  ./INSTALLATION/WELCOME.txt
-668f7bfc43dca08048d6103dc5aecb1850c3237888293384c0647874958e8eb4  ./INSTALLATION/install-unraid.sh
+1787007d5ebd3019474f1d1bf075621f2afd8870be6e4c0c15cb6a27a7e06c10  ./INSTALLATION/install-unraid.sh
 f927d65ba1093da111e5c7a6bb6e8414b09605a5a14cfa2bad8e3d65bb292d46  ./INSTALLATION/uninstall-unraid.sh
 1322bbf2e8b1f41e7992ed9bc6035be24e691b3e031c7480f385fae5beadadd5  ./INSTALLATION/verify-installation.sh
 0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0  ./LICENSE
@@ -459,8 +459,8 @@ b15665fec81139d163085f50d74616f75d3bd5d7d4f62bbe662ec8a19202f4d4  ./deployment/c
 a9876d1810040beee56fd08f9e7d0c7b13d6b64ed6c86576b52d23d528755ce9  ./deployment/container/RUN_FLAGS.md
 ed396b5eecb9201177f1f779e9b1521cea47c6974a3768d77a6e497ee60cd47a  ./deployment/container/install-coden-cli.sh
 b73f32e73a459f07004bde1567f68663a12f92984bc166037fb8d73b5a379111  ./deployment/docker/build.sh
-1eb21b6a467bcd14652c0202d5a564899d530a54396be8a59ec8ac79446be006  ./deployment/docker/run.sh
-5d563ac38c5418bf20c19f36e458b43cd56a23edbb7ba66c854ecd53b9d11423  ./deployment/lib/network-access.sh
+57af134ff88b85e847726db37d409c2f2e81a009a063a6e7b357bde776d90192  ./deployment/docker/run.sh
+c9e5f9607bc2be0a29b7815c82c7490812f9855a438bd4bb088a98370bc5e057  ./deployment/lib/network-access.sh
 52c316dcbcb6dc4e879c6cec019a1cd0fe2ec4389b6c49bbaa85a17a3044e7d5  ./deployment/linux/install-portable.sh
 3490a6dd685a02cf62ed90702604db9328887ba402bdf5710995c95cd2c6afe1  ./deployment/linux/noesar-evolution.service
 14515595863a0ae86e95c7bf6f3c9abed59b69a246ca03dda4cb1acc8b171283  ./deployment/linux/uninstall-portable.sh
@@ -472,7 +472,7 @@ a6f6be42fe1d898c08ca01813423d57e8b0f612dbb2be0f1137320d1f877c03c  ./deployment/p
 37cd706a13d733554178b291ff2dbec9edf5ad838aaeae37d3695a23dafa6f19  ./deployment/production/noesar-production.env.example
 5fd1dbe70940af3d2c130960b4003be14dd8c65a3a5ba9d0da63371a62f40186  ./deployment/reverse-proxy/Caddyfile.example
 6d9fce76a14d97e21dbe6c809ec88426e20ed22c30c7c77574bbd00b7767d508  ./deployment/reverse-proxy/nginx.conf.example
-118bdcc6be7a54558c7b7a4a8eefec43e74aec2584cde822c0c7fe9d722f7caf  ./deployment/unraid/install-complete.sh
+3be19b6783edbca627acfd55c67d6169acb9ff35ffe038c2e81248749ac4484e  ./deployment/unraid/install-complete.sh
 aa9c9ce3bcff71f9b2b918025e325e7090064bb8ccb83195c174909719474380  ./deployment/unraid/noesar-evolution.xml
 613c2f0beb5a1453634e124c7f511b9883805fd04b42eafa5a16927a1c048d8f  ./deployment/windows/Install-Noesar.ps1
 7c48dc5ccd801686bfb00e7de7043345dd5c411ed97670c42fc38568df5253bf  ./deployment/windows/Show-FirstOwnerToken.ps1

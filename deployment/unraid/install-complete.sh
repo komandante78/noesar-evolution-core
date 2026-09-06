@@ -19,7 +19,7 @@ test -f "$RUNTIME_ROOT/oci/Dockerfile"
 # shellcheck source=../lib/network-access.sh
 . "$RUNTIME_ROOT/deployment/lib/network-access.sh"
 noesar_prepare_workspace "$WORKSPACE" "$RUN_AS" || exit 1
-noesar_install_intro "$WORKSPACE" "$RUNTIME_ROOT" "$PORT" || exit 1
+noesar_install_intro "$WORKSPACE" "$RUNTIME_ROOT" "$PORT" "$RUN_AS" || exit 1
 PORT="$NOESAR_RESOLVED_PORT"
 noesar_resolve_access "$WORKSPACE" || exit 1
 BIND_ADDRESS="$NOESAR_RESOLVED_BIND_ADDRESS"

@@ -26,7 +26,7 @@ esac
 # shellcheck source=../lib/network-access.sh
 . "$SCRIPT_DIR/../lib/network-access.sh"
 noesar_prepare_workspace "$WORKSPACE" "$RUN_AS" || exit 1
-noesar_install_intro "$WORKSPACE" "$SCRIPT_DIR/../.." "$PORT" || exit 1
+noesar_install_intro "$WORKSPACE" "$SCRIPT_DIR/../.." "$PORT" "$RUN_AS" || exit 1
 PORT="$NOESAR_RESOLVED_PORT"
 noesar_resolve_access "$WORKSPACE" || exit 1
 BIND_ADDRESS="$NOESAR_RESOLVED_BIND_ADDRESS"
