@@ -2473,7 +2473,7 @@ async function loadSecurity(){
 function showRecoveryCodes(node,codes,heading){
   node.classList.remove('hidden');
   node.innerHTML=`<div class="token-reveal"><b>${escapeHtml(heading)}</b>
-      <p class="hint">Shown once. They are stored only as digests and cannot be displayed again.</p>
+      <p class="hint">Save these now. They are shown once, kept only as fingerprints, and they are the only way back into this account if you lose the authenticator.</p>
       <div class="recovery-codes">${codes.map((code)=>`<code>${escapeHtml(code)}</code>`).join('')}</div></div>`;
 }
 $('#securityPasswordForm').addEventListener('submit',(event)=>{

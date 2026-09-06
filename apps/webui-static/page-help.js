@@ -124,8 +124,8 @@ export const PAGE_HELP = Object.freeze({
     howto: 'Invite at the lowest role that works. Owner and admin carry mandatory second-factor authentication, enforced both here and as a database constraint.',
   },
   'settings/security': {
-    what: 'Your own account: password, recovery codes, authenticator replacement, passkeys and active sessions.',
-    howto: 'Everything here needs your password AND a live authenticator code. Replacing an authenticator keeps the old one working until two consecutive codes from the new one confirm it, so a half-finished swap cannot lock you out.',
+    what: 'Your own account: your password, the authenticator, and the sessions open right now. Nothing here touches anybody else — other people live under People and access.',
+    howto: 'The authenticator is optional: this installation signs you in with a username and a password, and the app adds a six-digit code on top. Turning it ON asks for your password alone, because you have no code to give yet. Turning it OFF asks for the password AND a live code, so that a session somebody found unlocked cannot remove it. Enrolment wants two CONSECUTIVE codes: type the one on screen, wait for it to change, type the new one, and confirm within thirty seconds — that pair proves the clock on your phone agrees with this server, where a single code can pass by luck and then fail at your next sign-in. The recovery codes appear once, are kept only as fingerprints, and are the only way back in if the phone is lost.',
   },
   'settings/models-hardware': {
     what: 'What the host has, and what the runtime would choose. Discovery is read-only.',
