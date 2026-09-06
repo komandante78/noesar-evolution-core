@@ -16462,3 +16462,35 @@ as measured absences. `tools/extract-prompt-log.mjs` refuses a transcript that n
 and says so in its own comment.
 **Reversal cost.** Nil. The withdrawn snapshot is in git history and the regeneration command is
 one line.
+
+## D-0703 · The image shipped the token flow the product had stopped using — 2026-09-06
+
+*Context:* `D-0027` established the bootstrap token, and `e08e702` (5/09) then seeded a default
+owner `root`/`noesar` for the case that decision was meant to cover — a fresh install with
+nothing configured, `setupTokenState.source === 'none'`. But `oci/Dockerfile` still declared
+`NOESAR_SETUP_TOKEN_FILE`, so a Docker installation was never `'none'`: the seeding branch was
+unreachable there, and the first sign-in `INSTALLATION/WELCOME.txt` promises in writing —
+*"username: root, password: noesar ... FIXED, PUBLIC and IDENTICAL on every installation in the
+world"* — answered `409 NOESAR setup is incomplete.` with no mention of where the token was.
+Measured on a clean Contabo host from a fresh clone, 2026-09-06: `initialized: false`, login
+`409`, token generated at `/workspace/config/first-owner-setup.token`.
+
+*Decision:* remove the `ENV` line. A Docker install resolves to `source: 'none'`, the default
+owner is seeded, and the installation notices describe what actually happens. The token flow is
+not withdrawn: `NOESAR_SETUP_TOKEN` and `NOESAR_SETUP_TOKEN_FILE` are still read, still win when
+set, and every caller that wants that flow already sets the variable itself —
+`ce-031-second-machine.sh`, `run-browser-e2e.sh`, the four `tools/acceptance/` drivers and the
+runtime smokes pass it explicitly and are untouched.
+
+*Rejected:* rewriting point 4 of `WELCOME.txt` to describe the token instead. It keeps a first
+sign-in whose failure message names neither the cause nor the file, and a person who cannot sign
+in opens the port to the network to try from another machine — the notice would buy a worse
+installation than the one it documents.
+
+*Consequence:* every installation is born with a credential known to the world. It is contained
+by what the product already does, not by this document: the default bind is loopback
+(`D-0026`), the account is created `mustChangePassword: true`, and a banner sits on every page
+until it is changed. An operator who binds beyond loopback and does not change the password is
+exposed, and the notices say so before anything is installed.
+
+*Supersedes:* the deployment half of `D-0027`. The token implementation stands.

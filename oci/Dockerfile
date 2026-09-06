@@ -364,7 +364,6 @@ ENV NODE_ENV=production \
     NOESAR_RELEASE_CHANNEL=complete \
     NOESAR_AUTHORITY_MODE=reference-node \
     NOESAR_DATA_PLANE=postgresql \
-    NOESAR_SETUP_TOKEN_FILE=/workspace/config/first-owner-setup.token \
     NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
     # Where the terminal shell looks for the socket. The client's own fallback is
     # `<repo>/.workspace/tui.sock`, which is right for a from-source install and wrong here —

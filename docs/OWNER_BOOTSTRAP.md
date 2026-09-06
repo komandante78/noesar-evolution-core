@@ -1,5 +1,14 @@
 # Owner Bootstrap
 
+> **Read this first — since `D-0703` (6/09/2026) this is not the default path.** A Docker
+> installation configures no setup token, so the product seeds the owner `root`/`noesar` with
+> `mustChangePassword: true`, exactly as `INSTALLATION/WELCOME.txt` says before it installs
+> anything. Everything below describes the **token flow**, which is what you get when
+> `NOESAR_SETUP_TOKEN` or `NOESAR_SETUP_TOKEN_FILE` is set on purpose — the acceptance drivers
+> and the runtime smokes all set it. Two rows of the table below belong to that flow and not to
+> a default install: "Default password: none", and the MFA row, which predates TOTP enrolment
+> becoming optional on 6/09/2026.
+
 ## Posture
 
 | Property | Rule |
