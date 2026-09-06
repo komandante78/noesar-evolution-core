@@ -559,3 +559,39 @@ the workspace:  NOESAR_RUN_AS=$(id -u):$(id -g)
 EOF
   return 1
 }
+
+# An internal Docker network silently discards --publish. Docker accepts the flag and
+# records the binding in HostConfig.PortBindings; NetworkSettings.Ports then comes back
+# null and nothing listens on the host. The installer goes on to print
+#
+#     Open NOESAR Evolution:
+#     http://127.0.0.1:8300
+#
+# and exits reporting success, for a WebUI that answers nowhere. That is worse than a
+# failed install: it sends the person to look for the fault in their browser, their
+# firewall and their router, none of which are involved.
+#
+# Measured on a clean Ubuntu host, 2026-09-06. `deployment/docker/run.sh` alone created
+# this network with --internal; both Unraid installers create a plain bridge, and so does
+# the one installation of this product that has ever worked. The odd one out was fixed,
+# and this check exists because NOESAR_NETWORK can still point at an internal network that
+# somebody else made — including the one an earlier run of this very script left behind.
+noesar_require_publishable_network() {
+  _network="$1"
+  [ "$(docker network inspect "$_network" --format '{{.Internal}}' 2>/dev/null)" = 'true' ] || return 0
+  cat >&2 <<EOF
+Refusing to install onto the internal network "$_network".
+
+An internal network has no route to this host, so the port would be accepted and then
+published nowhere: the address printed at the end of this installer would answer nothing.
+
+Either remove it and let this installer create a normal one:
+
+    docker network rm $_network
+
+or name a network that is not internal:
+
+    NOESAR_NETWORK=<name> ...
+EOF
+  return 1
+}

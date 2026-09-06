@@ -47,6 +47,7 @@ docker image inspect node:22-bookworm-slim >/dev/null 2>&1 || {
 docker build --pull=false -f "$RUNTIME_ROOT/oci/Dockerfile" -t "$IMAGE" "$RUNTIME_ROOT"
 
 docker network inspect "$NETWORK" >/dev/null 2>&1 || docker network create "$NETWORK" >/dev/null
+noesar_require_publishable_network "$NETWORK" || exit 1
 
 if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
   echo "Container $CONTAINER already exists. Remove or rename it explicitly before installation." >&2

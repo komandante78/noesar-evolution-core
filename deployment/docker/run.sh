@@ -41,7 +41,8 @@ echo "http://${BIND_ADDRESS}:${PORT}"
 noesar_print_first_signin
 echo
 docker network inspect "$NETWORK" >/dev/null 2>&1 \
-  || docker network create --internal "$NETWORK" >/dev/null
+  || docker network create "$NETWORK" >/dev/null
+noesar_require_publishable_network "$NETWORK" || exit 1
 
 exec docker run --rm --name "$NAME" \
   --network "$NETWORK" \
