@@ -27,6 +27,8 @@ chmod 0700 "$WORKSPACE"
 # Unraid installers, with the same loopback default.
 # shellcheck source=../lib/network-access.sh
 . "$SCRIPT_DIR/../lib/network-access.sh"
+noesar_install_intro "$WORKSPACE" "$SCRIPT_DIR/../.." "$PORT" || exit 1
+PORT="$NOESAR_RESOLVED_PORT"
 noesar_resolve_access "$WORKSPACE" || exit 1
 BIND_ADDRESS="$NOESAR_RESOLVED_BIND_ADDRESS"
 BIND_SCOPE="$NOESAR_RESOLVED_BIND_SCOPE"
@@ -37,6 +39,7 @@ noesar_persist_access_choice "$WORKSPACE" "$ACCESS_MODE" "$BIND_ADDRESS" "$PORT"
 echo
 echo "Open NOESAR Evolution:"
 echo "http://${BIND_ADDRESS}:${PORT}"
+noesar_print_first_signin
 echo
 docker network inspect "$NETWORK" >/dev/null 2>&1 \
   || docker network create --internal "$NETWORK" >/dev/null

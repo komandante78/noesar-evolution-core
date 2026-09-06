@@ -1,0 +1,85 @@
+================================================================================
+  NOESAR EVOLUTION — installation
+================================================================================
+
+  READ THIS BEFORE YOU CONTINUE. It takes a minute and it is not boilerplate.
+
+--------------------------------------------------------------------------------
+  1. This product contains an AI, and an AI is wrong sometimes
+--------------------------------------------------------------------------------
+
+  NOESAR Evolution answers with a language model. A language model can be
+  confidently, fluently wrong: it can invent a fact, a name, a quotation, a
+  file path or a number that looks exactly like a real one.
+
+  Nothing it produces is a verified statement. Check anything you are going
+  to act on — especially code it writes, commands it suggests, figures it
+  reports, and anything you would forward to another person.
+
+  Do not use it as the only source for a medical, legal, financial or safety
+  decision.
+
+--------------------------------------------------------------------------------
+  2. Several parts of this release are still under test
+--------------------------------------------------------------------------------
+
+  This is a working product, not a finished one. Parts of it are still being
+  proved, and they are the parts most likely to change or to break under you:
+
+    - the installation you are running right now, on every platform
+    - the local model runtime and the agent modules
+    - update and migration between versions
+
+  Keep your own backup of anything you put into it. Do not put data in here
+  that you cannot afford to lose or to expose.
+
+--------------------------------------------------------------------------------
+  3. Where it will answer, and to whom
+--------------------------------------------------------------------------------
+
+  In a moment you will be asked two things: the PORT and the ACCESS MODE.
+
+    PORT          the door on this machine. The default is fine unless
+                  something else already uses it — the installer checks and
+                  says so rather than failing later.
+
+    ACCESS MODE   who can reach it.
+
+                    this server only   nobody but this machine. The default,
+                                       and the right answer for a first try.
+                    local network      other machines in your house or office.
+                    custom             an address you name yourself.
+
+  ADVICE: NOESAR ships WITHOUT TLS. It is not built to be published straight
+  onto the internet. If you want it reachable from outside, put a reverse
+  proxy with a certificate in front of it — there are examples ready to copy
+  in deployment/reverse-proxy/. The installer refuses to bind every interface
+  unless you insist in writing, and that refusal is protecting you.
+
+--------------------------------------------------------------------------------
+  4. How you sign in the first time
+--------------------------------------------------------------------------------
+
+      username:  root
+      password:  noesar
+
+  These are FIXED, PUBLIC and IDENTICAL on every installation in the world.
+  Until you change that password, anyone who can reach the address you chose
+  above can sign in as the owner of this installation.
+
+  CHANGE IT AT THE FIRST SIGN-IN. Settings -> change password.
+
+  The product knows: the account is created with "must change password" set,
+  and a banner stays on top of every page until it is done. It is not a
+  suggestion in a document that nobody reads — it is in your way on purpose.
+
+--------------------------------------------------------------------------------
+  5. What this installer does NOT do to your machine
+--------------------------------------------------------------------------------
+
+  It does not install packages, does not edit your firewall, does not touch
+  routing or UPnP, does not create system accounts, and does not phone home.
+  It writes the product, a workspace directory, and the two answers you are
+  about to give.
+
+================================================================================

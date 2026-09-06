@@ -318,3 +318,183 @@ noesar_probe_address() {
     printf '%s\n' "$1"
   fi
 }
+
+# --- the guided screen ------------------------------------------------------
+#
+# The notices, the port and the acknowledgement, in the one file every POSIX installer
+# already sources. Three installers call `noesar_install_intro` and get the identical
+# screen; Windows prints the SAME text file from PowerShell. A welcome screen written
+# twice is a screen that says two different things within a month — this project has
+# already paid for that shape with "the five archives".
+#
+# What is deliberately NOT here: anything that changes the host. This asks, records the
+# answers beside the access choice, and returns them. It installs nothing.
+
+NOESAR_CONSENT_CONFIG_BASENAME='install-consent.json'
+NOESAR_DEFAULT_USERNAME='root'
+NOESAR_DEFAULT_PASSWORD='noesar'
+
+noesar_consent_config_path() {
+  printf '%s/config/%s\n' "$1" "$NOESAR_CONSENT_CONFIG_BASENAME"
+}
+
+# Printed to stderr, like the access menu above it, so a caller capturing stdout for a
+# machine-readable line still shows the human the notices.
+noesar_print_welcome() {
+  _welcome="$1/INSTALLATION/WELCOME.txt"
+  if [ ! -r "$_welcome" ]; then
+    printf 'The installation notices are missing from this tree: %s\n' "$_welcome" >&2
+    printf 'Refusing to install silently what the notices exist to say out loud.\n' >&2
+    return 1
+  fi
+  cat "$_welcome" >&2
+}
+
+# Acknowledged once per installation, then remembered — an update should not re-ask.
+#
+# A machine is not a person: with no terminal there is nobody to acknowledge anything,
+# so the notices are printed, the install proceeds, and the record says plainly that no
+# human acknowledged them. Refusing instead would break every unattended install and
+# every acceptance run, and a consent nobody read is worth nothing anyway; what matters
+# is that the file never claims a person accepted when none did.
+noesar_take_consent() {
+  _workspace="$1"
+  _file=$(noesar_consent_config_path "$_workspace")
+
+  if [ -r "$_file" ]; then
+    printf '\nThe notices were acknowledged for this installation already (%s).\n' "$_file" >&2
+    return 0
+  fi
+
+  if [ "${NOESAR_ACCEPT_NOTICES:-}" = 'true' ]; then
+    _by='NOESAR_ACCEPT_NOTICES=true was set by the caller'
+  elif [ -t 0 ] && [ -t 1 ]; then
+    printf '\nType "accept" if you have read the five points above (anything else stops here): ' >&2
+    read -r _answer || _answer=''
+    case "$_answer" in
+      accept|Accept|ACCEPT|accetto|Accetto|ACCETTO)
+        _by='typed at the installer prompt' ;;
+      *)
+        printf 'Not accepted. Nothing has been installed.\n' >&2
+        return 1 ;;
+    esac
+  else
+    _by='NOT acknowledged by a person: no terminal, notices printed to the log only'
+    printf '\nNo terminal to ask on. The notices above were printed, not acknowledged.\n' >&2
+  fi
+
+  mkdir -p "$(dirname "$_file")" || return 1
+  cat > "$_file" <<EOF
+{
+  "notices": "INSTALLATION/WELCOME.txt",
+  "acknowledgedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "acknowledgedBy": "$_by",
+  "note": "Written by the NOESAR Evolution installer. Delete this file to be shown the notices again on the next install."
+}
+EOF
+  chmod 0600 "$_file" 2>/dev/null || true
+  return 0
+}
+
+noesar_load_access_port() {
+  _file=$(noesar_access_config_path "$1")
+  [ -r "$_file" ] || return 1
+  _value=$(sed -n 's/.*"hostPort"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$_file" | head -n 1)
+  [ -n "$_value" ] || return 1
+  printf '%s\n' "$_value"
+}
+
+noesar_port_is_valid() {
+  case "$1" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  [ "$1" -ge 1 ] && [ "$1" -le 65535 ]
+}
+
+# Best effort, and it says so: a busy port is reported as advice, never as a refusal.
+# `ss` and `netstat` see only what this user is allowed to see, and neither exists on
+# every host — an installer that refused on their silence would refuse for the wrong
+# reason. Returns 1 (not busy / cannot tell) unless it positively saw the port taken.
+noesar_port_is_busy() {
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn 2>/dev/null | awk -v p=":$1\$" '$4 ~ p { found = 1 } END { exit found ? 0 : 1 }'
+  elif command -v netstat >/dev/null 2>&1; then
+    netstat -ltn 2>/dev/null | awk -v p=":$1\$" '$4 ~ p { found = 1 } END { exit found ? 0 : 1 }'
+  else
+    return 1
+  fi
+}
+
+# Precedence mirrors noesar_resolve_access exactly: explicit env, then the choice this
+# installation already made, then a prompt, then the default. Sets NOESAR_RESOLVED_PORT.
+noesar_resolve_port() {
+  _workspace="$1"
+  _default="${2:-8088}"
+
+  if [ -n "${NOESAR_PORT:-}" ]; then
+    # shellcheck disable=SC2034
+    NOESAR_RESOLVED_PORT="$NOESAR_PORT"
+    noesar_port_is_valid "$NOESAR_RESOLVED_PORT" || {
+      printf 'NOESAR_PORT=%s is not a port number between 1 and 65535.\n' "$NOESAR_PORT" >&2
+      return 1
+    }
+    return 0
+  fi
+
+  if _saved=$(noesar_load_access_port "$_workspace"); then
+    _default="$_saved"
+  fi
+
+  if [ ! -t 0 ] || [ ! -t 1 ]; then
+    NOESAR_RESOLVED_PORT="$_default"
+    return 0
+  fi
+
+  while :; do
+    printf '\nPort to publish the WebUI on [%s]: ' "$_default" >&2
+    read -r _port || _port=''
+    [ -n "$_port" ] || _port="$_default"
+    if ! noesar_port_is_valid "$_port"; then
+      printf '  %s is not a port number between 1 and 65535.\n' "$_port" >&2
+      continue
+    fi
+    if noesar_port_is_busy "$_port"; then
+      printf '  Port %s already has something listening on it.\n' "$_port" >&2
+      printf '  Continue anyway? The container will fail to start if it is really taken. [y/N]: ' >&2
+      read -r _anyway || _anyway=''
+      case "$_anyway" in y|Y|yes|YES) ;; *) continue ;; esac
+    fi
+    NOESAR_RESOLVED_PORT="$_port"
+    printf 'Selected port: %s\n' "$NOESAR_RESOLVED_PORT" >&2
+    return 0
+  done
+}
+
+# The whole screen, in the order a person meets it: read, acknowledge, choose the port.
+# The access mode stays where it already lived (noesar_resolve_access), so an installer
+# that has not adopted this screen keeps working exactly as before.
+noesar_install_intro() {
+  _workspace="$1"
+  _root="$2"
+  _default_port="${3:-8088}"
+  noesar_print_welcome "$_root" || return 1
+  noesar_take_consent "$_workspace" || return 1
+  noesar_resolve_port "$_workspace" "$_default_port" || return 1
+  return 0
+}
+
+# Printed where the installer already prints the URL. The credentials are in WELCOME.txt
+# too, but that was several screens and one container build ago: the moment a person can
+# actually sign in is the moment this has to be in front of them.
+noesar_print_first_signin() {
+  cat <<EOF
+
+  Sign in with:      username  $NOESAR_DEFAULT_USERNAME
+                     password  $NOESAR_DEFAULT_PASSWORD
+
+  This password is the same on every installation of NOESAR Evolution in the
+  world. CHANGE IT NOW, at the first sign-in: Settings -> change password.
+  A banner stays across the top of the product until you do.
+
+EOF
+}

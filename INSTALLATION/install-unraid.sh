@@ -28,6 +28,8 @@ chmod 0700 "$WORKSPACE"
 # choice is remembered so an update or a reinstall keeps the same URL.
 # shellcheck source=../deployment/lib/network-access.sh
 . "$RUNTIME_ROOT/deployment/lib/network-access.sh"
+noesar_install_intro "$WORKSPACE" "$RUNTIME_ROOT" "$PORT" || exit 1
+PORT="$NOESAR_RESOLVED_PORT"
 noesar_resolve_access "$WORKSPACE" || exit 1
 BIND_ADDRESS="$NOESAR_RESOLVED_BIND_ADDRESS"
 BIND_SCOPE="$NOESAR_RESOLVED_BIND_SCOPE"
@@ -93,6 +95,7 @@ for _ in $(seq 1 30); do
     echo
     echo "Open NOESAR Evolution:"
     echo "http://${BIND_ADDRESS}:${PORT}"
+    noesar_print_first_signin
     echo
     echo "WEBUI=http://${BIND_ADDRESS}:${PORT}/"
     echo "WORKSPACE=$WORKSPACE"
