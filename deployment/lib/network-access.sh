@@ -498,3 +498,50 @@ noesar_print_first_signin() {
 
 EOF
 }
+
+# The workspace has to belong to the uid the container runs as — the first defect a
+# from-clone installation hits, and it hits it 20 seconds in, as a stack trace.
+#
+# Every installer here creates the workspace as the person running the installer (root,
+# normally) with mode 0700, and then starts the container with `--user 10001:10001`. A
+# 0700 directory owned by root is unreadable and unwritable to uid 10001, so the runtime
+# dies on `mkdir '/workspace/audit'` (AuditLedger's constructor) and on
+# `mkdir '/workspace/postgresql/data'`, restarts five times, and the installation ends
+# "unhealthy" with nothing saying why. Measured on a clean Ubuntu host, 2026-09-06.
+#
+# The product cannot repair this from the inside: it is already running as 10001 by the
+# time it finds out. The installer is the only place that still has the privilege to fix
+# it, so it is the installer's job. `noesar_persist_access_choice` below has been doing
+# exactly this chown for its own file all along — the directory was simply never given
+# the same treatment.
+noesar_prepare_workspace() {
+  _workspace="$1"
+  _uidgid="${2:-10001:10001}"
+  _uid=${_uidgid%%:*}
+
+  mkdir -p "$_workspace" || return 1
+  chmod 0700 "$_workspace" || return 1
+
+  chown "$_uidgid" "$_workspace" 2>/dev/null && return 0
+
+  # chown failed. Harmless if the directory is already the container user's — which is
+  # the normal case for an unprivileged install, where they are the same person.
+  if [ "$(id -u)" = "$_uid" ]; then
+    return 0
+  fi
+
+  cat >&2 <<EOF
+Cannot hand the workspace to the account the product runs as.
+
+  workspace   $_workspace
+  owned by    uid $(id -u "$(stat -c %U "$_workspace" 2>/dev/null)" 2>/dev/null || stat -c %u "$_workspace" 2>/dev/null || echo '?')
+  needs       uid $_uid
+
+The container runs as $_uidgid and would fail on its first write, several seconds
+after this installer reported success. Stopping here instead.
+
+Either run this installer as root, or start the container as the account that owns
+the workspace:  NOESAR_RUN_AS=$(id -u):$(id -g)
+EOF
+  return 1
+}

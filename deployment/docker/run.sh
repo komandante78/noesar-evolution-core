@@ -19,14 +19,13 @@ case "$RELEASE_CHANNEL" in
   *) echo "Unsupported release channel: $RELEASE_CHANNEL" >&2; exit 1 ;;
 esac
 
-mkdir -p "$WORKSPACE"
-chmod 0700 "$WORKSPACE"
 
 # This script used to hardcode 127.0.0.1 in the publish, so there was no supported way
 # to reach it from another machine at all. It now takes the same access decision as the
 # Unraid installers, with the same loopback default.
 # shellcheck source=../lib/network-access.sh
 . "$SCRIPT_DIR/../lib/network-access.sh"
+noesar_prepare_workspace "$WORKSPACE" "$RUN_AS" || exit 1
 noesar_install_intro "$WORKSPACE" "$SCRIPT_DIR/../.." "$PORT" || exit 1
 PORT="$NOESAR_RESOLVED_PORT"
 noesar_resolve_access "$WORKSPACE" || exit 1
@@ -48,8 +47,8 @@ exec docker run --rm --name "$NAME" \
   --network "$NETWORK" \
   --publish "${BIND_ADDRESS}:${PORT}:8088" \
   --read-only \
-  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m \
-  --tmpfs /run:rw,noexec,nosuid,nodev,size=16m \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777 \
+  --tmpfs /run:rw,noexec,nosuid,nodev,size=16m,mode=1777 \
   --cap-drop ALL \
   --security-opt no-new-privileges:true \
   --pids-limit 512 \

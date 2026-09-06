@@ -13,13 +13,12 @@ RUN_AS="${NOESAR_RUN_AS:-10001:10001}"
 
 command -v docker >/dev/null 2>&1 || { echo "Docker is required." >&2; exit 1; }
 test -f "$RUNTIME_ROOT/oci/Dockerfile"
-mkdir -p "$WORKSPACE"
-chmod 0700 "$WORKSPACE"
 
 # Where the WebUI is published. Loopback unless the operator says otherwise; the
 # choice is remembered so an update or a reinstall keeps the same URL.
 # shellcheck source=../lib/network-access.sh
 . "$RUNTIME_ROOT/deployment/lib/network-access.sh"
+noesar_prepare_workspace "$WORKSPACE" "$RUN_AS" || exit 1
 noesar_install_intro "$WORKSPACE" "$RUNTIME_ROOT" "$PORT" || exit 1
 PORT="$NOESAR_RESOLVED_PORT"
 noesar_resolve_access "$WORKSPACE" || exit 1
@@ -56,8 +55,8 @@ docker run -d --name "$CONTAINER" \
   --network "$NETWORK" \
   --publish "${BIND_ADDRESS}:${PORT}:8088" \
   --read-only \
-  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m \
-  --tmpfs /run:rw,noexec,nosuid,nodev,size=16m \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777 \
+  --tmpfs /run:rw,noexec,nosuid,nodev,size=16m,mode=1777 \
   --cap-drop ALL \
   --security-opt no-new-privileges:true \
   --pids-limit 512 \
