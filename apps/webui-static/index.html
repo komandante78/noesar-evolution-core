@@ -1253,19 +1253,19 @@
         <section class="panel"><div class="panel-title"><h2>Accounts</h2><span id="userCount">0</span></div><div id="usersList" class="card-list empty-state">Loading…</div></section>
       </section>
       <section class="settings-section" id="view-security" data-section="security">
-        <div class="section-header"><div><p class="eyebrow">YOUR ACCOUNT</p><h2 class="page-title">Security</h2><p>Every action here applies to your own account and requires your password and a live authenticator code.</p></div></div>
+        <div class="section-header"><div><p class="eyebrow">YOUR ACCOUNT</p><h2 class="page-title">Security</h2><p data-needs-mfa>Every action here applies to your own account and requires your password and a live authenticator code.</p></div></div>
         <section class="panel"><div class="panel-title"><h2>Account</h2><span id="securityMfaBadge" class="badge badge-off">—</span></div><div id="securityOverview" class="metric-grid">Loading…</div></section>
         <div class="two-col">
           <form class="panel form-stack" id="securityPasswordForm">
             <h2>Change password</h2>
             <label>Current password<input id="secCurrentPassword" type="password" autocomplete="current-password" required></label>
-            <label>Authenticator code<input id="secTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+            <label data-needs-mfa>Authenticator code<input id="secTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
             <label>New password<input id="secNewPassword" type="password" autocomplete="new-password" minlength="14" required></label>
             <p class="hint">At least 14 characters, up to 256. No symbols, digits or capitals are required — a long phrase is enough.</p>
             <label class="check"><input id="secRevokeOthers" type="checkbox" checked> Sign out my other sessions</label>
             <button class="primary">Change password</button>
           </form>
-          <form class="panel form-stack" id="recoveryForm">
+          <form class="panel form-stack" id="recoveryForm" data-needs-mfa>
             <h2>Recovery codes</h2>
             <p class="hint">New codes replace the old ones immediately. They are shown once and stored only as digests.</p>
             <label>Current password<input id="recoveryPassword" type="password" autocomplete="current-password" required></label>
@@ -1274,7 +1274,7 @@
             <div id="recoveryCodesBox" class="hidden"></div>
           </form>
         </div>
-        <section class="panel">
+        <section class="panel" data-needs-mfa>
           <div class="panel-title"><h2>Replace authenticator</h2><span id="mfaReplaceState" class="badge badge-off">Not started</span></div>
           <p class="hint">Your current authenticator keeps working until the replacement is confirmed. Confirmation needs two consecutive codes from the new one.</p>
           <form class="form-stack" id="mfaReplaceForm">

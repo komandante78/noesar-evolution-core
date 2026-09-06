@@ -784,6 +784,19 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   if(currentUser?.mustChangePassword){
     if(!banner){banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.setAttribute('role','alert');banner.style.cssText='position:sticky;top:0;z-index:9999;background:#b45309;color:#fff;padding:.6rem 1rem;text-align:center;font-weight:600;';banner.innerHTML='This account is still using the default password. <a href="#settings" style="color:#fff;text-decoration:underline;">Change it in Settings</a> now.';document.body.prepend(banner);}
   }else if(banner){banner.remove();}
+  // ponytail: changePassword() already knows the seeded owner has no authenticator - it
+  // takes password-only proof when user.totp is null. The FORM did not know, and went on
+  // demanding a six-digit code that exists nowhere, so the one account REQUIRED to change
+  // its password was the one account that could not. Same condition as the server, read
+  // from the same /api/v1/auth/me the server answers with, and `.hidden` rather than the
+  // hidden attribute because .panel sets its own display and would win over it.
+  const hasAuthenticator=Boolean(currentUser?.mfaEnabled);
+  for(const el of $('[data-needs-mfa]')){
+    el.classList.toggle('hidden',!hasAuthenticator);
+    // A hidden input that is still `required` makes the browser refuse to submit the form
+    // it sits in, reporting a control it cannot focus. Hiding it is not enough.
+    for(const input of el.querySelectorAll('input')){input.required=hasAuthenticator;input.disabled=!hasAuthenticator;}
+  }
   // The router runs at boot, before the role is known, so every gated route resolved to
   // access-denied on a cold deep link — including for the Owner. Re-apply the nav and
   // re-activate the requested route now that we know who is signed in.
