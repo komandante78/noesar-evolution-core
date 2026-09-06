@@ -6507,6 +6507,14 @@ function installHelpButtonsUnsafely(){
     // alone on a strip above it. Read FIRST, so a page that says nothing keeps the old anchor
     // and nothing else in the product moves.
     let header=section.querySelector(':scope > [data-help-anchor]')
+      // Owner, 2026-09-06: and the anchor may sit DEEPER than a direct child. The
+      // authenticator is a card inside a two-column row, and its ⓘ belongs beside its own
+      // On/Off badge — «cosa c'entra lassù?» — not on the page header several panels above
+      // it, describing a card you cannot see from there. Scoped by OWNERSHIP rather than by
+      // depth: the anchor must belong to THIS section, so a nested `.settings-sub` cannot
+      // have its anchor taken by the section that contains it.
+      ??[...section.querySelectorAll('[data-help-anchor]')]
+        .find((node)=>node.closest('.view,.settings-section,.settings-sub')===section)
       ??section.querySelector(':scope > .section-header, :scope > .hero');
     if(!header){
       header=document.createElement('div');
