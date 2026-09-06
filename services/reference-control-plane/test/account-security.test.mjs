@@ -291,3 +291,64 @@ test('base32 round-trip sanity for the secrets these flows mint', () => {
   const begun = auth.beginMfaReplacement({ userId: session.user.id, password: PASSWORD, totpCode: presence(secret, 0) });
   assert.equal(base32Decode(begun.secret).length, 20, 'a 160-bit secret, as RFC 4226 recommends');
 });
+
+// The authenticator is OPTIONAL, and that is a decision with a hole in it until both
+// directions work — Owner, 2026-09-06. Until this landed, the only line in auth.mjs that
+// ever wrote `totp: null` was the seeding of the first owner: an account that enrolled one
+// kept it for life, and `beginMfaReplacement` demanded a current code, so an account
+// WITHOUT an authenticator could not acquire one either. Both doors were shut, in opposite
+// directions, and nothing in the suite noticed because no test ever asked to leave.
+describe('the authenticator can be turned off, and back on', () => {
+  test('off needs the password AND a live code, and takes the recovery codes with it', () => {
+    const { auth, session, secret } = bootstrap();
+    const userId = session.user.id;
+    assert.equal(auth.securityOverview(userId).mfaEnabled, true, 'setup enrols one');
+
+    // The password alone must not be enough. A session left open on an unlocked screen is
+    // not proof, and a second factor a password can remove was never a second factor.
+    assert.throws(
+      () => auth.disableMfa({ userId, password: PASSWORD, totpCode: '000000' }),
+      /code|totp|presence/i,
+      'a wrong code must be refused',
+    );
+    assert.equal(auth.securityOverview(userId).mfaEnabled, true, 'and must change nothing');
+
+    const off = auth.disableMfa({ userId, password: PASSWORD, totpCode: totpCode(secret, stepStart(0)) });
+    assert.equal(off.disabled, true);
+
+    const after = auth.securityOverview(userId);
+    assert.equal(after.mfaEnabled, false);
+    assert.equal(after.recoveryCodesRemaining, 0, 'codes that only lead back to it go with it');
+  });
+
+  test('on needs the password alone, because there is no code left to present', () => {
+    const { auth, session, secret } = bootstrap();
+    const userId = session.user.id;
+    auth.disableMfa({ userId, password: PASSWORD, totpCode: totpCode(secret, stepStart(0)) });
+
+    // No totpCode argument at all: this is the call that used to reach #assertPresence and
+    // crash on decryptSecret(null).
+    const begun = auth.beginMfaReplacement({ userId, password: PASSWORD });
+    assert.ok(begun.secret, 'a fresh secret is minted');
+    assert.equal(auth.securityOverview(userId).mfaEnabled, false, 'not enrolled until confirmed');
+
+    const confirmed = auth.confirmMfaReplacement({
+      userId, sessionId: session.session.id, challenge: begun.challenge,
+      firstCode: totpCode(begun.secret, stepStart(0)),
+      secondCode: totpCode(begun.secret, stepStart(1)),
+    });
+    assert.equal(confirmed.replaced, true);
+    assert.equal(auth.securityOverview(userId).mfaEnabled, true);
+    assert.ok((confirmed.recoveryCodes ?? []).length > 0, 'turning it on issues fresh codes');
+  });
+
+  test('a wrong password cannot turn it on', () => {
+    const { auth, session, secret } = bootstrap();
+    const userId = session.user.id;
+    auth.disableMfa({ userId, password: PASSWORD, totpCode: totpCode(secret, stepStart(0)) });
+    assert.throws(
+      () => auth.beginMfaReplacement({ userId, password: 'not the password' }),
+      /password/i,
+    );
+  });
+});

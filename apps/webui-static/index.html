@@ -55,7 +55,6 @@
       <form id="loginMfaForm" class="auth-form hidden">
         <label>Authenticator code<input id="loginTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
         <button class="primary" type="submit">Sign in</button>
-        <button class="text-button" type="button" id="loginPasskeyButton">Use a passkey instead</button>
       </form>
       <!-- Stage 1 of getting back in (D-0369). Two ways to be believed and no third: a recovery
            code issued at setup, or proof of controlling the installation. There is no email
@@ -1265,56 +1264,39 @@
             <label class="check"><input id="secRevokeOthers" type="checkbox" checked> Sign out my other sessions</label>
             <button class="primary">Change password</button>
           </form>
-          <form class="panel form-stack" id="recoveryForm" data-needs-mfa>
-            <h2>Recovery codes</h2>
-            <p class="hint">New codes replace the old ones immediately. They are shown once and stored only as digests.</p>
-            <label>Current password<input id="recoveryPassword" type="password" autocomplete="current-password" required></label>
-            <label>Authenticator code<input id="recoveryTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
-            <button class="primary">Generate new recovery codes</button>
-            <div id="recoveryCodesBox" class="hidden"></div>
-          </form>
-        </div>
-        <section class="panel" data-needs-mfa>
-          <div class="panel-title"><h2>Replace authenticator</h2><span id="mfaReplaceState" class="badge badge-off">Not started</span></div>
-          <p class="hint">Your current authenticator keeps working until the replacement is confirmed. Confirmation needs two consecutive codes from the new one.</p>
-          <form class="form-stack" id="mfaReplaceForm">
-            <label>Current password<input id="mfaPassword" type="password" autocomplete="current-password" required></label>
-            <label>Current authenticator code<input id="mfaTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
-            <button class="primary">Begin replacement</button>
-          </form>
-          <div id="mfaEnrolBox" class="hidden">
-            <div class="mfa-enrol">
-              <div class="mfa-qr" id="mfaQr"></div>
-              <div>
-                <h3>Scan this with your authenticator</h3>
-                <p class="hint">If you cannot scan it, enter this key by hand:</p>
-                <code class="manual-key" id="mfaManualKey"></code>
-                <form class="form-stack" id="mfaConfirmForm">
-                  <label>First code<input id="mfaFirstCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
-                  <label>Next code (wait for it to change)<input id="mfaSecondCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
-                  <div class="inline-form"><button class="primary">Confirm replacement</button><button id="mfaCancel" type="button">Cancel</button></div>
-                </form>
+          <section class="panel form-stack" id="mfaPanel">
+            <div class="panel-title"><h2>Authenticator</h2><span id="mfaReplaceState" class="badge badge-off">—</span></div>
+            <p class="hint" id="mfaHint">Optional. This installation signs you in with your username and password; an authenticator app adds a six-digit code on top of them.</p>
+            <form class="form-stack" id="mfaReplaceForm">
+              <label>Current password<input id="mfaPassword" type="password" autocomplete="current-password" required></label>
+              <label id="mfaTotpLabel">Current authenticator code<input id="mfaTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+              <button class="primary" id="mfaBeginButton">Turn on</button>
+            </form>
+            <form class="form-stack hidden" id="mfaDisableForm">
+              <hr>
+              <p class="hint">Turning it off leaves your password as the only thing between this installation and whoever can reach its address.</p>
+              <label>Current password<input id="mfaOffPassword" type="password" autocomplete="current-password" required></label>
+              <label>Current authenticator code<input id="mfaOffTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+              <button class="primary">Turn off</button>
+            </form>
+            <div id="mfaEnrolBox" class="hidden">
+              <div class="mfa-enrol">
+                <div class="mfa-qr" id="mfaQr"></div>
+                <div>
+                  <h3>Scan this with your authenticator</h3>
+                  <p class="hint">If you cannot scan it, enter this key by hand:</p>
+                  <code class="manual-key" id="mfaManualKey"></code>
+                  <form class="form-stack" id="mfaConfirmForm">
+                    <label>First code<input id="mfaFirstCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+                    <label>Next code (wait for it to change)<input id="mfaSecondCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+                    <div class="inline-form"><button class="primary">Confirm</button><button id="mfaCancel" type="button">Cancel</button></div>
+                  </form>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
-        <section class="panel">
-          <div class="panel-title"><h2>Passkeys</h2><span id="passkeyCount" class="badge badge-off">0</span></div>
-          <p class="hint">A passkey works instead of an authenticator code when signing in. Adding or removing one still needs your password and a live authenticator code.</p>
-          <div id="passkeyList" class="card-list empty-state">Loading…</div>
-          <form class="form-stack" id="passkeyAddForm">
-            <label>Name this passkey<input id="passkeyName" placeholder="e.g. YubiKey, laptop Touch ID" maxlength="60" required></label>
-            <label>Current password<input id="passkeyPassword" type="password" autocomplete="current-password" required></label>
-            <label>Authenticator code<input id="passkeyTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
-            <button class="primary" type="submit">Add passkey</button>
-          </form>
-          <form class="form-stack hidden" id="passkeyRemoveForm">
-            <p class="hint">Removing "<span id="passkeyRemoveName"></span>"</p>
-            <label>Current password<input id="passkeyRemovePassword" type="password" autocomplete="current-password" required></label>
-            <label>Authenticator code<input id="passkeyRemoveTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
-            <div class="inline-form"><button class="primary" type="submit">Confirm removal</button><button type="button" id="passkeyRemoveCancel">Cancel</button></div>
-          </form>
-        </section>
+            <div id="recoveryCodesBox" class="hidden"></div>
+          </section>
+        </div>
         <section class="panel"><div class="panel-title"><h2>Active sessions</h2><button class="text-button" id="revokeOthers" type="button">Sign out every other session</button></div><div id="sessionList" class="card-list empty-state">Loading…</div></section>
       </section>
       <section class="settings-section" id="section-models-hardware" data-section="models-hardware">

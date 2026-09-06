@@ -2172,6 +2172,15 @@ const requestListener = async (req, res) => {
         newPassword:payload.newPassword, revokeOtherSessions:payload.revokeOtherSessions !== false,
       }));
     }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/mfa/disable') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 200, auth.disableMfa({
+        userId:authenticated.user.id, password:payload.password, totpCode:payload.totpCode,
+      }));
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/mfa/replace') {
       const authenticated = requireSession(req, res);
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;

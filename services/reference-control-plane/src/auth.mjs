@@ -1161,13 +1161,44 @@ export class AuthService {
   }
 
   /**
+   * Turn the authenticator off, and with it the recovery codes that only exist to get
+   * back to it. Nothing else could: the only line in this file that ever wrote
+   * `totp: null` was the seeding of the first owner, so an account that enrolled one
+   * kept it for life - which is how the Owner of this installation ended up locked out
+   * of a password change the product itself was demanding.
+   *
+   * Password AND a live code, deliberately. A session left open on an unlocked screen is
+   * not proof of anything, and a second factor a password alone can remove was never a
+   * second factor.
+   */
+  disableMfa({ userId, password, totpCode }) {
+    const user = this.#requireUser(userId);
+    if (!user.totp) return { disabled:false, alreadyOff:true };
+    this.#assertPresence(user, password, totpCode, 'auth.mfa-disable');
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      target.totp = null; target.totpUpdatedAt = Date.now();
+      target.recoveryCodes = []; target.recoveryCodesGeneratedAt = null;
+      target.pendingTotp = null;
+    });
+    this.ledger.append({ actor:userId, action:'auth.mfa-disabled', result:'success', details:{} });
+    return { disabled:true };
+  }
+
+  /**
    * Step 1 of replacing the authenticator: prove presence, then mint a CANDIDATE
    * secret held aside. The live secret keeps working until the new one is confirmed,
    * so an abandoned rotation cannot lock anybody out of their own installation.
    */
   beginMfaReplacement({ userId, password, totpCode }) {
     const user = this.#requireUser(userId);
-    const step = this.#assertPresence(user, password, totpCode, 'auth.mfa-replace');
+    // ponytail: the same window changePassword() already opens. An account with no
+    // authenticator has none to present, and #assertPresence would crash on
+    // decryptSecret(null) - so the two-step enrolment below was reachable ONLY by
+    // someone who already had one, and there was no way to turn it on. This is that way.
+    const step = user.totp
+      ? this.#assertPresence(user, password, totpCode, 'auth.mfa-replace')
+      : (() => { if (!verifyPassword(password, user.password)) throw Object.assign(new Error('Current password is incorrect.'), { status:403 }); return null; })();
     const secret = createTotpSecret();
     const challenge = randomToken(24);
     const issuer = 'NOESAR Evolution';

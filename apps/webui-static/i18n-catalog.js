@@ -546,6 +546,11 @@ export const RUNTIME_ONLY = Object.freeze([
 ]);
 
 const it = {
+  'Authenticator': 'Autenticatore',
+  'Optional. This installation signs you in with your username and password; an authenticator app adds a six-digit code on top of them.': 'Facoltativo. Questa installazione ti fa entrare con nome utente e password; un\u2019app di autenticazione aggiunge un codice di sei cifre sopra di essi.',
+  'Turn on': 'Attiva',
+  'Turning it off leaves your password as the only thing between this installation and whoever can reach its address.': 'Spegnerlo lascia la password come unica cosa fra questa installazione e chiunque possa raggiungerne l\u2019indirizzo.',
+  'Turn off': 'Disattiva',
   // 2026-08-31: the six CodeN bar chips were removed from the markup (they were a second
   // rendering of the terminal's own footer line), and their twelve entries — six labels, six
   // titles — went with them in the same commit. A catalogue outliving its screen is the same
@@ -602,7 +607,6 @@ const it = {
   'Passphrase': 'Passphrase',
   'Continue': 'Continua',
   'Sign in': 'Accedi',
-  'Use a passkey instead': 'Usa invece una passkey',
   'Skip to main content': 'Vai al contenuto principale',
   'Sidebar: full': 'Barra laterale: completa',
   'Language': 'Lingua',
@@ -1253,29 +1257,14 @@ const it = {
   'New password': 'Nuova password',
   'At least 14 characters, up to 256. No symbols, digits or capitals are required — a long phrase is enough.': 'Almeno 14 caratteri, fino a 256. Non servono simboli, numeri o maiuscole — basta una frase lunga.',
   'Sign out my other sessions': 'Disconnetti le mie altre sessioni',
-  'Recovery codes': 'Codici di recupero',
-  'New codes replace the old ones immediately. They are shown once and stored only as digests.': 'I nuovi codici sostituiscono subito i vecchi. Sono mostrati una volta sola e conservati solo come impronte.',
-  'Generate new recovery codes': 'Genera nuovi codici di recupero',
-  'Replace authenticator': 'Sostituisci l’autenticatore',
-  'Not started': 'Non iniziata',
-  'Your current authenticator keeps working until the replacement is confirmed. Confirmation needs two consecutive codes from the new one.': 'Il tuo autenticatore attuale continua a funzionare finché la sostituzione non è confermata. La conferma richiede due codici consecutivi del nuovo.',
   'Current authenticator code': 'Codice dell’autenticatore attuale',
-  'Begin replacement': 'Inizia la sostituzione',
   'Scan this with your authenticator': 'Inquadra questo con il tuo autenticatore',
   'If you cannot scan it, enter this key by hand:': 'Se non riesci a inquadrarlo, inserisci questa chiave a mano:',
   'First code': 'Primo codice',
   'Next code (wait for it to change)': 'Codice successivo (aspetta che cambi)',
-  'Confirm replacement': 'Conferma la sostituzione',
   'Cancel': 'Annulla',
-  'Passkeys': 'Passkey',
-  'A passkey works instead of an authenticator code when signing in. Adding or removing one still needs your password and a live authenticator code.': 'Una passkey funziona al posto di un codice dell’autenticatore quando accedi. Aggiungerne o rimuoverne una richiede comunque la tua password e un codice dell’autenticatore valido al momento.',
-  'Name this passkey': 'Dai un nome a questa passkey',
-  'Add passkey': 'Aggiungi passkey',
-  'Removing "': 'Rimozione di «',
-  'Confirm removal': 'Conferma la rimozione',
   'Active sessions': 'Sessioni attive',
   'Sign out every other session': 'Disconnetti ogni altra sessione',
-  'e.g. YubiKey, laptop Touch ID': 'ad es. YubiKey, Touch ID del portatile',
 
   // ——— Settings › Hardware ———
   'COMPUTE ORCHESTRATION': 'ORCHESTRAZIONE DEL CALCOLO',
