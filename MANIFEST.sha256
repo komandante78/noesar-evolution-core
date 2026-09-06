@@ -459,7 +459,7 @@ b15665fec81139d163085f50d74616f75d3bd5d7d4f62bbe662ec8a19202f4d4  ./deployment/c
 a9876d1810040beee56fd08f9e7d0c7b13d6b64ed6c86576b52d23d528755ce9  ./deployment/container/RUN_FLAGS.md
 ed396b5eecb9201177f1f779e9b1521cea47c6974a3768d77a6e497ee60cd47a  ./deployment/container/install-coden-cli.sh
 b73f32e73a459f07004bde1567f68663a12f92984bc166037fb8d73b5a379111  ./deployment/docker/build.sh
-40c63fa9220f0ac1eea75f27fd977b4539ec008f9a8d27b07db3669ebb70f1b8  ./deployment/docker/run.sh
+d48dea0e95bb039f3cbf4e475d8bbae32ed2c16fe8c93e257565d480e51fdc64  ./deployment/docker/run.sh
 d36cf0e3beed3527495bde2e18bd78ba22433f3dedfeefafef0bb281c1edef2d  ./deployment/lib/network-access.sh
 52c316dcbcb6dc4e879c6cec019a1cd0fe2ec4389b6c49bbaa85a17a3044e7d5  ./deployment/linux/install-portable.sh
 3490a6dd685a02cf62ed90702604db9328887ba402bdf5710995c95cd2c6afe1  ./deployment/linux/noesar-evolution.service

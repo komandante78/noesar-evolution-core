@@ -25,6 +25,12 @@ esac
 # Unraid installers, with the same loopback default.
 # shellcheck source=../lib/network-access.sh
 . "$SCRIPT_DIR/../lib/network-access.sh"
+docker image inspect "$IMAGE" >/dev/null 2>&1 || {
+  echo "The image $IMAGE is not on this machine." >&2
+  echo "Build it first: bash deployment/docker/build.sh" >&2
+  exit 1
+}
+
 noesar_prepare_workspace "$WORKSPACE" "$RUN_AS" || exit 1
 noesar_install_intro "$WORKSPACE" "$SCRIPT_DIR/../.." "$PORT" "$RUN_AS" || exit 1
 PORT="$NOESAR_RESOLVED_PORT"
