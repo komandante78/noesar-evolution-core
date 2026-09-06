@@ -38,7 +38,7 @@
 // carries three of the same lines. It is a stale mirror of `MASTER_PROJECT/` — 7 of 14 files
 // diverge — and `docs/DECISION_LOG.md` records that WHICH of the two is canonical is not settled.
 // Aligning it here would take that decision silently, in a phase that was not asked to take it.
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,15 +50,28 @@ const CANON = 'MASTER_PROJECT/09_PIANO.md';
 const EVIDENCE_DIR = 'EVIDENCE';
 const EVIDENCE_PREFIX = 'v4_removal_recovery_';
 
+/**
+ * The workspace's skills, when this tree carries them. The public tree does not: `.claude/` is
+ * stripped on purpose, and an unguarded `readdirSync` there ended the whole check with `ENOENT`
+ * before its first assertion ran — so CANON and IDENTITY, the two that carry the weight, were
+ * never reached either. Absent is not the same as empty, and the summary below says which.
+ * Same repair as the vendored-atom rows on 2026-09-05: a governing file the tree has decided
+ * not to ship cannot be an alarm, but its absence is DECLARED, never silent.
+ */
+const SKILLS_DIR = '.claude/skills';
+const skillsCarried = existsSync(join(ROOT, SKILLS_DIR));
+
 /** Files that GOVERN. Reports under `docs/` are excluded by design — see the header. */
 const GOVERNING = [
   'CLAUDE10.md',
   ...readdirSync(join(ROOT, 'MASTER_PROJECT'))
     .filter((name) => name.endsWith('.md'))
     .map((name) => `MASTER_PROJECT/${name}`),
-  ...readdirSync(join(ROOT, '.claude/skills'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => `.claude/skills/${entry.name}/SKILL.md`),
+  ...(skillsCarried
+    ? readdirSync(join(ROOT, SKILLS_DIR), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => `${SKILLS_DIR}/${entry.name}/SKILL.md`)
+    : []),
 ];
 
 /** A sentence that names the set by its count. Both languages, because the tree is both. */
@@ -181,6 +194,8 @@ for (const file of GOVERNING) {
 }
 
 process.stdout.write(`  canonical list    ${canonNames.length} positions, in ${relative('.', CANON)}\n`);
-process.stdout.write(`  governing files   ${GOVERNING.length} scanned, ${mentions} mention(s), ${ambiguous} ambiguous\n\n`);
+process.stdout.write(`  governing files   ${GOVERNING.length} scanned, ${mentions} mention(s), ${ambiguous} ambiguous\n`);
+if (!skillsCarried) process.stdout.write(`  not scanned       ${SKILLS_DIR} is not carried by this tree\n`);
+process.stdout.write('\n');
 process.stdout.write(failures === 0 ? 'FIVE_ARCHIVES: PASS\n' : `FIVE_ARCHIVES: FAIL (${failures})\n`);
 process.exit(failures === 0 ? 0 : 1);

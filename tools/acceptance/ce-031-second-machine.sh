@@ -215,8 +215,20 @@ as_unprivileged() {
   esac
 }
 
+# Dropping privileges is not enough: that uid must also be able to REACH this tree. A clone
+# under a private home is unreadable to it for reasons that have nothing to do with the product
+# — on the host this was found on, `/root` is `0710`, so the launcher below exited 126,
+# "Permission denied", and the row read FAIL. That is the expected red this whole script exists
+# to refuse: an environment that cannot run a check is DECLARED, never counted as a failure of
+# the thing being checked. Asked of the uid itself rather than inferred from the path.
+if [ -n "$drop" ] && ! as_unprivileged "[ -x '$ROOT/tools/coden-evolution' ]"; then
+  no_host_half="the unprivileged uid cannot reach $ROOT — the host half needs this tree on a path it can traverse"
+  drop=
+fi
+
 if [ -z "$drop" ]; then
-  printf 'HOST_HALF=UNAVAILABLE  running as root and this host offers neither setpriv nor a usable nobody account\n'
+  printf 'HOST_HALF=UNAVAILABLE  %s\n' \
+    "${no_host_half:-running as root and this host offers neither setpriv nor a usable nobody account}"
   printf 'CE031_SECOND_MACHINE_FAIL=%s\n' "$fail"
   [ "$fail" = 0 ] || exit 1
   exit 2

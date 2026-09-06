@@ -6603,7 +6603,7 @@ e24ca32df4b22035af50f3ebbe14a1ff0c6638f60f4d12b8b951b6ac362fcc2a  ./tools/accept
 719553a3d9a6d91c8bfad7f6844d5ff16374ace4da592d9b8fcc1374b43cf85b  ./tools/acceptance/ce-020-tui-fullscreen.mjs
 d9936dd70e914fb6783ff826894712e472e37fa369cb57379663f05b3b672011  ./tools/acceptance/ce-021-two-shells.mjs
 94eb09476471fe9370f399c42c30afa1619e7d996cee46c37f0cc3e9bdb3d8c7  ./tools/acceptance/ce-031-remote-probe.mjs
-bec200f27b626ab297ea42c864dbcd333a5a1a5b0b6bdca4529fe467beb790c1  ./tools/acceptance/ce-031-second-machine.sh
+97071a5d958826ce18b59eef8dc3e7e1781f66e4233aafb57a35f9968a7f1286  ./tools/acceptance/ce-031-second-machine.sh
 6c4f355951081432f80f7ac8ea137e17b5e35cbb8fadaf6c2f659141ccc0ec5f  ./tools/acceptance/ce-032-launcher-in-container.sh
 12cb235a684a1e170fd0ca2c6f7d36ff63f698f9f5ea8a5d73b923b431e213bf  ./tools/acceptance/ce-036-portable-cli-install.mjs
 1c457ee06fa501ad233e9927a299c080728f537fca05d9a0d20e1798b7890db4  ./tools/acceptance/ce-037-one-word.mjs
@@ -6681,7 +6681,7 @@ d0ff1cfbb0b916f900704ba74e3277a1873b641003ce1dee28e9c253ce36cc3a  ./tools/tui-fu
 2e5d4be641d0304459db1eddb8902431c36c5c0987bba20bd64ce3645af7ef40  ./tools/verify-build-provenance.mjs
 5315f9ad357094b411bfa00211789c3b883f9e9b6fb8bc6e46ca472ec764314c  ./tools/verify-compliance-pack.mjs
 4eaae5f77c94ced1515491622c4f53359695bcf4737d910c524159c9e59823a4  ./tools/verify-crate-extraction.sh
-895267f993666624294d42f7adfdccecdd053967b909f670741e2a0523946321  ./tools/verify-five-archives.mjs
+bff02bcb2a056473c90c61063aded2e9347378568696f35e80ee83c8ae30112e  ./tools/verify-five-archives.mjs
 8cda98575f16024d55d80068dbbeeea5aeca795559be217bb06a711db4d0c213  ./tools/verify-image-provenance.sh
 1e488fc4fb0a5cf4c90e42ca6442ca524d1531c9ea42f1c757bf59e496ef854f  ./tools/verify-linter-detects.sh
 b7bf109b81c7485b48bb982bf58cb81e50a12fe28cc4ee65f59d654271cede20  ./tools/verify-package.py
