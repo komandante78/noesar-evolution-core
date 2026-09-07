@@ -5939,7 +5939,12 @@ async function placeModel(id,mode,layers,layerCount=layers){
 async function loadModel(id){
   if(!confirm(t('Loading a model into memory replaces whatever is answering now and takes a moment. Load this one?')))return;
   const button=findByData('load-model',id);
-  if(button)button.disabled=true;
+  // Owner, 2026-09-07: «voglio che ci sia un avviso di caricamento». There already was one, and
+  // it was missed: a 12px line placed BELOW the control. The eye stays on the button it just
+  // pressed, and that button only went grey — which reads as "nothing happened", the exact
+  // thing the note below it existed to prevent. The state now sits ON the control.
+  const buttonLabel=button?.textContent;
+  if(button){button.disabled=true;button.textContent=t('Loading…');}
   // Owner, 2026-08-29: «deve apparire un caricatore». A disabled button says "nothing is
   // happening" as loudly as it says "wait", and this wait is minutes — fifteen gigabytes from
   // disk onto the card. The compact chooser already said so; this surface did not.
@@ -5952,7 +5957,7 @@ async function loadModel(id){
     await refreshCodenModelChip();
   }catch(error){
     toast(`${t('This model could not be loaded:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
-    if(button)button.disabled=false;
+    if(button){button.disabled=false;button.textContent=buttonLabel;}
   }finally{
     waiting.remove();
   }

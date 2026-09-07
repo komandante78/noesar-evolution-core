@@ -1766,4 +1766,4 @@ button.armed{border-color:var(--red);color:var(--red)}
 .placement-split input{width:5rem}
 /* La riga di attesa mentre un modello si carica: minuti, non un istante. Distinta dalla nota di
    rifiuto che le sta accanto, perche "sto lavorando" e "ho fallito" non devono somigliarsi. */
-.model-row-waiting{color:var(--text-label);font-size:calc(var(--text-scale)*12px);margin:6px 0 0}
+.model-row-waiting{color:var(--text-strong);font-size:calc(var(--text-scale)*13px);font-weight:600;margin:6px 0 0;padding:6px 10px;background:var(--accent-wash);border-radius:6px}
