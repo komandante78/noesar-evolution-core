@@ -105,7 +105,32 @@ export function probeCopyOnWrite(directory) {
   };
 }
 
+// A file this installation cannot READ stops the copy, and it must: a shadow that quietly
+// skipped one would compare a tree that is not the workspace and call the difference clean.
+// What was missing was the way out. Measured on the live installation, 2026-09-07: a single
+// file left `0600 root:root` inside the workspace stopped every simulation, and said so with
+// a bare errno that names the path and neither the cause nor the remedy.
+function readFailure(error, from) {
+  if (error?.code !== 'EACCES' && error?.code !== 'EPERM') return error;
+  const uid = typeof process.getuid === 'function' ? process.getuid() : null;
+  const gid = typeof process.getgid === 'function' ? process.getgid() : null;
+  return new ShadowError('IO',
+    `${from} cannot be read by this installation${uid === null ? '' : `, which runs as uid ${uid}`}. `
+    + 'The shadow copies every file it compares, so this run stops here rather than compare a tree '
+    + 'that is not the workspace and report the difference as clean. '
+    + `Make that file readable to it${gid === null ? '' : `: chown :${gid} <file> && chmod 0640 <file>`}.`,
+    from);
+}
+
 function cloneFile(from, to, useReflink) {
+  try {
+    return cloneFileOnce(from, to, useReflink);
+  } catch (error) {
+    throw readFailure(error, from);
+  }
+}
+
+function cloneFileOnce(from, to, useReflink) {
   if (useReflink) {
     try {
       copyFileSync(from, to, fsConstants.COPYFILE_FICLONE_FORCE);
@@ -207,7 +232,7 @@ export class ShadowWorkspace {
     for (const item of planned) {
       mkdirSync(dirname(item.to), { recursive:true });
       if (existsSync(item.from) && statSync(item.from).isFile()) {
-        copyFileSync(item.from, item.to);
+        try { copyFileSync(item.from, item.to); } catch (error) { throw readFailure(error, item.from); }
         this.#baseline.set(item.relative, digestOf(item.to));
       } else {
         // A file the plan names that does not exist yet is legitimate -- the plan may create

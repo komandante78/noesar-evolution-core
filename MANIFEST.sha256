@@ -6335,7 +6335,7 @@ ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/ref
 836d93ac41774d98b0fa6bd49c47ee2852d4218a8f910327a32f303c86f343fe  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
-afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  ./services/reference-control-plane/src/shadow.mjs
+4f23b6bd08fa34227a22fc0260b571d0379a05fea05094d05416b0a2256938b9  ./services/reference-control-plane/src/shadow.mjs
 9eb1f8732606cf2ad1ce49a783a70e4dfb93debfb8efe4938e151c91966731e2  ./services/reference-control-plane/src/skill-catalog.mjs
 0959d1554ed9798117accbcf1bd04a4c8c62c7df8c7d006c0ec345224dd6ff58  ./services/reference-control-plane/src/store.mjs
 0067fbae34832e7a5564d035d54256d1e277f64aa55ee0ed97191e54926bf53d  ./services/reference-control-plane/src/technology-radar.mjs
