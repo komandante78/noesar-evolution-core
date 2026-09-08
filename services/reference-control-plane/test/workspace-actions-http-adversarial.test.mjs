@@ -179,7 +179,20 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
   });
 
   // ---------------------------------------------------------------- invariant 4
-  test('write_only_by_construction · fields that name a destructive operation do not reach the built plan', async () => {
+  //
+  // REWRITTEN, D-0704. The old form asserted that NO request-body field reaches
+  // blastRadius.destructive, and sent `commands: ['rm -rf /']` among the smuggled fields to
+  // prove it was dropped. `commands` is now a real field with a real effect, so that exact
+  // payload is the best possible test of the NEW boundary rather than a test to delete — and
+  // the new boundary is stronger where it counts: the smuggled fields are still ignored, and
+  // the one that is real is refused OUT LOUD instead of accepted and silently dropped.
+  //
+  // `rm -rf /` also happens to be the honest worst case to name: on an installation that
+  // enabled the sandbox AND sent `policy: 'permissive'` AND had a person approve the plan,
+  // that argv would run — inside the disposable SHADOW, as a contained child under the
+  // envelope the plan declared, with the real workspace untouched and the comparison then
+  // filthy, so nothing is ever promoted. That is the declared trade of D-0250, not a hole.
+  test('write_only_by_construction · a smuggled destructive field is ignored, and a declared command is refused out loud', async () => {
     const planned = await authed('/api/v1/workspace-actions/plan', {
       method: 'POST',
       payload: {
@@ -187,10 +200,26 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
         operation: 'delete', recursive: true, destructive: true, commands: ['rm -rf /'],
       },
     });
-    assert.equal(planned.status, 201);
-    assert.equal(planned.json.plan.steps[0].blastRadius.destructive, false,
-      'no request-body field reaches blastRadius.destructive; the WRITE-only boundary is structural, not a filter');
-    assert.deepEqual(planned.json.plan.steps[0].commands, []);
+    // This installation does not run commands (no execute sandbox), so the plan does not come
+    // back at all. Refusing here is the property: the previous behaviour — 201 with the
+    // commands quietly dropped — would tell a caller their command was accepted.
+    assert.equal(planned.status, 422);
+    assert.equal(planned.json.kind, 'EXECUTION_DISABLED');
+
+    // And the fields that were never real are still never real: the same body WITHOUT
+    // `commands` builds a plan that is not destructive and runs nothing, so `operation`,
+    // `recursive` and `destructive` remain structurally unable to reach it.
+    const clean = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: {
+        request: 'try to smuggle a destructive step', files: [{ path: 'noise.txt', contents: 'x' }],
+        operation: 'delete', recursive: true, destructive: true,
+      },
+    });
+    assert.equal(clean.status, 201);
+    assert.equal(clean.json.plan.steps[0].blastRadius.destructive, false,
+      'no request-body field reaches blastRadius.destructive; only a declared command does, and only through plan()');
+    assert.deepEqual(clean.json.plan.steps[0].commands, []);
   });
 
   // ---------------------------------------------------------------- invariant 5

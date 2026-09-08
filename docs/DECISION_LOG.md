@@ -16612,3 +16612,45 @@ cargo. **14 lib tests + 1 conformance test (`every_reasoning_vector_passes`), 0 
 
 *Reversal cost:* none on an installation with the sandbox off. On one with it on, reverting
 restores the state where no model can be started.
+
+## D-0706 · The declared commands reach both shells, and adversarial invariant 4 is rewritten rather than deleted — 2026-09-08
+
+*Context:* found in the RUNNING product, not in the code. `D-0704` gave `plan()` a `commands`
+parameter and neither transport carried it: `server.mjs`'s `POST /api/v1/workspace-actions/plan`
+and `session-protocol.mjs`'s `workspace.plan` each build the argument object by hand, and
+neither knew about the new field. So the capability existed and no shell could ask for it —
+the same unreachable-mechanism shape `D-0704` was written to remove, one layer further out.
+There is no runtime error for this: a field is forwarded or it is silently dropped.
+
+*Decision:* both transports forward it, in the same change. `D-0230` ("one program, two shells")
+and `ce-034-the-same-names-in-both-shells` make a field one shell can send and the other cannot
+a divergence rather than a smaller terminal. Validation stays in `plan()` — a second validator
+on the wire would be a second opinion about what a command is, and `INVALID_COMMAND` /
+`EXECUTION_DISABLED` already travel back through the existing `WorkspaceActionError` branch.
+Pinned by a test that reads both call sites: a build that wired only the browser fails it.
+
+*The invariant that changed, named rather than quietly dropped.* Adversarial invariant 4 —
+*"fields that name a destructive operation do not reach the built plan"* — sent
+`commands: ['rm -rf /']` among its smuggled fields and asserted a `201` with the commands
+dropped. That is no longer true, and it is no longer what should be true: accepting a command
+and silently ignoring it tells a caller their command was accepted. The test is rewritten in
+two halves. **`commands` is now refused OUT LOUD** — `422 EXECUTION_DISABLED` on an installation
+that does not run commands. **Everything else is still structurally unable to reach the plan** —
+the identical body without `commands` still builds a non-destructive step, so `operation`,
+`recursive` and `destructive` in a request body remain inert.
+
+*The worst case, stated plainly rather than left for a reader to work out.* On an installation
+that enabled the sandbox, from a caller holding `workspace.write`, with an explicit
+`policy: 'permissive'`, and with a person approving the plan, `rm -rf /` as argv WOULD run —
+inside the disposable shadow, as a contained child under the envelope the approved plan
+declared, with the real workspace untouched and the comparison then filthy, so nothing is
+promoted. That is the declared trade of `D-0250`, and it is written into the rewritten test so
+nobody has to rediscover it.
+
+*Named for the Owner, not decided here:* on an installation with the sandbox on,
+`workspace.write` becomes "may run contained commands after approval". Whether that deserves a
+permission of its own is a real question and is not one to answer as a side effect of wiring —
+the same class as `D-0250`'s own reasoning about the switch.
+
+*Evidence:* suite **3197 tests, 3196 pass, 0 fail, 1 skip**; ESLint **477 files, 0 errors,
+0 warnings**; `MANIFEST.sha256` 6 701 files. The HTTP adversarial suite is 15 pass, 0 fail.

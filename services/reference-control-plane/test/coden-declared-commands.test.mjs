@@ -325,3 +325,32 @@ test('the status reports this installation\'s own answer, and never two answers 
       'the status must not repeat a claim the executor stopped making in D-0250');
   }
 });
+
+// --- and it has to be reachable from BOTH shells -----------------------------------------
+
+test('both transports forward the declared commands to plan()', () => {
+  // The defect this closes was found in the running product, not in the code: `plan()` took
+  // `commands` and NEITHER transport passed it, so the capability existed and no shell could
+  // ask for it. Exactly the unreachable-mechanism shape this whole file exists to remove,
+  // one layer further out.
+  //
+  // Asserted on the source because that is where the property lives: each transport builds
+  // the argument object by hand, so a field is forwarded or it is silently dropped — there is
+  // no runtime error to catch. `D-0230` (one program, two shells) and `ce-034` make one shell
+  // knowing a field the other does not a divergence rather than a smaller terminal, so both
+  // are pinned in ONE test: a build that wired only the browser fails here.
+  const http = readFileSync(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  const socket = readFileSync(new URL('../src/session-protocol.mjs', import.meta.url), 'utf8');
+
+  const httpCall = http.slice(http.indexOf('await workspaceActions.plan({'));
+  const httpArgs = httpCall.slice(0, httpCall.indexOf('});'));
+  assert.ok(httpArgs.length > 100, 'the HTTP plan route moved; this test cannot see its arguments');
+  assert.match(httpArgs, /commands: payload\?\.commands \?\? \[\]/,
+    'POST /api/v1/workspace-actions/plan must forward the declared commands');
+
+  const socketCall = socket.slice(socket.indexOf("'workspace.plan':"));
+  const socketArgs = socketCall.slice(0, socketCall.indexOf('}),'));
+  assert.ok(socketArgs.length > 100, 'the socket plan method moved; this test cannot see its arguments');
+  assert.match(socketArgs, /commands: params\?\.commands \?\? \[\]/,
+    'the terminal shell must declare commands exactly as the browser does');
+});

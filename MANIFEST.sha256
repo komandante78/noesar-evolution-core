@@ -500,7 +500,7 @@ d41ee2bafdfb8e050ccacaeba165c0023979c11c74f53442e346d737f7e8b1bf  ./docs/CHIUSUR
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-6b9fd541df9855a54a21f07917ff740b5a749044224c1cf2623fad145c3d534b  ./docs/DECISION_LOG.md
+d6d55341514ab864c09b1ebb7cd8461ba382542600fbe808e75ae95c8c02de2c  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
@@ -6331,9 +6331,9 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-a216f094c8f433200a8169b978876b254f06c2339205b839bd13ea2120569a69  ./services/reference-control-plane/src/server.mjs
+e76cb25c4215a07c4bf6f65a22b2a62cc7e9f42d88b13ecbddaae8f66a99929f  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
-836d93ac41774d98b0fa6bd49c47ee2852d4218a8f910327a32f303c86f343fe  ./services/reference-control-plane/src/session-protocol.mjs
+878ff33816513f648c976747e95ea5d813cb20693c52a5d15eb112da9b7b8122  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
 4f23b6bd08fa34227a22fc0260b571d0379a05fea05094d05416b0a2256938b9  ./services/reference-control-plane/src/shadow.mjs
@@ -6426,7 +6426,7 @@ cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/ref
 144b3197052d67a900025439a5442746f4de9f70c9eef48b06ed5e5dc1fe2591  ./services/reference-control-plane/test/coden-address-declaration.test.mjs
 4b1f860853767cea16f226e7b9e3bb2d7c38edae7893a8c9cf56e324c921eade  ./services/reference-control-plane/test/coden-addressable-panels.test.mjs
 67ba4a154d0548d659e054f49aaae7025579714f063d811e2fccf3a97105c3c7  ./services/reference-control-plane/test/coden-bridge.test.mjs
-7d20407b79e71d68bf64fb483aa6293f61f5e9f63dde48f82f56f195fa2e815e  ./services/reference-control-plane/test/coden-declared-commands.test.mjs
+24cd20b5cae8010d4fdcc5b1b17102cf243cea1c6153301967fb26a3451ddc29  ./services/reference-control-plane/test/coden-declared-commands.test.mjs
 3972b353836d12f87c71aa06168536bdf2d33b71648152df4928df3bcd04e92c  ./services/reference-control-plane/test/coden-fullscreen-input-flow.test.mjs
 843315f3161e249a0d8001a31e746d3224e34204dc0dfa289070aa2bf057afd8  ./services/reference-control-plane/test/coden-invariant-adversarial.test.mjs
 deb788e4a9b4122aac1423a56bd630dc9698b06b297c054d2e841ad789ee3cd5  ./services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs
@@ -6581,7 +6581,7 @@ aaa6fc07b584b798b8d4b7e939bdf73b2e67a789b1a0cc6d68b98a8459fc8595  ./services/ref
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs
 3a547526f1f9ae1e7a5980efbc4b40d0ee1a406ee49f71ede4241fcc5778f095  ./services/reference-control-plane/test/workflow-engine.test.mjs
 1eb92d39e1c01874e63efee2e89f2ed81500e1f2e4d46766ba227c01ffef09fd  ./services/reference-control-plane/test/workflow-interrupted-step.test.mjs
-a390dd2b8d0fe42aa4bc6f2a141d36752e2be96d6deb50ef017d5bfed7d6bbe9  ./services/reference-control-plane/test/workspace-actions-http-adversarial.test.mjs
+129114d756741f423fcc2c27d13e9e752d629f2a64f86981e819d22cc60c0d99  ./services/reference-control-plane/test/workspace-actions-http-adversarial.test.mjs
 c728ef16dc28c01fe2c2e5afec869d45f0fcbbc538793679ccbee7f9ad0a1cc1  ./services/reference-control-plane/test/workspace-actions.test.mjs
 5f70fa07287e1524ec02afe3ecd4bfba3b606809fd362326351e0cf40c4a07ab  ./services/reference-control-plane/test/workspace-support.test.mjs
 6a149a51eb419fbcdf30fae87ff71e2e0e8691cfa98807e3c36c3e24251aeba6  ./tests/ai-agent-service.test.mjs

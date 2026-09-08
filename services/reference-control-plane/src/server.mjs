@@ -4288,6 +4288,11 @@ const requestListener = async (req, res) => {
           request: payload?.request, files: payload?.files, projectRules: payload?.projectRules ?? [],
           constraints: payload?.constraints ?? [], mode: payload?.mode ?? 'safe', policy: payload?.policy ?? 'restrictive',
           actor: authenticated.user.id, nowUnix, claims: payload?.claims ?? [], conversationId,
+          // The commands the plan declares it will run. Forwarded as given and validated in
+          // `plan()`, not here: a second validator on the wire is a second opinion about what
+          // a command is, and the refusals (`INVALID_COMMAND`, `EXECUTION_DISABLED`) already
+          // travel back through the WorkspaceActionError branch below.
+          commands: payload?.commands ?? [],
         });
         return json(res, 201, planned);
       } catch (error) {

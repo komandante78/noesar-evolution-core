@@ -300,6 +300,10 @@ export function createSessionDispatch({
       request: params?.request, files: params?.files ?? [], projectRules: params?.projectRules ?? [],
       constraints: params?.constraints ?? [], mode: params?.mode ?? 'safe', policy: params?.policy ?? 'restrictive',
       actor, nowUnix: nowUnix(), claims: params?.claims ?? [],
+      // `D-0230`, one program two shells: the terminal declares commands exactly as the
+      // browser does. A field one shell can send and the other cannot is the divergence
+      // `ce-034` exists to catch, not a smaller terminal.
+      commands: params?.commands ?? [],
       // Point 4b, the Owner's decision made structural: a run started here belongs to NO chat,
       // and `params.conversationId` is not read — not defaulted, not forwarded. A terminal
       // session has no conversation to speak for, so accepting an id off the wire would let
