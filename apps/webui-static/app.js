@@ -1069,7 +1069,19 @@ $('#projectList')?.addEventListener('input',(event)=>{
 $('#projectForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:$('#projectName').value,description:$('#projectDescription').value,instructions:$('#projectInstructions').value,tags:$('#projectTags').value.split(',').map((v)=>v.trim()).filter(Boolean),knowledgePolicy:{mode:$('#projectKnowledgeMode').value,limit:Number($('#projectKnowledgeLimit').value),maxCharacters:60000}})});state.activeProjectId=project.id;event.target.reset();await refreshWorkspace();setStatus('Project created.');}catch(error){setStatus(error.message,true);}});
 $('#chatProject').addEventListener('change',async(event)=>{state.activeProjectId=event.target.value||null;state.activeConversationId=null;await refreshWorkspace();});
 $('#chatConversation').addEventListener('change',async(event)=>selectConversation(event.target.value));
-async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#messageList').textContent='Create or select a conversation.';return;}state.activeConversationId=id;const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?' · external':' · local'}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();
+// The empty state as the markup ships it, captured before anything overwrites it.
+// Owner, 2026-08-21, about a defect of the same shape: the instruction on screen named a
+// command that was not on screen. The chat says "Create or select a conversation" and the
+// button that creates one is inside `#chatMoreMenu`, which starts hidden behind the
+// three dots — so the first thing a person is told to do is behind a control they have no
+// reason to open. The empty state carries the button itself now.
+//
+// Read out of the document instead of written a second time in code: `#messageList` is
+// restored from what the markup already says, so the two cannot drift apart. The button
+// forwards to `#newConversation` rather than repeating what it does, for the same reason.
+const EMPTY_CHAT_HTML=$('#messageList')?.innerHTML??'Create or select a conversation.';
+document.addEventListener('click',(event)=>{if(event.target.closest('[data-start-conversation]'))$('#newConversation')?.click();});
+async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#messageList').innerHTML=EMPTY_CHAT_HTML;return;}state.activeConversationId=id;const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?' · external':' · local'}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();
 // Point 4b: BEFORE `refreshMessages()`, deliberately — that call can throw, and everything
 // after it would then never run. The same ordering, for the same reason, that `loadChatNav()`
 // is given in `refreshWorkspace` (`D-0329`); the test asserts the order, not the presence.
