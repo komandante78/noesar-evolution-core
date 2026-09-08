@@ -689,6 +689,23 @@ export const RUNTIME_ONLY = Object.freeze([
   'Grant for active project',
   'Available by consent',
   'Unknown',
+  // Documents and Knowledge. Three composed lines — a document's kind and version count, a
+  // source's extraction result and size, and a passage's number — plus the eight tokens the
+  // file extractors write. Those eight reached the card exactly as the extractor spelled
+  // them, underscores and all: `extraction_failed · 72795 bytes` is not a sentence in any
+  // language, and it is what a person saw when a file did not come out.
+  'version',
+  'bytes',
+  'Passage',
+  'No extracted passages.',
+  'complete',
+  'caption_failed',
+  'caption_required',
+  'extraction_failed',
+  'extractor_required',
+  'indexed_metadata',
+  'transcription_required',
+  'unsupported',
 ]);
 
 const it = {
@@ -878,6 +895,20 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // Documents and Knowledge. The eight extraction states are the extractor's own tokens; here
+  // they are said as what happened to the file, which is what the card is for.
+  'version': 'versione',
+  'bytes': 'byte',
+  'Passage': 'Passaggio',
+  'No extracted passages.': 'Nessun passaggio estratto.',
+  'complete': 'completata',
+  'caption_failed': 'descrizione dell’immagine fallita',
+  'caption_required': 'serve la descrizione dell’immagine',
+  'extraction_failed': 'estrazione fallita',
+  'extractor_required': 'serve un estrattore',
+  'indexed_metadata': 'indicizzato dai metadati',
+  'transcription_required': 'serve la trascrizione',
+  'unsupported': 'non supportato',
   // The tool cards (Tools) and the egress chip.
   'Built-in': 'Integrato',
   'Read-only': 'In sola lettura',
