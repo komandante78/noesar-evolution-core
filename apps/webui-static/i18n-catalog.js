@@ -678,6 +678,17 @@ export const RUNTIME_ONLY = Object.freeze([
   'Lets this provider caption an uploaded image when OCR finds no text in it',
   'Vision-capable (image captioning)',
   'Grant explicit external consent first.',
+  // The tool cards (Tools) and the egress chip. `Mutative`, `No tools.`, `consent granted`
+  // and `no consent` were already here; what a tool IS, and what it may do, were not.
+  'Built-in',
+  'Read-only',
+  'consent not granted',
+  'Optional API/OAuth token',
+  'Save encrypted key',
+  'Revoke consent',
+  'Grant for active project',
+  'Available by consent',
+  'Unknown',
 ]);
 
 const it = {
@@ -867,6 +878,16 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // The tool cards (Tools) and the egress chip.
+  'Built-in': 'Integrato',
+  'Read-only': 'In sola lettura',
+  'consent not granted': 'consenso non concesso',
+  'Optional API/OAuth token': 'Token API/OAuth, facoltativo',
+  'Save encrypted key': 'Salva la chiave cifrata',
+  'Revoke consent': 'Revoca il consenso',
+  'Grant for active project': 'Concedi per il progetto attivo',
+  'Available by consent': 'Disponibile per consenso',
+  'Unknown': 'Sconosciuto',
   // The provider cards (Models). `Disabled`, `Disable`, `Enable` and the controls around them
   // were already here; what was missing was every word that STATES something — whether a
   // provider is local or external, on or off, whether it has its credential, and the card of
