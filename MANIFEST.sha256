@@ -6322,7 +6322,7 @@ d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/ref
 159985a0cffbd85a11a08d80213740819bc9e54128365882df8e80286a7935ba  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
-d9c2a04353f63c1da51a187d15b852e2d2d729fdab11285eb7811f17bb1aa62f  ./services/reference-control-plane/src/research.mjs
+5bc4c3644cb4ad76fb7592ae61e09c4943c720baaa4316bcfad7dcae1589a0c6  ./services/reference-control-plane/src/research.mjs
 fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/reference-control-plane/src/review-latency.mjs
 54c1ca7109ba9abb1a8cad335ff9ea5cb8e87ce4ead67a12361af15bd1a7ebd7  ./services/reference-control-plane/src/run-store.mjs
 2793de6a4561fa732db0f3c4a83f7654a5b6da1507ab2fb69a7ad2b22813e652  ./services/reference-control-plane/src/sandbox-runner.mjs
@@ -6330,7 +6330,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-68ced220dd02bd2372151fe51f9085b876a4246988fd586e7a9fc1fb68cc1056  ./services/reference-control-plane/src/server.mjs
+d9ded2e4ca315fb3a49eb5cdbc43fd346868cc9a11a1bbb6ab9150f8f4eae314  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 836d93ac41774d98b0fa6bd49c47ee2852d4218a8f910327a32f303c86f343fe  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6515,7 +6515,7 @@ a2ae87d6204ad1a78d07eb05150a927ef44c823ba47454a9e03ff20265ff10c4  ./services/ref
 993825730490cf06f52291b8a06978b20dd3517ec16b59c742af59108e2c04de  ./services/reference-control-plane/test/request-origin.test.mjs
 977ef559f66f651cf18773923463e3e83611115c6fa421c2ad33492634f4cda1  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs
 e5c01db43905e4d5851037a2a3c3bc24cd775520066db77e619714071ffb768f  ./services/reference-control-plane/test/research-gate.test.mjs
-4635c5a9ddb94a95b58eb6c4d937e8ff0fd8e4de0f080f20885144ecbbf333f2  ./services/reference-control-plane/test/research.test.mjs
+69c38ffaf0e0ee735dca0c11e5c95f9c28ffc2d7088f6991fb85c80f9e22f672  ./services/reference-control-plane/test/research.test.mjs
 797a453da8ef85e29682f7d92e55240fd33a888bb3b9ffc545b7c23d27d68954  ./services/reference-control-plane/test/review-latency.test.mjs
 ae917fff2735ed6569d0ef9689e48648302b900d2c0f4e6089634e260aa47b36  ./services/reference-control-plane/test/role-permissions-surface.test.mjs
 4532b78d59ecfbade04dddf13a0c49380df704f6388f0d8ffab90e0f8f99f6c3  ./services/reference-control-plane/test/run-retention.test.mjs

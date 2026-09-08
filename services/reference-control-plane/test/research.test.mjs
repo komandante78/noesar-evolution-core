@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import {
-  resolveResearchTool, researchToolStatus,
+  resolveResearchTool, researchToolStatus, isDesignatableResearchTool,
   runResearchReport, validateCandidate, validateReportPayload,
   ResearchReportStore, RefusalRegistry, buildQueryEcho,
   writeResearchAnswer, buildWriteupPrompt, writeupInstructionFor, validateReportImages,
@@ -580,4 +580,43 @@ test('a refused candidate is kept: it is a fact about the search, not unread mat
     { name: 'Read', sourceHost: 'b.test', pageText: 'opened and read', evidence: [] },
   ]);
   assert.ok(prompt.includes('excluded: the gate refused it'));
+});
+
+describe('which tools may be offered as the research provider (2026-09-08)', () => {
+  const searchTool = {
+    id: 'builtin:research.search', name: 'engine_research_search', disabled: false, mutative: false,
+    inputSchema: { type:'object', properties:{ objective:{ type:'string' }, criteria:{ type:'array' } }, required:['objective'] },
+  };
+  const approveTool = {
+    id: 'builtin:workspace.approve', name: 'engine_workspace_approve', disabled: false, mutative: true,
+    inputSchema: { type:'object', properties:{ runId:{ type:'string' } }, required:['runId'] },
+  };
+
+  test('the tool a research request can actually be sent to is designatable', () => {
+    assert.equal(isDesignatableResearchTool(searchTool), true);
+  });
+
+  test('a tool that changes this installation is not', () => {
+    assert.equal(isDesignatableResearchTool(approveTool), false);
+    // And not only because of its schema: the refusal must survive a mutating tool that
+    // happens to take an objective, which is the case a schema check alone would let through.
+    assert.equal(isDesignatableResearchTool({ ...approveTool, inputSchema: searchTool.inputSchema }), false);
+  });
+
+  test('a tool that takes no objective is not, however harmless it is', () => {
+    assert.equal(isDesignatableResearchTool({ id:'x', disabled:false, mutative:false, inputSchema:{ properties:{ runId:{} } } }), false);
+  });
+
+  test('a tool that demands something this product never sends is not', () => {
+    // The dispatch is exactly `{ objective, criteria }`. A tool requiring anything else would
+    // be designated, then refuse every request it was given — a provider that cannot answer.
+    assert.equal(isDesignatableResearchTool({
+      id:'x', disabled:false, mutative:false,
+      inputSchema:{ properties:{ objective:{}, apiKey:{} }, required:['objective','apiKey'] },
+    }), false);
+  });
+
+  test('a disabled tool is not offered', () => {
+    assert.equal(isDesignatableResearchTool({ ...searchTool, disabled: true }), false);
+  });
 });

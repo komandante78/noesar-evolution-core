@@ -590,6 +590,40 @@ export function resolveResearchTool(tools, toolId) {
  * true for a tool that has not been consented yet, or the panel could never offer the tool whose
  * consent is the next thing the person is about to give.
  */
+/**
+ * May this tool be OFFERED as the research provider at all?
+ *
+ * `researchToolStatus` answers whether the configured one is usable. Nothing answered the
+ * question before it, and both places that needed an answer invented one: the Settings GET
+ * listed every tool that was not disabled, and the PUT accepted any tool that existed.
+ *
+ * Measured on the live installation, 2026-09-08: thirty tools offered as research providers.
+ * One of them can search the web. Six change this installation —
+ * `engine_workspace_approve`, `engine_workspace_reject`, `engine_workspace_restore`,
+ * `engine_capability_revoke`, `engine_model_activate`, `engine_model_deactivate`. Choosing
+ * one of those does not merely stop research from working: it points the one feature whose
+ * job is to send a question out at a tool whose job is to change things here.
+ *
+ * The rule is the dispatch contract, not a list of names. `runResearchReport` calls the
+ * provider with exactly `{ objective, criteria }`, so a tool qualifies when it takes an
+ * `objective` and requires nothing this product does not send. A list of names would have
+ * to be edited every time a tool is registered — by an operator, on their own machine,
+ * which is the case this product exists to serve — and would be wrong the first time
+ * someone did. A contract check cannot go stale that way.
+ *
+ * `mutative` is refused on top of the contract rather than left to it. A tool that changes
+ * state and happens to accept an `objective` would satisfy the schema and still be the
+ * wrong answer, and this is the one designation where being wrong writes to the machine.
+ */
+export function isDesignatableResearchTool(tool) {
+  if (!tool || tool.disabled || tool.mutative) return false;
+  const schema = tool.inputSchema ?? {};
+  if (!schema.properties?.objective) return false;
+  const supplied = new Set(['objective', 'criteria']);
+  const required = Array.isArray(schema.required) ? schema.required : [];
+  return required.every((name) => supplied.has(name));
+}
+
 export function researchToolStatus(tools, toolId) {
   try {
     resolveResearchTool(tools, toolId);

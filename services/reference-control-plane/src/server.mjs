@@ -42,7 +42,7 @@ import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path
 import { ReasoningRefused, reasoningStatus } from './reasoning.mjs';
 import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-router.mjs';
 import { researchGateFrom } from './research-gate.mjs';
-import { runResearchReport, ResearchReportStore, RefusalRegistry, writeResearchAnswer, researchToolStatus } from './research.mjs';
+import { runResearchReport, ResearchReportStore, RefusalRegistry, writeResearchAnswer, researchToolStatus, isDesignatableResearchTool } from './research.mjs';
 import { LOCAL_RUNTIME_PROFILE_ID } from './ai-workspace/active-runtime-provider.mjs';
 import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
 import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings, triageFindingById, fetchAndScanRemoteTarget, probeApiTarget } from './debug-evolution-bridge.mjs';
@@ -3028,8 +3028,11 @@ const requestListener = async (req, res) => {
         configured: Boolean(tool),
         consented: status.usable,
         unusableReason: status.usable ? null : status.reason,
+        // Asked of `research.mjs`, for the reason written above it: `!item.disabled` was not
+        // the rule, it was the absence of one, and it offered every tool this installation
+        // has as a place to send a research question.
         eligibleTools: tools
-          .filter((item) => !item.disabled)
+          .filter((item) => isDesignatableResearchTool(item))
           .map((item) => ({ id:item.id, name:item.name, consented:Boolean(item.consent?.granted) })),
       });
     }
@@ -3042,6 +3045,14 @@ const requestListener = async (req, res) => {
         const tools = aiStore.read().tools ?? [];
         const tool = tools.find((item) => item.id === toolId);
         if (!tool) return json(res, 404, { error:'No such tool.' });
+        // The same rule the list is built from. Without it the list could be narrowed and the
+        // route would still accept anything sent straight to it — which is how a tool that
+        // changes this installation could become the destination of every research request.
+        if (!isDesignatableResearchTool(tool)) {
+          return json(res, 400, { error: tool.mutative
+            ? 'A tool that changes this installation cannot be the research provider.'
+            : 'A research provider is called with an objective, and this tool does not take one.' });
+        }
         // n.10 again, and the half that made the live value unrecoverable: this refused every
         // non-external tool, so the provider actually in use — a builtin — could not have been
         // re-selected from the interface. `designatable` is the same rule as the GET, minus
