@@ -643,6 +643,34 @@ export const RUNTIME_ONLY = Object.freeze([
   'Archive…',
   'Delete…',
   'pending',
+  // The memory result card (CUBE-009), every string of it: the nine plain words the
+  // destination shows INSTEAD of the schema's vocabulary, the two badges, the two decisions
+  // and what each settles into, and the three labels inside the <details>. All are written by
+  // `memoryResultCard()` and `memoryStatusBadge()` in app.js and appear in no markup, so the
+  // static tool never saw them; I18N-RUNTIME did, and reported nine of them from one visit.
+  // Translating the category words matters more than their number: §11 chose them precisely
+  // so a person would not have to read `cube` or `promotion_state`, and leaving them in
+  // English on an Italian page hands back the same problem in another language.
+  'Decision',
+  'How-to',
+  'Convention',
+  'Constraint',
+  'Fact',
+  'Issue',
+  'Preference',
+  'Reference',
+  'Lesson',
+  'New',
+  'Kept',
+  'Keep',
+  'Discard',
+  'Show details',
+  'Signature:',
+  'Contamination:',
+  'Status:',
+  'Kept.',
+  'Discarded.',
+  'Nothing matched:',
 ]);
 
 const it = {
@@ -832,6 +860,28 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // The memory result card. The nine categories are the words §11 put in front of a person in
+  // place of the schema's own, so they are translated as the plain words they are meant to be.
+  'Decision': 'Decisione',
+  'How-to': 'Procedura',
+  'Convention': 'Convenzione',
+  'Constraint': 'Vincolo',
+  'Fact': 'Fatto',
+  'Issue': 'Difetto',
+  'Preference': 'Preferenza',
+  'Reference': 'Riferimento',
+  'Lesson': 'Lezione',
+  'New': 'Nuova',
+  'Kept': 'Tenuta',
+  'Keep': 'Tieni',
+  'Discard': 'Scarta',
+  'Show details': 'Mostra i dettagli',
+  'Signature:': 'Firma:',
+  'Contamination:': 'Contaminazione:',
+  'Status:': 'Stato:',
+  'Kept.': 'Tenuta.',
+  'Discarded.': 'Scartata.',
+  'Nothing matched:': 'Nessuna corrispondenza:',
   'Connecting to the session…': 'Connessione alla sessione…',
   'Attached.': 'Collegato.',
   'Reconnecting…': 'Riconnessione…',

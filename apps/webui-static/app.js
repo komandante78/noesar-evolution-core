@@ -4928,7 +4928,7 @@ function memoryResultCard(item){
     +`<small>${escapeHtml(isoToLocal(item.observedAt))}</small>`
     // Progressive disclosure (§11): provenance/contamination/promotion state are one
     // click away, never in front by default.
-    +`<details><summary class="text-button">Show details</summary><p class="hint">Signature: ${escapeHtml(item.signature)}<br>Contamination: ${escapeHtml(item.contamination)}<br>Status: ${escapeHtml(item.promotionState)}</p></details>`
+    +`<details><summary class="text-button">Show details</summary><p class="hint">${t('Signature:')} <span translate="no">${escapeHtml(item.signature)}</span><br>${t('Contamination:')} <span translate="no">${escapeHtml(item.contamination)}</span><br>${t('Status:')} <span translate="no">${escapeHtml(item.promotionState)}</span></p></details>`
     +actions+`</article>`;
 }
 async function memoryDecide(idPart,decision){
@@ -4956,7 +4956,8 @@ async function runMemorySearch(){
     const items=result.items??[];
     list.classList.toggle('empty-state',items.length===0);
     list.innerHTML=items.length?items.map(memoryResultCard).join(''):'Nothing found yet — try a broader topic, or leave the search empty to browse everything.';
-    hint.textContent=(result.notFound?.length)?`Nothing matched: ${result.notFound.join(', ')}.`:'';
+    hint.setAttribute('translate','no');
+    hint.textContent=(result.notFound?.length)?`${t('Nothing matched:')} ${result.notFound.join(', ')}.`:'';
     bindMemoryActions();
   }catch(error){
     list.classList.remove('empty-state');
