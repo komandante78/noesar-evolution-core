@@ -262,6 +262,10 @@ pub fn compare(expectation: &Expectation, observation: &Observation) -> Outcome<
     let expected_and_absent: Vec<String> = expectation
         .paths_the_diff_must_touch
         .iter()
+        // Mirror of shadow.mjs: `.` is the working directory a declared command runs in, not
+        // a diff target, and an observation keys its changes by file path — so requiring it
+        // is a criterion nothing could ever satisfy.
+        .filter(|path| path.as_str() != ".")
         .filter(|path| !touched.contains(path))
         .cloned()
         .collect();

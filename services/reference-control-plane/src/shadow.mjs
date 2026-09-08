@@ -400,7 +400,20 @@ export function compare(expectation, observation) {
       'an observation of nothing cannot be compared: it is indistinguishable from a clean run');
   }
   const touched = Object.keys(observation.changed);
-  const declared = expectation.pathsTheDiffMustTouch ?? [];
+  // A declared path naming a DIRECTORY is not a diff target and never could be: `observe()`
+  // keys its changes by FILE path, so `.` — the working directory a declared command runs in
+  // — can never appear among them. Requiring it makes every run that declares a command dirty
+  // for a reason nothing could ever satisfy.
+  //
+  // Excluding it hides nothing, and that is why no field is added to report the exclusion: a
+  // requirement that cannot distinguish a clean run from a dirty one carried no information
+  // to lose. The producing side keeps its own guard (`reasoning.mjs::expect` does not emit
+  // it), but the rule belongs HERE as well, because this is the ONLY place every provider's
+  // expectation passes through — including an external one this build does not own and cannot
+  // rebuild. Measured, not anticipated: on the reference installation `expect` is routed to
+  // ATOM, which answered with `.` in it, and a command that ran perfectly still came back
+  // `expectedAndAbsent: ["."]`.
+  const declared = (expectation.pathsTheDiffMustTouch ?? []).filter((path) => path !== '.');
   const outcomeOf = (name) => (observation.tests ?? []).find((test) => test.name === name);
 
   const testsNeverRun = [];

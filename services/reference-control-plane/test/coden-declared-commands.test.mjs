@@ -25,6 +25,7 @@ import { randomBytes } from 'node:crypto';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
+import { ReferenceReasoningProvider } from '../src/reasoning.mjs';
 
 // The same binary `executor.test.mjs` and `sandbox-runner.test.mjs` use, located the same way:
 // a real process is only meaningful where the binary was built, and the absence is declared
@@ -35,7 +36,7 @@ const ENABLED = { enabled: true, requested: true, binaryPath: SANDBOX_BINARY };
 
 const NOW = Math.floor(Date.now() / 1000);
 
-function fixture({ executeSandbox = null } = {}) {
+function fixture({ executeSandbox = null, provider = null } = {}) {
   const ws = mkdtempSync(join(tmpdir(), 'noesar-cmd-ws-'));
   // ShadowWorkspace refuses "a shadow of nothing", so a workspace is never literally empty.
   writeFileSync(join(ws, '.seed'), 'seed');
@@ -45,6 +46,9 @@ function fixture({ executeSandbox = null } = {}) {
     workspaceRoot: ws, shadowsRoot: shadows,
     minter: new TokenMinter(randomBytes(32), { ceiling: null }), events,
     executeSandbox,
+    // Only when a test needs a provider that is not the default router — the two live
+    // regressions below are ABOUT a provider this build does not own.
+    ...(provider ? { reasoningFor: () => new provider(ws) } : {}),
     // `env: {}`, not the ambient one: an operator shell that had selected an external
     // reasoning provider must not change what this fixture measures.
     env: {},
@@ -299,6 +303,101 @@ test('the command runs against the shadow, never against the workspace', {
     const cwd = ran.stdout.trim();
     assert.ok(cwd.startsWith(fx.shadows), `the command ran in \`${cwd}\`, which is not under the shadows root`);
     assert.ok(!cwd.startsWith(fx.ws), 'the command must never run in the real workspace');
+  } finally { cleanup(fx); }
+});
+
+// --- what the LIVE product showed, and no unit test could ---------------------------------
+
+// A provider that behaves exactly as the external one on the reference installation does:
+// its `constrain` returns the step through a wire shape with no `limits`, and its `expect`
+// puts every declared file — the working directory included — into `pathsTheDiffMustTouch`.
+// Both are what ATOM actually answered on run 87fef049 (2026-09-08), reproduced rather than
+// imagined, because the binary that answered predates the producing-side guard and cannot be
+// rebuilt from this repository.
+class WireContractProvider {
+  #inner;
+  constructor(workspaceRoot) { this.#inner = new ReferenceReasoningProvider(workspaceRoot); }
+  identity() { return this.#inner.identity(); }
+  provenance() { return [{ surface: 'constrain', provider: 'wire' }, { surface: 'expect', provider: 'wire' }]; }
+  interpret(request, rules) { return this.#inner.interpret(request, rules); }
+  hypothesize(intent, evidence) { return this.#inner.hypothesize(intent, evidence); }
+  blastRadius(files, destructive) { return this.#inner.blastRadius(files, destructive); }
+  buildPlan(steps, constraints, mode) { return this.#inner.buildPlan(steps, constraints, mode); }
+  classify(plan) { return this.#inner.classify(plan); }
+  confidence(plan, evidence) { return this.#inner.confidence(plan, evidence); }
+  constrain(plan, policy) {
+    const answer = this.#inner.constrain(plan, policy);
+    if (answer.refused) return answer;
+    // The wire's blastRadius shape, verbatim: three fields, and `limits` is not one of them.
+    const steps = answer.plan.steps.map((step) => ({
+      ...step,
+      blastRadius: {
+        paths: step.blastRadius.paths,
+        reachesOutsideWorkspace: step.blastRadius.reachesOutsideWorkspace,
+        destructive: step.blastRadius.destructive,
+      },
+    }));
+    return { ...answer, plan: { ...answer.plan, steps } };
+  }
+  expect(plan) {
+    // No `.` filter — this is the provider that predates it.
+    const paths = [];
+    const tests = [];
+    for (const step of plan.steps) {
+      for (const path of step.files) if (!paths.includes(path)) paths.push(path);
+      for (const command of step.commands) if (command.includes('test') && !tests.includes(command)) tests.push(command);
+    }
+    return { testsExpectedToPass: tests, testsExpectedToFail: [], pathsTheDiffMustTouch: paths };
+  }
+}
+
+test('an external provider cannot drop the envelope the plan declared', () => {
+  // Measured live before this fix: `blastRadius.limits` came back `null` from a routed
+  // `constrain`, so the plan the Owner approves no longer showed what the command was allowed
+  // to use — while `destructive` survived, because the wire happens to carry that one.
+  const fx = fixture({ executeSandbox: ENABLED, provider: WireContractProvider });
+  try {
+    return fx.orch.plan({
+      request: 'run the suite', files: [{ path: 'a.txt', contents: 'x\n' }],
+      commands: ['/bin/echo test-ok'], policy: 'permissive', actor: 'owner', nowUnix: NOW,
+    }).then((planned) => {
+      const step = planned.plan.steps[0];
+      assert.equal(step.blastRadius.destructive, true, 'fixture check: the wire carries destructive');
+      assert.ok(step.blastRadius.limits, 'the envelope the plan declared must survive a provider that drops it');
+      assert.equal(typeof step.blastRadius.limits.memoryBytes, 'number');
+    });
+  } finally { cleanup(fx); }
+});
+
+test('a command that ran is clean even when the provider required its working directory', {
+  skip: !HAVE_SANDBOX_BINARY,
+}, async () => {
+  // THE live regression, end to end. Before the compare() rule this came back
+  // `expectedAndAbsent: ["."]` with the command having run perfectly — exitCode 0, stdout
+  // "test-ok", `testsNeverRun: []` — so nothing could ever be promoted on an installation
+  // whose reasoning is routed externally. Which is this one.
+  const fx = fixture({ executeSandbox: ENABLED, provider: WireContractProvider });
+  try {
+    const planned = await fx.orch.plan({
+      request: 'write the change and run the suite',
+      files: [{ path: 'a.txt', contents: 'written by the plan\n' }],
+      commands: ['/bin/echo test-ok'], policy: 'permissive', actor: 'owner', nowUnix: NOW,
+    });
+    // The fixture check that makes this test about the RULE and not about the provider: the
+    // expectation really does require the working directory.
+    assert.ok(planned.expectation.pathsTheDiffMustTouch.includes('.'),
+      'fixture check: this provider must declare the working directory, as the live one did');
+
+    const measured = fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
+    const ran = measured.result.outcomes.find((outcome) => outcome.operation === 'EXECUTE');
+    assert.equal(ran.performed, true, JSON.stringify(ran));
+    assert.equal(ran.exitCode, 0);
+    assert.deepEqual(measured.result.surprise.expectedAndAbsent, [],
+      'a directory can never be touched, so requiring it must not make the run dirty');
+    assert.equal(measured.result.surprise.clean, true, JSON.stringify(measured.result.surprise));
+    const approved = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    assert.equal(approved.promoted, true);
+    assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'written by the plan\n');
   } finally { cleanup(fx); }
 });
 

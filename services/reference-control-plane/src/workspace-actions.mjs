@@ -335,11 +335,26 @@ export class WorkspaceActionOrchestrator {
     const plan = provider.buildPlan([step], constraints, mode);
     const constrained = await provider.constrain(plan, policy);
     if (constrained.refused) refuse('CONSTRAINED_AWAY', constrained.reason);
-    const risk = await provider.classify(constrained.plan);
-    const confidence = await provider.confidence(constrained.plan, []);
-    const expectation = await provider.expect(constrained.plan);
+    // The isolation envelope is OURS, and no provider was asked to have an opinion about it.
+    // Measured on the reference installation, where reasoning is routed externally: a routed
+    // `constrain` returns the step through the wire contract, whose blastRadius shape is
+    // `{paths, reachesOutsideWorkspace, destructive}` — so `limits` came back GONE while
+    // `destructive` survived, and the plan the Owner approves stopped showing what the command
+    // was allowed to use. Restored by step id, and ONLY where the provider left none: a
+    // provider may legitimately REMOVE a step, and may not silently drop a declaration it
+    // never made. Rebuilt rather than mutated because a provider is free to freeze what it
+    // returns.
+    const restored = (constrained.plan.steps ?? []).map((survivor) => {
+      const declared = plan.steps.find((original) => original.id === survivor.id);
+      if (!declared?.blastRadius?.limits || survivor.blastRadius?.limits) return survivor;
+      return { ...survivor, blastRadius: { ...survivor.blastRadius, limits: declared.blastRadius.limits } };
+    });
+    const constrainedPlan = { ...constrained.plan, steps: restored };
+    const risk = await provider.classify(constrainedPlan);
+    const confidence = await provider.confidence(constrainedPlan, []);
+    const expectation = await provider.expect(constrainedPlan);
     return {
-      intent, hypotheses, plan: constrained.plan, risk, confidence, expectation,
+      intent, hypotheses, plan: constrainedPlan, risk, confidence, expectation,
       provenance: provider.provenance(), files: resolvedFiles, grounding,
     };
   }

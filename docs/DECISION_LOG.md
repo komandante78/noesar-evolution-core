@@ -16654,3 +16654,52 @@ the same class as `D-0250`'s own reasoning about the switch.
 
 *Evidence:* suite **3197 tests, 3196 pass, 0 fail, 1 skip**; ESLint **477 files, 0 errors,
 0 warnings**; `MANIFEST.sha256` 6 701 files. The HTTP adversarial suite is 15 pass, 0 fail.
+
+## D-0707 · Two defects only the live product could show: a rule that belonged in the comparison, and an envelope a provider dropped — 2026-09-08
+
+*Context:* `NOESAR_EXECUTE_SANDBOX=enabled` was set on the reference installation and the whole
+chain was driven end to end through the real WebUI. The command **ran**: run
+`87fef049-e7d6-4189-be14-a03286b90a9d`, outcome `operation:'EXECUTE', path:'.', name:'/bin/echo
+test-ok', performed:true, exitCode:0, stdout:'test-ok'`, and the outcome reached the comparison
+(`observation.tests: [{name:'/bin/echo test-ok', passed:true}]`, `testsNeverRun: []`). And the
+run was still **not clean**: `expectedAndAbsent: ["."]`, `ok:false`, nothing promoted.
+
+Both causes are the same fact, and it is one no unit test in this repository could have shown:
+**this installation routes reasoning to an EXTERNAL provider.** `/api/v1/reasoning` reports
+`mode: 'rust-external'` with all twelve surfaces routed, so `expect` and `constrain` are
+answered by ATOM — a binary built on 9 August, which predates `D-0704` and cannot be rebuilt
+from this repository. Every test written for `D-0704` exercised the reference provider, which
+is exactly the provider this installation does not use.
+
+*Defect 1 — the rule was in the wrong layer.* `D-0704` stopped `expect()` from EMITTING `.` in
+`pathsTheDiffMustTouch`. That is correct and stays. But the rule that matters — a directory can
+never be a diff target, because an observation keys its changes by file path — belongs where
+EVERY provider's expectation passes through, and that is `compare()`. Moved there (kept in both
+places: a producer that emits no unsatisfiable criterion, and a consumer that tolerates one from
+a provider it does not own). Mirrored in `rust/crates/noesar-shadow`. **No field was added to
+report the exclusion, deliberately:** a requirement that cannot distinguish a clean run from a
+dirty one carried no information to lose, so there is nothing being hidden — and a new `Surprise`
+field would be a wire-contract change for a value that is always the same.
+
+*Defect 2 — a provider dropped a declaration it never made.* `blastRadius.limits` came back
+**gone** from a routed `constrain`: the wire contract's blastRadius shape is
+`{paths, reachesOutsideWorkspace, destructive}`, so the envelope was silently dropped while
+`destructive` survived — and the plan the Owner approves stopped showing what the command was
+allowed to use. `measure()`'s fallback meant the token still carried limits, so nothing was
+unsafe; what was lost was the approver's ability to see them. The envelope is restored by step
+id after `constrain`, and only where the provider left none: a provider may legitimately REMOVE
+a step, and may not silently drop a declaration it never made.
+
+*Evidence:* both are now reproduced by a `WireContractProvider` test double that behaves exactly
+as the live external provider did — its `constrain` returns the three-field wire shape and its
+`expect` requires the working directory — so the two regressions are covered without depending
+on a binary this repository cannot build. Suite **3199 tests, 3198 pass, 0 fail, 1 skip**;
+ESLint **477 files, 0 errors, 0 warnings**; `rust -p noesar-shadow` **18 lib tests + 1
+conformance, 0 failed**; `MANIFEST.sha256` 6 701 files.
+
+*The lesson, worth more than either fix:* the suite was green through three commits and the
+mechanism was still unusable on the only installation that exists, because every test asked the
+provider the product does not use. A test double for the routed provider is not optional on a
+product whose reasoning is pluggable.
+
+*Reversal cost:* low. Both changes are inert on an installation that declares no command.

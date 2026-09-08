@@ -500,7 +500,7 @@ d41ee2bafdfb8e050ccacaeba165c0023979c11c74f53442e346d737f7e8b1bf  ./docs/CHIUSUR
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-d6d55341514ab864c09b1ebb7cd8461ba382542600fbe808e75ae95c8c02de2c  ./docs/DECISION_LOG.md
+2e4ce967449cb72ca66f1dbefbab2d5f3f6fdd0fcf9c4ac9ab921a26ae625b66  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
@@ -970,7 +970,7 @@ d0cdf42fb80f72621290e3da9b224e20050baac388e6fc5460c2959a83066c4e  ./rust/crates/
 eb95610ccccf8b743e23cbfb4e7cca8ce18484377aa8b9bbc6c88ed7dd04586c  ./rust/crates/noesar-security-kernel/Cargo.toml
 78e86ec8d90ef76c424df4a6e417cddc373f38511b6f179a7024708736b83129  ./rust/crates/noesar-security-kernel/src/lib.rs
 9baf5f7a976d098f1d6f87d2292739884df8f5284be1aaaa695261efa7b1a822  ./rust/crates/noesar-shadow/Cargo.toml
-289fe050c6c04f5377fcbf33de7959a1984ab6b69b54b7193e45fcb0f13ccd0c  ./rust/crates/noesar-shadow/src/lib.rs
+5d8d8ac6c852a71d2cc29ba285f753aec3523cb7f3f6d8def45b429dc336844d  ./rust/crates/noesar-shadow/src/lib.rs
 4f897a70b59b5a75ed9a62907e3a1cf6c280c2d620abba83a87b5f78e965c876  ./rust/crates/noesar-shadow/tests/conformance.rs
 41af421aea85c9f0a0a00182e8e271242d96da3c3bbd51f8b93326062c43a955  ./rust/crates/noesar-supervisor/Cargo.toml
 cbd501a6cbd58a9c30d9f340073e619ae1788a59bf3e06630f73fb030852ed68  ./rust/crates/noesar-supervisor/src/lib.rs
@@ -6336,7 +6336,7 @@ e76cb25c4215a07c4bf6f65a22b2a62cc7e9f42d88b13ecbddaae8f66a99929f  ./services/ref
 878ff33816513f648c976747e95ea5d813cb20693c52a5d15eb112da9b7b8122  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
-4f23b6bd08fa34227a22fc0260b571d0379a05fea05094d05416b0a2256938b9  ./services/reference-control-plane/src/shadow.mjs
+5ced1f64b9e227a3cf010e8a63c385a34b86501d1d6649699ba5c828910eb497  ./services/reference-control-plane/src/shadow.mjs
 9eb1f8732606cf2ad1ce49a783a70e4dfb93debfb8efe4938e151c91966731e2  ./services/reference-control-plane/src/skill-catalog.mjs
 0959d1554ed9798117accbcf1bd04a4c8c62c7df8c7d006c0ec345224dd6ff58  ./services/reference-control-plane/src/store.mjs
 0067fbae34832e7a5564d035d54256d1e277f64aa55ee0ed97191e54926bf53d  ./services/reference-control-plane/src/technology-radar.mjs
@@ -6351,7 +6351,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 372e40a6fc034cc4f7d376f668de00c6aa169d07078f1f1d85d7236f60667d44  ./services/reference-control-plane/src/watchdog.mjs
 6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  ./services/reference-control-plane/src/webauthn.mjs
 0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  ./services/reference-control-plane/src/websocket.mjs
-2fe22c2527922e0d0d9116bdef656780863c7d25f0882e8e9cfb91aea305ce0c  ./services/reference-control-plane/src/workspace-actions.mjs
+c6123bf86db190587793aed0938e7dde76ab5d93464038397ff4db0a7ddee0aa  ./services/reference-control-plane/src/workspace-actions.mjs
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs
@@ -6426,7 +6426,7 @@ cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/ref
 144b3197052d67a900025439a5442746f4de9f70c9eef48b06ed5e5dc1fe2591  ./services/reference-control-plane/test/coden-address-declaration.test.mjs
 4b1f860853767cea16f226e7b9e3bb2d7c38edae7893a8c9cf56e324c921eade  ./services/reference-control-plane/test/coden-addressable-panels.test.mjs
 67ba4a154d0548d659e054f49aaae7025579714f063d811e2fccf3a97105c3c7  ./services/reference-control-plane/test/coden-bridge.test.mjs
-24cd20b5cae8010d4fdcc5b1b17102cf243cea1c6153301967fb26a3451ddc29  ./services/reference-control-plane/test/coden-declared-commands.test.mjs
+933d93a1226554180f80e2ed80b0d12fca7a8c01a9227da8e602f648a8b298f9  ./services/reference-control-plane/test/coden-declared-commands.test.mjs
 3972b353836d12f87c71aa06168536bdf2d33b71648152df4928df3bcd04e92c  ./services/reference-control-plane/test/coden-fullscreen-input-flow.test.mjs
 843315f3161e249a0d8001a31e746d3224e34204dc0dfa289070aa2bf057afd8  ./services/reference-control-plane/test/coden-invariant-adversarial.test.mjs
 deb788e4a9b4122aac1423a56bd630dc9698b06b297c054d2e841ad789ee3cd5  ./services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs
