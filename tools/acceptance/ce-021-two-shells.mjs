@@ -228,6 +228,10 @@ try {
   `${seenByBrowser.status} ${seenByBrowser.json?.result?.status}`);
 
   // 3 — and can finish it. The work outlived the shell that created it.
+  // `D-0567`/`CE-008` split what used to be one step into two: a run must be MEASURED —
+  // executed in a shadow, its claims recomputed — before an approval against it means
+  // anything. The browser does both here; the decision under test is still approve()'s.
+  await browserCommand('workspace.measure', { runId: started.runId });
   const approvedByBrowser = await browserCommand('workspace.approve', { runId: started.runId });
   check(approvedByBrowser.status === 200 && approvedByBrowser.json?.result?.promoted === true,
     'the browser shell finishes what the terminal started', `promoted=${approvedByBrowser.json?.result?.promoted}`);
@@ -302,6 +306,7 @@ try {
   const seenByTerminal = await terminalAgain.call('workspace.get', { runId: browserRunId });
   check(seenByTerminal.runId === browserRunId && seenByTerminal.status === 'PENDING_APPROVAL',
     'the terminal shell sees what the browser started, after the browser session is gone', seenByTerminal.status);
+  await terminalAgain.call('workspace.measure', { runId: browserRunId });
   const approvedByTerminal = await terminalAgain.call('workspace.approve', { runId: browserRunId });
   check(approvedByTerminal.promoted === true,
     'the terminal shell finishes what the browser started', `promoted=${approvedByTerminal.promoted}`);
@@ -314,6 +319,9 @@ try {
   const doomedRun = await doomedShell.call('workspace.plan', {
     request: 'CE-021: approved by a shell that dies mid-command', files: [{ path: 'mid-flight.txt', contents: 'x\n' }],
   });
+  // Measured normally first: the shadow this needs to promote has to exist. Only the
+  // approval itself — the command actually under test — dies mid-flight.
+  await doomedShell.call('workspace.measure', { runId: doomedRun.runId });
   doomedShell.fireAndDie('workspace.approve', { runId: doomedRun.runId });
   await new Promise((r) => setTimeout(r, 500));
   const midFlight = await terminalAgain.call('workspace.get', { runId: doomedRun.runId });
