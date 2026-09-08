@@ -329,7 +329,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-1c9f4511605b16e96e2c9b68ab959b4da0a78940618eb2e69800a5cdd56161ae  ./apps/webui-static/app.js
+c400698cfef14295aa3d7545b412a145033f5e3073d120562b8715e4b13fc8e1  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
@@ -6569,7 +6569,7 @@ a30ca6cb60b8dec0d8fd98501308dbf7a337d206a7c467650df1a3fb95cc60ef  ./services/ref
 d55d7ed7041da5e6be291addb047507853abacf6ae2e138388c1f149ff361264  ./services/reference-control-plane/test/watchdog.test.mjs
 768dea298531eba626c1137cc445eecd3cc58797d53ad2492b1bd63921bc0a20  ./services/reference-control-plane/test/webauthn.test.mjs
 8f750104def98978910a413f2d62e7f561709a3335bc1ddf6653241037dda4e0  ./services/reference-control-plane/test/websocket-framing.test.mjs
-9433f1454df3b6f20f279a2578a212c95d311a0549c9d3a7e0a20dc447caf3bd  ./services/reference-control-plane/test/webui-boot-order.test.mjs
+56c0b4d5ed35d7fa7674a564529d8002d2b9387d552a5a89dfb3dd702fe54b6c  ./services/reference-control-plane/test/webui-boot-order.test.mjs
 aaa6fc07b584b798b8d4b7e939bdf73b2e67a789b1a0cc6d68b98a8459fc8595  ./services/reference-control-plane/test/webui-busy-label.test.mjs
 0a86bf925091c333ba75acbba7f065acf6683e2638c74cc83cc01c21ea14703b  ./services/reference-control-plane/test/webui-colour.test.mjs
 5073ebefb1c1b2da4de352771b77a6084bd376b24368467b33f9914a21dbb86f  ./services/reference-control-plane/test/webui-jump-to-address.test.mjs

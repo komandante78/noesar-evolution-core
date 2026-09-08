@@ -164,23 +164,6 @@ let currentPermissions=[];
 let mfaReplacement=null;
 const state={projects:[],conversations:[],branches:[],memories:[],artifacts:[],sources:[],providers:[],providerCatalog:[],tools:[],agents:[],agentRuns:[],workspaceActionRuns:[],activeProjectId:null,activeConversationId:null,activeBranchId:null};
 const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-// WebAuthn moves binary (challenge, credential IDs, signatures) as ArrayBuffer on the
-// browser side and base64url over the wire — there is no npm dependency in this
-// project to do that conversion, so it is done by hand, once, here.
-function base64urlToBytes(value){
-  const normalized=String(value??'').replace(/-/g,'+').replace(/_/g,'/');
-  const padded=normalized+'='.repeat((4-(normalized.length%4))%4);
-  const binary=atob(padded);
-  const bytes=new Uint8Array(binary.length);
-  for(let index=0;index<binary.length;index+=1)bytes[index]=binary.charCodeAt(index);
-  return bytes;
-}
-function bytesToBase64url(buffer){
-  const bytes=new Uint8Array(buffer);
-  let binary='';
-  for(const byte of bytes)binary+=String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
 function setStatus(message,error=false){$('#statusMessage').textContent=message;$('#statusMessage').classList.toggle('error',error);}
 
 // --- user-visible feedback -------------------------------------------------

@@ -35,7 +35,8 @@
 // painting the interface. Anything the router can reach must already exist when it runs.
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -81,6 +82,16 @@ describe('webui boot order · D-0416', () => {
     assert.ok(declared > 0, 'codenTerminal is no longer declared at the top level — this guard needs updating');
     assert.ok(declared < firstCall,
       `codenTerminal is declared at line ${declared}, after the first top-level call at line ${firstCall}: any boot call that reaches it would read it in the temporal dead zone`);
+  });
+
+  test('every script the page loads still parses', () => {
+    const dir = join(here, '../../../apps/webui-static');
+    const scripts = readdirSync(dir).filter((name) => name.endsWith('.js')).sort();
+    assert.ok(scripts.length >= 5, `only ${scripts.length} scripts found — this guard has stopped looking`);
+    for (const name of scripts) {
+      const result = spawnSync(process.execPath, ['--check', join(dir, name)], { encoding: 'utf8' });
+      assert.equal(result.status, 0, `${name} does not parse:\n${result.stderr}`);
+    }
   });
 
   test('the router activation path really does reach the terminal helpers', () => {
