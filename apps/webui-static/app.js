@@ -2073,6 +2073,16 @@ function agentStatusBadge(agentId){
   if(last.status==='failed')return `<p><span class="badge badge-off">${escapeHtml(t('Failing — last run errored'))}</span></p>`;
   return `<p><span class="badge">${escapeHtml(t('Run in progress'))}</span></p>`;
 }
+// A run's step titles are RECORDS: written into the run when it is created, in the source
+// language, and read back by the ledger and the terminal as well as by this screen. They are
+// therefore translated where they are SHOWN and never where they are stored. Two of the three
+// are fixed sentences; the third is `Use ` and a tool's name, which is data — the verb is
+// translated and the name is left exactly as the tool is called. The shape is not sniffed
+// from an unknown source: it is written by this file's own `#runForm` handler, below.
+function agentStepTitle(step){
+  const title=String(step.title??'');
+  return title.startsWith('Use ')?`${t('Use')} ${title.slice(4)}`:t(title);
+}
 function renderAgents(){
   $('#agentTools').innerHTML=state.tools.map((item)=>`<option value="${item.id}" translate="no">${escapeHtml(item.name)}${item.mutative?' · mutative':''}</option>`).join('');
   $('#runAgent').innerHTML=optionList(state.agents,{empty:'Select agent'});
@@ -2102,7 +2112,7 @@ function renderAgents(){
   // `step.toolId` is no longer required to offer Execute: a step without a tool is answered by
   // the model (`D-0397`). While that condition stood, the `Analyze goal` step this very screen
   // creates had no control at all, and every run it made was unfinishable.
-  $('#runList').innerHTML=(state.agentRuns??[]).map((run)=>`<article class="entity-card"><h3>${escapeHtml(run.goal)}</h3><small>${escapeHtml(run.status)}</small>${run.steps.map((step)=>`<div class="step"><span>${step.index+1}. ${escapeHtml(step.title)}</span><b>${escapeHtml(step.status)}</b>${step.status==='awaiting_approval'?`<button data-approve-step="${run.id}:${step.id}">Approve</button>`:''}${step.status==='pending'?`<button data-execute-step="${run.id}:${step.id}">${step.toolId?'Execute':'Ask the model'}</button>`:''}</div>${step.output?(step.output.kind==='reasoning'?`<pre>${escapeHtml(step.output.text??'')}</pre><small>${escapeHtml(step.output.provider?.name??'provider')}${step.output.model?` · ${escapeHtml(step.output.model)}`:''}</small>`:`<pre>${escapeHtml(JSON.stringify(step.output,null,2))}</pre>`):''}${step.error?`<p class="error">${escapeHtml(step.error)}</p>`:''}`).join('')}</article>`).join('')||'No run yet. Press Test on an agent for a single turn, or use Plan run for an approval-aware one.';
+  $('#runList').innerHTML=(state.agentRuns??[]).map((run)=>`<article class="entity-card"><h3>${escapeHtml(run.goal)}</h3><small translate="no">${escapeHtml(t(run.status))}</small>${run.steps.map((step)=>`<div class="step"><span translate="no">${step.index+1}. ${escapeHtml(agentStepTitle(step))}</span><b translate="no">${escapeHtml(t(step.status))}</b>${step.status==='awaiting_approval'?`<button data-approve-step="${run.id}:${step.id}">Approve</button>`:''}${step.status==='pending'?`<button data-execute-step="${run.id}:${step.id}">${step.toolId?'Execute':'Ask the model'}</button>`:''}</div>${step.output?(step.output.kind==='reasoning'?`<pre>${escapeHtml(step.output.text??'')}</pre><small translate="no">${escapeHtml(step.output.provider?.name??t('provider'))}${step.output.model?` · ${escapeHtml(step.output.model)}`:''}</small>`:`<pre>${escapeHtml(JSON.stringify(step.output,null,2))}</pre>`):''}${step.error?`<p class="error">${escapeHtml(step.error)}</p>`:''}`).join('')}</article>`).join('')||'No run yet. Press Test on an agent for a single turn, or use Plan run for an approval-aware one.';
   $$('[data-test-agent]').forEach((button)=>button.addEventListener('click',()=>testAgent(button.dataset.testAgent)));
   $$('[data-archive-agent]').forEach((button)=>button.addEventListener('click',()=>archiveAgent(button.dataset.archiveAgent)));
   $$('[data-approve-step]').forEach((button)=>button.addEventListener('click',async()=>{const[runId,stepId]=button.dataset.approveStep.split(':');await api(`/api/v1/agent-runs/${runId}/steps/${stepId}/approve`,{method:'POST',body:'{}'});await refreshWorkspace();}));
@@ -2127,7 +2137,7 @@ async function testAgent(agentId){
     // writing it before would put the text into an element about to be replaced.
     await refreshWorkspace();
     const redrawn=$(`[data-agent-answer="${agentId}"]`);
-    if(redrawn)redrawn.innerHTML=step.output?.text?`<pre>${escapeHtml(step.output.text)}</pre><small>${escapeHtml(step.output.provider?.name??'provider')}${step.output.model?` · ${escapeHtml(step.output.model)}`:''}</small>`:`<p class="error">${escapeHtml(step.error??'The step completed without returning any text.')}</p>`;
+    if(redrawn)redrawn.innerHTML=step.output?.text?`<pre>${escapeHtml(step.output.text)}</pre><small translate="no">${escapeHtml(step.output.provider?.name??t('provider'))}${step.output.model?` · ${escapeHtml(step.output.model)}`:''}</small>`:`<p class="error">${escapeHtml(step.error??'The step completed without returning any text.')}</p>`;
   }catch(error){
     await refreshWorkspace();
     const redrawn=$(`[data-agent-answer="${agentId}"]`);
@@ -3597,9 +3607,13 @@ async function loadWorkflows(){
     const types=payload.stepTypes??[];
     const hint=$('#workflowStepTypes');
     if(hint){
+      // The type names are the DSL's own — a workflow author writes them — so they stay as
+      // they are; the label and the note about what this build cannot run are said in the
+      // reader's language. Composed, therefore marked.
+      hint.setAttribute('translate','no');
       hint.textContent=types.length
-        ?`Step types: ${types.map((type)=>`${type.type}${type.executable?'':' (declared, not executable in this build)'}`).join(' · ')}`
-        :'The server reported no step types.';
+        ?`${t('Step types:')} ${types.map((type)=>`${type.type}${type.executable?'':` ${t('(declared, not executable in this build)')}`}`).join(' · ')}`
+        :t('The server reported no step types.');
     }
     const workflows=payload.workflows??[];
     $('#workflowCount').textContent=String(workflows.length);

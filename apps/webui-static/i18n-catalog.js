@@ -706,6 +706,19 @@ export const RUNTIME_ONLY = Object.freeze([
   'indexed_metadata',
   'transcription_required',
   'unsupported',
+  // Agents and Workflows. The step titles a run is created with, the states a run and its
+  // steps move through — written by `agent-service.mjs` and shown raw — and the workflow
+  // step-type line.
+  'Analyze goal',
+  'Produce result',
+  'running',
+  'completed',
+  'failed',
+  'awaiting_approval',
+  'provider',
+  'Step types:',
+  '(declared, not executable in this build)',
+  'The server reported no step types.',
 ]);
 
 const it = {
@@ -895,6 +908,17 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // Agents and Workflows.
+  'Analyze goal': 'Analizza l’obiettivo',
+  'Produce result': 'Produci il risultato',
+  'running': 'in corso',
+  'completed': 'completato',
+  'failed': 'fallito',
+  'awaiting_approval': 'in attesa di approvazione',
+  'provider': 'fornitore',
+  'Step types:': 'Tipi di passo:',
+  '(declared, not executable in this build)': '(dichiarato, non eseguibile in questa build)',
+  'The server reported no step types.': 'Il server non ha riportato nessun tipo di passo.',
   // Documents and Knowledge. The eight extraction states are the extractor's own tokens; here
   // they are said as what happened to the file, which is what the card is for.
   'version': 'versione',
