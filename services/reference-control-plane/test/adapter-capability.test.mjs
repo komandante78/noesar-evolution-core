@@ -18,6 +18,64 @@ function fresh() {
   return { minter, grants: new AdapterGrantOrchestrator({ minter }) };
 }
 
+// What `noesar-sandbox --detect` reports on a real host, shape and all — the ceiling
+// server.mjs hands the minter when NOESAR_EXECUTE_SANDBOX is enabled. Two dimensions are
+// `null` (unconstrained by the container) and one is `0`, which is a real and very
+// restrictive limit: a fixture that tidied either away would not be this ceiling.
+const CONTAINER_CEILING = Object.freeze({
+  memoryBytes: 12884901888, cpuSeconds: null, openFiles: 40960,
+  processes: 127784, fileSizeBytes: null, coreDumpBytes: 0,
+});
+
+// ARCH-008 / D-0248, the half that only meets on an installation with the sandbox ON.
+// Measured before the fix: with no ceiling the grant is minted, with one it is refused —
+// so enabling the execute sandbox made every model impossible to start, and the refusal
+// named capability limits rather than the switch that had caused it. The two assertions are
+// one test on purpose: the property is that the ANSWER IS THE SAME either way, and a test
+// that only checked the enforcing installation would pass on a build that had stopped
+// enforcing anything.
+test('a model launch can be granted on an installation that enforces isolation limits, and on one that does not', () => {
+  const now = Math.floor(Date.now() / 1000);
+  for (const ceiling of [null, CONTAINER_CEILING]) {
+    const minter = new TokenMinter(Buffer.alloc(32, 3), { ceiling });
+    const grants = new AdapterGrantOrchestrator({ minter, executeLimits: ceiling });
+    const requested = grants.request({
+      resource: 'local-model-runtime', operation: 'EXECUTE', actor: 'owner', nowUnix: now,
+    });
+    const approved = grants.approve({ runId: requested.runId, approverId: 'owner', nowUnix: now });
+    assert.equal(approved.operation, 'EXECUTE');
+    assert.ok(approved.token.id, `no token minted with ceiling=${Boolean(ceiling)}`);
+    // The envelope travels inside the token's MAC, so nothing between minting and spending
+    // can widen it — and it is absent exactly where nothing enforces one.
+    if (ceiling) assert.deepEqual(approved.token.limits, ceiling);
+    else assert.ok(!approved.token.limits);
+  }
+});
+
+// The other direction, and the one that keeps this from becoming a way to widen a grant: an
+// envelope the approved plan never granted must not reach a token. `withinGrant` is the rule
+// doing the refusing, and this proves it is still in the path after the change above.
+test('a token may not carry an envelope wider than the plan granted', () => {
+  const now = Math.floor(Date.now() / 1000);
+  const minter = new TokenMinter(Buffer.alloc(32, 3), { ceiling: CONTAINER_CEILING });
+  const grants = new AdapterGrantOrchestrator({ minter, executeLimits: { memoryBytes: 64 * 1024 * 1024, cpuSeconds: 5 } });
+  const requested = grants.request({
+    resource: 'local-model-runtime', operation: 'EXECUTE', actor: 'owner', nowUnix: now,
+  });
+  // The plan granted 64 MiB; the minter is asked for the container's 12 GiB by hand.
+  const step = requested.plan.steps[0];
+  assert.deepEqual(step.blastRadius.limits, { memoryBytes: 64 * 1024 * 1024, cpuSeconds: 5 });
+  assert.throws(
+    () => minter.mint(
+      { plan: requested.plan, digest: 'x', approval: { approverId: 'o', grantedAtUnix: now, expiresAtUnix: now + 60 } },
+      { stepId: step.id, paths: step.files, operations: ['EXECUTE'], uses: 1,
+        expiresAtUnix: now + 60, limits: CONTAINER_CEILING },
+      now,
+    ),
+    (error) => error.kind === 'OUT_OF_SCOPE' || error.kind === 'INVALID',
+  );
+});
+
 test('the manifest lists four adapters today, and two may ask for something (D-0252, D-0274)', () => {
   assert.deepEqual(
     Object.keys(ADAPTER_MANIFESTS).sort(),

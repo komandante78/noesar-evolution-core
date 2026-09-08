@@ -16563,3 +16563,52 @@ same way `D-0253` registered its two findings.
 *Reversal cost:* low and mechanical. A plan that declares no command is byte-identical to
 before — asserted by a test — and with the sandbox off, which is every installation's default,
 the only reachable new behaviour is a refusal at `plan()`.
+
+## D-0705 · Turning the execute sandbox on made every model impossible to start — the EXECUTE grant that named no envelope — 2026-09-08
+
+*Context:* found while preparing to set `NOESAR_EXECUTE_SANDBOX=enabled` on the reference host,
+by asking what else changes when the switch flips rather than by flipping it. It changes one
+thing nobody had connected: `server.mjs` gives `capabilityMinter` the container's measured
+ceiling only when the sandbox is enabled, and `capability.mjs` (`D-0248`) then refuses any
+EXECUTE grant that names no envelope of its own — *"an EXECUTE capability must carry its own
+limits on an installation that enforces them: without them the process would run with the whole
+container's"*. `adapter-capability.mjs` minted `local-model-runtime`'s launch grant with no
+limits, and that grant is what `activateInstalledModelById()` spends to start a model.
+
+Measured on this host before the fix, both branches in one run: **with no ceiling the launch
+grant is MINTED, with the ceiling it is REFUSED.** So on any installation that turned the
+execute sandbox on, no model could ever be started again — and the refusal named capability
+limits, giving an operator no reason to suspect a switch they had flipped in a different
+subsystem. Latent since `D-0250`, unreachable until somebody enabled the thing it was built for,
+which is why three months of green suites never saw it: nothing had ever enabled it.
+
+*Decision:* the adapter declares an envelope, and declares it in the PLAN the approver reads.
+`AdapterGrantOrchestrator` takes `executeLimits`; `request()` puts it on the step's blast radius
+when the operation is EXECUTE; `approve()` reads it back off the step rather than off the
+orchestrator, so a token cannot carry an envelope the approved plan did not grant. `server.mjs`
+hands it `sandboxCeiling` — what `noesar-sandbox --detect` measured on THIS host, never a number
+written into the source (`CLAUDE10.md` §16). With the sandbox off, which is every installation's
+default, both are `null` and the mint is byte-identical to before.
+
+*Why the container's own ceiling and not something tighter:* this adapter's EXECUTE is
+`local-model-runtime.launch()`, an inference server that legitimately needs what the container
+has, and unlike a plan-declared command it is not run through `noesar-sandbox` at all — the
+token is the authorisation gate, and the envelope is the honest declaration of how much that
+capability may use. Inventing a tighter number here would be a limit nothing measured, applied
+to a process nothing enforces it on.
+
+*Evidence:* two tests in `adapter-capability.test.mjs`. The first asserts the answer is the
+SAME with and without a ceiling — a test that only checked the enforcing installation would
+pass on a build that had stopped enforcing anything. The second is the other direction: a token
+may not carry an envelope wider than the plan granted, so this cannot become a way to widen a
+grant. Suite **3196 tests, 3195 pass, 0 fail, 1 skip**; ESLint **477 files, 0 errors, 0
+warnings**; `MANIFEST.sha256` 6 701 files.
+
+*Also closed here, the gap `D-0704` declared:* the Rust mirror of the `expect()` guard is now
+built and tested — `cargo test --offline --locked -p noesar-reasoning-reference` inside a
+disposable `--network none` `rust:1-bookworm` container against the repository's own vendored
+sources, the pattern `tools/verify-crate-extraction.sh` already established for a host with no
+cargo. **14 lib tests + 1 conformance test (`every_reasoning_vector_passes`), 0 failed.**
+
+*Reversal cost:* none on an installation with the sandbox off. On one with it on, reverting
+restores the state where no model can be started.

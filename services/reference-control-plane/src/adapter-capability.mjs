@@ -107,12 +107,29 @@ const refuse = (kind, reason) => { throw new AdapterCapabilityError(kind, reason
 export class AdapterGrantOrchestrator {
   #minter;
   #events;
+  #executeLimits;
   #runs = new Map();
 
-  constructor({ minter, events = null }) {
+  /**
+   * `executeLimits` is the isolation envelope an EXECUTE grant declares — ARCH-008.
+   *
+   * It exists because the two halves of `D-0248` only meet on an installation that turned the
+   * execute sandbox ON: there the minter carries the container's measured ceiling, and
+   * capability.mjs refuses an EXECUTE grant that names no envelope, on the grounds that the
+   * process would otherwise run with the whole container's limits. This adapter's EXECUTE is
+   * `local-model-runtime.launch()`, which named none — so turning the sandbox on made every
+   * model impossible to start, with a refusal that named capability limits and gave an
+   * operator no reason to suspect a switch they had flipped somewhere else entirely.
+   *
+   * Passed in and never written down here: server.mjs hands it what `noesar-sandbox --detect`
+   * measured on THIS host. `null` — every installation with the sandbox off, which is the
+   * default — leaves the mint exactly as it was, because the minter has no ceiling to enforce.
+   */
+  constructor({ minter, events = null, executeLimits = null }) {
     if (!minter) refuse('INVALID', 'an adapter grant orchestrator with no minter could not issue a token if it wanted to');
     this.#minter = minter;
     this.#events = events;
+    this.#executeLimits = executeLimits;
   }
 
   #record(correlationId, causationId, actor, action, details, nowUnix) {
@@ -149,6 +166,13 @@ export class AdapterGrantOrchestrator {
         blastRadius: {
           destructive: operation === 'EXECUTE' || operation === 'DELETE',
           reachesOutsideWorkspace: false,
+          // The envelope is declared in the PLAN the approver reads, not chosen at the mint:
+          // capability.mjs treats it as the grant a token may not widen, so what a person
+          // approved is what the capability may use. An inference server legitimately needs
+          // what the container has, so the honest envelope IS the container's own measured
+          // ceiling — host-agnostic because it is measured per host, never a number typed in
+          // here (`CLAUDE10.md` §16: no host's primitives are presumed).
+          ...(operation === 'EXECUTE' && this.#executeLimits ? { limits: this.#executeLimits } : {}),
         },
       }],
     };
@@ -183,6 +207,10 @@ export class AdapterGrantOrchestrator {
       token = this.#minter.mint(authorized, {
         stepId: step.id, paths: step.files, operations: [run.operation],
         uses: 1, expiresAtUnix: approval.expiresAtUnix,
+        // Read off the step rather than off this object: the token may not carry an envelope
+        // the approved plan did not grant, and taking it from one place is what makes that
+        // true by construction instead of by agreement between two lines.
+        ...(step.blastRadius.limits ? { limits: step.blastRadius.limits } : {}),
       }, nowUnix);
     } catch (error) {
       if (error instanceof CapabilityError) refuse('MINT_REFUSED', error.reason);

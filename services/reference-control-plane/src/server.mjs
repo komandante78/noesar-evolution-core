@@ -808,7 +808,12 @@ function compactRunAfterDecision(runId) {
 const scimTokenStore = new ScimTokenStore(join(workspace, 'state/scim-tokens.json'));
 // ARCH-005: the same minter and event ledger workspace-actions shares above — a second
 // engine here would let a token minted through one door be unaccountable to the other.
-const adapterGrants = new AdapterGrantOrchestrator({ minter: capabilityMinter, events: engineEvents });
+// `executeLimits`: the same ceiling `capabilityMinter` enforces, so the one adapter that asks
+// for EXECUTE can still be granted on an installation that turned the sandbox on. Both are
+// `null` when it is off — the default — and nothing about this path changes there.
+const adapterGrants = new AdapterGrantOrchestrator({
+  minter: capabilityMinter, events: engineEvents, executeLimits: sandboxCeiling,
+});
 const localModels = new LocalModelRuntime({ workspace, minter: capabilityMinter });
 // `D-0541` — the health lane. Reads keep the liveness fresh (see the gateway's thunk above), but
 // an installation where nobody has a page open still has to notice that its model died: the

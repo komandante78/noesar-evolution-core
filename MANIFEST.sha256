@@ -500,7 +500,7 @@ d41ee2bafdfb8e050ccacaeba165c0023979c11c74f53442e346d737f7e8b1bf  ./docs/CHIUSUR
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-c81dc0e5faa92b95660d03982244b3cb84b3f844950074e0c0270ff3b04a7589  ./docs/DECISION_LOG.md
+6b9fd541df9855a54a21f07917ff740b5a749044224c1cf2623fad145c3d534b  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
@@ -6230,7 +6230,7 @@ f4a8b5aa48e62a3e86254917081e2cedb747d319fdfd97728d57c183312a5ab6  ./security/sec
 2649a1ebb289ac13144dd41140202838144652e208b7ffe1e3697e79c47220b2  ./services/reference-control-plane/bin/codev-child.mjs
 d81d7d9dd64e3f08bf65ecd874ec846be140bab30cae9b13693a78034bc43c69  ./services/reference-control-plane/bin/postgres-child.mjs
 61cb3ccf4bcfd2e4c4aa53aa02d6a8b91911019a5151958271ec1a54086b1ebc  ./services/reference-control-plane/src/active-model.mjs
-7055e888efc5494bb65aaac26d8506169c24efa0d3dc06a70fd6fdd0e5c0d858  ./services/reference-control-plane/src/adapter-capability.mjs
+df8de905c1bd50485ec8446724f272875b862591c3065641fe37eef66a46aac2  ./services/reference-control-plane/src/adapter-capability.mjs
 4dbfa69df0ae52970a2bdb15ed4b509d5ae82599ccca060dc0461dbd258b57f0  ./services/reference-control-plane/src/ai-workspace/active-runtime-provider.mjs
 a1fdcbc32182fef5a89f18b21cf3b0bee3db574f5356725d1b6bc5cdec1b1da9  ./services/reference-control-plane/src/ai-workspace/address-guard.mjs
 e7ef0cf8658aec40e2518dc8072c82b04bda13ddcea24ef6cdeb77a44e42f3f2  ./services/reference-control-plane/src/ai-workspace/agent-directive.mjs
@@ -6331,7 +6331,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-2d33b865cfd6028310abe1d98c76fb23a29ae6991df960df8df56cdc26675e35  ./services/reference-control-plane/src/server.mjs
+a216f094c8f433200a8169b978876b254f06c2339205b839bd13ea2120569a69  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 836d93ac41774d98b0fa6bd49c47ee2852d4218a8f910327a32f303c86f343fe  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6359,7 +6359,7 @@ c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/ref
 a3f5116bc284e43b9b7101ab48dad3dd1178643e79eadb525fa9dcd0325b48e9  ./services/reference-control-plane/test/active-model.test.mjs
 fd599a8bef7ba4d81a9f7779e1289d55c889923f238a9582cb461046c433ace7  ./services/reference-control-plane/test/active-runtime-provider.test.mjs
 39738b01db1b088a5d7c1c34c59d1e3284f9037e053169482a1369f298b3f009  ./services/reference-control-plane/test/adapter-capability-http-adversarial.test.mjs
-188b142b50cd4dd1d8e5d5850b055661158e5a16ff013fcc6eab781fd03a19e9  ./services/reference-control-plane/test/adapter-capability.test.mjs
+894822ccf2bf7e945ec6e71745368257f1c70f9450daa45a245d5ea175eda0ec  ./services/reference-control-plane/test/adapter-capability.test.mjs
 09466f4b4e26761cfd9bbc9505b43520a21ea3dce7cee5bac3da55ec649c9373  ./services/reference-control-plane/test/address-guard.test.mjs
 0158e333627bf24b632d4bd1be27df68571516dd5fdeaca840b3cebb5bd2d798  ./services/reference-control-plane/test/agents-archive-http.test.mjs
 60dd171a2238942b849ed659204911f065a781d62bf94fb929445cbe6dd9e84c  ./services/reference-control-plane/test/ai-agent-service.test.mjs
