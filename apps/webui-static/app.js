@@ -4403,7 +4403,7 @@ function renderServices(payload){
     ?`<p class="notice">Safe mode is active${block.safeMode.since?` since ${instantHtml(block.safeMode.since)}`:''}. Mutations are refused; reads still answer.</p>`
     :'';
   const detail=block.detailVisible
-    ?`<ul class="service-list">${(block.components??[]).map((component)=>`<li><span class="dot ${component.healthy?'ok':'bad'}" aria-hidden="true"></span><b>${escapeHtml(component.name)}</b>${component.essential?' <span class="tag">essential</span>':''}<small translate="no">${escapeHtml(component.detailSummary??'')}</small></li>`).join('')}</ul>`
+    ?`<ul class="service-list">${(block.components??[]).map((component)=>`<li><span class="dot ${component.healthy?'ok':'bad'}" aria-hidden="true"></span><b translate="no">${escapeHtml(component.name)}</b>${component.essential?' <span class="tag">essential</span>':''}<small translate="no">${escapeHtml(component.detailSummary??'')}</small></li>`).join('')}</ul>`
     // The count without the names. Enough to know the installation is well, not enough to
     // enumerate it — the detail belongs to the owner-only Health section and this screen
     // must not become the way around that gate.
