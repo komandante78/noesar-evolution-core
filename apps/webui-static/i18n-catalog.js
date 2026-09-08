@@ -543,6 +543,16 @@ export const RUNTIME_ONLY = Object.freeze([
   'not worked out for this model',
   'Saved. It takes effect the next time this model starts.',
   'This placement could not be saved:',
+  // The four header chips, and the one line the approval strip shows when the queue cannot be
+  // read. Each chip ships a full sentence in the markup for its empty state — `Zone: —`,
+  // `Project: none` — which is what the static scanner sees and reports as covered. The
+  // moment a real value arrives, `setChip()` writes the label alone into the text node, and
+  // that label appears in no markup. It is measured where it is real, by I18N-RUNTIME.
+  'Zone:',
+  'Project:',
+  'Model:',
+  'Approvals:',
+  'Approvals: unavailable',
 ]);
 
 const it = {
@@ -614,6 +624,11 @@ const it = {
   'Zone: —': 'Fuso: —',
   'Project: none': 'Progetto: nessuno',
   'Model: none': 'Modello: nessuno',
+  'Zone:': 'Fuso:',
+  'Project:': 'Progetto:',
+  'Model:': 'Modello:',
+  'Approvals:': 'Approvazioni:',
+  'Approvals: unavailable': 'Approvazioni: non leggibili',
   'Coverage: —': 'Copertura: —',
   '● Local-first': '● Prima il locale',
   'Panel: hidden': 'Pannello: nascosto',

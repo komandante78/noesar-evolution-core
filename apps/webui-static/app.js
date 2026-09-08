@@ -18,6 +18,28 @@ import {
   divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuFrame, menuEntriesFor, promptKeys,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
+// A label and a value are two things, and writing them into one text node makes them one
+// string. The catalogue is keyed on the English sentence, so `Zone: Europe/Rome` matches
+// nothing the moment a real zone arrives, and the label renders in English for good — while
+// the markup default `Zone: —` sits in the catalogue looking covered, which is why the
+// static check reported these four chips as translated. Measured on the live installation,
+// 2026-09-08: the header read "Zone:", "Project:", "Model:" and "Approvals:" in English on a
+// page rendered in Italian.
+//
+// The label stays a text node the catalogue can reach; the value goes in a span marked
+// `translate="no"`, because a project is called what the person called it and a model id is
+// not a sentence. The empty state is not a value — it is a phrase this product chose, so it
+// is written whole and stays translatable, which also keeps the existing catalogue entries
+// alive rather than turning them into the stale entries the coverage check exists to catch.
+function setChip(element,label,empty,value){
+  if(!element)return;
+  if(value===null||value===undefined||value==='')  {element.textContent=empty;return;}
+  element.textContent=label+' ';
+  const span=document.createElement('span');
+  span.setAttribute('translate','no');
+  span.textContent=String(value);
+  element.append(span);
+}
 // Phase 6 (`D-0312`): the reasoning chip of the `.coden-bar` status row. One writer, so a
 // second caller cannot start phrasing the degradation its own way. `title` carries every
 // reason in full — the chip has room for one sentence, an operator deciding what to do needs
@@ -984,7 +1006,7 @@ function renderPrivacyDisclosures(disclosures,telemetry){
 async function refreshWorkspaceData(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;renderAll();return data;}
 async function refreshWorkspace(){await refreshWorkspaceData();if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
 function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderNotes();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;}
-function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#noteProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#noteConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});$('#projectChip').textContent=`Project: ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
+function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#noteProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#noteConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});setChip($('#projectChip'),'Project:','Project: none',state.projects.find((item)=>item.id===state.activeProjectId)?.name);const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
 function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.description||'No description')}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
 // §3#9, OWNER_REVIEW_2026-08-21: created a project, no way to remove it. The backend already
 // had the whole mechanism (`updateProject` accepts `archived`, `listProjects` already filters
@@ -1984,7 +2006,7 @@ function updatePrivacyFromProvider(){
   // THIS conversation will use, which can differ from what the installation has resident. What
   // changes is only the empty case, which now asks the installation instead of concluding none.
   const override=$('#chatModel').value||selected?.defaultModel||'';
-  if(override)$('#modelChip').textContent=`Model: ${override}`;
+  if(override)setChip($('#modelChip'),'Model:','Model: none',override);
   else void refreshCodenModelChip();
   refreshPrivacy();
 }
@@ -3638,7 +3660,7 @@ async function refreshApprovals(){
     const items=payload.approvals??[];
     const total=payload.counts?.total??items.length;
     if(strip){
-      strip.textContent=`Approvals: ${total}`;
+      setChip(strip,'Approvals:','Approvals: —',total);
       strip.className=`approval-strip-state ${total>0?'status-warn':'status-good'}`;
     }
     if(detail){
@@ -3898,7 +3920,7 @@ async function loadEffectiveZone(){
     effectiveZone=settings.effective||browserTimezone||'UTC';
   }catch{effectiveZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}
   const chip=$('#timezoneChip');
-  if(chip)chip.textContent=`Zone: ${effectiveZone}`;
+  if(chip)setChip(chip,'Zone:','Zone: —',effectiveZone);
   return effectiveZone;
 }
 
@@ -6191,7 +6213,7 @@ async function refreshCodenModelChip(){
     // The global chip too — three surfaces naming the resident model, one request and one
     // sentence. Skipped when a per-conversation override is set, which is the one case where the
     // global chip is deliberately saying something else.
-    if(top&&!($('#chatModel')?.value))top.textContent=`Model: ${chip}`;
+    if(top&&!($('#chatModel')?.value))setChip(top,'Model:','Model: none',chip);
   };
   try{
     const active=await api('/api/v1/models/active');
