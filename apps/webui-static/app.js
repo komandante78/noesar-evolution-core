@@ -193,6 +193,39 @@ let currentPermissions=[];
 let mfaReplacement=null;
 const state={projects:[],conversations:[],branches:[],memories:[],artifacts:[],sources:[],providers:[],providerCatalog:[],tools:[],agents:[],agentRuns:[],workspaceActionRuns:[],activeProjectId:null,activeConversationId:null,activeBranchId:null};
 const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+
+// The model routinely answers in markdown — bold, code, links, bullet lists — and
+// renderMessages() was showing the raw characters verbatim (measured live, 2026-09-08: "Sono
+// il modello **`/models/...`**" printed exactly like that in the chat bubble). Hand-rolled,
+// not vendored: this subset is what an answer actually uses, and every dependency question
+// elsewhere in this project already went the zero-dependency way. Runs AFTER escapeHtml, so
+// the tags it inserts are the only markup in the result — nothing in the model's own text is
+// left unescaped for it to inject through.
+function renderMarkdownLite(text){
+  const blocks=[];
+  let html=escapeHtml(text).replace(/```[^\n]*\n?([\s\S]*?)```/g,(_,code)=>{blocks.push(`<pre><code>${code}</code></pre>`);return `\x00${blocks.length-1}\x00`;});
+  html=html.replace(/`([^`\n]+?)`/g,'<code>$1</code>');
+  html=html.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>');
+  html=html.replace(/(?<![*\w])\*([^*\n]+?)\*(?!\w)/g,'<em>$1</em>');
+  html=html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  const lines=html.split('\n');
+  const out=[];
+  let inList=false;
+  for(const line of lines){
+    const item=line.match(/^[-*] (.+)$/);
+    if(item){
+      if(!inList){out.push('<ul>');inList=true;}
+      out.push(`<li>${item[1]}</li>`);
+    }else{
+      if(inList){out.push('</ul>');inList=false;}
+      out.push(line);
+    }
+  }
+  if(inList)out.push('</ul>');
+  html=out.join('<br>').replaceAll('<br><ul>','<ul>').replaceAll('</ul><br>','</ul>').replaceAll('<br><li>','<li>').replaceAll('</li><br>','</li>');
+  return html.replace(/\x00(\d+)\x00/g,(_,i)=>blocks[Number(i)]);
+}
+
 function setStatus(message,error=false){$('#statusMessage').textContent=message;$('#statusMessage').classList.toggle('error',error);}
 
 // --- user-visible feedback -------------------------------------------------
@@ -1182,7 +1215,7 @@ function readChatClearedMap(){try{const parsed=JSON.parse(localStorage.getItem(C
 function chatClearedWatermark(conversationId,branchId){return readChatClearedMap()[`${conversationId}:${branchId}`]??null;}
 function setChatClearedWatermark(conversationId,branchId,createdAt){const map=readChatClearedMap();map[`${conversationId}:${branchId}`]=createdAt;try{localStorage.setItem(CHAT_CLEARED_KEY,JSON.stringify(map));}catch{}}
 async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const watermark=chatClearedWatermark(state.activeConversationId,state.activeBranchId);const visible=watermark?data.messages.filter((message)=>message.createdAt>watermark):data.messages;renderMessages(visible);await inspectContext();}
-function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b translate="no">${escapeHtml(t(message.role))}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body" translate="no">${escapeHtml(message.content).replaceAll('\n','<br>')}</div>${message.citations?.length?`<div class="citations" translate="no">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
+function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b translate="no">${escapeHtml(t(message.role))}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body" translate="no">${renderMarkdownLite(message.content)}</div>${message.citations?.length?`<div class="citations" translate="no">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
 /**
  * Every source this conversation has cited, gathered where it stays put.
  *
