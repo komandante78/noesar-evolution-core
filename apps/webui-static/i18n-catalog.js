@@ -824,10 +824,19 @@ const it = {
   'Agent plans, tool steps and approval-gated mutations.': 'Piani dell’agente, passi degli strumenti e modifiche soggette ad approvazione.',
   'Start here': 'Comincia da qui',
   'Loading…': 'Caricamento…',
-  // `D-0404` slice 3 — the CodeN terminal's operational states. In the markup only as the
-  // pre-JavaScript value; every later value is written by `coden-terminal.js`, which is why
-  // the rest of them are listed in RUNTIME_ONLY below rather than here.
+  // `D-0404` slice 3 — the CodeN terminal's operational states. Only the first is in the
+  // markup, as the pre-JavaScript value; the other five are written by `coden-terminal.js`
+  // and are declared in RUNTIME_ONLY below. That declaration exempts them from the MARKUP
+  // scan and from nothing else — but they were listed there and left out of here, so the
+  // status line spoke English on an Italian page from the moment the socket moved off idle,
+  // with both checks green. Translated here, and a test now asserts that every runtime-only
+  // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  'Connecting to the session…': 'Connessione alla sessione…',
+  'Attached.': 'Collegato.',
+  'Reconnecting…': 'Riconnessione…',
+  'Not permitted to attach.': 'Collegamento non permesso.',
+  'This terminal could not start.': 'Questo terminale non è riuscito ad avviarsi.',
   'Or start from what you want done': 'Oppure parti da ciò che vuoi ottenere',
   'A goal opens a conversation with itself as the opening text. Turning a goal into a Plan is the Intent Frame, which is backbone work and does not exist in this build — so nothing here has been understood yet, only asked.': 'Un obiettivo apre una conversazione usando sé stesso come testo iniziale. Trasformare un obiettivo in un Piano è l’Intent Frame, che è lavoro di dorsale e non esiste in questa build — quindi qui nulla è ancora stato compreso, solo chiesto.',
   'Manage': 'Gestisci',

@@ -151,6 +151,20 @@ describe('the catalogue cannot translate twice or contradict itself', () => {
         `${JSON.stringify(entry)} is declared runtime-only but IS a visible string in the markup — the exemption is hiding a real measurement`);
     }
   });
+
+  // The hole that declaration left. Runtime-only exempts a string from the MARKUP scan and
+  // from nothing else, but five of the CodeN terminal's states were listed there and never
+  // translated: the static tool skipped them by declaration and I18N-RUNTIME never saw them
+  // because reaching them needs a socket that moves. Both checks green, the status line in
+  // English. Saying where a string lives is not saying it needs no translation.
+  test('every runtime-only string is translated in every catalogue', () => {
+    for (const [code, catalogue] of Object.entries(CATALOGS)) {
+      if (code === SOURCE_LANGUAGE) continue;
+      const untranslated = RUNTIME_ONLY.filter((entry) => !(entry in catalogue));
+      assert.deepEqual(untranslated, [],
+        `${code}: declared runtime-only but absent from the catalogue, so each renders in ${SOURCE_LANGUAGE}`);
+    }
+  });
 });
 
 describe('resolving a language', () => {
