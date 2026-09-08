@@ -632,6 +632,17 @@ export const RUNTIME_ONLY = Object.freeze([
   'external',
   'Edit',
   'Select provider',
+  // Six labels that carry an action, found by sweeping every destination in Italian on
+  // 2026-09-08: the button under an agent step, the one that opens a new version of a
+  // document, the one that shows what a source actually says, the two on a session row, and
+  // the word a step wears until it has been run. All written by their renderers; the three
+  // that also occur in the markup occur there inside sentences, never as a node of their own.
+  'Execute',
+  'New version',
+  'Preview passages',
+  'Archive…',
+  'Delete…',
+  'pending',
 ]);
 
 const it = {
@@ -760,6 +771,12 @@ const it = {
   'external': 'esterno',
   'Edit': 'Modifica',
   'Select provider': 'Scegli il fornitore',
+  'Execute': 'Esegui',
+  'New version': 'Nuova versione',
+  'Preview passages': 'Anteprima dei passaggi',
+  'Archive…': 'Archivia…',
+  'Delete…': 'Elimina…',
+  'pending': 'in attesa',
   'Schedule and Due are read in': 'Programmazione e Scadenza si leggono in',
   ', and stored as an instant.': ', e si memorizzano come istante.',
   'Measured in': 'Misurato in',
