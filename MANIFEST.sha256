@@ -329,7 +329,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-750b213f4bbcbc724ee32d896c575d3a47c4c5b768c0386d21c5bf0b4ee4aa38  ./apps/webui-static/app.js
+a0c222a522b0d0d6c6859c448ae110916b4eb8f26101380cfbc0f34240bf067e  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js

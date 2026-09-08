@@ -443,7 +443,17 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // absorb it, and `17` fixes the scope of this phase in a line: "cambia la destinazione CodeN
   // Evolution. Chat resta Chat, Impostazioni restano Impostazioni". Removing it everywhere
   // would take navigation away from twelve pages to satisfy a rule written about one.
-  const shell=$('#appShell');if(shell)shell.dataset.view=target;
+  // A status line belongs to the page that wrote it. Nothing cleared it on navigation, so a
+  // message left by one destination sat under the next one and read as its outcome. Measured
+  // 2026-09-08: after creating a document, the line still said "200 record(s) — truncated at
+  // the limit, 1 file(s) scanned", which a CodeN command had written three pages earlier.
+  //
+  // Cleared only when the destination actually changes, never on a re-activation of the same
+  // one: a handler that navigates and then reports — `activate('projects')` followed by
+  // "Create a project first" — still gets to say its piece.
+  const shell=$('#appShell');
+  if(shell&&shell.dataset.view!==target)setStatus('');
+  if(shell)shell.dataset.view=target;
   let activeSection='';
   if(target==='settings')activeSection=activateSection(section);
   // Sections belong to Settings alone. Leaving the destination clears them, otherwise a
