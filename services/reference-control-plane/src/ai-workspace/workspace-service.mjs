@@ -17,6 +17,17 @@ function find(items, id, label) {
   return item;
 }
 function sanitizeFilename(value) { return String(value ?? 'file').replace(/[^a-zA-Z0-9._-]+/g,'_').slice(0,180); }
+// A source with no project is not inside a project, so scoping it out of every project
+// leaves it reachable from nowhere at all. This is the rule `globalSearch` below already
+// states for project records — scoping is about what a project CONTAINS — applied to the
+// half of it that was still missing.
+//
+// Measured on the live installation, 2026-09-08: the one source in Knowledge carried
+// `projectId: null`, the page sends the active project on every search, and the search
+// answered `No results.` for a word that is certainly in the document — while the same
+// query with no project returned it. The upload form offers "No project" as a choice, so
+// the product was inviting people to file a source where nothing could ever find it.
+function inProjectScope(item, projectId) { return !projectId || !item.projectId || item.projectId === projectId; }
 function chunkText(text, size=1800, overlap=180) {
   const chunks=[]; let start=0;
   while (start < text.length) {
@@ -123,12 +134,12 @@ export class WorkspaceService {
     return {...source,passages:includePassages?state.knowledgeChunks.filter((item)=>item.sourceId===sourceId).map(({vector,...safe})=>safe):undefined};
   }
 
-  listSources({ projectId=null }={}) { return this.store.read().sources.filter((item)=>!item.deletedAt && (!projectId || item.projectId===projectId)); }
+  listSources({ projectId=null }={}) { return this.store.read().sources.filter((item)=>!item.deletedAt && inProjectScope(item,projectId)); }
   knowledgeContext(query,{projectId=null,sourceIds=[],policy=null}={}) {
     const state=this.store.read();const project=state.projects.find((item)=>item.id===projectId);const selectedPolicy=policy??project?.knowledgePolicy??{mode:'hybrid',limit:8,maxCharacters:60000};
     if(selectedPolicy.mode==='disabled')return[];
     const sourceMap=new Map(state.sources.filter((item)=>!item.deletedAt).map((item)=>[item.id,item]));
-    let chunks=state.knowledgeChunks.filter((item)=>(!projectId||item.projectId===projectId)&&(!sourceIds.length||sourceIds.includes(item.sourceId)));
+    let chunks=state.knowledgeChunks.filter((item)=>inProjectScope(item,projectId)&&(!sourceIds.length||sourceIds.includes(item.sourceId)));
     if(selectedPolicy.mode==='hybrid')return this.knowledgeSearch(query,{projectId,limit:selectedPolicy.limit??8}).filter((item)=>!sourceIds.length||sourceIds.includes(item.sourceId));
     chunks=chunks.sort((a,b)=>a.sourceId.localeCompare(b.sourceId)||a.index-b.index);let used=0;const output=[];
     for(const item of chunks){if(used>=selectedPolicy.maxCharacters)break;const text=item.text.slice(0,selectedPolicy.maxCharacters-used);used+=text.length;output.push({...item,text,score:1,source:sourceMap.get(item.sourceId)});}
@@ -138,7 +149,7 @@ export class WorkspaceService {
   knowledgeSearch(query,{ projectId=null,limit=12 }={}) {
     const state=this.store.read();
     const sourceMap=new Map(state.sources.map((item)=>[item.id,item]));
-    return hybridSearch(query,state.knowledgeChunks.filter((item)=>!projectId || item.projectId===projectId).map((item)=>({ ...item, searchText:item.text })),{ limit }).map((item)=>({ ...item, source:sourceMap.get(item.sourceId) }));
+    return hybridSearch(query,state.knowledgeChunks.filter((item)=>inProjectScope(item,projectId)).map((item)=>({ ...item, searchText:item.text })),{ limit }).map((item)=>({ ...item, source:sourceMap.get(item.sourceId) }));
   }
 
   createTask({projectId=null,title,description='',status='planned',priority='normal',scheduledAt=null,dueAt=null,recurrence=null,agentId=null,actorId='system'}={}) {
