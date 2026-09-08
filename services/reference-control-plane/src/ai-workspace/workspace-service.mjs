@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { featureVector, hybridSearch } from './search.mjs';
 import { detectInjection } from './untrusted-content.mjs';
+import { redactIdentifiers } from './pii-redaction.mjs';
 
 function now() { return new Date().toISOString(); }
 function error(message, status=400) { return Object.assign(new Error(message), { status }); }
@@ -100,30 +101,49 @@ export class WorkspaceService {
   }
   listArtifacts({ projectId=null,conversationId=null }={}) { return this.store.read().artifacts.filter((item)=>!item.deletedAt && (!projectId || item.projectId===projectId) && (!conversationId || item.conversationId===conversationId)); }
 
-  ingestSource({ projectId=null, name, mimeType='text/plain', text='', origin='upload', uri=null, metadata={}, actorId='system' }) {
+  ingestSource({ projectId=null, name, mimeType='text/plain', text='', origin='upload', uri=null, metadata={}, actorId='system', redact=true }) {
     const content=String(text ?? '');
     const sourceName=sanitizeFilename(required(name,'source name',300));
     // Scan at the boundary where third-party content enters the workspace, so a
     // suspicious document is visible to the operator before it is ever retrieved.
     // This records; containment is structural and lives in untrusted-content.mjs.
     const injection=detectInjection(content);
+    // Owner decision, 2026-09-08: identifiers only (codice fiscale, IBAN, email, phone) are
+    // redacted before indexing — no name/address detection without a model this project has
+    // never carried, see pii-redaction.mjs. The unredacted text is written as its own
+    // protected blob, never as a field on the source record, so every place that already
+    // reads a source (list, get, search, chat context) cannot leak it by forgetting to
+    // strip a key — there is no key to strip.
+    const redaction=redact?redactIdentifiers(content):{redacted:content,piiFound:false,types:[]};
+    const indexedText=redaction.redacted;
+    const originalTextBlobId=redaction.piiFound?this.fileExtractor?.writeSecret(content)??null:null;
     return this.store.transact((state)=>{
       if (projectId) find(state.projects,projectId,'Project');
-      const source={ id:randomUUID(), projectId, name:sourceName, mimeType, origin, uri, metadata, trust:'untrusted', injectionScan:{ suspicious:injection.suspicious, confidence:injection.confidence, signals:injection.signals.map((item)=>item.signal) }, extractionStatus:content ? 'complete':'extractor_required', byteLength:Buffer.byteLength(content), createdAt:now(), updatedAt:now(), deletedAt:null };
+      const source={ id:randomUUID(), projectId, name:sourceName, mimeType, origin, uri, metadata, trust:'untrusted', injectionScan:{ suspicious:injection.suspicious, confidence:injection.confidence, signals:injection.signals.map((item)=>item.signal) }, extractionStatus:content ? 'complete':'extractor_required', byteLength:Buffer.byteLength(content), piiRedacted:redaction.piiFound, piiTypes:redaction.types, originalTextBlobId, createdAt:now(), updatedAt:now(), deletedAt:null };
       state.sources.push(source);
-      if (content) {
-        for (const [index,chunk] of chunkText(content).entries()) state.knowledgeChunks.push({ id:randomUUID(), sourceId:source.id, projectId, index, start:chunk.start, end:chunk.end, text:chunk.text, vector:featureVector(chunk.text), createdAt:now() });
+      if (indexedText) {
+        for (const [index,chunk] of chunkText(indexedText).entries()) state.knowledgeChunks.push({ id:randomUUID(), sourceId:source.id, projectId, index, start:chunk.start, end:chunk.end, text:chunk.text, vector:featureVector(chunk.text), createdAt:now() });
       }
       const project=state.projects.find((item)=>item.id===projectId); if (project) project.fileSourceIds.push(source.id);
-      this.ledger?.append({ actor:actorId, action:'source.ingested', result:source.extractionStatus, details:{ sourceId:source.id, mimeType, chunks:state.knowledgeChunks.filter((item)=>item.sourceId===source.id).length, injectionSuspected:injection.suspicious, injectionConfidence:injection.confidence } });
+      this.ledger?.append({ actor:actorId, action:'source.ingested', result:source.extractionStatus, details:{ sourceId:source.id, mimeType, chunks:state.knowledgeChunks.filter((item)=>item.sourceId===source.id).length, injectionSuspected:injection.suspicious, injectionConfidence:injection.confidence, piiRedacted:redaction.piiFound, piiTypes:redaction.types } });
       return { ...source, chunkCount:state.knowledgeChunks.filter((item)=>item.sourceId===source.id).length };
     });
   }
+  // Password-gated reveal — server.mjs checks the caller's own password before calling this.
+  // Returns the unredacted text (if any was written) and the raw uploaded file (if any),
+  // base64, for the caller to show or download. Nothing here is cached or logged.
+  revealSource(sourceId) {
+    const state=this.store.read();
+    const source=find(state.sources,sourceId,'Source');
+    const originalText=source.originalTextBlobId?(this.fileExtractor?.readSecret(source.originalTextBlobId)??null):null;
+    const blob=source.blobId?this.fileExtractor?.readBlob(source.blobId):null;
+    return { originalText, blobBase64:blob?blob.buffer.toString('base64'):null, blobFilename:blob?.filename??null, mimeType:source.mimeType, name:source.name };
+  }
 
-  async ingestFile({ projectId=null, name, mimeType='application/octet-stream', bytesBase64, origin='upload', metadata={}, actorId='system' }) {
+  async ingestFile({ projectId=null, name, mimeType='application/octet-stream', bytesBase64, origin='upload', metadata={}, actorId='system', redact=true }) {
     if (!this.fileExtractor) throw error('Binary file extraction is not configured.',503);
     const extracted=await this.fileExtractor.extract({name,mimeType,bytesBase64});
-    const item=this.ingestSource({projectId,name:extracted.storedName,mimeType,text:extracted.text,origin,metadata:{...metadata,blobId:extracted.blobId,sha256:extracted.sha256,extractor:extracted.extractor,warning:extracted.warning,...extracted.metadata},actorId});
+    const item=this.ingestSource({projectId,name:extracted.storedName,mimeType,text:extracted.text,origin,metadata:{...metadata,blobId:extracted.blobId,sha256:extracted.sha256,extractor:extracted.extractor,warning:extracted.warning,...extracted.metadata},actorId,redact});
     return this.store.transact((state)=>{
       const source=find(state.sources,item.id,'Source');source.byteLength=extracted.byteLength;source.extractionStatus=extracted.status;source.blobId=extracted.blobId;source.sha256=extracted.sha256;source.updatedAt=now();
       return {...source,chunkCount:state.knowledgeChunks.filter((chunk)=>chunk.sourceId===source.id).length};

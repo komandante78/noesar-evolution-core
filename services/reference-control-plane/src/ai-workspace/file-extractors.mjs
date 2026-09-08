@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { randomUUID, createHash } from 'node:crypto';
@@ -132,6 +132,13 @@ export class FileExtractor{
     mkdirSync(blobRoot,{recursive:true,mode:0o700});
   }
   delete(blobId){if(!/^[0-9a-f-]{36}$/i.test(String(blobId)))return false;rmSync(join(this.blobRoot,String(blobId)),{recursive:true,force:true});return true;}
+  // Reveal path only: the unredacted text a redaction step deliberately kept out of the
+  // chunks a search or a model context can surface. Stored the same way an uploaded file
+  // already is — its own directory, 0700/0600 — so there is one blob-storage posture in
+  // this file, not two.
+  writeSecret(text){const id=randomUUID();const dir=join(this.blobRoot,id);mkdirSync(dir,{recursive:true,mode:0o700});writeFileSync(join(dir,'original.txt'),String(text??''),{mode:0o600});return id;}
+  readSecret(blobId){if(!/^[0-9a-f-]{36}$/i.test(String(blobId)))return null;const path=join(this.blobRoot,String(blobId),'original.txt');return existsSync(path)?readFileSync(path,'utf8'):null;}
+  readBlob(blobId){if(!/^[0-9a-f-]{36}$/i.test(String(blobId)))return null;const dir=join(this.blobRoot,String(blobId));if(!existsSync(dir))return null;const [filename]=readdirSync(dir);if(!filename)return null;return{filename,buffer:readFileSync(join(dir,filename))};}
   async extract({name,mimeType='application/octet-stream',bytesBase64}){
     const bytes=Buffer.from(String(bytesBase64??''),'base64');
     if(!bytes.length)throw Object.assign(new Error('File content is empty.'),{status:400});

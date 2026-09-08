@@ -997,6 +997,14 @@ export class AuthService {
     return user;
   }
 
+  // Re-authentication gate for revealing data a redaction step deliberately hid — a valid
+  // session is proof of who logged in, not proof that whoever is at the keyboard right now
+  // is still that person.
+  verifyOwnPassword({ userId, password }) {
+    const user = this.#requireUser(userId);
+    return verifyPassword(password, user.password);
+  }
+
   // --- passkeys ---------------------------------------------------------------------
   //
   // Enrolling or removing a passkey is gated by #assertPresence — password AND a live

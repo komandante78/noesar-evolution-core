@@ -4861,6 +4861,15 @@ const requestListener = async (req, res) => {
     if(match&&req.method==='DELETE'){
       const authenticated=requireSession(req,res,'knowledge.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,200,aiWorkspace.deleteSource(match[1],authenticated.user.id));
     }
+    match=url.pathname.match(/^\/api\/v1\/sources\/([^/]+)\/reveal$/);
+    if(match&&req.method==='POST'){
+      // A valid session says who logged in, not that the same person is still at the
+      // keyboard — the one thing a redaction step deliberately hid deserves a second check.
+      const authenticated=requireSession(req,res,'knowledge.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const { password }=await body(req);
+      if(!auth.verifyOwnPassword({userId:authenticated.user.id,password}))return json(res,403,{error:'Incorrect password.'});
+      return json(res,200,aiWorkspace.revealSource(match[1]));
+    }
     if(req.method==='GET'&&url.pathname==='/api/v1/knowledge/search'){
       const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,{results:aiWorkspace.knowledgeSearch(url.searchParams.get('q')??'',{projectId:url.searchParams.get('projectId'),limit:Number(url.searchParams.get('limit')??12)})});
     }
