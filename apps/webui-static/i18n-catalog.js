@@ -664,6 +664,20 @@ export const RUNTIME_ONLY = Object.freeze([
   'Execution layer. This authorization plans paths and issues scoped approvals; it has no execution surface (executionEnabled:false) and does not inspect command content.',
   'Execution layer and model policy. Not a property of a filesystem path; the path authorizer cannot observe intent or network target.',
   'Model policy layer. A content commitment, unobservable to path authorization.',
+  // The provider cards (Models). Everything here is painted by `renderProviders()` and appears
+  // in no markup. The status line is composed; the rest are whole strings the walker reaches
+  // on its own once they are in the catalogue — they simply were not.
+  'External',
+  'Local',
+  'Enabled',
+  'credential missing',
+  'priority',
+  'Local · Answering now · derived from the local model runtime, not a stored profile',
+  'This is the model chosen with',
+  '. Change it by choosing another model — it has no credential and reaches nothing outside this machine.',
+  'Lets this provider caption an uploaded image when OCR finds no text in it',
+  'Vision-capable (image captioning)',
+  'Grant explicit external consent first.',
 ]);
 
 const it = {
@@ -853,6 +867,21 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // The provider cards (Models). `Disabled`, `Disable`, `Enable` and the controls around them
+  // were already here; what was missing was every word that STATES something — whether a
+  // provider is local or external, on or off, whether it has its credential, and the card of
+  // the model that is answering right now.
+  'External': 'Esterno',
+  'Local': 'Locale',
+  'Enabled': 'Attivata',
+  'credential missing': 'credenziale mancante',
+  'priority': 'priorità',
+  'Local · Answering now · derived from the local model runtime, not a stored profile': 'Locale · Sta rispondendo adesso · derivato dal runtime del modello locale, non da un profilo memorizzato',
+  'This is the model chosen with': 'Questo è il modello scelto con',
+  '. Change it by choosing another model — it has no credential and reaches nothing outside this machine.': '. Per cambiarlo scegli un altro modello — non ha credenziali e non raggiunge nulla fuori da questa macchina.',
+  'Lets this provider caption an uploaded image when OCR finds no text in it': 'Permette a questo fornitore di descrivere un’immagine caricata quando l’OCR non ci trova testo',
+  'Vision-capable (image captioning)': 'Capace di vedere (descrizione delle immagini)',
+  'Grant explicit external consent first.': 'Concedi prima il consenso esterno esplicito.',
   // SEC-003's invariant panel: what CodeN guarantees, and whether this layer is the one that
   // keeps the promise. A person reading it is being told what the product will not let happen
   // to their machine — the one place where reading it in a language you are guessing at is
