@@ -4540,7 +4540,7 @@ async function loadHome(){
 // The workbench · UI-030…UI-037, and the closure · UI-036
 // ---------------------------------------------------------------------------
 
-const terminals={items:[{id:1,name:'Terminal 1',history:[]}],active:1,next:2};
+const terminals={items:[{id:1,history:[]}],active:1,next:2};
 // D-0230: the session protocol's HTTP bridge (/api/v1/tui/command) reaches the exact same
 // engine instances the unix socket transport does — "the same live session as the
 // workbench", not a second client with its own state (index.html's own words, now true).
@@ -4555,7 +4555,7 @@ async function runTerminalCommand(term, line){
   let method=null;let params={};
   switch(command){
     case '':return;
-    case 'help':term.history.push({kind:'info',text:TERMINAL_HELP});return;
+    case 'help':term.history.push({kind:'info',text:t(TERMINAL_HELP)});return;
     case 'status':method='status';break;
     case 'get':method='workspace.get';params={runId:arg};break;
     case 'events':method='events.correlation';params={correlationId:arg};break;
@@ -4566,7 +4566,7 @@ async function runTerminalCommand(term, line){
     case 'approve':method='workspace.approve';params={runId:arg};break;
     case 'reject':{const [runId,...reasonParts]=rest;method='workspace.reject';params={runId,reason:reasonParts.join(' ')||null};break;}
     case 'restore':method='workspace.restore';params={runId:arg};break;
-    default:term.history.push({kind:'error',text:`Unknown command \`${command}\`. Type \`help\`.`});return;
+    default:term.history.push({kind:'error',text:`${t('Unknown command')} \`${command}\`. ${t('Type `help`.')}`});return;
   }
   try{
     const response=await api('/api/v1/tui/command',{method:'POST',body:JSON.stringify({method,params})});
@@ -4577,13 +4577,13 @@ async function runTerminalCommand(term, line){
 }
 function renderTerminals(){
   $('#terminalTabs').innerHTML=terminals.items.map((item)=>
-    `<button type="button" role="tab" aria-selected="${item.id===terminals.active}" class="${item.id===terminals.active?'active':''}" data-terminal="${item.id}">${escapeHtml(item.name)}</button>`).join('');
+    `<button type="button" role="tab" aria-selected="${item.id===terminals.active}" class="${item.id===terminals.active?'active':''}" data-terminal="${item.id}" translate="no">${escapeHtml(t('Terminal'))} ${item.id}</button>`).join('');
   $$('[data-terminal]').forEach((button)=>button.addEventListener('click',()=>{
     terminals.active=Number(button.dataset.terminal);renderTerminals();
   }));
   const term=terminals.items.find((item)=>item.id===terminals.active);
   const lines=(term?.history??[]).map((entry)=>entry.kind==='command'?`coden-evolution> ${entry.text}`:entry.text);
-  const scrollback=lines.length?escapeHtml(lines.join('\n\n')):"Attached to the same live session as the workbench (D-0230's session protocol, HTTP bridge). Type `help` below.";
+  const scrollback=lines.length?escapeHtml(lines.join('\n\n')):escapeHtml(t("Attached to the same live session as the workbench (D-0230's session protocol, HTTP bridge). Type `help` below."));
   $('#terminalBody').innerHTML=`<pre class="result terminal-scrollback" id="terminalScrollback">${scrollback}</pre><form class="inline-form" id="terminalCommandForm"><input id="terminalCommandInput" placeholder="type a command — help for the list" autocomplete="off"><button class="secondary" type="submit">Run</button></form>`;
   const scrollbackNode=$('#terminalScrollback');if(scrollbackNode)scrollbackNode.scrollTop=scrollbackNode.scrollHeight;
   $('#terminalCommandForm')?.addEventListener('submit',async(event)=>{
@@ -4643,7 +4643,7 @@ function initBench(){
     if(row)jumpTo(row.dataset.jump);
   });
   $('#terminalAdd')?.addEventListener('click',()=>{
-    terminals.items.push({id:terminals.next,name:`Terminal ${terminals.next}`,history:[]});
+    terminals.items.push({id:terminals.next,history:[]});
     terminals.active=terminals.next;terminals.next+=1;renderTerminals();
   });
   $('#terminalToggle')?.addEventListener('click',()=>{
@@ -4831,7 +4831,8 @@ async function renderBenchStatus(){
       ?live.live.map((item)=>`<div class="metric"><span>${escapeHtml(item.operation)} · ${escapeHtml(item.canonicalPath)}</span><b>${escapeHtml(humanDuration(item.secondsRemaining))} left</b></div>`).join('')
       :'Nothing is granted right now.';
   }
-  $('#statusSourced').textContent=`${sourced.size} of 12 fields have a source in this build`;
+  $('#statusSourced').setAttribute('translate','no');
+  $('#statusSourced').textContent=`${sourced.size} ${t('of 12 fields have a source in this build')}`;
 }
 let benchOpenedAt=Date.now();
 // `undefined` = never asked; `null` = asked and the request failed. Distinguished so a failed

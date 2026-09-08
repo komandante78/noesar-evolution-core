@@ -677,6 +677,24 @@ export const RUNTIME_ONLY = Object.freeze([
   'Kept.',
   'Discarded.',
   'Nothing matched:',
+  // The workbench terminal and its status strip. The tab name is composed (`Terminal` plus a
+  // number) and is therefore listed as the WORD, not as the finished label; the four inside
+  // the scrollback are translated where they are written, because `<pre>` is an untranslated
+  // tag and no walker enters it.
+  'Run',
+  'type a command — help for the list',
+  'Attached to the same live session as the workbench (D-0230\'s session protocol, HTTP bridge). Type `help` below.',
+  'Commands: status | get <runId> | events <runId> | map [path] | search <query> | simulate <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | help\nPlans are created in the Plan panel; this terminal reaches the same live session, not a second one.',
+  'Unknown command',
+  'Type `help`.',
+  'CodeN Evolution terminal',
+  'No task.',
+  'none (EXECUTE refused)',
+  'local only',
+  'see privacy state',
+  'owner bypass',
+  'of 12 fields have a source in this build',
+  'You',
 ]);
 
 const it = {
@@ -866,6 +884,25 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // The workbench's own terminal and status strip (UI-030…UI-037). Written by app.js from
+  // first to last — the tab, the prompt, the button, the six status words — so none of it
+  // appears in the markup and the static tool could not see any of it. I18N-RUNTIME did.
+  'Run': 'Esegui',
+  'type a command — help for the list': 'scrivi un comando — help per l’elenco',
+  'Attached to the same live session as the workbench (D-0230\'s session protocol, HTTP bridge). Type `help` below.': 'Collegato alla stessa sessione viva del banco (protocollo di sessione D-0230, ponte HTTP). Scrivi `help` qui sotto.',
+  'Commands: status | get <runId> | events <runId> | map [path] | search <query> | simulate <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | help\nPlans are created in the Plan panel; this terminal reaches the same live session, not a second one.': 'Comandi: status | get <runId> | events <runId> | map [percorso] | search <query> | simulate <runId> | approve <runId> | reject <runId> [motivo] | restore <runId> | help\nI piani si creano nel pannello Piano; questo terminale raggiunge la stessa sessione viva, non una seconda.',
+  'Unknown command': 'Comando sconosciuto',
+  'Type `help`.': 'Scrivi `help`.',
+  'CodeN Evolution terminal': 'Terminale di CodeN Evolution',
+  'No task.': 'Nessun compito.',
+  'none (EXECUTE refused)': 'nessuno (EXECUTE rifiutato)',
+  'local only': 'solo locale',
+  'see privacy state': 'vedi lo stato della riservatezza',
+  'owner bypass': 'scavalco del proprietario',
+  'of 12 fields have a source in this build': 'campi su 12 hanno una fonte in questa build',
+  // The speaker of a turn in the CodeN conversation panel. The other side is the model's own
+  // role name, which stays as the wire says it.
+  'You': 'Tu',
   // Every string below sits directly beside a `<code>` or a `<pre>` in `index.html`, which is
   // why they arrive here as fragments and not as sentences: an excluded element cuts the
   // paragraph into separate text nodes, and a text node is the unit that gets translated. The
