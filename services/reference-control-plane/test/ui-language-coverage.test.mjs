@@ -329,12 +329,24 @@ describe('the `/` menu is translated — the surface neither measurement could s
     const source = readFileSync(join(repoRoot, 'apps/webui-static/i18n-catalog.js'), 'utf8');
     const body = source.slice(source.indexOf('const it = {'));
     const seen = new Map();
-    for (const match of body.matchAll(/^ {2}('(?:[^'\\]|\\.)*')\s*:/gm)) {
+    // All three ways a key is written in this file, not one of them. The first version read
+    // single quotes only and therefore never examined 20 of the 1369 entries: the whole
+    // account-recovery and authenticator block, written with double quotes, plus `models:`,
+    // written as a bare identifier. A second translation of any of those would have killed the
+    // first in silence with this check green — and those are the sentences a person reads when
+    // they are locked out.
+    for (const match of body.matchAll(/^ {2}((?:'(?:[^'\\]|\\.)*')|(?:"(?:[^"\\]|\\.)*")|(?:[A-Za-z_$][\w$]*))\s*:/gm)) {
       seen.set(match[1], (seen.get(match[1]) ?? 0) + 1);
     }
     assert.ok(seen.size > 500, 'the key scanner matched almost nothing — it has stopped measuring');
     const duplicated = [...seen].filter(([, count]) => count > 1).map(([key]) => key);
     assert.deepEqual(duplicated, [], 'these sentences have two entries; the second one wins and the first is dead');
+    // The backstop, and the only part of this that cannot be fooled by HOW a key is written:
+    // every key line in the file has to still be a key in the object. One fewer means two
+    // lines collapsed into one entry — including the case the scan above cannot see, the same
+    // sentence written once in single quotes and once in double.
+    assert.equal(seen.size, Object.keys(CATALOGS.it).length,
+      'the file has key lines the catalogue has no keys for — a sentence is translated twice and the later entry silently won');
   });
 
   // The derivation is load-bearing and quiet: if it were replaced by a copied list, this suite
