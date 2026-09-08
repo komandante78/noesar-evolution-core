@@ -719,6 +719,7 @@ export const RUNTIME_ONLY = Object.freeze([
   'Step types:',
   '(declared, not executable in this build)',
   'The server reported no step types.',
+  'opens',
 ]);
 
 const it = {
@@ -908,6 +909,7 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  'opens': 'apre',
   // Agents and Workflows.
   'Analyze goal': 'Analizza l’obiettivo',
   'Produce result': 'Produci il risultato',

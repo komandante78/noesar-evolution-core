@@ -211,7 +211,13 @@ describe('phase 3: the switchers are gone and nothing they reached went with the
     // defect; how many lists there are is a fact about the markup, and it moved.
     const body = app.slice(app.indexOf('function renderBenchNavigator'), app.indexOf('async function renderBenchStatus'));
     assert.match(body, /data-jump="\$\{escapeHtml\(destination\)\}"/);
-    assert.match(body, /opens \$\{escapeHtml\(destination\)\}/, 'and each row says which page it opens');
+    // The verb was a literal here until the tooltip was translated: these rows carry
+    // `translate="no"` because they are named after a person's own projects and sessions, and
+    // that exemption covers the title attribute too — so the one English word inside it could
+    // not be reported by either measurement. What this test is for is unchanged: the row must
+    // still say WHICH page it opens, and the destination must still be in the title.
+    assert.match(body, /\$\{escapeHtml\(t\('opens'\)\)\} \$\{escapeHtml\(destination\)\}/,
+      'and each row says which page it opens, in the language the reader is reading');
     // Every list passes a destination: a call left without one renders rows that go nowhere.
     const calls = [...body.matchAll(/=list\((.*?)\);/g)].map((match) => match[1]);
     assert.equal(calls.length, 6, `expected six rendered lists, found ${calls.length}`);
