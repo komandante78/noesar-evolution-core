@@ -223,7 +223,13 @@ export class ReferenceReasoningProvider {
     const paths = [];
     const tests = [];
     for (const step of plan.steps) {
-      for (const path of step.files) if (!paths.includes(path)) paths.push(path);
+      // `.` is a step's execution working directory, never a file a diff could touch:
+      // `observe()` keys its changes by FILE path, so a directory named in
+      // `pathsTheDiffMustTouch` is a requirement nothing could ever satisfy — an expectation
+      // unsatisfiable by construction rather than a criterion. Excluded in the ONE place the
+      // expectation is derived, so both shells and the Rust mirror agree by construction
+      // instead of each growing its own exception.
+      for (const path of step.files) if (path !== '.' && !paths.includes(path)) paths.push(path);
       for (const command of step.commands) {
         if (command.includes('test') && !tests.includes(command)) tests.push(command);
       }

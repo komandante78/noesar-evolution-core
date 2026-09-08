@@ -491,7 +491,10 @@ const sessionDispatch = createSessionDispatch({
   skillCatalogStatus: () => skillCatalogStatus(adoptedSkillRegistry),
   searchSkillCatalog: (query) => searchSkillCatalogEntries(repoRoot, skillCatalogRoot, query),
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
-  workspaceRoot: workspace, engineEvents, workspaceActionsStatus,
+  workspaceRoot: workspace, engineEvents,
+  // Bound to THIS installation's answer so the terminal shell and the browser cannot report
+  // different capabilities for one running product (session-protocol.mjs calls it with none).
+  workspaceActionsStatus: () => workspaceActionsStatus(executeSandboxConfig),
   getShadowSnapshot: () => shadowSnapshot, capabilityStatus, capabilityMinter,
   contextGraph, ledger, invariantEnforcement: INVARIANT_ENFORCEMENT,
   // Phase 4: the address list a terminal shell is told about, derived from the very file
@@ -4229,7 +4232,7 @@ const requestListener = async (req, res) => {
     // approval either promotes cleanly to the real workspace or changes nothing at all.
     if (req.method === 'GET' && url.pathname === '/api/v1/workspace-actions') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
-      return json(res, 200, workspaceActionsStatus());
+      return json(res, 200, workspaceActionsStatus(executeSandboxConfig));
     }
     // Point 4b: the runs one chat owns. It sits ABOVE the `/:id` matcher below on purpose —
     // that pattern is `([^/]+)` and would happily read the word `runs` as a run id and answer

@@ -326,6 +326,6 @@ export function capabilityStatus(minter) {
     // would be an honest answer on an installation that ever removed the route; it is not a
     // constant dressed up as a measurement.
     revocationReachable: true,
-    reason: 'Tokens are minted only from a plan a person approved, are bound to one step, and cannot name a path that step does not. /api/v1/workspace-actions spends them through the executor to write real files in the workspace, promoted only when the shadow comparison came back clean — the trivial risk path only; DELETE and EXECUTE remain unwired. A live grant can be listed and withdrawn before it lapses, from either shell, and the withdrawal is a ledger line naming what it covered.',
+    reason: 'Tokens are minted only from a plan a person approved, are bound to one step, and cannot name a path that step does not. /api/v1/workspace-actions spends them through the executor to write real files in the workspace, promoted only when the shadow comparison came back clean. DELETE remains unwired. EXECUTE is wired and is a per-installation choice (ARCH-008, D-0250/D-0253): where it is enabled, a plan-declared command is granted only on the measurement token, carries its own isolation envelope inside the MAC, and runs against the shadow — never against the workspace, and never on the token that promotes into it. A live grant can be listed and withdrawn before it lapses, from either shell, and the withdrawal is a ledger line naming what it covered.',
   };
 }

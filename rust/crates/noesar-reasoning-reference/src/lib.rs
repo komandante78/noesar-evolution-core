@@ -267,7 +267,10 @@ impl ReasoningProvider for ReferenceReasoningProvider {
             let mut tests: Vec<String> = Vec::new();
             for step in plan.steps() {
                 for path in &step.files {
-                    if !paths.contains(path) {
+                    // Mirror of reasoning.mjs: `.` is a step's execution working directory,
+                    // not a diff target, and an observation keys its changes by file path —
+                    // so requiring it would be an expectation nothing could ever satisfy.
+                    if path != "." && !paths.contains(path) {
                         paths.push(path.clone());
                     }
                 }

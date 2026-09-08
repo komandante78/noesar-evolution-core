@@ -16494,3 +16494,72 @@ until it is changed. An operator who binds beyond loopback and does not change t
 exposed, and the notices say so before anything is installed.
 
 *Supersedes:* the deployment half of `D-0027`. The token implementation stands.
+
+## D-0704 · CodeN Evolution runs the tests a plan declares — no new sandbox, the wiring to the one already shipped — 2026-09-08
+
+*Context:* the plan carried into this session was to BUILD an isolated execution sandbox for
+CodeN Evolution — a separate `coden-sandbox-runner` container. Measuring first showed the
+premise was a month and a half out of date. `D-0249`/`D-0250` had already made EXECUTE a real,
+per-installation capability and `D-0253` had already mirrored it in Rust: `sandbox-runner.mjs`,
+`execute-sandbox-config.mjs`, the EXECUTE branch of `executor.mjs` and
+`rust/crates/noesar-sandbox` all exist, and the binary is on this host
+(`rust/target/release/noesar-sandbox`, 494 928 bytes) and inside the running container
+(`/opt/noesar/bin/noesar-sandbox`), with `NOESAR_EXECUTE_SANDBOX=disabled`. What did not exist
+was the wiring: `workspace-actions.mjs` built `commands: []` on every step, minted
+`operations: ['WRITE']`, and called `execute(..., tests: [])` — so `compare()` reported every
+declared test as `testsNeverRun` and a plan that declared one could never come back clean.
+The mechanism presented as built and could not be reached, which is the defect
+`08_MILESTONES_AND_DELIVERABLES.md` M3 names: *"no unwired mechanism left presenting as built"*.
+Two claims in the product had gone stale with it — `capability.mjs`'s status said *"DELETE and
+EXECUTE remain unwired"* and `workspaceActionsStatus()` said *"executor.mjs refuses EXECUTE
+permanently"*, which stopped being true when `D-0250` shipped.
+
+*Decision:* wire it, and build no sandbox. `plan()` takes `commands`; the step declares them,
+names `.` as the working directory a grant can be minted for, is marked destructive and carries
+its own isolation envelope; `measure()` mints `['WRITE','EXECUTE']` with those limits and runs
+each command AFTER the writes, against the SHADOW; `executor.mjs` derives `{name, passed}` from
+the EXECUTE outcomes in the one place that knows both the declared name and the measured exit
+code. Three properties are load-bearing: there is **no shell** (argv is the declared string
+split on whitespace, and a command carrying shell metacharacters is refused at `plan()`); the
+EXECUTE grant is on the **measurement token only**, never on the token that promotes into the
+real workspace; and an EXECUTE step is destructive, so the default `restrictive` policy
+constrains it away and running a command is an explicit `policy: 'permissive'`.
+
+*Also fixed, and not an EXECUTE special case:* `expect()` put every one of a step's files into
+`pathsTheDiffMustTouch`, and an observation keys its changes by FILE path — so a directory
+there was a requirement nothing could ever satisfy. One guard in `reasoning.mjs`, mirrored in
+`rust/crates/noesar-reasoning-reference`.
+
+*Rejected:* the `coden-sandbox-runner` container this session inherited as a decision. It needs
+Docker (a socket or an orchestrator), and `CLAUDE10.md` §16 forbids presuming a host's
+primitives — this product is installed on machines it does not own. `noesar-sandbox` already
+degrades along a declared ladder instead: measured on this host, `--detect` reports tier 1
+`SECCOMP_FILTER` with `landlock:false` and `cgroupV2Writable:false`, and tier 0 needs nothing
+but POSIX. Owner's instruction, 2026-09-08: *"container sempre dentro non esterni … è
+self-hosted e non deve essere vincolante ad Unraid"*. Also rejected: enabling
+`NOESAR_EXECUTE_SANDBOX` on this installation as a side effect — the same reasoning
+`execute-sandbox-config.mjs` states about itself, and the same answer the Owner already gave
+once in `D-0285` (*"Owner declined to enable it as a side effect of this feature — a real
+security decision stays a decision, not a default flipped in passing"*). Where it stays off,
+`plan()` refuses a declared command with
+`EXECUTION_DISABLED` rather than measuring it into a refusal nobody was looking for.
+
+*Evidence:* `services/reference-control-plane/test/coden-declared-commands.test.mjs`, 11 tests,
+**0 skipped** — the three live ones ran real processes through the real binary on this host:
+`/bin/echo test-ok` promotes, `/bin/false test` is `performed:true, exitCode≠0` and the
+workspace is never written, and `/bin/pwd test` prints a directory under the shadows root and
+not under the workspace. Full Node suite **3194 tests, 3193 pass, 0 fail, 1 skip**; ESLint
+**477 files, 0 errors, 0 warnings**; `MANIFEST.sha256` 6 701 files. Two defects in this change
+were found by those tests and not by reading it: `#diff` died `EISDIR` reading `.` as a file,
+and `#promote` would have spent a WRITE use on a directory and copied it over the workspace —
+both closed by one shared predicate, `touchesAFile()`, rather than by two local guards.
+
+*Declared and NOT done:* the Rust mirror of the `expect()` guard is written but **not compiled
+or tested** — `cargo` is not installed on this host. It is a three-line change to
+`noesar-reasoning-reference` mirroring the JS exactly, and no conformance vector exercises a
+`.` path, but nobody has run it. Registered here rather than left for a reviewer to find, the
+same way `D-0253` registered its two findings.
+
+*Reversal cost:* low and mechanical. A plan that declares no command is byte-identical to
+before — asserted by a test — and with the sandbox off, which is every installation's default,
+the only reachable new behaviour is a refusal at `plan()`.

@@ -147,6 +147,10 @@ export function execute({
         path:action.path, operation:'EXECUTE', performed:sandboxResult.performed,
         reason: sandboxResult.performed ? null : (sandboxResult.reason ?? 'the sandbox refused this run'),
         tokenId:token.id,
+        // The name the PLAN declared, carried through so the outcome can be matched against
+        // `expectation.testsExpectedToPass` without anyone reconstructing it from argv — a
+        // second derivation of one name is how the two stop being the same name.
+        name:action.name ?? null,
         exitCode: sandboxResult.exitCode ?? null,
         stdout: sandboxResult.stdout ?? '',
         stderr: sandboxResult.stderr ?? '',
@@ -205,7 +209,20 @@ export function execute({
     }
   }
 
-  const observation = shadow.observe(tests);
+  // ARCH-008, the half that was missing: a declared command that actually RAN is a test
+  // outcome, derived HERE because this is the one place that knows both the name the plan
+  // declared and the exit code the sandbox measured. Before this, `tests` was whatever the
+  // caller passed and the only caller passed `[]` — so a plan declaring a test could never
+  // be clean, because `compare()` reported it as never run. The mechanism was built and
+  // unreachable, which is the exact shape of defect this project keeps paying for.
+  //
+  // A command that was REFUSED contributes nothing on purpose. It then surfaces as
+  // `testsNeverRun`, which is what happened — reporting it as a failure would claim it ran
+  // and lost, and a test that never started has no verdict to report.
+  const observedTests = [...(tests ?? []), ...outcomes
+    .filter((outcome) => outcome.operation === 'EXECUTE' && outcome.performed && outcome.name)
+    .map((outcome) => ({ name: outcome.name, passed: outcome.exitCode === 0 }))];
+  const observation = shadow.observe(observedTests);
   let surprise = null;
   let comparisonRefused = null;
   try {

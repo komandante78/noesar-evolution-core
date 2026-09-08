@@ -22,13 +22,24 @@
 // hypotheses in competition. Two things the phase-1 criterion names are deliberately NOT
 // built here, and workspaceActionsStatus() says so rather than implying otherwise:
 //
-//   - "esegue i test" for an AI-declared test expectation. executor.mjs already declares
-//     EXECUTE a PERMANENT refusal — "this layer has no execution surface, and pretending to
-//     run it would be worse than refusing" — and that boundary was tested and shipped in
-//     step 5. Running a plan-declared test command would mean running arbitrary code the
-//     plan named, which is exactly what EXECUTE refuses. This module does not reopen that
-//     boundary; it is a separate, larger decision (a real sandbox, not a wiring exercise),
-//     named here rather than quietly built or quietly ignored.
+//   - "esegue i test" for an AI-declared test expectation. BUILT — the separate, larger
+//     decision this comment named was taken, and taken by building nothing new: `D-0250`
+//     had already made EXECUTE a per-installation choice and `D-0253` had already mirrored
+//     it in Rust, so what was missing was never a sandbox but the wiring between this module
+//     and the one that has been there since. `plan()` now takes `commands`, `measure()`
+//     mints an EXECUTE grant carrying its own isolation envelope, and the command runs in a
+//     short-lived, per-capability-limited child process (ARCH-008) with its working directory
+//     confined to the SHADOW — never the real workspace, which is the whole point of running
+//     it before the approval rather than after.
+//
+//     Three properties are load-bearing and are not conveniences:
+//       * the command is DECLARED IN THE PLAN a person approves. There is no shell: argv is
+//         the declared string split on whitespace, so nothing expands, globs or chains.
+//       * an EXECUTE grant needs a step declared destructive (capability.mjs), and the
+//         default `restrictive` policy constrains such a step away. Running a command is
+//         therefore an explicit `policy: 'permissive'`, never something a plan drifts into.
+//       * with the sandbox off on this installation, plan() refuses up front instead of
+//         letting the run fail at measurement with a reason nobody was looking for.
 //   - Because no test runs, a plan with no declared files and no declared test always fails
 //     `expect()` (reasoning.mjs line ~232) exactly as the reference provider intends: it has
 //     no model, so it cannot invent a file target from a request's prose. The caller of
@@ -70,7 +81,31 @@ function parseEventPayload(event) {
   try { return JSON.parse(event?.payload || '{}'); } catch { return {}; }
 }
 
-export const APPROVAL_TTL_SECONDS = 15 * 60;
+export /// The working directory a declared command runs in: the shadow's own root, named through the
+/// SAME `contained()` helper WRITE and DELETE use (`resolve(root, '.') === root`). A step that
+/// runs something must declare it, because capability.mjs refuses to mint a grant for a path
+/// the step does not name — which is the rule doing its job, not an obstacle to route around.
+const EXECUTION_DIRECTORY = '.';
+
+/// The isolation envelope a plan grants its own commands, written into the plan the Owner
+/// approves and carried inside the token's MAC (ARCH-008).
+///
+/// Chosen to run a test suite and nothing grander: measured against the live host's own
+/// ceiling (`noesar-sandbox --detect`: 12 GiB, 40 960 files, 127 784 processes) so it is well
+/// inside what the container allows, and well above `isolation.mjs`'s usable floor, since a
+/// capability that cannot run is not a capability. It is a DEFAULT, not a law: a caller that
+/// declares its own `blastRadius.limits` is granted those instead, and the minter refuses
+/// anything wider than what the approved step granted.
+// ponytail: one envelope for every command. Per-command envelopes when a plan needs two
+// commands with genuinely different appetites — not before, since nothing measures that yet.
+const EXECUTION_ENVELOPE = Object.freeze({
+  memoryBytes: 512 * 1024 * 1024,
+  cpuSeconds: 60,
+  openFiles: 256,
+  processes: 64,
+});
+
+const APPROVAL_TTL_SECONDS = 15 * 60;
 const MAX_DIFF_BYTES = 256 * 1024;
 
 export class WorkspaceActionError extends Error {
@@ -82,6 +117,14 @@ export class WorkspaceActionError extends Error {
   }
 }
 const refuse = (kind, reason) => { throw new WorkspaceActionError(kind, reason); };
+
+/// An EXECUTE outcome is NOT a file. Its `path` is the working DIRECTORY the command ran in,
+/// and its result is an exit code and its output, both carried on the outcome itself. Every
+/// loop that treats an outcome as a file has to skip it: reading a directory as a file is an
+/// EISDIR, and promoting one would spend a WRITE use on a directory and then try to copy it
+/// over the workspace. Derived once here rather than judged twice, so `#diff` and `#promote`
+/// cannot come to different answers about what an outcome is.
+const touchesAFile = (outcome) => outcome.performed && outcome.operation !== 'EXECUTE';
 
 function readTextIfSmall(path) {
   if (!existsSync(path)) return { available: true, content: null };
@@ -247,7 +290,7 @@ export class WorkspaceActionOrchestrator {
    * "two implementations of one rule stop agreeing" failure this project keeps finding
    * (D-0227's own comment about not re-implementing comparison logic applies here too).
    */
-  async #runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy }) {
+  async #runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy, commands = [] }) {
     const intent = await provider.interpret(request, projectRules);
     // Grounding, and ONLY when the caller named nothing. A caller who named files made a
     // decision, and a step that silently replaced it with a search result would be answering
@@ -269,13 +312,25 @@ export class WorkspaceActionOrchestrator {
       grounding = grounded.grounding;
     }
     const hypotheses = await provider.hypothesize(intent, []);
+    // `.` is the working directory a command runs in, and capability.mjs refuses to mint a
+    // grant for a path the step does not declare — so a step that runs something has to name
+    // it. It is added ONLY when there is a command: a plan that runs nothing keeps exactly the
+    // files it had, and every existing run is byte-identical to before this change.
+    const planFiles = resolvedFiles.map((file) => file.path);
+    const stepFiles = commands.length > 0 ? [...planFiles, EXECUTION_DIRECTORY] : planFiles;
     const step = {
       id: 'step-1',
       description: hypotheses[0].statement,
-      files: resolvedFiles.map((file) => file.path),
-      commands: [],
+      files: stepFiles,
+      commands: [...commands],
       dependsOn: [],
-      blastRadius: provider.blastRadius(resolvedFiles.map((file) => file.path), false),
+      blastRadius: {
+        ...provider.blastRadius(stepFiles, commands.length > 0),
+        // The envelope is declared HERE, in the plan the Owner approves, rather than chosen
+        // later where nobody would see it: capability.mjs treats it as the ceiling the minted
+        // token may not widen (`withinGrant`), so what is approved is what can run.
+        ...(commands.length > 0 ? { limits: EXECUTION_ENVELOPE } : {}),
+      },
     };
     const plan = provider.buildPlan([step], constraints, mode);
     const constrained = await provider.constrain(plan, policy);
@@ -472,6 +527,10 @@ export class WorkspaceActionOrchestrator {
         recomputed = await this.#runDecisionLayer({
           provider, request: run.request, files: run.files, projectRules: run.projectRules,
           constraints: run.constraints, mode: run.mode, policy: run.policy,
+          // Without this a replay would recompute a plan that runs nothing and report the
+          // difference as drift originating in the code — a false finding produced by the
+          // replay itself, which is the one thing a replay must never manufacture.
+          commands: run.commands ?? [],
         });
       } catch (error) {
         if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
@@ -812,6 +871,9 @@ export class WorkspaceActionOrchestrator {
         provider, request: fixture.request, files: fixture.files,
         projectRules: fixture.projectRules ?? [], constraints: fixture.constraints ?? [],
         mode: fixture.mode ?? 'safe', policy: fixture.policy ?? 'restrictive',
+        // Same reason as `replay()`: a historical fixture that declared a command must be
+        // recomputed with it, or the drift reported is the fixture's, not the policy's.
+        commands: fixture.commands ?? [],
       });
     } catch (error) {
       if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
@@ -835,7 +897,7 @@ export class WorkspaceActionOrchestrator {
    * reference provider cannot derive (see the module comment) and is required, not defaulted:
    * a caller with nothing to name should not reach this at all.
    */
-  async plan({ request, files = [], projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [], conversationId = null }) {
+  async plan({ request, files = [], projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [], conversationId = null, commands = [] }) {
     // Point 4b, Owner decision of 2026-08-06: THE CHAT OWNS THE RUN. A caller that opened this
     // run from a conversation hands its id here and the run carries it for life; a caller that
     // did not — every run started from the terminal, which has no conversation by construction
@@ -856,6 +918,28 @@ export class WorkspaceActionOrchestrator {
     // (request-grounding.mjs). An empty list is now a request to look, not a malformed call.
     if (!Array.isArray(files)) refuse('INVALID_FILES', 'files must be an array when supplied');
     if (!Array.isArray(claims)) refuse('INVALID_CLAIMS', 'claims must be an array if supplied');
+    // The commands a plan declares it will run. Validated at the boundary rather than trusted:
+    // everything below treats this list as the whole of what may be executed, so a malformed
+    // entry reaching the minter would be a grant nobody could read back.
+    if (!Array.isArray(commands)) refuse('INVALID_COMMANDS', 'commands must be an array when supplied');
+    for (const command of commands) {
+      if (typeof command !== 'string' || !command.trim()) {
+        refuse('INVALID_COMMAND', 'every declared command must be a non-empty string');
+      }
+      // No shell, stated as a refusal rather than as a comment nobody reads: argv is this
+      // string split on whitespace, so a command needing quoting is REFUSED instead of being
+      // guessed at. Guessing where one argument ends is how a declared command becomes a
+      // different command than the one the approver read.
+      if (/["'`$;&|<>]/.test(command)) {
+        refuse('INVALID_COMMAND', `declared command \`${command}\` contains shell metacharacters: this layer runs argv directly and never a shell, so a command that needs quoting cannot be declared here`);
+      }
+    }
+    // Said up front, on this installation, instead of at measurement time. A run whose only
+    // outcome would be EXECUTE_DISABLED_BY_OPERATOR sends the operator looking for a defect
+    // in their plan when the answer is a switch on their host.
+    if (commands.length > 0 && !this.#executeSandbox?.enabled) {
+      refuse('EXECUTION_DISABLED', 'this installation does not run declared commands: the execution sandbox is off (NOESAR_EXECUTE_SANDBOX is not `enabled`, or the sandbox binary is absent). The plan is refused here rather than measured into a refusal nobody was looking for.');
+    }
     for (const file of files) {
       if (!file || typeof file.path !== 'string' || !file.path.trim()) {
         refuse('INVALID_FILE', 'every file needs a path');
@@ -873,7 +957,7 @@ export class WorkspaceActionOrchestrator {
     const provider = this.#reasoningFor(runId);
     let decision;
     try {
-      decision = await this.#runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy });
+      decision = await this.#runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy, commands });
     } catch (error) {
       if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
       // A grounding refusal keeps its own code and its own reason rather than collapsing into
@@ -1128,7 +1212,7 @@ export class WorkspaceActionOrchestrator {
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
-      request, projectRules, constraints, mode, policy,
+      request, projectRules, constraints, mode, policy, commands,
       // Stage 9b output. The map belongs to the RUN, not to the caller: `approve()` reads it,
       // and nothing between here and there can add a key the Plan had not settled on.
       authoredContents, authoring,
@@ -1278,11 +1362,22 @@ export class WorkspaceActionOrchestrator {
       { actor, purpose: 'MEASUREMENT' }, nowUnix);
 
     const step = run.plan.steps[0];
+    // EXECUTE is granted for the MEASUREMENT token only, never for the CHANGE token below
+    // that promotes into the real workspace. A declared command runs against the SHADOW and
+    // nowhere else — which is what makes running it before the approval safe to do at all.
+    const declaredCommands = step.commands ?? [];
+    const runsCommands = declaredCommands.length > 0;
     let token;
     try {
       token = this.#minter.mint(authorized, {
-        stepId: step.id, paths: step.files, operations: ['WRITE'],
-        uses: step.files.length, expiresAtUnix: grant.expiresAtUnix,
+        stepId: step.id, paths: step.files,
+        operations: runsCommands ? ['WRITE', 'EXECUTE'] : ['WRITE'],
+        // One use per action that will be spent: the files written, plus one per command.
+        // A token short of a use refuses the last action, which would read as a sandbox
+        // failure rather than as the arithmetic error it is.
+        uses: step.files.length + declaredCommands.length,
+        expiresAtUnix: grant.expiresAtUnix,
+        ...(runsCommands ? { limits: step.blastRadius?.limits ?? EXECUTION_ENVELOPE } : {}),
       }, nowUnix);
     } catch (error) {
       if (error instanceof CapabilityError) {
@@ -1303,6 +1398,23 @@ export class WorkspaceActionOrchestrator {
     let kept = false;
     try {
       const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: run.authoredContents?.get(file.path) ?? file.contents }));
+      // The declared commands, AFTER the writes: a test run before the change under test has
+      // been written measures the workspace as it already was, and would report a pass that
+      // says nothing about the plan. Order is the property here, not a detail of the loop.
+      for (const command of declaredCommands) {
+        const argv = command.trim().split(/\s+/);
+        actions.push({
+          kind: 'EXECUTE',
+          // The working directory, confined to the shadow by the executor's own
+          // `contained()` — the same helper WRITE and DELETE use, not a second rule.
+          path: EXECUTION_DIRECTORY,
+          // The name the expectation will be matched against IS the declared string, so a
+          // plan and its verdict cannot disagree about which command they are talking about.
+          name: command,
+          command: argv[0],
+          args: argv.slice(1),
+        });
+      }
       const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: run.expectation, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
       const executeEventId = this.#record(runId, measureEventId, actor, 'executor.ran',
         { performed: result.performed, refused: result.refused, ok: result.ok }, nowUnix);
@@ -1454,7 +1566,7 @@ export class WorkspaceActionOrchestrator {
   #diff(shadow, result) {
     const entries = [];
     for (const outcome of result.outcomes) {
-      if (!outcome.performed) continue;
+      if (!touchesAFile(outcome)) continue;
       const before = readTextIfSmall(contained(shadow.source, outcome.path));
       const after = readTextIfSmall(contained(shadow.root, outcome.path));
       entries.push({
@@ -1482,7 +1594,7 @@ export class WorkspaceActionOrchestrator {
   #promote(shadow, result, token, nowUnix) {
     const backups = [];
     for (const outcome of result.outcomes) {
-      if (!outcome.performed) continue;
+      if (!touchesAFile(outcome)) continue;
       this.#minter.spend(token, { path: outcome.path, operation: 'WRITE' }, nowUnix);
       const realPath = contained(this.#workspaceRoot, outcome.path);
       const shadowPath = contained(shadow.root, outcome.path);
@@ -1518,13 +1630,20 @@ export class WorkspaceActionOrchestrator {
   }
 }
 
-export function workspaceActionsStatus() {
+// `executeSandbox` is this installation's own answer, passed in rather than read from the
+// environment here: server.mjs already resolved it once, and a second reader of one switch is
+// how two parts of one product come to disagree about what it is set to. Absent, the answer is
+// the conservative one — the same default `executor.mjs` reports.
+export function workspaceActionsStatus(executeSandbox = null) {
+  const runsCommands = Boolean(executeSandbox?.enabled);
   return {
     riskPathsSupported: ['TRIVIAL'],
-    operationsSupported: ['WRITE'],
-    operationsNotSupported: ['DELETE', 'EXECUTE'],
-    testExecution: false,
-    testExecutionReason: 'executor.mjs refuses EXECUTE permanently — running a plan-declared command is arbitrary code execution and was deliberately kept out of the executor in step 5. Wiring a test runner is a separate, larger security decision, not built here.',
+    operationsSupported: runsCommands ? ['WRITE', 'EXECUTE'] : ['WRITE'],
+    operationsNotSupported: runsCommands ? ['DELETE'] : ['DELETE', 'EXECUTE'],
+    testExecution: runsCommands,
+    testExecutionReason: runsCommands
+      ? 'A plan may declare commands, and measure() runs them inside the SHADOW through a short-lived, per-capability-limited child process (ARCH-008, D-0250/D-0253) after writing the change under test. There is no shell: argv is the declared string split on whitespace, and a command carrying shell metacharacters is refused at plan(). The grant is on the measurement token only — the token that promotes into the real workspace never carries EXECUTE. An EXECUTE grant requires a step declared destructive, which the default restrictive policy constrains away, so running a command is an explicit `policy: \'permissive\'` and never a default a plan drifts into.'
+      : 'The mechanism exists (ARCH-008, D-0250/D-0253) and is switched off on this installation: NOESAR_EXECUTE_SANDBOX is not `enabled`, or the sandbox binary is absent. A plan declaring a command is refused by plan() with EXECUTION_DISABLED rather than measured into a refusal nobody was looking for.',
     filesSuppliedBy: 'caller',
     filesSuppliedByReason: 'the reference reasoning provider has no model and cannot derive a file target from a request written in prose; it says so rather than guessing.',
     approvalRequired: true,
@@ -1539,9 +1658,9 @@ export function workspaceActionsStatus() {
     restoreSupported: true,
     restoreOnce: true,
     runsPersistAcrossRestart: false,
-    reason: 'This is the trivial risk path (11_REVISIONE_E_CORREZIONI.md P6): one step, WRITE only. A plan is approved by a human, mints exactly the tokens its declared files need, executes into a whole-workspace shadow, and is promoted to the real workspace only when the comparison came back clean with every action performed. Every step is recorded in the causal event ledger.',
+    reason: 'One step. A plan is approved by a human, mints exactly the tokens its declared files and commands need, executes into a whole-workspace shadow, and is promoted to the real workspace only when the comparison came back clean with every action performed. Declared commands run in that shadow and never against the workspace, under the isolation envelope the approved plan itself named. Every step is recorded in the causal event ledger.',
     recomputeVerifier: true,
-    recomputeVerifierReason: 'CodeN Evolution construction order step 9 (D-0209): plan() takes an optional `claims` array; approve() recomputes each against the shadow\'s post-execution content (verification.mjs) and gates promotion if any is CONTRADICTED. Coverage gaps (unrecomputed claims — most often behavioural ones, since EXECUTE stays refused) are declared, not blocking.',
+    recomputeVerifierReason: 'CodeN Evolution construction order step 9 (D-0209): plan() takes an optional `claims` array; approve() recomputes each against the shadow\'s post-execution content (verification.mjs) and gates promotion if any is CONTRADICTED. Coverage gaps (unrecomputed claims) are declared, not blocking — and on an installation that runs commands a behavioural claim can now be carried by a declared test instead of being one of them.',
     reasoningRouted: true,
     reasoningRoutedReason: 'plan() asks the ReasoningRouter, so a selected external provider is used on the one path that mints a token and touches a real file — not only on the read-only advisory route. Every run records which provider answered which surface (`provenance`). With no external provider configured every surface is the reference one and this path behaves exactly as before.',
     simulationSupported: true,
