@@ -4459,10 +4459,10 @@ function renderTools(payload){
   // to authenticate to. What it needs is a PERMISSION, which is the fact an operator actually
   // wants — and it is a description, never the gate (the gate is `can`, inside the dispatch).
   host.innerHTML=`<ul class="provenance-list">${block.items.map((tool)=>`<li><b translate="no">${escapeHtml(tool.name)}</b> <span class="tag" translate="no">${escapeHtml(tool.transport)}</span>${tool.mutative?' <span class="tag tag-warn">mutative</span>':''}
-    <small>Reaches ${escapeHtml(tool.origin.reach.replace('-',' '))}${tool.origin.host?` · ${escapeHtml(tool.origin.host)}`:''}${tool.origin.declaredExternal?' · declares itself external':''}</small>
-    <small>${tool.builtin?'part of this product':`${tool.consentGranted?'consent granted':'no consent'} · ${tool.credentialConfigured?'credential configured':'no credential'}`} · registered ${tool.registeredAt?instantHtml(tool.registeredAt):'—'}</small>${tool.builtin&&tool.permissions?.length?`<small translate="no">${escapeHtml(tool.permissions.join(', '))}</small>`:''}</li>`).join('')}</ul>
-    ${block.count>block.shown?`<p class="hint">Showing ${block.shown} of ${block.count} registered tools.</p>`:''}
-    <p class="hint">Provenance here is where a tool points, not who added it: the record carries no registrar. That name is in the audit log under <code>tool.registered</code>.</p>`;
+    <small>${t('Reaches')} ${escapeHtml(t(tool.origin.reach.replace('-',' ')))}${tool.origin.host?` · <span translate="no">${escapeHtml(tool.origin.host)}</span>`:''}${tool.origin.declaredExternal?` · ${t('declares itself external')}`:''}</small>
+    <small>${tool.builtin?t('part of this product'):`${tool.consentGranted?t('consent granted'):t('no consent')} · ${tool.credentialConfigured?t('credential configured'):t('no credential')}`} · ${t('registered')} ${tool.registeredAt?instantHtml(tool.registeredAt):'—'}</small>${tool.builtin&&tool.permissions?.length?`<small translate="no">${escapeHtml(tool.permissions.join(', '))}</small>`:''}</li>`).join('')}</ul>
+    ${block.count>block.shown?`<p class="hint">${t('Showing')} ${block.shown} ${t('of')} ${block.count} ${t('registered tools.')}</p>`:''}
+    <p class="hint">${t('Provenance here is where a tool points, not who added it: the record carries no registrar. That name is in the audit log under')} <code translate="no">tool.registered</code>.</p>`;
 }
 function renderModels(payload){
   const host=$('#homeModels');if(!host)return;
@@ -4471,14 +4471,14 @@ function renderModels(payload){
   const providers=block.providers?.visible===false
     ?withheldHtml(block.providers,'Providers')
     :block.providers.count
-      ?`<ul class="provenance-list">${block.providers.items.map((profile)=>`<li><b>${escapeHtml(profile.name)}</b> <span class="tag">${escapeHtml(profile.type)}</span>
-        <small>${escapeHtml(profile.reach.replace('-',' '))}${profile.baseUrl?` · ${escapeHtml(profile.baseUrl)}`:''}</small>
-        <small>${profile.consentGranted?'consent granted':'no consent'} · ${profile.credentialConfigured?'credential configured':'no credential'}</small></li>`).join('')}</ul>`
+      ?`<ul class="provenance-list">${block.providers.items.map((profile)=>`<li><b translate="no">${escapeHtml(profile.name)}</b> <span class="tag" translate="no">${escapeHtml(profile.type)}</span>
+        <small>${escapeHtml(t(profile.reach.replace('-',' ')))}${profile.baseUrl?` · <span translate="no">${escapeHtml(profile.baseUrl)}</span>`:''}</small>
+        <small>${profile.consentGranted?t('consent granted'):t('no consent')} · ${profile.credentialConfigured?t('credential configured'):t('no credential')}</small></li>`).join('')}</ul>`
       :'<p class="declared-empty">No provider is configured.</p>';
   const runtime=block.localRuntime?.visible===false
     ?withheldHtml(block.localRuntime,'The local runtime')
-    :`<p class="runtime-line"><b>Local runtime</b> <small>${escapeHtml(block.localRuntime.mode??'not configured')}${block.localRuntime.model?` · ${escapeHtml(block.localRuntime.model)}`:''}${block.localRuntime.endpoint?` · ${escapeHtml(block.localRuntime.endpoint)}`:''}</small>
-      <small>${block.localRuntime.launchedHere?'launched by this installation':'attached, not launched here'}${block.localRuntime.overriddenByEnvironment?' · overridden by the environment':''}</small></p>`;
+    :`<p class="runtime-line"><b>${t('Local runtime')}</b> <small>${block.localRuntime.mode?`<span translate="no">${escapeHtml(block.localRuntime.mode)}</span>`:t('not configured')}${block.localRuntime.model?` · <span translate="no">${escapeHtml(block.localRuntime.model)}</span>`:''}${block.localRuntime.endpoint?` · <span translate="no">${escapeHtml(block.localRuntime.endpoint)}</span>`:''}</small>
+      <small>${block.localRuntime.launchedHere?t('launched by this installation'):t('attached, not launched here')}${block.localRuntime.overriddenByEnvironment?` · ${t('overridden by the environment')}`:''}</small></p>`;
   host.innerHTML=`${providers}${runtime}<p class="hint">${escapeHtml(block.trustState?.reason??'')}</p>`;
 }
 async function loadHome(){
