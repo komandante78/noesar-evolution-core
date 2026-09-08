@@ -640,6 +640,30 @@ export const RUNTIME_ONLY = Object.freeze([
   'owner bypass',
   'of 12 fields have a source in this build',
   'You',
+  // SEC-003's invariant panel. The seven names are the ids the server declares, with their
+  // underscores turned into spaces by `loadCoden()`; the seven sentences are that same
+  // declaration's `enforcedBy`, shown as the row's tooltip. Both are painted from
+  // `/api/v1/bootstrap` and appear in no markup — deliberately, because the panel used to be
+  // five hardcoded list items that matched neither the declaration nor each other. Declared
+  // here so the tool does not call them dead, translated below, and tied to the registry that
+  // owns them by a test: a new invariant cannot ship untranslated.
+  'credential theft prevention',
+  'signed update verification',
+  'audit integrity',
+  'destructive action confirmation',
+  'malware prevention',
+  'illegal cyberattack prevention',
+  'physical harm prevention',
+  'enforced here',
+  'enforced elsewhere',
+  'No invariant declaration was returned.',
+  'path-auth.createPathPlan — protected roots and the owner secret directories are blocked before any mode is considered',
+  'update-manager.verifyBundle / verifyMetadata — Ed25519 over the exact manifest bytes, with anti-rollback',
+  'audit.AuditLedger.append / verify — SHA-256 hash chain, append-only, 0600',
+  'server /api/v1/coden/authorize — the consent scope must be one the plan offered, and a destructive operation may only be granted a per-operation or per-file scope',
+  'Execution layer. This authorization plans paths and issues scoped approvals; it has no execution surface (executionEnabled:false) and does not inspect command content.',
+  'Execution layer and model policy. Not a property of a filesystem path; the path authorizer cannot observe intent or network target.',
+  'Model policy layer. A content commitment, unobservable to path authorization.',
 ]);
 
 const it = {
@@ -829,6 +853,27 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // SEC-003's invariant panel: what CodeN guarantees, and whether this layer is the one that
+  // keeps the promise. A person reading it is being told what the product will not let happen
+  // to their machine — the one place where reading it in a language you are guessing at is
+  // worst. The identifiers stay identifiers where they name real code (`path-auth.createPathPlan`).
+  'credential theft prevention': 'prevenzione del furto di credenziali',
+  'signed update verification': 'verifica degli aggiornamenti firmati',
+  'audit integrity': 'integrità del giornale di controllo',
+  'destructive action confirmation': 'conferma delle azioni distruttive',
+  'malware prevention': 'prevenzione del malware',
+  'illegal cyberattack prevention': 'prevenzione degli attacchi informatici illeciti',
+  'physical harm prevention': 'prevenzione del danno fisico',
+  'enforced here': 'applicata qui',
+  'enforced elsewhere': 'applicata altrove',
+  'No invariant declaration was returned.': 'Non è stata restituita nessuna dichiarazione di invarianti.',
+  'path-auth.createPathPlan — protected roots and the owner secret directories are blocked before any mode is considered': 'path-auth.createPathPlan — le radici protette e le cartelle segrete del proprietario sono bloccate prima ancora che si consideri la modalità',
+  'update-manager.verifyBundle / verifyMetadata — Ed25519 over the exact manifest bytes, with anti-rollback': 'update-manager.verifyBundle / verifyMetadata — Ed25519 sui byte esatti del manifesto, con anti-rollback',
+  'audit.AuditLedger.append / verify — SHA-256 hash chain, append-only, 0600': 'audit.AuditLedger.append / verify — catena di hash SHA-256, solo in aggiunta, 0600',
+  'server /api/v1/coden/authorize — the consent scope must be one the plan offered, and a destructive operation may only be granted a per-operation or per-file scope': 'server /api/v1/coden/authorize — l’ambito del consenso dev’essere uno di quelli che il piano ha offerto, e a un’operazione distruttiva si può concedere solo un ambito per singola operazione o per singolo file',
+  'Execution layer. This authorization plans paths and issues scoped approvals; it has no execution surface (executionEnabled:false) and does not inspect command content.': 'Strato di esecuzione. Questa autorizzazione pianifica percorsi ed emette approvazioni con un ambito; non ha una superficie di esecuzione (executionEnabled:false) e non ispeziona il contenuto dei comandi.',
+  'Execution layer and model policy. Not a property of a filesystem path; the path authorizer cannot observe intent or network target.': 'Strato di esecuzione e politica del modello. Non è una proprietà di un percorso del filesystem; l’autorizzatore dei percorsi non può osservare l’intento né la destinazione di rete.',
+  'Model policy layer. A content commitment, unobservable to path authorization.': 'Strato della politica del modello. Un impegno sul contenuto, non osservabile dall’autorizzazione dei percorsi.',
   // The workbench's own terminal and status strip (UI-030…UI-037). Written by app.js from
   // first to last — the tab, the prompt, the button, the six status words — so none of it
   // appears in the markup and the static tool could not see any of it. I18N-RUNTIME did.

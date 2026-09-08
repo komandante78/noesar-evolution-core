@@ -335,7 +335,7 @@ b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-s
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
 a4d9655442160562219252223738d384f5d5bfad03c3f80b7c8bd0f7e33b1046  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-af1d3e7b71195d9e803cbb2342d8bfb7c9916e96c34f76f83919b6e82464c4d4  ./apps/webui-static/i18n-catalog.js
+725909a3e13e627712bc78464e89446055f69abe60339cb5b6ddb78496bf51c5  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 d3e3bd1ec09c2e70348521ea0105bd33204af33f8304b3b462f417a065e966d0  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
@@ -6557,7 +6557,7 @@ fb563aba09baf5e9506afa3bc76100d453f633c91a61782d7ccfd4f96eb97b14  ./services/ref
 e5173932822e336e97804f868649e2b274dd52b1ce24e8996a37a9c4fb7a8ef0  ./services/reference-control-plane/test/tui-import-closure.test.mjs
 99e062768ca7191e1281d4620f9c8f7f3d7e10e784b15b01c7b542f7ff378f72  ./services/reference-control-plane/test/tui-screen-layout.test.mjs
 c1c2f8446a3b4b96d26c8ef63f9cf52f2eccee5dd07316c7010acf0117f6a79e  ./services/reference-control-plane/test/two-shells-parity.test.mjs
-e0746bb1051bef3fe89957572d5a27c082a76742de22b2915566788eb4249bd2  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
+305afeeeb530ea882ff279372a5c332f7e8bde30bd685deaffa2b12d8576934a  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
 8d57f04b38e657a89196f51f705e815a3e47d5afa6d88537b1873b7f14639e88  ./services/reference-control-plane/test/update-manager.test.mjs
 66f1525b9946e61f2932df27cee921067f6de3c85e5aeecf3577eb87223d210c  ./services/reference-control-plane/test/updates-channel-key-http.test.mjs
 f6fe51051f4d1e9546140dedc4ad8b8b485179f894261fc77c01343d639e2964  ./services/reference-control-plane/test/user-directory.test.mjs

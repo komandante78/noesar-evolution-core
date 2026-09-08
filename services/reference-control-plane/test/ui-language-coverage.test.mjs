@@ -26,6 +26,7 @@ import { resolveLanguage, translateString, applyToTextNode } from '../../../apps
 import { AGENT_COMMANDS, MENU_GROUPS, hiddenNote } from '../../../apps/shared/coden/agent-commands.js';
 import { promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 import { PAGE_HELP } from '../../../apps/webui-static/page-help.js';
+import { INVARIANT_ENFORCEMENT } from '../src/path-auth.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '../../..');
@@ -367,6 +368,18 @@ describe('the `/` menu is translated — the surface neither measurement could s
         assert.ok(RUNTIME_ONLY.includes(text),
           `${address}: a help text is not declared runtime-only, so the tool will report it as matching no screen`);
       }
+    }
+    // SEC-003's invariant panel is rendered from the server's own enforcement declaration —
+    // that is the whole point of it, so that the panel cannot drift from what is enforced.
+    // The same reasoning applies to its language: an eighth invariant, or a reworded
+    // `enforcedBy`, would otherwise appear on an Italian page in English and say nothing
+    // about having done so. The name is the id as `loadCoden()` shows it.
+    for (const entry of INVARIANT_ENFORCEMENT) {
+      const shown = String(entry.id).replace(/_/g, ' ');
+      assert.ok(RUNTIME_ONLY.includes(shown),
+        `the invariant ${entry.id} is shown as ${JSON.stringify(shown)} and is not declared runtime-only`);
+      assert.ok(RUNTIME_ONLY.includes(entry.enforcedBy),
+        `the invariant ${entry.id}'s enforcedBy is the row's tooltip and is not declared runtime-only`);
     }
     const catalogueSource = readFileSync(join(repoRoot, 'apps/webui-static/i18n-catalog.js'), 'utf8');
     assert.match(catalogueSource, /\.\.\.AGENT_COMMANDS\.map/,
