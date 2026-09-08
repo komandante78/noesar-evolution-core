@@ -2370,7 +2370,7 @@ function isoToLocal(value){
 }
 function metrics(node,entries){
   node.innerHTML=entries
-    .map(([label,value,tone])=>`<div class="metric"><span>${escapeHtml(label)}</span><b class="${escapeHtml(tone??'')}">${escapeHtml(shown(value))}</b></div>`)
+    .map(([label,value,tone,dataLabel])=>`<div class="metric"><span${dataLabel?' translate="no"':''}>${escapeHtml(label)}</span><b class="${escapeHtml(tone??'')}">${escapeHtml(shown(value))}</b></div>`)
     .join('');
 }
 function badge(node,label,kind='off'){
@@ -2729,14 +2729,15 @@ async function loadHealth(){
   await panel(components,'health',async()=>{
     const health=await api('/healthz');
     const list=Array.isArray(health.components)?health.components:[];
-    const degraded=list.filter((item)=>item.status&&item.status!=='healthy');
+    const degradedNames=Array.isArray(health.degraded)?health.degraded:[];
+    const uptimeSeconds=list.find((item)=>item.name==='control-plane')?.detail?.uptimeSeconds;
     metrics(components,[
-      ['Overall',health.status,health.status==='healthy'?'green':'amber'],
-      ['Components',list.length],
-      ['Degraded',degraded.length,degraded.length?'amber':'green'],
-      ['Version',health.version??health.product?.version],
-      ['Uptime seconds',health.uptimeSeconds],
-      ...list.map((item)=>[item.name??'component',item.status,item.status==='healthy'?'green':'amber']),
+      [t('Overall'),t(health.status),health.status==='healthy'?'green':'amber'],
+      [t('Components'),list.length],
+      [t('Degraded'),degradedNames.length,degradedNames.length?'amber':'green'],
+      [t('Version'),health.version??health.product?.version],
+      [t('Uptime seconds'),uptimeSeconds],
+      ...list.map((item)=>[item.name??t('component'),t(item.healthy?'healthy':'unhealthy'),item.healthy?'green':'amber',Boolean(item.name)]),
     ]);
     badge($('#healthBadge'),shown(health.status),health.status==='healthy'?'on':'warn');
   });

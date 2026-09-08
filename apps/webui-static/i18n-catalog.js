@@ -720,6 +720,20 @@ export const RUNTIME_ONLY = Object.freeze([
   '(declared, not executable in this build)',
   'The server reported no step types.',
   'opens',
+  'opens',
+  // The health panel (Settings › Health). `healthy`/`unhealthy` cover both a component's own
+  // state and the overall one; `degraded` and `safe-mode` are two more values `health.status`
+  // can hold. Component NAMES stay untranslated — kebab-case machine ids, not sentences.
+  'Overall',
+  'Components',
+  'Degraded',
+  'Version',
+  'Uptime seconds',
+  'component',
+  'healthy',
+  'unhealthy',
+  'degraded',
+  'safe-mode',
 ]);
 
 const it = {
@@ -909,6 +923,17 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // The health panel (Settings › Health).
+  'Overall': 'Complessivo',
+  'Components': 'Componenti',
+  'Degraded': 'Degradati',
+  'Version': 'Versione',
+  'Uptime seconds': 'Secondi di attività',
+  'component': 'componente',
+  'healthy': 'integro',
+  'unhealthy': 'non integro',
+  'degraded': 'degradato',
+  'safe-mode': 'modalità sicura',
   'opens': 'apre',
   // Agents and Workflows.
   'Analyze goal': 'Analizza l’obiettivo',
