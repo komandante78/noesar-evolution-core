@@ -64,6 +64,52 @@ test('the orchestrator refuses at construction if shadowsRoot is nested inside w
   } finally { rmSync(ws, { recursive: true, force: true }); }
 });
 
+// A restart is the only thing that orphans a shadow, so the test has to be a real one: two
+// orchestrators over the same roots, which is what `server.mjs` does across a container
+// restart. Before the sweep this left a whole-workspace copy on disk for good — measured on
+// the live product, run 87fef049, where `reject()` answered 200 and the directory stayed.
+test('a restart reclaims the shadow of a run it can no longer promote', async () => {
+  const ws = mkdtempSync(join(tmpdir(), 'noesar-wa-restart-ws-'));
+  const shadows = mkdtempSync(join(tmpdir(), 'noesar-wa-restart-shadows-'));
+  const runStore = mkdtempSync(join(tmpdir(), 'noesar-wa-restart-runs-'));
+  writeFileSync(join(ws, '.seed'), 'seed');
+  const secret = randomBytes(32);
+  const build = () => new WorkspaceActionOrchestrator({
+    workspaceRoot: ws, shadowsRoot: shadows,
+    minter: new TokenMinter(secret), events: new EventLedger(),
+    runStoreDirectory: runStore, env: {},
+  });
+  try {
+    const before = build();
+    const planned = await before.plan({
+      request: 'measure and then lose the process',
+      files: [{ path: 'a.txt', contents: 'x\n' }], actor: 'owner', nowUnix: NOW,
+    });
+    before.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
+    const shadowPath = join(shadows, planned.runId);
+    assert.ok(existsSync(shadowPath), 'fixture check: measure() must leave a shadow on disk');
+
+    // The restart. `before` is dropped exactly as a killed process is: nothing is discarded.
+    const after = build();
+    assert.ok(!existsSync(shadowPath),
+      'a shadow no process can still promote is a whole-workspace copy nothing would ever remove');
+
+    // And the run itself survived the restart, minus the one thing it legitimately lost.
+    assert.equal(after.get(planned.runId).status, 'MEASURED');
+    assert.throws(
+      () => after.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 2 }),
+      (error) => error instanceof WorkspaceActionError && error.kind === 'MEASUREMENT_LOST',
+    );
+    // The workspace is untouched: the sweep reclaims scratch space and nothing else.
+    assert.equal(existsSync(join(ws, '.seed')), true);
+    assert.equal(existsSync(join(ws, 'a.txt')), false);
+  } finally {
+    rmSync(ws, { recursive: true, force: true });
+    rmSync(shadows, { recursive: true, force: true });
+    rmSync(runStore, { recursive: true, force: true });
+  }
+});
+
 // --- happy path -------------------------------------------------------------
 
 test('plan → approve promotes a real file write and modification', async () => {

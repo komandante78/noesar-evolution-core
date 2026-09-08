@@ -57,7 +57,7 @@
 // refused mid-loop — would be a state nobody planned for and nobody authorised.
 
 import { randomUUID } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
 import { Author, AuthoringUnavailable, AuthoringRefused } from './author.mjs';
@@ -197,6 +197,27 @@ export class WorkspaceActionOrchestrator {
     }
     this.#workspaceRoot = workspaceRoot;
     this.#shadowsRoot = shadowsRoot;
+    // Every directory under `shadowsRoot` at CONSTRUCTION is dead, by construction: a shadow
+    // is reachable only through `#shadows`, which is empty until this process makes one, and
+    // `approve()` answers MEASUREMENT_LOST rather than promoting one it no longer holds. So
+    // anything found here belongs to a process that is gone — and it is a whole-workspace
+    // copy, about 62 MiB on the reference installation.
+    //
+    // Measured 2026-09-08: a restart between `measure()` and its decision left
+    // `/shadows/87fef049-…` on disk for good. `#dropShadow` could not remove it because it
+    // drops through the in-memory handle, and the handle is exactly what a restart destroys —
+    // so every restarted run leaked one copy and nothing in the product ever reclaimed it.
+    // Swept once, at startup, which is where a leak that only a restart creates belongs.
+    //
+    // ponytail: assumes ONE orchestrator per shadowsRoot, which is what the product runs
+    // (server.mjs builds one). Two sharing a root would need a lock file — not before
+    // something actually shares one.
+    let leftoverShadows = [];
+    try { leftoverShadows = readdirSync(shadowsRoot); } catch { /* not created yet: a normal first start */ }
+    for (const name of leftoverShadows) {
+      // Scratch space: failing to reclaim it must not stop the product from starting.
+      try { rmSync(join(shadowsRoot, name), { recursive: true, force: true }); } catch { /* ignored */ }
+    }
     this.#minter = minter;
     this.#events = events;
     // A seam, for the same reason `methodPolicy` is one in session-protocol.mjs: the

@@ -16703,3 +16703,48 @@ provider the product does not use. A test double for the routed provider is not 
 product whose reasoning is pluggable.
 
 *Reversal cost:* low. Both changes are inert on an installation that declares no command.
+
+## D-0708 · A restart leaked one whole-workspace copy per measured run, and nothing ever reclaimed it — 2026-09-08
+
+*Context:* found on the live product while testing `D-0704`. `#dropShadow(runId)` looks the
+shadow up in the in-memory `#shadows` map and returns silently when it is not there. After a
+restart it never is: the map starts empty and the DIRECTORY does not. Measured at `6ddb28b` —
+run `87fef049-e7d6-4189-be14-a03286b90a9d` was measured, the container was restarted,
+`POST /api/v1/workspace-actions/<runId>/reject` answered **200**, and
+`/shadows/87fef049-…` was still on disk. A run measured and rejected with no restart in between
+(`d80a923d-…`) lost its shadow correctly, so the cleanup path works; what failed is cleanup
+once the handle is gone.
+
+Each orphan is a **whole-workspace copy** — about 62 MiB on this installation — and restarts
+accumulate them with nothing in the product able to reclaim one.
+
+*Decision:* sweep `shadowsRoot` once, at construction. Every directory found there at that
+moment is dead by construction: a shadow is reachable only through `#shadows`, which is empty
+until this process makes one, and `approve()` already answers `MEASUREMENT_LOST` rather than
+promoting one it no longer holds. So anything present belongs to a process that is gone.
+
+*Rejected — and this is the interesting half.* The obvious fix, and the one this defect's own
+task description proposed, was to make `#dropShadow` remove the directory **by path** when the
+handle is missing. It is **not built**, because with the sweep in place nothing reaches it: a
+shadow's directory and its handle are created and destroyed together inside one process
+(`measure()` drops the previous one before making a new one, and the `finally` at the end of
+`measure()` discards anything not handed to `#shadows`), and `simulate()` discards its own in a
+`finally` too. The only thing that separates a directory from its handle is losing the process,
+and the sweep is where losing the process is handled. A second removal path would be a second
+place to keep correct for a case that cannot occur.
+
+*Evidence:* one test, and its oracle was run in both directions rather than assumed —
+`a restart reclaims the shadow of a run it can no longer promote` builds two orchestrators over
+the same roots, which is exactly what `server.mjs` does across a container restart. On the tree
+**before** the fix it fails with *"a shadow no process can still promote is a whole-workspace
+copy nothing would ever remove"*; on the tree after, it passes. It also asserts the run itself
+survived (`MEASURED`, and `approve()` still refuses `MEASUREMENT_LOST`) and that the workspace
+was untouched — the sweep reclaims scratch space and nothing else. Suite **3200 tests, 3199
+pass, 0 fail, 1 skip**; ESLint **477 files, 0 errors, 0 warnings**; `MANIFEST.sha256` 6 701.
+
+*Declared ceiling:* the sweep assumes ONE orchestrator per `shadowsRoot`, which is what the
+product runs — `server.mjs` builds one. Two sharing a root would need a lock file, and that is
+not built until something actually shares one. Written as a `ponytail:` comment at the code.
+
+*Reversal cost:* none. The swept directories are unusable by definition; removing the sweep
+restores the leak.
