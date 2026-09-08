@@ -512,11 +512,18 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // it: "Diff panel", not "CodeN Evolution view" for eleven different addresses.
   if(codenAddress)announceCodenPanel(section,codenAddress.split('/')[1]);
   applyPanelRank(view);
-  if(permitted&&typeof VIEW_LOADERS[view]==='function')VIEW_LOADERS[view]();
+  // Gated on a signed-in user, not on permission alone: the router runs once at boot, before
+  // `/auth/me` has answered, and `enterApplication()` runs it again once the role is known —
+  // deliberately, so that a cold deep link is not resolved as access-denied. Everything the
+  // first pass fetched was therefore thrown away by the second. Measured on the home,
+  // 2026-09-08: `/api/v1/home` and `/api/v1/metrics/review-time` twice each, on every load.
+  // A page nobody is signed in to fetches nothing, for the reason the line below already gives
+  // for a section nobody may open.
+  if(permitted&&currentUser&&typeof VIEW_LOADERS[view]==='function')VIEW_LOADERS[view]();
   // A section this account may not open must not fetch. Running the loader anyway fired
   // four requests that all answered 403 for a page the person was being refused — the
   // gate would have been enforced on screen and abandoned on the wire.
-  if(activeSection&&maySection(activeSection)&&typeof SECTION_LOADERS[activeSection]==='function')SECTION_LOADERS[activeSection]();
+  if(activeSection&&currentUser&&maySection(activeSection)&&typeof SECTION_LOADERS[activeSection]==='function')SECTION_LOADERS[activeSection]();
 }
 // Returns the section actually shown, which is not always the one asked for: an unknown
 // name falls back to the first, and one this account may not open renders as denied
