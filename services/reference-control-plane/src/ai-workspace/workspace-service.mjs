@@ -135,6 +135,22 @@ export class WorkspaceService {
   }
 
   listSources({ projectId=null }={}) { return this.store.read().sources.filter((item)=>!item.deletedAt && inProjectScope(item,projectId)); }
+  // Hard delete, not the deletedAt pattern deleteMemory uses: a source can hold arbitrary
+  // uploaded content (a document with real personal data, see CHIUSURA_20260908_NOTTE.md),
+  // and a "delete" button that only hides the row while the file stays on disk would be a
+  // false promise. Removes the record, every chunk indexed from it, and its blob.
+  deleteSource(sourceId, actorId='system') {
+    return this.store.transact((state)=>{
+      const source=find(state.sources,sourceId,'Source');
+      state.sources=state.sources.filter((item)=>item.id!==sourceId);
+      const chunksRemoved=state.knowledgeChunks.filter((item)=>item.sourceId===sourceId).length;
+      state.knowledgeChunks=state.knowledgeChunks.filter((item)=>item.sourceId!==sourceId);
+      for (const project of state.projects) if (Array.isArray(project.fileSourceIds)) project.fileSourceIds=project.fileSourceIds.filter((id)=>id!==sourceId);
+      const blobDeleted=source.blobId ? Boolean(this.fileExtractor?.delete(source.blobId)) : false;
+      this.ledger?.append({ actor:actorId, action:'source.deleted', result:'success', details:{ sourceId, chunksRemoved, blobDeleted } });
+      return { deleted:true, id:sourceId, chunksRemoved, blobDeleted };
+    });
+  }
   knowledgeContext(query,{projectId=null,sourceIds=[],policy=null}={}) {
     const state=this.store.read();const project=state.projects.find((item)=>item.id===projectId);const selectedPolicy=policy??project?.knowledgePolicy??{mode:'hybrid',limit:8,maxCharacters:60000};
     if(selectedPolicy.mode==='disabled')return[];

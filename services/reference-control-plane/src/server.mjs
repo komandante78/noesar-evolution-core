@@ -446,7 +446,7 @@ const workflowService = new WorkflowService({ store:aiStore, ledger, executor:to
 /** Who this product says it is — in ONE place. `/api/v1/bootstrap` carried these three strings as
  *  a literal and the assistant now has to state the same three; two copies of a product's own name
  *  is exactly the drift this project has been burned by before. */
-const PRODUCT_IDENTITY = Object.freeze({ name:'NOESAR Evolution', edition:'Open Core Source Implementation', version:'1.0.0' });
+const PRODUCT_IDENTITY = Object.freeze({ name:'NOESAR Evolution', edition:'Open Core Source Implementation', version:'0.6.0' });
 
 /**
  * What the assistant is told about the installation it lives in.
@@ -878,7 +878,7 @@ function currentPrivacy(user = null) {
   }
 }
 
-const PRODUCT = Object.freeze({ name:'NOESAR Evolution', version:'1.0.0-complete-ai-workspace', releaseVersion:'0.6.0' });
+const PRODUCT = Object.freeze({ name:'NOESAR Evolution', version:'0.6.0', releaseVersion:'0.6.0' });
 
 // --- observability, recovery and update subsystems ---------------------------
 const logger = new Logger({
@@ -4857,6 +4857,9 @@ const requestListener = async (req, res) => {
     match=url.pathname.match(/^\/api\/v1\/sources\/([^/]+)$/);
     if(match&&req.method==='GET'){
       const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,aiWorkspace.getSource(match[1]));
+    }
+    if(match&&req.method==='DELETE'){
+      const authenticated=requireSession(req,res,'knowledge.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,200,aiWorkspace.deleteSource(match[1],authenticated.user.id));
     }
     if(req.method==='GET'&&url.pathname==='/api/v1/knowledge/search'){
       const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,{results:aiWorkspace.knowledgeSearch(url.searchParams.get('q')??'',{projectId:url.searchParams.get('projectId'),limit:Number(url.searchParams.get('limit')??12)})});
