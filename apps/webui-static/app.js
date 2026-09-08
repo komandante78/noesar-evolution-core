@@ -912,6 +912,11 @@ async function refreshPrivacy(){
   // three server-verified fields (headline/detail/state), same element structure
   // (strong/small/.verified), same 'external' class toggle, just relocated.
   const box=$('#footerPrivacy');if(!box)return;
+  // The state is an identifier with its underscores taken out, not a sentence:
+  // `EXTERNAL_METADATA_ONLY` is the value the server and the audit log both use, and a
+  // translated privacy state would be a second name for the same thing on the one line
+  // whose job is to be exact.
+  box.querySelector('.verified')?.setAttribute('translate','no');
   try{
     const {banner,state:privacyState,disclosures,telemetry}=await api('/api/v1/privacy');
     box.querySelector('strong').textContent=banner.headline;
@@ -1923,12 +1928,12 @@ function renderTasks(){
   const scheduledCount=$('#taskScheduledCount');if(scheduledCount)scheduledCount.textContent=String(scheduled.length);
   // The zone is named once, on the panel, because every instant below it is rendered in
   // that zone: repeating it on each row is noise, omitting it entirely is the defect.
-  const chip=$('#taskZoneChip');if(chip)chip.textContent=`Times in ${zoneName()}`;
+  const chip=$('#taskZoneChip');if(chip)chip.textContent=`${t('Times in')} ${zoneName()}`;
   // The same zone, said again where the times are TYPED. A field that never names the zone
   // it will be understood in asks a person to guess, and they find out afterwards — which
   // is exactly the disagreement this phase repaired underneath.
   const formZone=$('#taskFormZone');
-  if(formZone)formZone.textContent=`Schedule and Due are read in ${zoneName()}, and stored as an instant.`;
+  if(formZone)formZone.textContent=`${t('Schedule and Due are read in')} ${zoneName()}${t(', and stored as an instant.')}`;
   $$('[data-task-status]').forEach((button)=>button.addEventListener('click',async()=>{const[id,status]=button.dataset.taskStatus.split(':');await api(`/api/v1/tasks/${id}`,{method:'PATCH',body:JSON.stringify({status})});await refreshWorkspace();}));
 }
 // A stored value with no zone cannot be rendered as if it were precise. It is shown and
@@ -4365,7 +4370,7 @@ async function loadReviewMetric(){
     :'No decisions in this window');
   // The definition travels with the figure. A number whose left edge is explained
   // somewhere else is a number that will be quoted without it.
-  $('#metricDefinition').textContent=`Measured in ${summary.unit}. Rejected changes are counted, not excluded (UI-072). Interval starts at: ${summary.readyDefinition}.`;
+  $('#metricDefinition').textContent=`${t('Measured in')} ${t(summary.unit)}. ${t('Rejected changes are counted, not excluded (UI-072). Interval starts at:')} ${t(summary.readyDefinition)}.`;
   return summary;
 }
 
