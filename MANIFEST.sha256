@@ -6572,6 +6572,7 @@ d55d7ed7041da5e6be291addb047507853abacf6ae2e138388c1f149ff361264  ./services/ref
 56c0b4d5ed35d7fa7674a564529d8002d2b9387d552a5a89dfb3dd702fe54b6c  ./services/reference-control-plane/test/webui-boot-order.test.mjs
 aaa6fc07b584b798b8d4b7e939bdf73b2e67a789b1a0cc6d68b98a8459fc8595  ./services/reference-control-plane/test/webui-busy-label.test.mjs
 0a86bf925091c333ba75acbba7f065acf6683e2638c74cc83cc01c21ea14703b  ./services/reference-control-plane/test/webui-colour.test.mjs
+134dcf9df7b4f7d60d436bed438440bf108ea0bdbd3989658ed2d068f1794592  ./services/reference-control-plane/test/webui-health-panel.test.mjs
 5073ebefb1c1b2da4de352771b77a6084bd376b24368467b33f9914a21dbb86f  ./services/reference-control-plane/test/webui-jump-to-address.test.mjs
 79c79c804d4fd794787b04d03a2612db0c0fbc0beadb4d0ddb1825d303521aee  ./services/reference-control-plane/test/webui-markup-structure.test.mjs
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs
