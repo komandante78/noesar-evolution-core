@@ -601,6 +601,9 @@ export const RUNTIME_ONLY = Object.freeze([
   '● Privacy state not confirmed',
   'Nothing is waiting for a decision.',
   'Times in',
+  // The tag beside a health component that the product cannot run without. Written by
+  // `renderServices()`, so it is in no markup.
+  'essential',
   'Schedule and Due are read in',
   ', and stored as an instant.',
   'Measured in',
@@ -717,6 +720,7 @@ const it = {
   '● Privacy state not confirmed': '● Stato della riservatezza non confermato',
   'Nothing is waiting for a decision.': 'Non c’è nulla in attesa di una decisione.',
   'Times in': 'Orari in',
+  'essential': 'essenziale',
   'Schedule and Due are read in': 'Programmazione e Scadenza si leggono in',
   ', and stored as an instant.': ', e si memorizzano come istante.',
   'Measured in': 'Misurato in',
