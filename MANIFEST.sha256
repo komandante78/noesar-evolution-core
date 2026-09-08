@@ -329,13 +329,13 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-cf7577279b14bfd230d4d41692619620e97ae1cd08ba23c11af1f95a38f58707  ./apps/webui-static/app.js
+6b34f4f2f42302c302ea3249f58bdbd5ef3712fb54172b32766ab8629236370b  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
 a4d9655442160562219252223738d384f5d5bfad03c3f80b7c8bd0f7e33b1046  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-c651b547b1a15cfe9688ef31cdddecd389ca15a3d18babaa460771bae92c16d8  ./apps/webui-static/i18n-catalog.js
+af1d3e7b71195d9e803cbb2342d8bfb7c9916e96c34f76f83919b6e82464c4d4  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 d3e3bd1ec09c2e70348521ea0105bd33204af33f8304b3b462f417a065e966d0  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
@@ -6557,7 +6557,7 @@ fb563aba09baf5e9506afa3bc76100d453f633c91a61782d7ccfd4f96eb97b14  ./services/ref
 e5173932822e336e97804f868649e2b274dd52b1ce24e8996a37a9c4fb7a8ef0  ./services/reference-control-plane/test/tui-import-closure.test.mjs
 99e062768ca7191e1281d4620f9c8f7f3d7e10e784b15b01c7b542f7ff378f72  ./services/reference-control-plane/test/tui-screen-layout.test.mjs
 c1c2f8446a3b4b96d26c8ef63f9cf52f2eccee5dd07316c7010acf0117f6a79e  ./services/reference-control-plane/test/two-shells-parity.test.mjs
-fcce8a77944496c02d3b21bff84abe2c0155e35047e3cd9d3fbdfbeb66a26a81  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
+6ce3a8d803ef864a59ac67f7a3b2950ffedfc61b83d6fc28c6f4a4b37b31f499  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
 8d57f04b38e657a89196f51f705e815a3e47d5afa6d88537b1873b7f14639e88  ./services/reference-control-plane/test/update-manager.test.mjs
 66f1525b9946e61f2932df27cee921067f6de3c85e5aeecf3577eb87223d210c  ./services/reference-control-plane/test/updates-channel-key-http.test.mjs
 f6fe51051f4d1e9546140dedc4ad8b8b485179f894261fc77c01343d639e2964  ./services/reference-control-plane/test/user-directory.test.mjs

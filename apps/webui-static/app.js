@@ -6598,9 +6598,25 @@ function installHelpButtonsUnsafely(){
     button.setAttribute('aria-expanded','false');
     button.setAttribute('aria-controls','pageHelp');
     // The label carries the page, so a screen reader is not read "i" thirty-three times.
-    button.setAttribute('aria-label',`Information about ${address}`);
+    // Composed from a translated part and marked, per this file's own rule: the address is an
+    // address in every language, so the finished label can never be a catalogue key. Written
+    // by `labelHelpButtons()` below, not here, because a marked attribute is one the walker
+    // will never revisit.
+    button.setAttribute('translate','no');
     button.textContent='i';
     header.append(button);
+  }
+  labelHelpButtons();
+  // The other half of composing: the picker changes the language without reloading, and a
+  // `translate="no"` attribute is exempt from that repaint. Registered AFTER `initI18n()`
+  // has registered its own listener on the same control, so the language in effect has
+  // already changed by the time this runs.
+  $('#languageSelect')?.addEventListener('change',labelHelpButtons);
+}
+
+function labelHelpButtons(){
+  for(const button of $$('.help-button')){
+    button.setAttribute('aria-label',`${t('Information about')} ${button.dataset.help}`);
   }
 }
 document.addEventListener('click',(event)=>{
@@ -6690,8 +6706,8 @@ $('#modelScoutRun')?.addEventListener('click',()=>void runModelScout());
 // gesture. Delegates to the existing open button rather than wiring `codenModelPicker` a
 // second time — one picker, one `wire()` call, two ways in.
 $('#codenPromptModelOpen')?.addEventListener('click',()=>$('#codenModelPickerOpen')?.click());
-installHelpButtons();
 initI18n();
+installHelpButtons();
 initAppearance();
 // Reading preferences are applied BEFORE the router paints anything: applying them after
 // would show the interface at one size and then move it, which is exactly the flash a

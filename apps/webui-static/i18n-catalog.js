@@ -37,6 +37,8 @@
 // Imported so the runtime-only list can be DERIVED from the registries that own those strings
 // instead of restating them. `agent-commands.js` imports nothing, so there is no cycle.
 import { AGENT_COMMANDS, MENU_GROUPS } from '../shared/coden/agent-commands.js';
+// Same reason, same shape: `page-help.js` imports nothing either, so there is no cycle.
+import { PAGE_HELP } from './page-help.js';
 
 /** The language the interface is WRITTEN in. Never a lookup — the markup is already this. */
 export const SOURCE_LANGUAGE = 'en';
@@ -303,79 +305,22 @@ export const RUNTIME_ONLY = Object.freeze([
   'OpenAI',
   'Kimi / Moonshot AI',
   // The information-button texts, s333 point 3c — rendered by app.js from page-help.js.
-  'The starting point: your projects, recent conversations, the work queue and the health of the services behind them.',
-  'Start from a goal rather than a blank chat — a goal opens a conversation with itself as the opening text. Turning that goal into a Plan is backbone work that does not exist in this build, so what you get here is the question asked, not yet understood.',
-  'The conversation, with its context graph: every project keeps its own chats, branches, memory, files and tools.',
-  'Check the context panel before you send — model, project, messages, memory, sources and estimated tokens are all shown first. Branch instead of editing when you want to compare two directions; merging and comparing branches are both here.',
-  'The workbench and the session: one program with two shells, this one and the terminal, joined to the SAME live session rather than two clients with separate state.',
-  'Type `/` for the menu; it goes to any address in the product. A command that needs a subject and is given none opens the panel that shows that thing instead of running — `/diff` opens Diff, `/diff <run>` compares a run. Nothing reaches the real workspace except by Plan then Approve.',
-  'Registered tools — local HTTP, MCP or OpenAPI. A registered tool stays disabled by policy until it is granted consent, and one that changes things is marked as such.',
-  'Register a tool disabled, look at what it declares, and grant consent separately. Installable catalogues are not here: they live in Settings › Modules, in one place.',
-  'Instructions for reaching the terminal shell. This page is deliberately static: a browser page cannot spawn an operating-system shell, so it names the real program rather than simulating one.',
-  'Run `coden_evolution` — one word. The first time on a machine it asks for an attach code or your credentials; after that it opens with nothing typed. `coden_evolution --forget` undoes that on both sides.',
-  'A project is one controlled scope: chats, instructions, files, memory, tools and agents share it.',
-  'Put the rules that must hold for every conversation into the project instructions rather than repeating them. The knowledge mode decides whether retrieval is hybrid, whole-context or off.',
-  'Artifacts: documents, code, tables, charts, canvas data and application specifications, each kept with its versions.',
-  'Create the artifact from the conversation that produced it, so the version history and the reasoning stay connected.',
-  'Ingested sources, searched lexically and semantically, with the original passages kept rather than only their embeddings.',
-  'Upload the original file when you have it: extraction happens locally. Notes here are what YOU write and pin; Memory is what the product writes for you, and they are separate on purpose.',
-  'What the product has learned about your work, written at the end of each session.',
-  'Read "Recently learned" first — nothing becomes permanent without you keeping it. Discarding a wrong memory is more valuable than adding a right one.',
-  'Agents plan, and a step that would change something waits for a human to approve it with a scope.',
-  'Read the plan before approving, not the summary of it. Intermediate output is visible on purpose: an agent that only shows conclusions cannot be checked.',
-  'Workflows declare what each step may do, with retries, compensation and replay. A step with declared effects waits for a person.',
-  'Declare the effects honestly — the gate is on what a step SAYS it will do, so an under-declared step is the one that gets through without review.',
-  'The model catalogue. What is running and what is on disk stay at the top and never paginate; everything else is what registered publishers offer.',
-  'Type and function are what the publisher declared, never what the product guessed from a name — `undeclared` means nobody said, not that the model cannot do it. Acquiring is egress, and it is switched off unless the local model runtime is enabled.',
-  'Research takes one line, the way you would say it, and returns a report with the evidence behind each candidate and what was NOT verified. Reports are kept until you delete them.',
-  'Ask for something you could be shown to be wrong about. Evidence quality is stated per candidate because reviews can be bought and an average score is not evidence. No provider is built in: you configure and consent to one.',
-  'One destination holding every setting. This page itself is static — it owns no content, and each section inside it loads its own.',
-  'Use `/` and the section name rather than hunting the list: every section here has its own address and can be linked to directly.',
-  'Your own sessions: the working list, the archive, and a bin that keeps a session for thirty days.',
-  'Archiving moves, deleting goes to the bin. The keyboard does all of it, and Delete opens the confirmation rather than deleting on its own.',
-  'Theme, accent colour, text size and motion. Static on purpose: all of it is stored on this device only and never leaves the installation.',
-  'Pick any accent you like — a hue that cannot carry as text is not refused, it stays as the fill and a readable relative is derived. Both contrast figures are shown while you choose, not afterwards.',
-  'Time zone and locale. The interface language itself is chosen in the top bar; the locale here decides how dates and numbers are formatted.',
-  'Resolution order is your preference, then the server default, then the host, then UTC. The browser zone is recorded but never applied on its own.',
-  'Version, edition, data plane, and the boundary this open core keeps.',
-  'The open core does not require ATOM to build, start, pass its tests or deliver what it documents — this page is where that claim is stated and can be checked against the build you are running.',
-  'The licence posture. Static, and empty on purpose: no code in this build reads or asserts a licence state, so there is nothing here to show.',
-  'Read it as a proposal rather than a determination. Showing an invented licence state would be the kind of false declaration this product exists to remove.',
-  'Providers and connectors. Local endpoints are the default and external providers stay disabled until you grant an explicit data scope.',
-  'Grant the narrowest scope that works, and use "Revoke all external access" when you are unsure — it is one action and it takes effect immediately.',
-  'The account directory. People are invited by token and choose their own password; an administrator never learns it.',
-  'Invite at the lowest role that works. Owner and admin carry mandatory second-factor authentication, enforced both here and as a database constraint.',
-  'Your own account: your password, the authenticator, and the sessions open right now. Nothing here touches anybody else — other people live under People and access.',
-  'The authenticator is optional: this installation signs you in with a username and a password, and the app adds a six-digit code on top. Turning it ON asks for your password alone, because you have no code to give yet. Turning it OFF asks for the password AND a live code, so that a session somebody found unlocked cannot remove it. Enrolment wants two CONSECUTIVE codes: type the one on screen, wait for it to change, type the new one, and confirm within thirty seconds — that pair proves the clock on your phone agrees with this server, where a single code can pass by luck and then fail at your next sign-in. The recovery codes appear once, are kept only as fingerprints, and are the only way back in if the phone is lost.',
-  'What the host has, and what the runtime would choose. Discovery is read-only.',
-  'The recommendation explains itself rather than just naming a runtime. The local model runtime is disabled by default, and disabled means nothing here opens a device or spawns a process.',
-  'The accelerator probe and the runtime recommendation for a given model size and quantisation.',
-  'An empty accelerator list with "not inspected" means the runtime is disabled, which is a different statement from "there is no GPU". The page says which one it is.',
-  'Export, backup and retention. A database archive carries a checksum, and a restore refuses a mismatch.',
-  'Treat a full filesystem backup as a secret: it is not encrypted and it contains the authentication master key. That is stated here rather than left in the documentation.',
-  'One queue holding everything waiting for a human decision, whichever subsystem raised it.',
-  'Approvals are per subsystem in origin but not in review — if it is waiting, it is here, so this is the page to check rather than each feature in turn.',
-  'What the watchdog observes and what safe mode is doing about it, next to the log stream.',
-  'Run the check rather than reading the last one when you are diagnosing something now. Leaving safe mode is deliberate and manual.',
-  'Structured logs, redacted at the sink rather than at the reader.',
-  'Quote the correlation ID when reporting a problem: it ties one request to every record it produced. Debug mode raises verbosity for a bounded time and switches itself off.',
-  'Updates are staged, approved, applied, and can be rolled back. Nothing installs itself.',
-  'If nothing can be applied, it is because no update channel key is pinned on this installation — which is stated here rather than hidden behind a button that does nothing.',
-  'A skill tells the agent how to do something. Its payload is instructions, so its cost is context — and nothing here is loaded until a session adopts it.',
-  'Search the catalogue to see what a skill is and what adopting it would cost in bytes. The search never returns the instructions themselves; that is the difference between a catalogue and a load.',
-  'A module is a separate product. An Owner module is built and signed by NOESAR and installs in one click; registration and signing happen on the server.',
-  'Active modules open in a new tab. They are never embedded, so a module cannot draw inside this interface and be mistaken for part of it.',
-  'Scan a codebase on a remote host over SSH. NOESAR fetches it; the module analysing it never sees the credential.',
-  'Capture the host key first and confirm it — no credential is sent at that step. A later mismatch refuses the connection rather than trusting a changed identity silently.',
-  'The address does not exist. Static, because it explains a fixed fact.',
-  'Check the spelling, or press `/` and go by name — every page in the product has an address and the menu lists all of them.',
-  'Your role does not include this area. Static, because it states a fixed fact — and the address is kept as you typed it, so a reload does not turn a refusal into a missing page.',
-  'The message names the role that is required and the one you are signed in as. An administrator can change it in Settings › People and access.',
+  // The information-button texts, s333 point 3c. DERIVED from `page-help.js`, which owns
+  // them, and not copied: the copy drifted. `knowledge`'s first sentence gained a clause about
+  // audio and video, `page-help.js` carried the new text and these 68 lines carried the old,
+  // so the whole panel rendered in English while the stale entry was forgiven as runtime-only
+  // — the dead-entry check skips everything named here, which is exactly what made it quiet.
+  // Derived, that drift cannot happen again, and the runtime-only translation check catches
+  // the other half the moment a help text changes without its translation.
+  ...Object.values(PAGE_HELP).flatMap((entry) => [entry.what, entry.howto]),
   'What this is',
   'What is worth doing here',
   'Press Escape to close.',
   'No help has been written for this page yet.',
   'Information about',
+  // The help panel's own accessible name. Set by `installHelpButtonsUnsafely()` on an element it
+  // creates, so it is in no markup either.
+  'Page information',
   // ——— the `/` menu, s336 voice stage 2 ———
   //
   // The menu is composed entirely at render time, so the tool that reads `index.html` cannot
@@ -1922,7 +1867,7 @@ const it = {
   'Put the rules that must hold for every conversation into the project instructions rather than repeating them. The knowledge mode decides whether retrieval is hybrid, whole-context or off.': 'Metti nelle istruzioni del progetto le regole che devono valere per ogni conversazione, invece di ripeterle. La modalità della conoscenza decide se il recupero è ibrido, a contesto intero o spento.',
   'Artifacts: documents, code, tables, charts, canvas data and application specifications, each kept with its versions.': 'Artefatti: documenti, codice, tabelle, grafici, dati su tela e specifiche di applicazioni, ciascuno conservato con le sue versioni.',
   'Create the artifact from the conversation that produced it, so the version history and the reasoning stay connected.': 'Crea l\'artefatto dalla conversazione che l\'ha prodotto, così la storia delle versioni e il ragionamento restano collegati.',
-  'Ingested sources, searched lexically and semantically, with the original passages kept rather than only their embeddings.': 'Fonti acquisite, cercate in modo lessicale e semantico, con i passaggi originali conservati e non soltanto i loro vettori.',
+  'Ingested sources, searched lexically and semantically, with the original passages kept rather than only their embeddings. Audio and video are indexed by their metadata, never transcribed: this build has no speech-to-text.': 'Fonti acquisite, cercate in modo lessicale e semantico, con i passaggi originali conservati e non soltanto i loro vettori. Audio e video sono indicizzati dai loro metadati, mai trascritti: questa build non ha il riconoscimento del parlato.',
   'Upload the original file when you have it: extraction happens locally. Notes here are what YOU write and pin; Memory is what the product writes for you, and they are separate on purpose.': 'Carica il file originale quando ce l\'hai: l\'estrazione avviene in locale. Le note qui sono quelle che scrivi TU e fissi; la Memoria è ciò che il prodotto scrive per te, e sono separate di proposito.',
   'What the product has learned about your work, written at the end of each session.': 'Ciò che il prodotto ha imparato sul tuo lavoro, scritto alla fine di ogni sessione.',
   'Read "Recently learned" first — nothing becomes permanent without you keeping it. Discarding a wrong memory is more valuable than adding a right one.': 'Leggi prima «Imparato di recente» — nulla diventa permanente se non lo tieni. Scartare una memoria sbagliata vale più che aggiungerne una giusta.',
@@ -1981,6 +1926,7 @@ const it = {
   'Press Escape to close.': 'Premi Esc per chiudere.',
   'No help has been written for this page yet.': 'Per questa pagina non è ancora stato scritto alcun aiuto.',
   'Information about': 'Informazioni su',
+  'Page information': 'Informazioni sulla pagina',
   // ——— the `/` menu's own rows, s336 voice stage 2 ———
   //
   // The thirty-three command summaries. They are the one part of the interface the coverage tool

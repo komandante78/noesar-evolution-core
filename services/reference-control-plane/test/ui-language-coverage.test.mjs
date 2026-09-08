@@ -25,6 +25,7 @@ import {
 import { resolveLanguage, translateString, applyToTextNode } from '../../../apps/webui-static/i18n.js';
 import { AGENT_COMMANDS, MENU_GROUPS, hiddenNote } from '../../../apps/shared/coden/agent-commands.js';
 import { promptKeys } from '../../../apps/webui-static/coden-view-model.js';
+import { PAGE_HELP } from '../../../apps/webui-static/page-help.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '../../..');
@@ -345,8 +346,20 @@ describe('the `/` menu is translated — the surface neither measurement could s
         `/${command.name}'s description is not declared runtime-only, so the tool will report it as matching no screen`);
     }
     for (const group of MENU_GROUPS) assert.ok(RUNTIME_ONLY.includes(group.title));
+    // Added after the copy drifted. `page-help.js` owns these sentences; 68 of them were
+    // restated here, one fell behind when its page's help text was extended, and the panel
+    // rendered in English with every check green — the stale entry was forgiven because it
+    // was declared runtime-only.
+    for (const [address, entry] of Object.entries(PAGE_HELP)) {
+      for (const text of [entry.what, entry.howto]) {
+        assert.ok(RUNTIME_ONLY.includes(text),
+          `${address}: a help text is not declared runtime-only, so the tool will report it as matching no screen`);
+      }
+    }
     const catalogueSource = readFileSync(join(repoRoot, 'apps/webui-static/i18n-catalog.js'), 'utf8');
     assert.match(catalogueSource, /\.\.\.AGENT_COMMANDS\.map/,
       'the runtime-only list restates the command strings instead of deriving them — that is a second list, and a second list is what PANEL_NAMES was');
+    assert.match(catalogueSource, /\.\.\.Object\.values\(PAGE_HELP\)/,
+      'the runtime-only list restates the help texts instead of deriving them — that copy is what drifted');
   });
 });
