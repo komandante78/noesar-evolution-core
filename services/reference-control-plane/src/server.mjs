@@ -2027,7 +2027,7 @@ const requestListener = async (req, res) => {
       });
       return json(res, 200, debugMode.bundle({
         product:PRODUCT,
-        host:{ platform:process.platform, arch:process.arch, node:process.version, cpuCores:hardware?.cpu?.cores ?? null },
+        host:{ platform:process.platform, arch:process.arch, node:process.version, cpuCores:hardware?.cpu?.logicalCores ?? null },
         timezone:timezoneService.effectiveFor(authenticated.user.id),
         health, watchdog:watchdog.report(), updates:updateManager.status(),
         logs:logger.search({ limit:Number(url.searchParams.get('logLimit') ?? 100) }),

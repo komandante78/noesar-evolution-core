@@ -6301,7 +6301,7 @@ d5ffe3c943954340a8bc23981ada9cf1828b9787d827f0dafced3e0bb902ff1f  ./services/ref
 b3aab69d23e1867260cb98bdccd9d25e9faeb9aacc7ff1b481fa51f615949a8e  ./services/reference-control-plane/src/module-console-proxy.mjs
 0320ec0373a5a8af446d1d7816a6566aff4ed80ec2060ee3ab0a3635867c5691  ./services/reference-control-plane/src/module-wiring.mjs
 ad5b23827f431ad54ea4d646ccdfddcdb2c72f0ad39adb6b632c8de91c502a23  ./services/reference-control-plane/src/modules-registry.mjs
-e8ae93c97d8707aa105c8c0f3765f15fbbfae0e1aacf2bbc9ca0bcf585aed4cb  ./services/reference-control-plane/src/observability.mjs
+f8c493b1bbf01e9be0701eb9b56dad1ae3e3226de0a7a98a5944c9015d855be2  ./services/reference-control-plane/src/observability.mjs
 b4e528bc1c794356c2117901f71bbd9a06072a82d9a919ff41f08ecadd725d61  ./services/reference-control-plane/src/oidc.mjs
 726f047c9ec8d5727ca2f5822f121e9e0dc351bb61bcbe9c15a9d90303ce012b  ./services/reference-control-plane/src/owner-module-catalog.mjs
 390507bef737431a13c44f7003c36ec03cd50cf7337c4f650242d1686256e507  ./services/reference-control-plane/src/owner-recovery.mjs
@@ -6330,7 +6330,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-72c17c28479a0f0bf26e0e734ce2edfdfa92ae73fe537a5bc515fb4889d86c00  ./services/reference-control-plane/src/server.mjs
+68ced220dd02bd2372151fe51f9085b876a4246988fd586e7a9fc1fb68cc1056  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 836d93ac41774d98b0fa6bd49c47ee2852d4218a8f910327a32f303c86f343fe  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs

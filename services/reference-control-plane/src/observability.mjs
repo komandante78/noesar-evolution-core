@@ -126,7 +126,7 @@ export function registerWatchdogSubjects(watchdog, {
   });
   watchdog.register({
     name: 'cpu', essential: false, failureThreshold: 5, maxLevel: RECOVERY_LEVELS.OBSERVE,
-    probe: () => ({ healthy: true, detail: { cores: hardware?.cpu?.cores ?? null } }),
+    probe: () => ({ healthy: true, detail: { cores: hardware?.cpu?.logicalCores ?? null } }),
   });
   watchdog.register({
     name: 'memory', essential: false, failureThreshold: 5, maxLevel: RECOVERY_LEVELS.OBSERVE,
