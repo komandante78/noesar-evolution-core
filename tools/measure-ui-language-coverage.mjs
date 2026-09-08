@@ -150,17 +150,26 @@ function pagesOf(html) {
 /**
  * The same exclusions `translateNode` applies, plus comments, which are not on screen.
  *
- * The replacement is `><` and not a space, and the difference is not cosmetic. An excluded
+ * The replacement is a TAG and not a space, and the difference is not cosmetic. An excluded
  * element SEPARATES the text around it into two DOM text nodes, which are two independent
  * translation units. Replacing it with a space glues them into one string that no text node
  * will ever equal — so every such entry would sit in the catalogue matching nothing, and the
  * sentence on screen would stay untranslated while the count claimed otherwise. The first
  * draft of this file did exactly that and produced strings like `"at  , mode  , owned by"`.
+ *
+ * The tag is `<>`, and the ORDER is the whole point — the second draft wrote `><`, which
+ * reads like a separator and is not one. The harvester matches `>text<`, so text BEFORE the
+ * excluded element has to end at a `<` and text AFTER it has to begin at a `>`. `><` puts
+ * them the wrong way round and neither side can match, so every fragment touching a `<code>`
+ * or a `<pre>` fell out of the count in silence. Measured when it was found: 50 English
+ * strings in the markup that this tool called covered, across five destinations —
+ * `view-coden-tui` reported 19 visible strings where it has 56. The browser check had been
+ * reporting them all along; nothing joined the two halves up.
  */
 function strip(body) {
-  let out = body.replace(/<!--[\s\S]*?-->/g, '><');
+  let out = body.replace(/<!--[\s\S]*?-->/g, '<>');
   for (const tag of UNTRANSLATED_TAGS) {
-    out = out.replace(new RegExp(`<${tag}[\\s\\S]*?<\\/${tag}>`, 'gi'), '><');
+    out = out.replace(new RegExp(`<${tag}[\\s\\S]*?<\\/${tag}>`, 'gi'), '<>');
   }
   return out;
 }

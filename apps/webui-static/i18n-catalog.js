@@ -42,7 +42,13 @@ import { AGENT_COMMANDS, MENU_GROUPS } from '../shared/coden/agent-commands.js';
 export const SOURCE_LANGUAGE = 'en';
 
 /** Elements whose text is not prose and must never be translated. Mirrored by the measurement tool. */
-export const UNTRANSLATED_TAGS = Object.freeze(['script', 'style', 'code', 'pre']);
+// `noscript` earns its place for a different reason than the other four. Its content is shown
+// only when JavaScript is off — and with JavaScript off this translator does not run, so the
+// text inside it cannot be translated by anything, ever. Left in, a browser WITH scripting
+// hands the walker the block's raw markup as a single text node, and the measurement reported
+// `<p class="declared-empty">CodeN Evolution is a terminal…` as an untranslated string: a gap
+// no catalogue entry could ever close, sitting on top of the real ones.
+export const UNTRANSLATED_TAGS = Object.freeze(['script', 'style', 'code', 'pre', 'noscript']);
 
 /** Display names stay in their OWN language: a person looking for Italian looks for "Italiano". */
 export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
@@ -860,6 +866,60 @@ const it = {
   // with both checks green. Translated here, and a test now asserts that every runtime-only
   // string has a translation in every catalogue, so the exemption cannot hide one again.
   'Not connected.': 'Non connesso.',
+  // Every string below sits directly beside a `<code>` or a `<pre>` in `index.html`, which is
+  // why they arrive here as fragments and not as sentences: an excluded element cuts the
+  // paragraph into separate text nodes, and a text node is the unit that gets translated. The
+  // measurement tool could not see one of them until its own separator was repaired in this
+  // same commit — so this is not new text, it is text that was English on an Italian page
+  // while every check said covered.
+  'The terminal is a region of its own below the bench, not a tab that disappears when you look at something else (': 'Il terminale è una regione a sé sotto il banco, non una scheda che sparisce quando guardi altro (',
+  '). This tab moves focus to it.': '). Questa scheda ci sposta il fuoco.',
+  ', or': ', oppure',
+  'from either shell.': 'da entrambe le shell.',
+  '— not a second client with its own state (': '— non un secondo client con uno stato suo (',
+  '). Every command reaches the exact same running': '). Ogni comando raggiunge esattamente le stesse istanze vive di',
+  '/event-ledger instances the workbench\'s own Plan and Terminal panels use.': '/event-ledger che usano i pannelli Piano e Terminale del banco stesso.',
+  'The fast path (': 'La via rapida (',
+  '): install the launcher once, then': '): installa il lanciatore una volta sola, poi',
+  'and type one word.': 'e scrivi una parola sola.',
+  'On the account you will SSH from, run': 'Sull’account da cui farai SSH, esegui',
+  '— no root, it finds the running installation by its own label and puts': '— senza root: trova l’installazione in funzione dalla sua etichetta e mette',
+  'on that account\'s': 'nel percorso dei comandi di quell’account, il',
+  '. From then on:': '. Da lì in poi:',
+  ', then just': ', poi solo',
+  '. The first run asks you to sign in (an attach code minted below, or username/password/second factor); every run after that opens with': '. Il primo avvio chiede di accedere (un codice di collegamento coniato qui sotto, oppure nome utente, password e secondo fattore); ogni avvio successivo si apre',
+  '— the client remembers this machine for 90 days, sliding, and': '— il client ricorda questa macchina per 90 giorni, scorrevoli, e',
+  'revokes it everywhere at once.': 'revoca quel ricordo ovunque in un colpo solo.',
+  'Without the launcher installed, the same session is still reachable by hand:': 'Senza il lanciatore installato, la stessa sessione resta raggiungibile a mano:',
+  ', then': ', poi',
+  '. The socket lives at': '. Il socket sta in',
+  ', mode': ', modo',
+  ', owned by the product\'s own uid (it said': ', di proprietà dell’uid del prodotto stesso (diceva',
+  'until': 'fino a',
+  '— that is the': '— quello è il socket',
+  'socket, and pointing both at it meant the terminal transport was never served);': 'e puntarli entrambi lì ha voluto dire che il trasporto del terminale non è mai stato servito);',
+  'records the measurements, the': 'registra le misure, le prove',
+  'evidence, the launcher\'s own security law, and what the two shells deliberately do not share.': 'e la legge di sicurezza del lanciatore stesso, e ciò che le due shell deliberatamente non condividono.',
+  'From a source installation, run it from a real terminal on this host (or over SSH into it).': 'Da un’installazione da sorgente, eseguilo da un terminale vero su questo host (o entrandoci via SSH).',
+  'defaults to': 'prende come valore predefinito',
+  ', then the product\'s own': ', poi il',
+  'inside its workspace. The client signs in with the same account as the WebUI — either with an attach code minted below, or with username, password and second factor — then accepts:': 'del prodotto stesso dentro il suo spazio di lavoro. Il client accede con lo stesso account della WebUI — con un codice di collegamento coniato qui sotto, oppure con nome utente, password e secondo fattore — e poi accetta:',
+  '(a workbench panel as text,': '(un pannello del banco come testo,',
+  'for the first nine bench panels) and the': 'per i primi nove pannelli del banco) e i verbi',
+  'family.': 'e affini.',
+  'Navigating it is this page\'s own mechanism:': 'Per navigarlo vale il meccanismo di questa pagina stessa:',
+  'lists every address in the product, and': 'elenca ogni indirizzo del prodotto, e',
+  '— or just': '— o solo',
+  '— jumps to one. The terminal keeps no list of its own; it asks this server, which reads the addresses off the interface you are looking at, so an address typed in one shell means the same thing in the other. What differs is disclosed rather than smoothed over: the browser hides destinations this account cannot open and the socket cannot, and a panel the terminal has no method for says so instead of printing an empty result.': '— ci salta. Il terminale non tiene un elenco suo: lo chiede a questo server, che legge gli indirizzi dall’interfaccia che hai davanti, così un indirizzo scritto in una shell vuol dire la stessa cosa nell’altra. Ciò che è diverso viene dichiarato invece che smussato: il browser nasconde le destinazioni che questo account non può aprire e il socket no, e un pannello per cui il terminale non ha un metodo lo dice, invece di stampare un risultato vuoto.',
+  'What this is not: a way to run an arbitrary shell command. Every one of those verbs is one of the product\'s own already-guarded operations —': 'Ciò che non è: un modo per eseguire un comando di shell qualsiasi. Ognuno di quei verbi è una delle operazioni già protette del prodotto stesso —',
+  'refuses EXECUTE and DELETE permanently and on purpose, on both shells alike.': 'rifiuta EXECUTE e DELETE in modo permanente e voluto, allo stesso modo su entrambe le shell.',
+  '). In a right-to-left language the pager keys follow the language:': '). In una lingua che si scrive da destra a sinistra i tasti di scorrimento seguono la lingua:',
+  'The terminal column is reachable:': 'La colonna del terminale è raggiungibile:',
+  'answers to every verb in it, against the same live session as this page.': 'risponde a ogni verbo che contiene, sulla stessa sessione viva di questa pagina.',
+  'is met on both surfaces. What the shell does not have is the selection step — the keyboard selects and then acts, the shell\'s verbs take': 'è soddisfatto su entrambe le superfici. Ciò che la shell non ha è il passo di selezione — la tastiera seleziona e poi agisce, i verbi della shell prendono',
+  'and act at once; a confirmation is still asked either way.': 'e agiscono subito; una conferma viene chiesta comunque.',
+  '. It is recorded in': '. È registrato in',
+  'as a': 'come',
   // The memory result card. The nine categories are the words §11 put in front of a person in
   // place of the schema's own, so they are translated as the plain words they are meant to be.
   'Decision': 'Decisione',

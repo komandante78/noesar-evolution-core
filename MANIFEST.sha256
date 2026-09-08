@@ -335,7 +335,7 @@ b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-s
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
 a4d9655442160562219252223738d384f5d5bfad03c3f80b7c8bd0f7e33b1046  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-79a9b43e7c5c6e5367bc3f6fdfdb97d940a169a6ff4430f724f7aa97005a5666  ./apps/webui-static/i18n-catalog.js
+e1cdd091a471263624bd10f7887eac109484cb03711cbab2cd63d69155d112b9  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 d3e3bd1ec09c2e70348521ea0105bd33204af33f8304b3b462f417a065e966d0  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
@@ -6649,7 +6649,7 @@ d1f929dfe9784e3a0e1b9b240e273aad593dd0e75f8509952b31c0a5d0d40607  ./tools/measur
 a752992cd592716166b0c361d3891386e43927d312abc9d1dab307148fa5e552  ./tools/measure-projection-coverage.mjs
 163b41020ce7e8daaa988798cb59b7bd013c3b70c145493faca805eff52ee484  ./tools/measure-replay-fidelity.mjs
 f896911e4f82e8b71499a6007e89f6c1d0f84cf55917fa35464f342ec7e980c6  ./tools/measure-simulation-accuracy.mjs
-3ce1e9aff38ea0c9077c3b5e56cbe4a124ae15873f31df1587a7b42c3cac75a6  ./tools/measure-ui-language-coverage.mjs
+993a60c614ff17bedd58d0262230c109ce42f2ca496c26cc65cebc28c2c84937  ./tools/measure-ui-language-coverage.mjs
 cd382976bc32b31112ce2e9c485a0c1e37a1fb49bea8325f5e4a0eb4a4b8a2be  ./tools/mint-service-token.mjs
 5224ac53a75e4f01fdb7b03880bc07baf978b56a4d10ce5c7b8f2edfab9c8747  ./tools/model-acquisition-e2e.mjs
 220211650b4d979b8fdc285b2d8293e4956c865359e735f1294b98b39778b961  ./tools/model-install.mjs
