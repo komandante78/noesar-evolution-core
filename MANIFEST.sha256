@@ -6606,7 +6606,7 @@ e24ca32df4b22035af50f3ebbe14a1ff0c6638f60f4d12b8b951b6ac362fcc2a  ./tools/accept
 293be8463971b4e9b93f3502166c3f32e8877d3b74f3dd278047b76401d981e3  ./tools/acceptance/a4-container-sandbox.sh
 0bd594b7f6679e290afc5f96cdded6d428185aeb439b6b0f7c7ce4b8f227987b  ./tools/acceptance/a5-recovery-and-updates.sh
 719553a3d9a6d91c8bfad7f6844d5ff16374ace4da592d9b8fcc1374b43cf85b  ./tools/acceptance/ce-020-tui-fullscreen.mjs
-d9936dd70e914fb6783ff826894712e472e37fa369cb57379663f05b3b672011  ./tools/acceptance/ce-021-two-shells.mjs
+aa208bb760e2221a17a4b3991bda44a3ac5f52ef4d47ed8d9ef155dc306ef7e4  ./tools/acceptance/ce-021-two-shells.mjs
 94eb09476471fe9370f399c42c30afa1619e7d996cee46c37f0cc3e9bdb3d8c7  ./tools/acceptance/ce-031-remote-probe.mjs
 97071a5d958826ce18b59eef8dc3e7e1781f66e4233aafb57a35f9968a7f1286  ./tools/acceptance/ce-031-second-machine.sh
 6c4f355951081432f80f7ac8ea137e17b5e35cbb8fadaf6c2f659141ccc0ec5f  ./tools/acceptance/ce-032-launcher-in-container.sh
