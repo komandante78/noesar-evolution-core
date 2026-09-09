@@ -44,7 +44,7 @@ for (const vector of vectors.cases) {
 }
 
 test('the vector file has not shrunk unnoticed', () => {
-  assert.equal(vectors.cases.length, 10);
+  assert.equal(vectors.cases.length, 12);
 });
 
 test('the shadow copies only what the plan names and leaves the source alone', () => {

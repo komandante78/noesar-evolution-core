@@ -234,6 +234,16 @@ pub struct Surprise {
     /// Named in the expectation and never run at all: neither a pass nor a failure, and
     /// silently dropping it would make an untested plan look verified.
     pub tests_never_run: Vec<String>,
+    /// Ran and failed while the expectation never claimed it either way. Measured on the live
+    /// installation on 2026-09-09: a plan declaring `/bin/false` ran it, the observation
+    /// recorded `passed: false`, and the run came back clean and was promoted — the reference
+    /// `expect` only lists a command under `tests_expected_to_pass` when the literal word
+    /// `test` occurs in it, and that installation routes `expect` to an external provider that
+    /// lists none. The rule lives in the comparison because that is the one place every
+    /// provider's expectation passes through. Defaulted so an expectation serialised before
+    /// this field existed still deserialises.
+    #[serde(default)]
+    pub declared_commands_that_failed: Vec<String>,
 }
 
 impl Surprise {
@@ -243,6 +253,7 @@ impl Surprise {
             && self.tests_expected_to_pass_that_failed.is_empty()
             && self.tests_expected_to_fail_that_passed.is_empty()
             && self.tests_never_run.is_empty()
+            && self.declared_commands_that_failed.is_empty()
     }
 }
 
@@ -295,12 +306,28 @@ pub fn compare(expectation: &Expectation, observation: &Observation) -> Outcome<
         }
     }
 
+    // A command the plan declared, which ran and failed, is a surprise on its own — the
+    // expectation naming it is not what makes a failure count. Excluded: the ones already
+    // reported above, and the ones the expectation declares as expected-to-fail, where the
+    // failure is the claim rather than a surprise.
+    let declared_commands_that_failed: Vec<String> = observation
+        .tests
+        .iter()
+        .filter(|test| {
+            !test.passed
+                && !expectation.tests_expected_to_fail.contains(&test.name)
+                && !tests_expected_to_pass_that_failed.contains(&test.name)
+        })
+        .map(|test| test.name.clone())
+        .collect();
+
     Ok(Surprise {
         expected_and_absent,
         unexpected,
         tests_expected_to_pass_that_failed,
         tests_expected_to_fail_that_passed,
         tests_never_run,
+        declared_commands_that_failed,
     })
 }
 

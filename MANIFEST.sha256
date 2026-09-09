@@ -396,7 +396,7 @@ aa28fdc701c5c5a8128df546df0533c590bfc83bfa6ba44ddc0cec1faadfe340  ./conformance/
 06daee3f51f8ffc73ed2e0c333bc1e482a485d6cc369d502ec7f338c2360b8c2  ./conformance/executor-vectors.json
 0f1c132037eb731179709e8b5ef58190b46972cd6e2fd785de1e9894a23f4c23  ./conformance/reasoning-vectors.json
 692bdafe398db4c59d616a502c0dfff57aba181bd53ffd11f1b766393b666825  ./conformance/reasoning-wire-vectors.json
-2178c832bd227e0462e1a9ebf12368b32c3ce429d167fa3942ecb10e2b3624b2  ./conformance/shadow-vectors.json
+2d8897cc6837be552ff30028a7fe08eeb9c010e2f694feb6656dc04dd56ff821  ./conformance/shadow-vectors.json
 c1a329c4f11b163bce9954d93ecebacd145b62c956c80ccef93c31b4b68b18ec  ./database/README.md
 4ac650f7b4f8c6c48b755ad1df66c63f7673a2eba2425a3730a2946fcd47404e  ./database/postgres-baseline-v0.4.0/0001_schemas_and_extensions.sql
 4c486d5977a1d828d8fe4debf5f650dd8cdc0641e1e7a075dca29bca42d5aa75  ./database/postgres-baseline-v0.4.0/0002_identity_and_sessions.sql
@@ -970,8 +970,8 @@ d0cdf42fb80f72621290e3da9b224e20050baac388e6fc5460c2959a83066c4e  ./rust/crates/
 eb95610ccccf8b743e23cbfb4e7cca8ce18484377aa8b9bbc6c88ed7dd04586c  ./rust/crates/noesar-security-kernel/Cargo.toml
 78e86ec8d90ef76c424df4a6e417cddc373f38511b6f179a7024708736b83129  ./rust/crates/noesar-security-kernel/src/lib.rs
 9baf5f7a976d098f1d6f87d2292739884df8f5284be1aaaa695261efa7b1a822  ./rust/crates/noesar-shadow/Cargo.toml
-5d8d8ac6c852a71d2cc29ba285f753aec3523cb7f3f6d8def45b429dc336844d  ./rust/crates/noesar-shadow/src/lib.rs
-4f897a70b59b5a75ed9a62907e3a1cf6c280c2d620abba83a87b5f78e965c876  ./rust/crates/noesar-shadow/tests/conformance.rs
+b5aa0d8406b3b68db15bfaec09ed0455a8cad3b68628cec535a94244ad04c6c2  ./rust/crates/noesar-shadow/src/lib.rs
+df84cdf53b7d7894e1a8653186dcbc1eba75626582c50b9d179e57b80f5f6cda  ./rust/crates/noesar-shadow/tests/conformance.rs
 41af421aea85c9f0a0a00182e8e271242d96da3c3bbd51f8b93326062c43a955  ./rust/crates/noesar-supervisor/Cargo.toml
 cbd501a6cbd58a9c30d9f340073e619ae1788a59bf3e06630f73fb030852ed68  ./rust/crates/noesar-supervisor/src/lib.rs
 66a4f75aff3d9a8420aacb8ceeab48c50a5d0ef365534d40cb24d4b7475ed9a7  ./rust/crates/noesar-supervisor/src/main.rs
@@ -6336,7 +6336,7 @@ e76cb25c4215a07c4bf6f65a22b2a62cc7e9f42d88b13ecbddaae8f66a99929f  ./services/ref
 878ff33816513f648c976747e95ea5d813cb20693c52a5d15eb112da9b7b8122  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
-5ced1f64b9e227a3cf010e8a63c385a34b86501d1d6649699ba5c828910eb497  ./services/reference-control-plane/src/shadow.mjs
+ee67ad4850eb08494f8053ae971559c05c300c0b223f4c6b5e9244b56f9c9b66  ./services/reference-control-plane/src/shadow.mjs
 9eb1f8732606cf2ad1ce49a783a70e4dfb93debfb8efe4938e151c91966731e2  ./services/reference-control-plane/src/skill-catalog.mjs
 0959d1554ed9798117accbcf1bd04a4c8c62c7df8c7d006c0ec345224dd6ff58  ./services/reference-control-plane/src/store.mjs
 0067fbae34832e7a5564d035d54256d1e277f64aa55ee0ed97191e54926bf53d  ./services/reference-control-plane/src/technology-radar.mjs
@@ -6537,7 +6537,7 @@ f98f96b0b9fc9c26ef17b41e8642542b741ea32d858b8fa5fd47a391b3cea861  ./services/ref
 afedb097755bd3bad4e44c21ab83ad1cf0fc536ffe8a008990c73ad4ba14bdbb  ./services/reference-control-plane/test/session-protocol.test.mjs
 1bf914819be6aa38736014e6df0e6788b6c06ed4c444bc988e2bb25bb8a1b275  ./services/reference-control-plane/test/session-replay.test.mjs
 f41afa9babed25b3f3aa4044045de32a5eb7e1bff6c31df59d730752552ea357  ./services/reference-control-plane/test/setup-token.test.mjs
-675a7d79e194ade7759d86238a4fe0a044f4c4b1ceb74e38e6840a1ef35027bb  ./services/reference-control-plane/test/shadow-vectors.test.mjs
+dc19903ed6316e93911f15865f4a6a1e2c5a3ea28c859309c75b88891f7126b5  ./services/reference-control-plane/test/shadow-vectors.test.mjs
 8bc07e0c8a7700eb7e4a657f261164a3edfdbc7edd010961b7c32167b6b3dd2d  ./services/reference-control-plane/test/shared-static-serving.test.mjs
 6f42f0c43cc8ee471a17f89d6895ffce8ce17b33b88482e4ee6056a605aee79e  ./services/reference-control-plane/test/skill-catalog.test.mjs
 8785b7a09f59c7e32176f6b87bcf100e81a60b5c1e1cd6280c6cd5d5d1baf53e  ./services/reference-control-plane/test/socket-path-isolation.test.mjs

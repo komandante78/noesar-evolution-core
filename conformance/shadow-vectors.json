@@ -71,6 +71,20 @@
       "expectation": { "pathsTheDiffMustTouch": ["src/gone.rs"], "testsExpectedToPass": [], "testsExpectedToFail": [] },
       "observation": { "changed": { "src/gone.rs": "DELETED" }, "tests": [] },
       "expected": { "clean": true }
+    },
+    {
+      "id": "SHADOW-011",
+      "why": "a command the plan declared ran and FAILED, and the expectation never named it: measured 2026-09-09 on the live installation, such a run came back clean and promoted, because the reference `expect` lists a command under testsExpectedToPass only when the literal word `test` occurs in it, and this installation routes `expect` to an external provider that lists none at all",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": [], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "/bin/false", "passed": false }] },
+      "expected": { "clean": false, "declaredCommandsThatFailed": ["/bin/false"] }
+    },
+    {
+      "id": "SHADOW-012",
+      "why": "a command the expectation says will fail is not a surprise when it fails — the claim held, and the rule above must not swallow the fail-first case",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": [], "testsExpectedToFail": ["/bin/false"] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "/bin/false", "passed": false }] },
+      "expected": { "clean": true, "declaredCommandsThatFailed": [] }
     }
   ]
 }

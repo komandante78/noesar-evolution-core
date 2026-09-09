@@ -430,18 +430,41 @@ export function compare(expectation, observation) {
     else if (result.passed) testsExpectedToFailThatPassed.push(name);
   }
 
+  // A command the plan DECLARED, which ran and failed, cannot leave the run clean — whether or
+  // not the expectation named it. Measured on the live installation on 2026-09-09, sandbox on:
+  // a plan declaring `/bin/false` ran it, `observation.tests` recorded `passed: false`, and the
+  // run still came back clean and PROMOTED. Two reasons compounded, and either alone is enough:
+  // `reasoning.mjs::expect` lists a command under `testsExpectedToPass` only when the literal
+  // word `test` occurs in the command string, so `/bin/false` was never claimed; and this
+  // installation routes `expect` to ATOM, which lists none at all. The property the product
+  // states of itself — a declared test that passes promotes, one that fails does not — held
+  // only for commands whose text happened to contain a word.
+  //
+  // The rule belongs HERE for the same reason the `.` rule above does: this is the ONLY place
+  // every provider's expectation passes through, including an external one this build does not
+  // own and cannot rebuild. A command the expectation declares as expected-to-FAIL is excluded:
+  // there its failure is the claim, not a surprise (`SHADOW-012`).
+  const expectedToFail = expectation.testsExpectedToFail ?? [];
+  const declaredCommandsThatFailed = (observation.tests ?? [])
+    .filter((test) => !test.passed
+      && !expectedToFail.includes(test.name)
+      && !testsExpectedToPassThatFailed.includes(test.name))
+    .map((test) => test.name);
+
   const surprise = {
     expectedAndAbsent: declared.filter((path) => !touched.includes(path)),
     unexpected: touched.filter((path) => !declared.includes(path)),
     testsExpectedToPassThatFailed,
     testsExpectedToFailThatPassed,
     testsNeverRun,
+    declaredCommandsThatFailed,
   };
   surprise.clean = surprise.expectedAndAbsent.length === 0
     && surprise.unexpected.length === 0
     && surprise.testsExpectedToPassThatFailed.length === 0
     && surprise.testsExpectedToFailThatPassed.length === 0
-    && surprise.testsNeverRun.length === 0;
+    && surprise.testsNeverRun.length === 0
+    && surprise.declaredCommandsThatFailed.length === 0;
   return surprise;
 }
 

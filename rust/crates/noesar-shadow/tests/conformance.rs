@@ -77,6 +77,7 @@ fn every_shadow_vector_passes() {
             ("testsNeverRun", &surprise.tests_never_run),
             ("testsExpectedToPassThatFailed", &surprise.tests_expected_to_pass_that_failed),
             ("testsExpectedToFailThatPassed", &surprise.tests_expected_to_fail_that_passed),
+            ("declaredCommandsThatFailed", &surprise.declared_commands_that_failed),
         ] {
             if !vector["expected"][field].is_null() {
                 assert_eq!(actual, &strings(&vector["expected"][field]), "{id} {field}");
@@ -87,5 +88,5 @@ fn every_shadow_vector_passes() {
 
     // A vector file that silently emptied would make the loop above pass by running zero
     // times, and the suite would report green for having checked nothing.
-    assert_eq!(checked, 10, "the vector file must not shrink unnoticed");
+    assert_eq!(checked, 12, "the vector file must not shrink unnoticed");
 }
