@@ -203,5 +203,17 @@ process.stdout.write(`FALSE_PREDICTIONS=${falseTotal} MISSES=${missTotal}\n`);
 // Reported apart on purpose: a predictor that names an event which never happened and one
 // that misses an event that did are wrong in opposite directions, and only the second can
 // let a change through unnoticed.
+
+// Nothing decided is not a perfect score. `exact === decided.length` is 0 === 0 when every
+// case skipped or was refused, so the run printed PREDICTION_EXACT_ON_EVERY_CASE and exited
+// 0 — a green verdict, and a passing exit code, from a measurement that measured nothing.
+// The same category is already guarded above for the oracle (VERDICT=INSTRUMENT_UNPROVEN,
+// exit 2); this is its twin, and it exits the same way: the instrument ran, it just did not
+// establish anything. Seen on 2026-09-09 with all 7 cases skipped.
+if (decided.length === 0) {
+  process.stdout.write('VERDICT=NO_CASES_DECIDED\n');
+  process.exit(2);
+}
+
 process.stdout.write(`VERDICT=${exact === decided.length ? 'PREDICTION_EXACT_ON_EVERY_CASE' : 'PREDICTION_DIVERGES_FROM_REALITY'}\n`);
 process.exit(exact === decided.length ? 0 : 1);

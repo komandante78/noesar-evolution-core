@@ -6652,7 +6652,7 @@ d1f929dfe9784e3a0e1b9b240e273aad593dd0e75f8509952b31c0a5d0d40607  ./tools/measur
 4e43795434423d9d21719a65fec7762b162f82e2a7f2dc70de22b69ae5ea4613  ./tools/measure-page-liveness.mjs
 a752992cd592716166b0c361d3891386e43927d312abc9d1dab307148fa5e552  ./tools/measure-projection-coverage.mjs
 163b41020ce7e8daaa988798cb59b7bd013c3b70c145493faca805eff52ee484  ./tools/measure-replay-fidelity.mjs
-f896911e4f82e8b71499a6007e89f6c1d0f84cf55917fa35464f342ec7e980c6  ./tools/measure-simulation-accuracy.mjs
+afa2747207b77f1395a96c72408998dd979a0ea6b9ce6da409a5a634e862efad  ./tools/measure-simulation-accuracy.mjs
 993a60c614ff17bedd58d0262230c109ce42f2ca496c26cc65cebc28c2c84937  ./tools/measure-ui-language-coverage.mjs
 cd382976bc32b31112ce2e9c485a0c1e37a1fb49bea8325f5e4a0eb4a4b8a2be  ./tools/mint-service-token.mjs
 5224ac53a75e4f01fdb7b03880bc07baf978b56a4d10ce5c7b8f2edfab9c8747  ./tools/model-acquisition-e2e.mjs
