@@ -173,6 +173,11 @@ export const ENGINE_STATE_PATHS = Object.freeze([
   'state/watchdog.json',
   'state/ai-workspace.json',
   'state/scim-tokens.json',
+  // Found by tightening the guard below, not by a symptom: `server.mjs` writes it beside the
+  // others and neither list named it. Hidden rather than declared visible because the engine
+  // itself put it in `state/` and not in `files/`, and because hiding it from the SCANNER
+  // takes nothing from the operator — the Research page reads this path directly.
+  'state/research-reports.json',
   // The audit chain. A scanner that can read it can propose a write to the record of what
   // it did — the defect `D-0338` names, and this is the other half of it.
   'audit',

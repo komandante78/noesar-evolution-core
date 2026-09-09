@@ -69,8 +69,15 @@ describe('the engine hides its own state from its own scanner', () => {
     // what those entries actually are.
     for (const path of workspaceWrites()) {
       const hidden = ENGINE_STATE_PATHS.some((e) => path === e || path.startsWith(`${e}/`));
-      const declaredVisible = topSegment(path) in DELIBERATELY_SCANNED_PATHS;
-      const byName = ['shadows', '.workspace'].includes(topSegment(path));
+      // `state` is declared visible as a CONTAINER only — its own reason string in
+      // `DELIBERATELY_SCANNED_PATHS` says every engine file inside it is excluded by name —
+      // so that declaration must not be allowed to cover its children. Without this line the
+      // guard read `state/research-reports.json` (written at `server.mjs:412`) as covered
+      // while nothing covered it: the same hole this file exists to close, one level deeper.
+      const container = topSegment(path);
+      const declaredVisible = container in DELIBERATELY_SCANNED_PATHS
+        && !(container === 'state' && path !== 'state');
+      const byName = ['shadows', '.workspace'].includes(container);
       assert.ok(hidden || declaredVisible || byName,
         `the engine writes \`${path}\` into the workspace and neither list covers it — `
         + 'add it to ENGINE_STATE_PATHS (hidden) or DELIBERATELY_SCANNED_PATHS (visible, with the reason)');
