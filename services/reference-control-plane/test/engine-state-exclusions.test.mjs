@@ -20,6 +20,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   ENGINE_STATE_PATHS, DELIBERATELY_SCANNED_PATHS, resolveExclusions, buildRepositoryMap,
+  literalSearch,
 } from '../src/repo-map.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -140,6 +141,46 @@ describe('and the scanner really cannot see them', () => {
       assert.ok(!paths.includes('CANARY_AUTH'), 'the authentication state must not be scanned');
       assert.ok(!paths.includes('CANARY_AUDIT'), 'the audit chain must not be scanned');
       assert.ok(!/"path":"state\/auth\.json"/.test(paths), 'state/auth.json must not appear as a path');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a copy of an excluded file is still the excluded file', () => {
+  // `D-0347` derives the list from what the engine WRITES, which is exactly why it could not
+  // see these: `state/auth.json.bak_pre_mfa_off_20260906T095916Z` was made by an operator
+  // with `cp`, not by any `join(workspace, …)` in the source. Measured on 2026-09-09, both
+  // readers of `literalSearch` handed that copy over — `GET /api/v1/repo-map/search?q=scrypt`
+  // returned it to a session holding only `workspace.read`, and `groundRequest()` read it
+  // whole into a plan, where `GET /api/v1/workspace-actions/:id` shows it to whoever can read
+  // the run. `state/auth.json` beside it was hidden correctly the whole time: the list was
+  // right, the matching was too literal.
+  //
+  // One oracle, not two: `buildRepositoryMap` reaches the tree through the same `walk` and
+  // the same exclusions, so a second test there passes before the fix as well as after — a
+  // test never seen failing proves nothing.
+  const fixture = () => {
+    const root = mkdtempSync(join(tmpdir(), 'noesar-exclusion-copy-'));
+    mkdirSync(join(root, 'state'), { recursive: true });
+    writeFileSync(join(root, 'state/auth.json'), '{"scheme":"scrypt","hash":"CANARY_LIVE"}\n');
+    writeFileSync(join(root, 'state/auth.json.bak_pre_mfa_off_20260906T095916Z'), '{"scheme":"scrypt","hash":"CANARY_COPY"}\n');
+    // The operator's own file, in the same directory and deliberately NOT matching: the rule
+    // attaches to `<excluded file>.`, and hiding this one would be the opposite failure —
+    // the one `DELIBERATELY_SCANNED_PATHS` and `durability.test.mjs` exist to prevent.
+    writeFileSync(join(root, 'state/machine.mjs'), 'export const CANARY_OPERATOR = 1;\n');
+    return root;
+  };
+
+  test('a search cannot reach the copy, and still reaches the operator\'s own file', () => {
+    const root = fixture();
+    try {
+      assert.equal(literalSearch(root, 'CANARY_COPY').matches.length, 0,
+        'a `.bak_` copy of state/auth.json carries the same credential material and must not be searchable');
+      assert.equal(literalSearch(root, 'CANARY_LIVE').matches.length, 0,
+        'state/auth.json itself must not be searchable');
+      assert.ok(literalSearch(root, 'CANARY_OPERATOR').matches.length > 0,
+        'the operator\'s own state/machine.mjs must stay searchable');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

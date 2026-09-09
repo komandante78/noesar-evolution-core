@@ -24,7 +24,7 @@
 // more certain than it is, is worse than no signal.
 
 import { readFileSync, readdirSync, lstatSync } from 'node:fs';
-import { extname, join, relative, resolve, sep } from 'node:path';
+import { basename, extname, join, relative, resolve, sep } from 'node:path';
 
 export class RepoMapError extends Error {
   constructor(kind, reason) {
@@ -233,6 +233,20 @@ function walk(rootDir, maxFiles, excludedPaths = EMPTY_EXCLUSIONS) {
   const skippedSymlinks = [];
   let truncated = false;
   const stack = [rootDir];
+  // A COPY of an excluded file is the same material under a name no list could have held in
+  // advance. Measured on 2026-09-09: `state/auth.json.bak_pre_mfa_off_20260906T095916Z` was
+  // returned by `GET /api/v1/repo-map/search?q=scrypt` to a session holding only
+  // `workspace.read`, and read whole into a plan by `groundRequest()`, while `state/auth.json`
+  // beside it stayed hidden the entire time — the list was right, the matching was too literal.
+  // The derivation in `engine-state-exclusions.test.mjs` could not have caught it: that guard
+  // reads what the engine WRITES, and these copies were made by an operator with `cp`.
+  //
+  // Only entries that NAME A FILE take this rule. `config` is a directory, and an operator's
+  // `config.example.json` beside it is plausibly theirs — hiding an operator's file is the
+  // worse failure, which is the standing choice `DELIBERATELY_SCANNED_PATHS` already records.
+  // ponytail: a copied DIRECTORY (`config.bak/`) is therefore still walked. Excluding those by
+  // prefix costs that same false positive; revisit when one actually appears.
+  const fileExclusions = [...excludedPaths].filter((path) => basename(path).includes('.'));
   while (stack.length && !truncated) {
     const dir = stack.pop();
     let entries;
@@ -244,7 +258,8 @@ function walk(rootDir, maxFiles, excludedPaths = EMPTY_EXCLUSIONS) {
       // which is right for `node_modules` and wrong for the product's own state: an operator's
       // repository is allowed to contain a directory called `state`, and hiding it by name
       // would be this scanner deciding part of their source tree belongs to us.
-      if (excludedPaths.has(full)) continue;
+      if (excludedPaths.has(full)
+        || fileExclusions.some((excluded) => full.startsWith(`${excluded}.`))) continue;
       if (entry.isDirectory()) {
         if (IGNORED_DIRS.has(entry.name)) continue;
         stack.push(full);
