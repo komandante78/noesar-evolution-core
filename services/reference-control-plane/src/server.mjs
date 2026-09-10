@@ -385,6 +385,10 @@ const providerGateway = new ProviderGateway({
   activeRuntime: () => { localModels.liveness(); return localModels.status(); },
 });
 providerGateway.ensureDefaults();
+// A paid API key in the container environment (ANTHROPIC_API_KEY, OPENAI_API_KEY, KIMI_API_KEY)
+// keys, consents and enables that provider here — no console step. Absent var, nothing happens;
+// a console-set credential is never overwritten.
+providerGateway.ensureFromEnv();
 const fileExtractor = new FileExtractor({
   blobRoot:join(workspace, 'files'),
   // `D-0651`: `providerGateway` is defined above this line — the one place in the process both

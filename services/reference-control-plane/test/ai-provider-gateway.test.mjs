@@ -110,3 +110,41 @@ test('complete() refuses an external provider whose hostname resolves to a priva
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// D-06xx. `ensureFromEnv()` is the LibreChat-`${VAR}` / Open WebUI-`.env` bootstrap: a paid key
+// in the container environment makes the provider usable with no console step. The three claims
+// that matter — an absent var changes nothing, a present var produces exactly the keyed +
+// consented + enabled profile the settings page would, and a credential already set from the
+// console is never clobbered by a later boot.
+test('ensureFromEnv() keys, consents and enables a provider from its env var; the console still wins', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-provider-env-'));
+  const store = new AtomicJsonStore(join(dir, 'state.json'));
+  const vault = new CredentialVault({ keyPath: join(dir, 'provider.key') });
+  const gateway = new ProviderGateway({ store, vault, lookup: async () => [{ address: '93.184.216.34', family: 4 }] });
+  const stored = (type) => store.read().providerProfiles.find((item) => item.type === type);
+  try {
+    gateway.ensureDefaults();
+
+    // no var -> nothing changes
+    assert.deepEqual(gateway.ensureFromEnv({}), []);
+    assert.equal(gateway.list().find((item) => item.type === 'anthropic').enabled, false);
+
+    // var present -> keyed, consented, enabled, with the optional model override applied
+    assert.deepEqual(gateway.ensureFromEnv({ ANTHROPIC_API_KEY: 'sk-ant-fromenv', ANTHROPIC_MODEL: 'claude-x' }), ['anthropic']);
+    const p = gateway.list().find((item) => item.type === 'anthropic');
+    assert.equal(p.enabled, true);
+    assert.equal(p.credentialConfigured, true);
+    assert.equal(p.defaultModel, 'claude-x');
+    assert.equal(p.consent.granted, true);
+    assert.equal(p.consent.allowTools, true);
+    assert.ok(p.consent.dataClasses.includes('tool schemas'));
+    assert.equal(vault.resolve(stored('anthropic')), 'sk-ant-fromenv');
+
+    // a credential set from the console is never overwritten by a later env bootstrap
+    gateway.setCredential(stored('openai').id, 'console-key', { persistence: 'encrypted' });
+    assert.deepEqual(gateway.ensureFromEnv({ OPENAI_API_KEY: 'sk-openai-fromenv' }), []);
+    assert.equal(vault.resolve(stored('openai')), 'console-key');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

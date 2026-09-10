@@ -6246,7 +6246,7 @@ f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/ref
 6d3c76415622d493f6e21a891b1c797ea2780c7cd6a81ba6d6ef7dc0810dd577  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
 baeffcf7725541c141f60d2b86e8af1ab3f6ad96513610f89e3ff0e598ce426b  ./services/reference-control-plane/src/ai-workspace/pii-redaction.mjs
 e9b8bb511a5f9f29a8f9f8267dc40d16d04c43034644d162aa64b5adab8fe16d  ./services/reference-control-plane/src/ai-workspace/privacy-redaction.mjs
-6a4af02b15184ef9158277973893d9678e97793ef65047c46d36a633fb079caa  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
+a8267dce76e7f90cf1fc5f4dd670fd201937345d37a7c550025884de69a665dd  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
 0f8f4f23bed3fc681851fc647acacd24ad67de241dd9d44f428f2016ae109010  ./services/reference-control-plane/src/ai-workspace/search.mjs
 e3d905867839a527a995c86fbb711f26375c089d7e9e00407b0ab6baa841675c  ./services/reference-control-plane/src/ai-workspace/tool-call-stream.mjs
 9550748da15180f83387f167d08adfd0bb6909114e0fa177b0609d62b959bf86  ./services/reference-control-plane/src/ai-workspace/tool-executor.mjs
@@ -6333,7 +6333,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-331d704ce7a0de1cd8d17f4e1d8d65fa0d449d956722d82b78f1e7ebe4bfff8c  ./services/reference-control-plane/src/server.mjs
+d89a4ce8f85494ecc8bbf1b6e4b85a9d9915ff2984d5a3ce0f25977a7965231a  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 33ed285a8eb79a36198b26022e06e7a424d5dd80264aa972e63d64eab718d82f  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6366,7 +6366,7 @@ fd599a8bef7ba4d81a9f7779e1289d55c889923f238a9582cb461046c433ace7  ./services/ref
 0158e333627bf24b632d4bd1be27df68571516dd5fdeaca840b3cebb5bd2d798  ./services/reference-control-plane/test/agents-archive-http.test.mjs
 60dd171a2238942b849ed659204911f065a781d62bf94fb929445cbe6dd9e84c  ./services/reference-control-plane/test/ai-agent-service.test.mjs
 c7a4d44ef429d8be0792c21e207a8a4b24bd6d743f4759348931ca3f8b269a84  ./services/reference-control-plane/test/ai-context-graph.test.mjs
-de6de0978707d525e44ea4dc9b1642cadf182838cfc85deead4b49750227850e  ./services/reference-control-plane/test/ai-provider-gateway.test.mjs
+3622ba74d4241e8b9ff02b171fe5f2418b95baa1994d857e0b878a06ebd0e7bb  ./services/reference-control-plane/test/ai-provider-gateway.test.mjs
 b788e43a4553068fc9db158e03e61a918368fada7b2af54137201e79ca100c41  ./services/reference-control-plane/test/ai-state-migration.test.mjs
 211196abb94cd0a39a1cd5a185edf781510f2f853448d9d1b3a36c55bdb80e5d  ./services/reference-control-plane/test/ai-workspace.test.mjs
 fc1fb90903479d51017717de91437cc9bb72852caa64059284e3dce047b3b203  ./services/reference-control-plane/test/api-target-probe.test.mjs

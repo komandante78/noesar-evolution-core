@@ -15,6 +15,19 @@ const DEFAULT_CATALOG = Object.freeze([
   { type:'kimi', name:'Kimi / Moonshot AI', apiStyle:'openai-chat', baseUrl:'https://api.moonshot.cn/v1', external:true, credentialRequired:true },
   { type:'custom-openai-compatible', name:'Custom OpenAI-compatible', apiStyle:'openai-chat', baseUrl:null, external:true, credentialRequired:'optional' },
 ]);
+// Env-var bootstrap for external providers — LibreChat's `${VAR}`, Open WebUI's `.env`. A paid
+// key placed in the container environment IS the operator's trust decision, so `ensureFromEnv()`
+// below keys, consents and enables the matching profile with no console step. One var per type;
+// `*_BASE_URL` / `*_MODEL` are optional overrides (a proxy, and the default model a bare provider
+// pick would otherwise fail without).
+const ENV_BOOTSTRAP = Object.freeze([
+  { type:'anthropic', apiKeyVar:'ANTHROPIC_API_KEY', baseUrlVar:'ANTHROPIC_BASE_URL', modelVar:'ANTHROPIC_MODEL' },
+  { type:'openai', apiKeyVar:'OPENAI_API_KEY', baseUrlVar:'OPENAI_BASE_URL', modelVar:'OPENAI_MODEL' },
+  { type:'kimi', apiKeyVar:'KIMI_API_KEY', baseUrlVar:'KIMI_BASE_URL', modelVar:'KIMI_MODEL' },
+]);
+// Every data class the chat orchestrator ever assembles (see `dataClassesFor` there). A key in
+// the environment consents to all of them; a narrower grant belongs to the console, per profile.
+const BOOTSTRAP_DATA_CLASSES = Object.freeze(['prompt','selected messages','project instructions','selected memory','selected sources','tool schemas']);
 
 function now() { return new Date().toISOString(); }
 // A pooled keep-alive connection that the upstream has already closed fails with
@@ -237,6 +250,37 @@ export class ProviderGateway {
     const existing=new Set(this.store.read().providerProfiles.map((item)=>item.type));const created=[];
     for(const descriptor of DEFAULT_CATALOG.filter((item)=>item.type!=='custom-openai-compatible'))if(!existing.has(descriptor.type))created.push(this.create({type:descriptor.type,name:descriptor.name,baseUrl:descriptor.baseUrl,external:descriptor.external,apiStyle:descriptor.apiStyle,defaultModel:''}));
     return created;
+  }
+
+  /**
+   * Key, consent and enable each external provider whose API key is present in `env`. Run once
+   * at start-up, after `ensureDefaults()`. Absent var: the profile is left exactly as it was.
+   * A credential already set from the console is never overwritten — the console wins, because
+   * it is the more specific act. Every step reuses a public method, so an env-bootstrapped
+   * profile is byte-for-byte what the settings page would have produced by hand.
+   */
+  ensureFromEnv(env = process.env) {
+    const applied = [];
+    for (const spec of ENV_BOOTSTRAP) {
+      const apiKey = String(env[spec.apiKeyVar] ?? '').trim();
+      if (!apiKey) continue;
+      try {
+        const profile = this.store.read().providerProfiles.find((item) => item.type === spec.type);
+        if (!profile || profile.encryptedCredential || profile.credentialEphemeral) continue;
+        const patch = {};
+        const baseUrl = String(env[spec.baseUrlVar] ?? '').trim(); if (baseUrl) patch.baseUrl = baseUrl;
+        const model = String(env[spec.modelVar] ?? '').trim(); if (model) patch.defaultModel = model;
+        if (Object.keys(patch).length) this.update(profile.id, patch);
+        this.setCredential(profile.id, apiKey, { persistence:'encrypted' });
+        this.grantConsent(profile.id, { granted:true, dataClasses:[...BOOTSTRAP_DATA_CLASSES], allowTools:true });
+        this.update(profile.id, { enabled:true });
+        applied.push(spec.type);
+      } catch (error) {
+        this.ledger?.append({ actor:'system', action:'provider.env-bootstrap', result:'failed', details:{ type:spec.type, reason:error.message } });
+      }
+    }
+    if (applied.length) this.ledger?.append({ actor:'system', action:'provider.env-bootstrap', result:'success', details:{ types:applied } });
+    return applied;
   }
 
   // The running model is listed FIRST, and only while it is running. It is not stored, so it
