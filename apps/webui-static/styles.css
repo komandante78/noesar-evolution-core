@@ -313,6 +313,12 @@ button[data-busy]{opacity:.65;cursor:progress}
 /* --- 01_PRODUCT/12: external-connection disclosures --- */
 .privacy-disclosures{margin:-12px 0 24px;padding:15px;border:1px solid var(--border-warn-soft);border-radius:13px;background:linear-gradient(145deg,var(--panel),var(--panel2))}
 .privacy-disclosures .panel-title{margin-bottom:10px}
+.privacy-disclosures #privacyDisclosuresTitle{cursor:pointer;user-select:none}
+.privacy-disclosures #privacyDisclosuresTitle::before{content:"\25BE";margin-inline-end:6px;font-size:.8em;opacity:.65}
+.privacy-disclosures.collapsed{margin-bottom:12px}
+.privacy-disclosures.collapsed #privacyDisclosuresTitle{margin-bottom:0}
+.privacy-disclosures.collapsed #privacyDisclosuresTitle::before{content:"\25B8"}
+.privacy-disclosures.collapsed #privacyDisclosureList,.privacy-disclosures.collapsed #privacyTelemetry{display:none}
 .privacy-disclosure{margin-bottom:10px}
 .privacy-disclosure p{margin:6px 0;color:var(--text-body);font-size:calc(var(--text-scale)*12px);line-height:1.55;word-break:break-word}
 .privacy-disclosure strong{color:var(--text-strong)}
