@@ -6353,7 +6353,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 372e40a6fc034cc4f7d376f668de00c6aa169d07078f1f1d85d7236f60667d44  ./services/reference-control-plane/src/watchdog.mjs
 6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  ./services/reference-control-plane/src/webauthn.mjs
 0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  ./services/reference-control-plane/src/websocket.mjs
-d91027498ff25594e10df33774f9f3ad69f25bd11788b9b3d70cc0d2147ec463  ./services/reference-control-plane/src/workspace-actions.mjs
+c80939b84b02a07e1c9d31d598ae5890aa52ce7f0746f56342c78831f1b414c4  ./services/reference-control-plane/src/workspace-actions.mjs
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs
@@ -6433,6 +6433,7 @@ cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/ref
 843315f3161e249a0d8001a31e746d3224e34204dc0dfa289070aa2bf057afd8  ./services/reference-control-plane/test/coden-invariant-adversarial.test.mjs
 deb788e4a9b4122aac1423a56bd630dc9698b06b297c054d2e841ad789ee3cd5  ./services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs
 b8c6c8ee8d926b8646435156d6222a84987d6775acf4e8592547f6d22893e2a9  ./services/reference-control-plane/test/coden-path-authorization.test.mjs
+115235ffb5e8f627713cc6c794f6c9513940eeb14285b946807a4e2a17817e3a  ./services/reference-control-plane/test/coden-repair-cycle.test.mjs
 3070a2fd0045885e242b04486cae154ed2cb7e1aa309a12fbe30b8514c8f125b  ./services/reference-control-plane/test/coden-shell-parity.test.mjs
 e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/reference-control-plane/test/coden-spa-catchall.test.mjs
 170021ec6f6f0213aebc62ba624470b1ca2f9ad6db979c21a98ed2298f7f9330  ./services/reference-control-plane/test/coden-terminal-client.test.mjs

@@ -167,6 +167,68 @@ function readTextIfSmall(path) {
 }
 
 /**
+ * How much of a command's output travels back to the Author, per command.
+ *
+ * Taken from the END and not the start: a build that prints a thousand lines puts the error it
+ * stopped on last, and a head-first budget would send the model the banner instead of the fault.
+ */
+const REPAIR_OUTPUT_BUDGET = 2000;
+
+/**
+ * What went wrong, in sentences a model can act on — the half of the loop that never existed.
+ *
+ * `surprise` says WHICH expectation broke. The EXECUTE outcomes carry the exit code and the text
+ * the command actually printed, and those are two different files' worth of information, which
+ * is why both are read here. `observation.tests` is deliberately NOT the source: it carries
+ * `{name, passed}`, and a model asked to repair «the test failed» has been told only what it
+ * already knew.
+ *
+ * A command that failed and is in neither surprise list was DECLARED to fail — there the failure
+ * is the claim, so there is nothing to repair and nothing is said about it.
+ */
+export function repairBrief(result, { budget = REPAIR_OUTPUT_BUDGET } = {}) {
+  if (!result) return [];
+  const tail = (text) => {
+    const value = String(text ?? '').trim();
+    if (!value) return '';
+    return value.length <= budget ? value : `…${value.slice(-budget)}`;
+  };
+  const lines = [];
+
+  // A comparison that could not run at all, and the commonest way a small model fails.
+  //
+  // FOUND BY EXECUTING, not by reading: asked to rewrite a file, a weak model returns the file
+  // it was given. `author()` reports that honestly as `unchanged`, nothing is written, the
+  // observation has an empty change set, and `compare()` REFUSES it — «an observation of
+  // nothing cannot be compared: it is indistinguishable from a clean run». So `surprise` is
+  // `null` on the exact failure a repair exists to fix, and a brief that read only `surprise`
+  // had nothing to say about it. `ok` is false either way, so the run is dirty and unpromotable;
+  // what was missing was a sentence explaining WHY to the only party that can act on it.
+  if (result.comparisonRefused) {
+    lines.push(`the change could not be compared: ${result.comparisonRefused}`);
+    if (Object.keys(result.observation?.changed ?? {}).length === 0) {
+      lines.push('no declared file changed at all — the previous answer returned the file it was given, byte for byte. Rewrite it so that it actually differs.');
+    }
+  }
+
+  const surprise = result.surprise ?? null;
+  if (!surprise) return lines;
+  const surprising = new Set([
+    ...(surprise.declaredCommandsThatFailed ?? []),
+    ...(surprise.testsExpectedToPassThatFailed ?? []),
+  ]);
+  for (const outcome of result.outcomes ?? []) {
+    if (outcome.operation !== 'EXECUTE' || !outcome.name || !surprising.has(outcome.name)) continue;
+    const printed = tail(outcome.stderr) || tail(outcome.stdout);
+    lines.push(`the declared command \`${outcome.name}\` exited ${outcome.exitCode}${printed ? ` and printed:\n${printed}` : ' and printed nothing'}`);
+  }
+  for (const name of surprise.testsNeverRun ?? []) lines.push(`the declared test \`${name}\` never ran`);
+  for (const path of surprise.expectedAndAbsent ?? []) lines.push(`\`${path}\` was declared as changed and no change reached it`);
+  for (const path of surprise.unexpected ?? []) lines.push(`\`${path}\` was written and no step declared it`);
+  return lines;
+}
+
+/**
  * One orchestrator per server process.
  *
  * `#runs` is the read path and stays a Map — every lookup in this file goes through it. What
@@ -1520,6 +1582,222 @@ export class WorkspaceActionOrchestrator {
     if (!shadow) return;
     this.#shadows.delete(runId);
     try { shadow.discard(); } catch { /* scratch space; a failure to remove it must not mask the caller's outcome */ }
+  }
+
+  /**
+   * The repair half of the cycle — *modifica → test → ripara*.
+   *
+   * # What was missing, measured before this existed
+   *
+   * The product had every half of this loop except the join. `author()` has accepted `attempts`
+   * and `previousAttemptDigests` since it was written, `#authoringHistory` has always built
+   * them, and the novelty budget has always been there to stop a small model repeating itself.
+   * What no code path did was carry a MEASURED FAILURE back to the Author: an attempt sentence
+   * said what had been tried (`goal → paths`) and never why it did not work, because at `plan()`
+   * time nothing has been measured yet and after `measure()` nothing read the result back.
+   *
+   * So every plan the product ever made was one shot. On the SWE-bench capture of 10/09 that is
+   * `1 step` on 155 of 155 plans — the shadow, `compare()`, promotion and refusal were all
+   * built, and the thing they were built to be iterated by was not.
+   *
+   * # Why this is a separate call and not a flag on `measure()`
+   *
+   * `measure()` is the thing an approval is taken against (`CE-008`, `D-0567`). A method that
+   * sometimes measures and sometimes rewrites-then-measures would make «the result the approver
+   * read» depend on which branch ran, which is the confusion the two-authorisation split exists
+   * to prevent. `repair()` writes NEW bytes and hands the run back to `PENDING_APPROVAL` — the
+   * honest state, because nobody has measured these bytes — and `approve()` goes on refusing it
+   * with `NOT_MEASURED` until `measure()` runs again. No existing call changes behaviour.
+   */
+  async repair({ runId, actor, nowUnix }) {
+    const run = this.#runs.get(runId);
+    if (!run) refuse('NOT_FOUND', `no pending run \`${runId}\``);
+    if (!String(actor ?? '').trim()) refuse('NO_ACTOR', 'a repair with no actor names nobody accountable');
+    if (run.status === 'PENDING_APPROVAL') {
+      refuse('NOT_MEASURED', `run \`${runId}\` has not been measured: there is no failure to repair against until measure() has run`);
+    }
+    if (run.status !== 'MEASURED') refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
+    if (run.measurement?.clean === true) {
+      refuse('NOTHING_TO_REPAIR', `run \`${runId}\` measured clean: replacing its contents would discard a result the approver can already act on`);
+    }
+    if (!this.#author?.available) refuse('NO_AUTHOR', Author.NO_MODEL_REASON);
+
+    // The evidence is read BEFORE anything is spent. A run that is not clean but recorded
+    // nothing actionable — a contradicted claim, say — is a refusal and not a model call:
+    // asking a model to fix a failure nobody can describe is how a budget is burned.
+    const brief = repairBrief(run.result);
+    if (brief.length === 0) {
+      refuse('NO_EVIDENCE', `run \`${runId}\` did not measure clean but recorded nothing a repair could act on`);
+    }
+
+    // The same budget `plan()` checks, read the same way. `CE-030` / `15` §5: what stops a
+    // small model is a limit on NOVELTY, and a second limit invented here would be a second
+    // answer in the product to one question.
+    const history = this.#authoringHistory(run.conversationId);
+    if (history.novelAttempts >= this.#noveltyBudget) {
+      refuse('BUDGET_SPENT', `the novelty budget for this piece of work is spent: ${history.novelAttempts} distinct approaches have been tried and the limit is ${this.#noveltyBudget}. A repeat does not consume budget; ${history.repeatsIgnored} were ignored. Start a new piece of work, or change what is being asked.`);
+    }
+
+    let composedSkills = [];
+    try {
+      const resolved = this.#skillsFor({ actor, conversationId: run.conversationId }) ?? [];
+      composedSkills = Array.isArray(resolved) ? resolved : [];
+    } catch { composedSkills = []; }
+
+    // The bytes that were MEASURED, not the ones the repository started with. A repair is a
+    // second pass over the model's own output; handing it the original file again would ask it
+    // to start over, and the failure it is being shown would belong to text it cannot see.
+    const files = run.files.map((file) => ({
+      ...file,
+      contents: run.authoredContents?.get(file.path) ?? file.contents,
+    }));
+
+    // The failure JOINS the attempt history rather than replacing it: `attempts` is what the
+    // prompt prints under «approaches already tried — do not repeat them», and the reason the
+    // last one must not be repeated is precisely what the measurement found.
+    const priorPaths = (run.authoredPaths ?? []).join(', ') || 'no file changed';
+    const attempts = [
+      ...history.attempts,
+      `${run.goal ?? 'the same request'} → ${priorPaths} — MEASURED, AND ITS OWN DECLARED TESTS REFUSED IT: ${brief.join('; ')}`,
+    ];
+
+    let authored;
+    try {
+      authored = await this.#author.author({
+        goal: run.intent?.goal ?? run.goal,
+        step: run.plan?.steps?.[0]?.description ?? run.intent?.goal ?? run.goal,
+        files,
+        profile: run.divergence?.signals ?? [],
+        skills: composedSkills,
+        previousAttemptDigests: [
+          ...history.digests,
+          ...(typeof run.attemptDigest === 'string' ? [run.attemptDigest] : []),
+        ],
+        attempts,
+      });
+    } catch (error) {
+      if (!(error instanceof AuthoringUnavailable) && !(error instanceof AuthoringRefused)) throw error;
+      refuse('REPAIR_REFUSED', error.reason);
+    }
+
+    const repairEventId = this.#record(runId, run.planEventId, actor, 'workspace_action.repairing', {
+      // What it was repairing, counted — the sentences themselves carry command output, and the
+      // ledger is not where a build log belongs.
+      failures: brief.length, fromAttempt: run.attempt ?? 1, fromPaths: run.authoredPaths ?? [],
+    }, nowUnix);
+
+    const authoredContents = new Map();
+    for (const [path, body] of authored.contents) authoredContents.set(path, body);
+    run.authoredContents = authoredContents;
+    run.attemptDigest = authored.attemptDigest;
+    run.novelty = authored.novelty;
+    run.authoredPaths = [...authoredContents.keys()];
+    run.attempt = (run.attempt ?? 1) + 1;
+    run.repairedFrom = brief;
+    run.authoring = {
+      available: true, reason: null, ...authored.summary,
+      novelty: authored.novelty,
+      unchangedPaths: authored.unchanged,
+      refusals: authored.refusals,
+      degradations: authored.degradations ?? [],
+      discarded: authored.discarded,
+    };
+
+    // The measured result goes with the bytes that produced it. Left on the run, a shell would
+    // show a diff produced by contents that no longer exist — and `approve()` would promote a
+    // shadow written from a previous attempt.
+    this.#dropShadow(runId);
+    run.result = null;
+    run.diff = null;
+    run.coverage = null;
+    run.measurement = null;
+    run.status = 'PENDING_APPROVAL';
+    this.#saveRun(runId);
+    this.#record(runId, repairEventId, actor, 'workspace_action.repaired', {
+      attempt: run.attempt, authored: authored.summary.authored, novelty: authored.novelty,
+      digest: authored.summary.digest, paths: run.authoredPaths,
+    }, nowUnix);
+
+    return {
+      runId, status: 'PENDING_APPROVAL', attempt: run.attempt,
+      repairedFrom: brief, novelty: authored.novelty, authoring: run.authoring,
+    };
+  }
+
+  /**
+   * The cycle: measure → read the failure → repair → measure again, until the run comes back
+   * clean or there is a reason to stop.
+   *
+   * # Why the loop lives here and not in the shells
+   *
+   * `D-0230`, one program two shells. A loop written in the browser terminal and again in the
+   * native one is two loops, and within a month they stop at different attempt counts and
+   * report one session two ways. The engine owns it; both shells call it.
+   *
+   * # It stops for four reasons, and it says which
+   *
+   *   `clean`      the measurement came back clean — the run is ready for `approve()`
+   *   `exhausted`  `maxAttempts` measurements were taken and none was clean
+   *   `repeat`     the Author returned an approach it had already returned. Asking again spends
+   *                a model call to receive the same bytes, so the asking stops — but the bytes
+   *                are still measured before the loop returns, because they are what is on the
+   *                run and a caller must never be handed a verdict about contents it replaced
+   *   `refused`    `repair()` refused: no model, budget spent, or nothing to repair against
+   *
+   * The run is always left MEASURED, so `approve()` and `reject()` behave exactly as they did.
+   *
+   * ponytail: every attempt re-copies the whole workspace into a fresh shadow, because that is
+   * what `measure()` does and repaired bytes must be measured against a clean tree. Fine at the
+   * size this runs on; if the copy ever becomes the cost, the shadow has to become incremental —
+   * that is a change to `shadow.mjs`, not to this loop.
+   *
+   * ponytail: iterates over ATTEMPTS at `steps[0]`, which is the only step `measure()` executes.
+   * A plan of several steps is a second gap and not this one.
+   */
+  async iterate({ runId, actor, nowUnix, maxAttempts = 3 }) {
+    if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+      refuse('INVALID_ATTEMPTS', `maxAttempts must be a positive integer, received \`${maxAttempts}\``);
+    }
+    const attempts = [];
+    let stopped = 'exhausted';
+    let attempt = 0;
+    for (;;) {
+      attempt += 1;
+      const measured = this.measure({ runId, actor, nowUnix });
+      attempts.push({
+        attempt, clean: measured.clean,
+        failure: measured.clean ? [] : repairBrief(measured.result),
+      });
+      if (measured.clean) { stopped = 'clean'; break; }
+      // Set on the previous turn: the repeat's bytes have now been measured, and there is
+      // nothing left to ask for.
+      if (stopped === 'repeat') break;
+      if (attempt >= maxAttempts) { stopped = 'exhausted'; break; }
+      let repaired;
+      try {
+        repaired = await this.repair({ runId, actor, nowUnix });
+      } catch (error) {
+        if (!(error instanceof WorkspaceActionError)) throw error;
+        attempts.at(-1).repairRefused = { kind: error.kind, reason: error.reason };
+        stopped = 'refused';
+        break;
+      }
+      attempts.at(-1).repairedTo = repaired.authoring?.digest ?? null;
+      // Only ever reachable while `attempt < maxAttempts`, so the extra measurement it asks for
+      // stays inside the budget the caller named.
+      if (repaired.novelty === 'repeat') stopped = 'repeat';
+    }
+
+    const run = this.#runs.get(runId);
+    this.#record(runId, run.planEventId, actor, 'workspace_action.iterated', {
+      attempts: attempts.length, stopped, clean: stopped === 'clean', maxAttempts,
+    }, nowUnix);
+    return {
+      runId, status: run.status, clean: stopped === 'clean', stopped, attempts,
+      // The last measurement, so a caller that only wants the outcome does not have to reach
+      // into `attempts` and re-derive which entry was final.
+      result: run.result ?? null, diff: run.diff ?? null, coverage: run.coverage ?? null,
+    };
   }
 
   /**
