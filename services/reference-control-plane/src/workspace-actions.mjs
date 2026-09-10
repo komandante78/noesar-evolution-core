@@ -118,6 +118,35 @@ export class WorkspaceActionError extends Error {
 }
 const refuse = (kind, reason) => { throw new WorkspaceActionError(kind, reason); };
 
+/// Every field a shell may put on a plan. A key outside this list is REFUSED, not dropped.
+///
+/// Both dispatch sites — the HTTP route and the session RPC — read the fields they know BY
+/// NAME off the payload and discard the rest without a word. So `command` for `commands`
+/// produced a `201` with no commands at all: the declared test never ran, `compare()` saw
+/// nothing to be surprised by, the run measured clean and would have promoted. The write was
+/// guarded by a test that a single missing letter had removed, silently.
+///
+/// That is the same class as the word heuristic `compare()` had to take over (D-0704) and as
+/// a measuring run that decides nothing and reports a perfect score: a guarantee that can be
+/// switched off by accident is not a guarantee. The list lives HERE, next to `plan()`,
+/// because `plan()`'s signature is what makes a field known — a shell that accepts fewer
+/// passes its own, shorter list rather than growing a second opinion about what a plan is.
+///
+/// ponytail: exact names only. A near-miss suggestion ("did you mean `commands`?") is a
+/// second thing to keep true; add it when a person actually asks for it.
+export const PLAN_FIELDS = Object.freeze([
+  'request', 'files', 'projectRules', 'constraints', 'mode', 'policy', 'claims',
+  'conversationId', 'commands',
+]);
+
+/** Refuses a plan payload carrying a field nothing reads. `allowed` narrows the list for a
+ *  shell that accepts fewer — the terminal reads no `conversationId` on purpose. */
+export function refuseUnknownPlanFields(payload, allowed = PLAN_FIELDS) {
+  const unknown = Object.keys(payload ?? {}).filter((field) => !allowed.includes(field));
+  if (unknown.length === 0) return;
+  refuse('UNKNOWN_FIELD', `nothing reads ${unknown.map((field) => `\`${field}\``).join(', ')} on a plan, and a field dropped in silence is a declaration that never happened`);
+}
+
 /// An EXECUTE outcome is NOT a file. Its `path` is the working DIRECTORY the command ran in,
 /// and its result is an exit code and its output, both carried on the outcome itself. Every
 /// loop that treats an outcome as a file has to skip it: reading a directory as a file is an

@@ -303,6 +303,19 @@ describe('session protocol — unix socket transport', () => {
     assert.ok(trail.events.map((event) => event.action).includes('workspace_action.promoted'));
   });
 
+  // The socket dispatch reads plan fields by name exactly as the HTTP route does, and dropped
+  // the rest in the same silence. Run RED against the unguarded dispatch, where this planned.
+  test('the socket refuses a plan field nothing reads, exactly as the browser route does', async () => {
+    await assert.rejects(
+      () => call(authenticatedSocket, 'workspace.plan', {
+        request: 'a declared command with one letter missing',
+        files: [{ path: 'socket-typo.txt', contents: 'x' }],
+        command: ['/bin/false'],
+      }),
+      (error) => error.kind === 'UNKNOWN_FIELD' && /`command`/.test(error.message),
+    );
+  });
+
   // F-TOOLS2-001 (D-0663): workspace.reject's engine method (orch.reject()) was already
   // unit-tested in workspace-actions.test.mjs, but the socket dispatch route that a real
   // `/reject` keystroke actually goes through had never been called by any test.

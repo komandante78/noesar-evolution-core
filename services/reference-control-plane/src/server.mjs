@@ -92,7 +92,7 @@ import {
   SkillCatalogError, searchCatalog as searchSkillCatalogEntries,
   AdoptedSkillRegistry, skillCatalogStatus,
 } from './skill-catalog.mjs';
-import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
+import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus, refuseUnknownPlanFields } from './workspace-actions.mjs';
 import { Author, openAiChatGenerator, atomAuthoringGenerator, declaredFallbackGenerator } from './author.mjs';
 import { profileChange } from './divergence-profile.mjs';
 import { AdapterGrantOrchestrator, AdapterCapabilityError, adapterCapabilityStatus } from './adapter-capability.mjs';
@@ -4284,6 +4284,9 @@ const requestListener = async (req, res) => {
         conversationId = payload.conversationId;
       }
       try {
+        // Before anything is read by name: a field this route does not know is refused here
+        // rather than dropped on the next line. See `PLAN_FIELDS`.
+        refuseUnknownPlanFields(payload);
         const planned = await workspaceActions.plan({
           request: payload?.request, files: payload?.files, projectRules: payload?.projectRules ?? [],
           constraints: payload?.constraints ?? [], mode: payload?.mode ?? 'safe', policy: payload?.policy ?? 'restrictive',

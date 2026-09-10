@@ -22,6 +22,7 @@
 import { createServer, connect } from 'node:net';
 import { profileChange as defaultProfileChange } from './divergence-profile.mjs';
 import { existsSync, unlinkSync, chmodSync } from 'node:fs';
+import { refuseUnknownPlanFields } from './workspace-actions.mjs';
 
 export const PROTOCOL_VERSION = 'noesar-tui/1';
 
@@ -296,7 +297,11 @@ export function createSessionDispatch({
 }) {
   const nowUnix = () => Math.floor(Date.now() / 1000);
   const methods = {
-    'workspace.plan': ({ params, actor }) => workspaceActions.plan({
+    // The same guard the HTTP route runs, on the same list: a field one shell refuses and the
+    // other drops is the divergence `ce-034` exists to catch. `conversationId` stays ON the
+    // list even though this shell writes `null` below — that one is a ceiling stated in the
+    // comment and covered by a test, which is the opposite of a silent drop.
+    'workspace.plan': ({ params, actor }) => (refuseUnknownPlanFields(params), workspaceActions.plan({
       request: params?.request, files: params?.files ?? [], projectRules: params?.projectRules ?? [],
       constraints: params?.constraints ?? [], mode: params?.mode ?? 'safe', policy: params?.policy ?? 'restrictive',
       actor, nowUnix: nowUnix(), claims: params?.claims ?? [],
@@ -310,7 +315,7 @@ export function createSessionDispatch({
       // this shell file its work under a chat it was never part of. Written as an explicit
       // `null` rather than left to the default so that deleting this line is a visible act.
       conversationId: null,
-    }),
+    })),
     'workspace.simulate': ({ params, actor }) => workspaceActions.simulate({ runId: params?.runId, actor, nowUnix: nowUnix() }),
     // `D-0567`, `CE-008`: the terminal gets `measure` at the same moment the browser does,
     // from the same orchestrator. A shell that could only approve would be a shell that can only

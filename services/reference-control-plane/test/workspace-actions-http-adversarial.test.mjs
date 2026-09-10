@@ -162,9 +162,20 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
 
   // ---------------------------------------------------------------- invariant 3
   test('identity_not_client_supplied · the plan actor and the approver are the session\'s identity, never a body field', async () => {
-    const planned = await authed('/api/v1/workspace-actions/plan', {
+    // REWRITTEN 10/09/2026. The spoof used to be accepted and ignored; the plan route now
+    // refuses a field it does not read, so it never gets as far as being ignored. The property
+    // is the same and is still measured at the bottom of this test — and the approve half below
+    // still proves the ignoring form, on a route that keeps no field list.
+    const spoofed = await authed('/api/v1/workspace-actions/plan', {
       method: 'POST',
       payload: { request: 'spoof actor', files: [{ path: 'identity.txt', contents: 'x' }], actor: 'someone-else' },
+    });
+    assert.equal(spoofed.status, 422, `a body field that names an identity must not plan: ${spoofed.text.slice(0, 160)}`);
+    assert.equal(spoofed.json.kind, 'UNKNOWN_FIELD');
+
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'spoof actor', files: [{ path: 'identity.txt', contents: 'x' }] },
     });
     assert.equal(planned.status, 201);
 
@@ -192,28 +203,44 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
   // that argv would run — inside the disposable SHADOW, as a contained child under the
   // envelope the plan declared, with the real workspace untouched and the comparison then
   // filthy, so nothing is ever promoted. That is the declared trade of D-0250, not a hole.
-  test('write_only_by_construction · a smuggled destructive field is ignored, and a declared command is refused out loud', async () => {
-    const planned = await authed('/api/v1/workspace-actions/plan', {
+  //
+  // REWRITTEN AGAIN 10/09/2026, and the reason is the half D-0704 got wrong. It kept "the
+  // smuggled fields are still ignored" as the good half of the boundary. Ignoring is what the
+  // route did to `command` — one letter short of `commands` — and a run measured on the live
+  // product that day came back `clean: true` with no command ever run: the declared test had
+  // been removed by a typo, silently, on its way to promotion. So the ignoring half is gone.
+  // A field this route cannot read is refused; the structural property it protected — that no
+  // body field reaches `blastRadius.destructive` — is measured on the clean body below, which
+  // is where it was always the strongest.
+  test('write_only_by_construction · a smuggled destructive field is refused, and a declared command is refused for its own reason', async () => {
+    const smuggled = await authed('/api/v1/workspace-actions/plan', {
       method: 'POST',
       payload: {
         request: 'try to smuggle a destructive step', files: [{ path: 'noise.txt', contents: 'x' }],
         operation: 'delete', recursive: true, destructive: true, commands: ['rm -rf /'],
       },
     });
-    // This installation does not run commands (no execute sandbox), so the plan does not come
-    // back at all. Refusing here is the property: the previous behaviour — 201 with the
-    // commands quietly dropped — would tell a caller their command was accepted.
+    assert.equal(smuggled.status, 422);
+    assert.equal(smuggled.json.kind, 'UNKNOWN_FIELD', `the names nothing reads are refused first: ${smuggled.text.slice(0, 160)}`);
+
+    // The field that IS real, alone, still refuses for its own reason on an installation that
+    // runs no command — the distinction that matters to a caller: one name was never read, the
+    // other was read and this machine cannot honour it.
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'a declared command on an installation that runs none', files: [{ path: 'noise.txt', contents: 'x' }], commands: ['rm -rf /'] },
+    });
     assert.equal(planned.status, 422);
     assert.equal(planned.json.kind, 'EXECUTION_DISABLED');
 
-    // And the fields that were never real are still never real: the same body WITHOUT
-    // `commands` builds a plan that is not destructive and runs nothing, so `operation`,
-    // `recursive` and `destructive` remain structurally unable to reach it.
+    // And the plan a caller CAN build is still not destructive and still runs nothing: with
+    // every name this route reads, and none it does not, there is no way to reach
+    // `blastRadius.destructive` from the wire at all.
     const clean = await authed('/api/v1/workspace-actions/plan', {
       method: 'POST',
       payload: {
         request: 'try to smuggle a destructive step', files: [{ path: 'noise.txt', contents: 'x' }],
-        operation: 'delete', recursive: true, destructive: true,
+        mode: 'safe', policy: 'restrictive', projectRules: [], constraints: [], claims: [],
       },
     });
     assert.equal(clean.status, 201);
@@ -390,5 +417,44 @@ describe('point 4b · attaching a run to a chat', () => {
       assert.equal(planned.status, 422, `\`${JSON.stringify(bad)}\` should not plan`);
       assert.ok(['INVALID_CONVERSATION', 'UNKNOWN_CONVERSATION'].includes(planned.json.kind));
     }
+  });
+
+  // Measured against the RUNNING product on 10/09/2026, before it was a test: a plan carrying
+  // `command` instead of `commands` answered `201` with `commands: []`, ran no command at
+  // all, and `measure()` came back `surprise.clean: true` — a write whose declared test had
+  // been removed by one missing letter, on its way to promotion. The route reads the fields it
+  // knows by name and dropped the rest in silence.
+  test('unknown_field · a plan field nothing reads is refused, not dropped in silence', async () => {
+    const typo = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'a declared command with one letter missing', files: [{ path: 'typo.txt', contents: 'x' }], command: ['/bin/false'] },
+    });
+    assert.equal(typo.status, 422, `a dropped declaration must refuse the run: ${typo.text.slice(0, 160)}`);
+    assert.equal(typo.json.kind, 'UNKNOWN_FIELD');
+    assert.match(typo.json.reason, /`command`/, 'the refusal must name the field it could not read');
+
+    // The half that keeps this a guard and not a wall: the field the typo was a near-miss OF
+    // still plans. Where this suite runs with execution disabled the refusal is
+    // `EXECUTION_DISABLED`, which is a different answer about a field that WAS read.
+    const spelled = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'the same plan, spelled', files: [{ path: 'typo.txt', contents: 'x' }], commands: ['/bin/false'] },
+    });
+    assert.notEqual(spelled.json.kind, 'UNKNOWN_FIELD', `a known field must not be refused as unknown: ${spelled.text.slice(0, 160)}`);
+  });
+
+  // The same silence covered the caller-supplied expectation: `expect()` derives it, the route
+  // never reads it, and a caller declaring `testsExpectedToFail` got `201` with empty lists —
+  // believing it had declared that a failure was the claim.
+  test('unknown_field · an expectation declared by the caller is refused rather than quietly derived over', async () => {
+    const declared = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: {
+        request: 'an expectation the caller believes it declared', files: [{ path: 'expect.txt', contents: 'x' }],
+        expectation: { testsExpectedToFail: ['/bin/false'] },
+      },
+    });
+    assert.equal(declared.status, 422, declared.text.slice(0, 160));
+    assert.equal(declared.json.kind, 'UNKNOWN_FIELD');
   });
 });
