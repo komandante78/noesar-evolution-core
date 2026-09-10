@@ -48,7 +48,7 @@
 
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { literalSearch as defaultLiteralSearch } from './repo-map.mjs';
+import { literalSearchMany as defaultLiteralSearchMany } from './repo-map.mjs';
 import { contained } from './shadow.mjs';
 
 export class GroundingRefused extends Error {
@@ -117,7 +117,9 @@ export function groundRequest({
   request = '',
   limit = 5,
   maxFileBytes = 64 * 1024,
-  literalSearch = defaultLiteralSearch,
+  // The seam is the BATCH form, so production and the adversarial tests below exercise one
+  // path. A second path kept only for the tests is a branch nobody has checked.
+  literalSearchMany = defaultLiteralSearchMany,
 } = {}) {
   // BOTH, and the request's words first. Found by running this against the live engine with
   // ATOM answering: given `zzqqxx unobtainium flux`, `interpret` did not refuse and did not
@@ -147,11 +149,14 @@ export function groundRequest({
 
   /** path -> { terms:Set, matches:number } */
   const byPath = new Map();
-  for (const term of terms) {
-    const result = literalSearch(workspaceRoot, term, { caseSensitive: false, maxMatches: 200 });
+  // ONE walk for every term. This used to be one walk PER term, which on a real repository was
+  // most of the time a plan took: same tree, same files, read and lowercased `terms.length`
+  // times over. The answers are the same ones — see `literalSearchMany`.
+  const { results } = literalSearchMany(workspaceRoot, terms, { caseSensitive: false, maxMatches: 200 });
+  for (const result of results) {
     for (const match of result.matches) {
       const entry = byPath.get(match.path) ?? { terms: new Set(), matches: 0 };
-      entry.terms.add(term);
+      entry.terms.add(result.query);
       entry.matches += 1;
       byPath.set(match.path, entry);
     }

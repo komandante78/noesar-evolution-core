@@ -574,9 +574,66 @@ export function literalSearch(rootDir, query, options = {}) {
   return { query:text, caseSensitive, matches, truncated };
 }
 
+/**
+ * The same literal search, for many queries, in ONE walk.
+ *
+ * `literalSearch` is a question asked once. Grounding asks up to `MAX_TERMS` of them about the
+ * same tree in the same instant, and asking through the single-query form walked the tree and
+ * read, split and lowercased every file once PER TERM — this module's own status line already
+ * says there is no cache and no file watcher, so nothing absorbed the repetition. On a
+ * repository-sized workspace that is the difference between a plan you wait for and a plan you
+ * iterate on, and the speed of the loop is what decides how many ideas get measured.
+ *
+ * INTERCHANGEABLE BY CONSTRUCTION, not by hope: the files are visited in the same order, and
+ * each query keeps the first `maxMatches` it sees, so every query's answer is exactly the one
+ * a separate `literalSearch` would have returned — including its `truncated` flag.
+ * `request-grounding.test.mjs` measures that equivalence against the single-query form itself.
+ *
+ * A SIBLING rather than a wider signature: `literalSearch` has two production callers and five
+ * test files, and `GET /api/v1/repo-map/search` has no use for a batch. Widening it would put
+ * every one of those readers on a new shape for one caller's benefit.
+ */
+export function literalSearchMany(rootDir, queries, options = {}) {
+  const root = resolve(rootDir);
+  const texts = (Array.isArray(queries) ? queries : []).map((query) => String(query ?? ''));
+  if (texts.length === 0) refuse('EMPTY_QUERY', 'a literal search needs at least one query');
+  if (texts.some((text) => !text)) refuse('EMPTY_QUERY', 'a literal search needs a non-empty query');
+  const maxFiles = options.maxFiles ?? 20000;
+  const maxFileBytes = options.maxFileBytes ?? 512 * 1024;
+  const maxMatches = options.maxMatches ?? 500;
+  const caseSensitive = options.caseSensitive !== false;
+  const needles = texts.map((text) => (caseSensitive ? text : text.toLowerCase()));
+
+  const { files, truncated:filesTruncated } = walk(root, maxFiles, resolveExclusions(root, options.excludePaths));
+  const results = texts.map((query) => ({ query, caseSensitive, matches:[], truncated:filesTruncated }));
+  // How many queries are still under their own cap. When none are, no line can change an
+  // answer any more and the remaining files do not need to be read at all.
+  let searching = results.length;
+
+  for (const file of files) {
+    if (searching === 0) break;
+    const content = readBounded(file, maxFileBytes);
+    if (content === null) continue;
+    const path = relative(root, file);
+    const lines = content.split('\n');
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const haystack = caseSensitive ? line : line.toLowerCase();
+      for (let query = 0; query < needles.length; query += 1) {
+        const result = results[query];
+        if (result.matches.length >= maxMatches) continue;
+        if (!haystack.includes(needles[query])) continue;
+        result.matches.push({ path, line:index + 1, text:line.slice(0, 400) });
+        if (result.matches.length >= maxMatches) { result.truncated = true; searching -= 1; }
+      }
+    }
+  }
+  return { caseSensitive, results };
+}
+
 export function repoMapStatus() {
   return {
-    scope: ['languages', 'entryPoints', 'symbolIndex', 'literalSearch', 'dependencyMap'],
+    scope: ['languages', 'entryPoints', 'symbolIndex', 'literalSearch', 'literalSearchMany', 'dependencyMap'],
     // Named so a reader does not have to diff this file against 06_CODEN_EVOLUTION.md §3 to
     // find out: ownership, recency, per-module test coverage, criticality and fragility are
     // phase 2's "second-level signals" and are not computed here.

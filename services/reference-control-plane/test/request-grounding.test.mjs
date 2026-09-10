@@ -14,7 +14,7 @@ import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { groundRequest, searchTermsOf, GroundingRefused } from '../src/request-grounding.mjs';
-import { literalSearch } from '../src/repo-map.mjs';
+import { literalSearch, literalSearchMany } from '../src/repo-map.mjs';
 
 function workspace(files) {
   const root = mkdtempSync(join(tmpdir(), 'noesar-grounding-'));
@@ -169,16 +169,18 @@ describe('the adversarial half — a candidate is not trusted for its provenance
     // nobody has checked, which is the third time this project has written that sentence.
     const root = workspace({ 'safe.mjs': '// session\n' });
     const hostile = () => ({
-      query: 'session',
       caseSensitive: false,
-      truncated: false,
-      matches: [
-        { path: '../../../etc/passwd', line: 1, text: 'session' },
-        { path: 'safe.mjs', line: 1, text: '// session' },
-      ],
+      results: [{
+        query: 'session',
+        truncated: false,
+        matches: [
+          { path: '../../../etc/passwd', line: 1, text: 'session' },
+          { path: 'safe.mjs', line: 1, text: '// session' },
+        ],
+      }],
     });
     try {
-      const result = groundRequest({ workspaceRoot: root, goal: 'the session', literalSearch: hostile });
+      const result = groundRequest({ workspaceRoot: root, goal: 'the session', literalSearchMany: hostile });
       assert.deepEqual(result.files.map((f) => f.path), ['safe.mjs'],
         'a path that leaves the workspace was read because a trusted module returned it');
       const skipped = result.grounding.skipped.find((entry) => entry.path === '../../../etc/passwd');
@@ -190,11 +192,14 @@ describe('the adversarial half — a candidate is not trusted for its provenance
   test('an absolute path from a search result is dropped too', () => {
     const root = workspace({ 'safe.mjs': '// session\n' });
     const hostile = () => ({
-      query: 'session', caseSensitive: false, truncated: false,
-      matches: [{ path: '/etc/passwd', line: 1, text: 'session' }, { path: 'safe.mjs', line: 1, text: '// session' }],
+      caseSensitive: false,
+      results: [{
+        query: 'session', truncated: false,
+        matches: [{ path: '/etc/passwd', line: 1, text: 'session' }, { path: 'safe.mjs', line: 1, text: '// session' }],
+      }],
     });
     try {
-      const result = groundRequest({ workspaceRoot: root, goal: 'the session', literalSearch: hostile });
+      const result = groundRequest({ workspaceRoot: root, goal: 'the session', literalSearchMany: hostile });
       assert.deepEqual(result.files.map((f) => f.path), ['safe.mjs']);
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
@@ -272,6 +277,44 @@ describe('what running it against the live engine found', () => {
       });
       assert.deepEqual(result.grounding.goalOverlap, ['passkey', 'rotation']);
       assert.equal(result.grounding.goalRelatedToRequest, true);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+});
+
+describe('one walk for many terms — the batch must be the single search, not merely like it', () => {
+  test('literalSearchMany returns, per query, exactly what literalSearch returns — cap included', () => {
+    // Two terms of very different frequency, in files whose names sort against the order they
+    // were written, plus a cap low enough that the common term hits it and the rare one does
+    // not. A batch that shares one budget between queries answers differently HERE and nowhere
+    // else, which is why the cap is part of the oracle rather than an afterthought.
+    const lines = Array.from({ length: 9 }, (_, index) => 'const session = ' + index + ';').join('\n');
+    const root = workspace({
+      'z-last.mjs': lines + '\n// rotation\n',
+      'a-first.mjs': lines + '\n',
+      'nested/deep.mjs': '// session and rotation\n',
+    });
+    try {
+      const options = { caseSensitive: false, maxMatches: 12 };
+      const terms = ['session', 'rotation'];
+      const batched = literalSearchMany(root, terms, options);
+      assert.equal(batched.caseSensitive, false);
+      assert.deepEqual(
+        batched.results,
+        terms.map((term) => literalSearch(root, term, options)),
+        'a query answered in the batch differs from the same query asked on its own',
+      );
+      // The fixture has to actually exercise the cap, or the assertion above is vacuous —
+      // the same vacuity `compare()` guards with `observationIsEmpty`.
+      assert.equal(batched.results[0].truncated, true, 'this fixture no longer reaches the cap');
+      assert.equal(batched.results[1].truncated, false);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('an empty query list, and an empty query among good ones, are both refused', () => {
+    const root = workspace({ 'a.mjs': '// session\n' });
+    try {
+      assert.throws(() => literalSearchMany(root, []), /EMPTY_QUERY|at least one query/);
+      assert.throws(() => literalSearchMany(root, ['session', '']), /EMPTY_QUERY|non-empty/);
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
 });
