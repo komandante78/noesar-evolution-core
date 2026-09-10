@@ -106,11 +106,49 @@ export function searchTermsOf(goal) {
 /**
  * Turns an interpreted goal into the files a plan should touch.
  *
- * Ranking, in order and all of it total: how many DISTINCT terms a file matched (a file the
- * whole goal points at beats one that happens to contain a common word many times), then the
- * match count, then the path alphabetically. The last one exists so the result cannot depend
- * on the order the filesystem handed back — see the note on determinism above.
+ * Ranking: BM25 over the terms, with prose and configuration files at half weight, then the
+ * path alphabetically. The last one exists so the result cannot depend on the order the
+ * filesystem handed back — see the note on determinism above.
+ *
+ * WHAT IT REPLACED, AND WHY. The ranking was "distinct terms, then match count". Counting
+ * matches rewards a file for being an aggregate: on astropy `CHANGES.rst` ranked FIRST with
+ * 797 matches over 11 terms, and only the 64 KiB readability ceiling below kept it out of the
+ * answer — the top of the list was being spent on files no plan could use.
+ *
+ * MEASURED, on 155 SWE-bench Verified issues replayed against the terms the live engine
+ * actually grounded on (`BENCH_SWE/rank-lab.mjs`, which reproduces this function's own result
+ * exactly — 13/155, the same 13 instances — before it is allowed to compare anything):
+ *
+ *     distinct terms, then matches   13/155 @5   median rank of the gold file  53
+ *     IDF alone                      10/155      (the repair tried on 09/09 — worse, twice measured)
+ *     BM25 alone                     16/155      but WORSE on sphinx: 1/25 against 4/25
+ *     BM25 + prose at half weight    25/155      median 18, and no repository loses
+ *
+ * The two knobs are priors, not truths, and they are the honest cost of this change:
+ *   - k1/b are BM25's usual constants;
+ *   - the "document length" is the file's TOTAL match count, not its size in bytes. Measured
+ *     both: bytes scored 21/155, matches 25/155. Length here means "how much of a magnet this
+ *     file is", which is the thing that was hurting;
+ *   - prose and configuration count half. A file the request really is about still wins — this
+ *     is a penalty, not a partition (a partition scored the same 26/155 and is a rule about
+ *     what a benchmark counts as correct, which is not a thing to put in a product).
+ *     A request that IS about documentation pays for this: its targets must beat code by 2x.
+ *     ponytail: one constant, one place. Move it if a real request is ever ranked wrongly.
  */
+// BM25's usual constants, and the one prior this file adds: a file whose extension says prose
+// or configuration scores half, so it has to be twice as good to outrank source. Measured, not
+// guessed — see the ranking note on `groundRequest`. A file with no extension (AUTHORS,
+// LICENSE, Makefile) counts as prose: that is where pure IDF went to lose in the 09/09 attempt.
+const BM25_K1 = 1.5;
+const BM25_B = 0.75;
+const PROSE_WEIGHT = 0.5;
+const PROSE_EXTENSIONS = new Set(['', '.md', '.rst', '.txt', '.cfg', '.toml', '.ini', '.yml', '.yaml']);
+const extensionOf = (path) => {
+  const name = path.slice(path.lastIndexOf('/') + 1);
+  const dot = name.lastIndexOf('.');
+  return dot <= 0 ? '' : name.slice(dot);
+};
+
 export function groundRequest({
   workspaceRoot,
   goal,
@@ -147,26 +185,42 @@ export function groundRequest({
     );
   }
 
-  /** path -> { terms:Set, matches:number } */
+  /** path -> { terms:Map<term, howManyTimes>, matches:number } */
   const byPath = new Map();
+  /** term -> in how many files it appears at all, BM25's document frequency. */
+  const documentFrequency = new Map();
   // ONE walk for every term. This used to be one walk PER term, which on a real repository was
   // most of the time a plan took: same tree, same files, read and lowercased `terms.length`
   // times over. The answers are the same ones — see `literalSearchMany`.
   const { results } = literalSearchMany(workspaceRoot, terms, { caseSensitive: false, maxMatches: 200 });
   for (const result of results) {
+    const filesForTerm = new Set();
     for (const match of result.matches) {
-      const entry = byPath.get(match.path) ?? { terms: new Set(), matches: 0 };
-      entry.terms.add(result.query);
+      const entry = byPath.get(match.path) ?? { terms: new Map(), matches: 0 };
+      entry.terms.set(result.query, (entry.terms.get(result.query) ?? 0) + 1);
       entry.matches += 1;
       byPath.set(match.path, entry);
+      filesForTerm.add(match.path);
     }
+    documentFrequency.set(result.query, filesForTerm.size);
   }
 
+  const candidateCount = byPath.size || 1;
+  const averageMatches = [...byPath.values()].reduce((total, entry) => total + entry.matches, 0) / candidateCount;
   const ranked = [...byPath.entries()]
-    .map(([path, entry]) => ({ path, distinctTerms: entry.terms.size, matches: entry.matches, terms: [...entry.terms].sort() }))
+    .map(([path, entry]) => {
+      let score = 0;
+      for (const [term, howManyTimes] of entry.terms) {
+        const rarity = Math.log(1 + candidateCount / Math.max(1, documentFrequency.get(term) ?? 1));
+        const saturation = (howManyTimes * (BM25_K1 + 1))
+          / (howManyTimes + BM25_K1 * (1 - BM25_B + BM25_B * (entry.matches / (averageMatches || 1))));
+        score += rarity * saturation;
+      }
+      if (PROSE_EXTENSIONS.has(extensionOf(path))) score *= PROSE_WEIGHT;
+      return { path, score, distinctTerms: entry.terms.size, matches: entry.matches, terms: [...entry.terms.keys()].sort() };
+    })
     .sort((a, b) => (
-      b.distinctTerms - a.distinctTerms
-      || b.matches - a.matches
+      b.score - a.score
       || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
     ));
 

@@ -281,6 +281,44 @@ describe('what running it against the live engine found', () => {
   });
 });
 
+describe('the ranking — a file is not a better answer for being longer', () => {
+  test('a prose file that repeats every term does not outrank the source file that carries them once', () => {
+    // The old ranking was "distinct terms, then match count". Both files below carry all three
+    // terms, so the first key ties and the raw count decided — and the count is exactly what an
+    // aggregate file wins by. Measured on the real thing before it was a fixture: on astropy,
+    // `CHANGES.rst` ranked FIRST with 797 matches over 11 terms, and only the readability
+    // ceiling kept it out of the answer.
+    //
+    // RUN RED against that ranking, where `docs/guide.rst` came first.
+    const repeated = ['session', 'rotation', 'passkey'].map((term) => Array.from({ length: 5 }, () => `the ${term} paragraph`).join('\n')).join('\n');
+    const root = workspace({
+      'docs/guide.rst': `${repeated}\n`,
+      'src/auth.mjs': '// session\n// rotation\n// passkey\n',
+    });
+    try {
+      const result = groundRequest({ workspaceRoot: root, request: 'fix the passkey session rotation', goal: 'repair passkey session rotation' });
+      assert.equal(result.grounding.selected[0], 'src/auth.mjs',
+        `the prose file outranked the source: ${result.grounding.selected.join(', ')}`);
+      // Both are still candidates: this is a penalty, not a partition. A ranking that DROPPED
+      // the prose file would pass the assertion above and be a different, worse thing.
+      assert.ok(result.grounding.selected.includes('docs/guide.rst'),
+        'the prose file was removed rather than ranked below');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('prose still wins when the request really is about it', () => {
+    // The ceiling of the prior, stated as a test: half weight is a handicap, not a ban.
+    const root = workspace({
+      'docs/install.rst': 'installation instructions\ninstallation prerequisites\ninstallation troubleshooting\n',
+      'src/unrelated.mjs': '// nothing to do with it\n',
+    });
+    try {
+      const result = groundRequest({ workspaceRoot: root, request: 'the installation instructions are wrong', goal: 'fix the installation instructions' });
+      assert.equal(result.grounding.selected[0], 'docs/install.rst');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+});
+
 describe('one walk for many terms — the batch must be the single search, not merely like it', () => {
   test('literalSearchMany returns, per query, exactly what literalSearch returns — cap included', () => {
     // Two terms of very different frequency, in files whose names sort against the order they
