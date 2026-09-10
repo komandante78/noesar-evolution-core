@@ -6634,9 +6634,9 @@ a1df315d15d1e88dba83d8fd5383929050bfbd78b1d554d5e33d00b87d6ff0fc  ./tools/coden-
 9df693011fe6357cb0da049868122bbcfac558e04e303869cb3f94b1ea125998  ./tools/coden-evolution.ps1
 c7666a02c2a951f4632cbbad6a2f7906fe9105222a43e09a12a15e7984e034d7  ./tools/computed-style-snapshot.mjs
 8bed5e305c66f2934f2af9146d78aaf63be51718d99d79cb9845509a81d813ea  ./tools/create-rust-build-provenance.py
-82be64a8d15bee005cf2e6bd70e8a2076a2358049ff5d6e1a4e779fb04496ca8  ./tools/deploy/redeploy.sh
+a0f383405911d8c5f724f445fcd333ef9bae88cd9f876f5fd09494eeaa4af1cc  ./tools/deploy/redeploy.sh
 d06d25515b42818902606a3da95f56ec60ff139de13e691ccfc65a89c2951cf1  ./tools/deploy/test/fake-docker
-ecb2e96e6eba13c8cd27802710c66b8fd23dc1bb0d0ca99d92ec89b0b76157dc  ./tools/deploy/test/redeploy-fixture.sh
+4892e36ce379d5e380cf04460d26653cc7ac4b11af1dec98ac5d2dea87b6aa09  ./tools/deploy/test/redeploy-fixture.sh
 cc8572dbde0c7b9b9940b9b9bb6a82e0b6103ffa3adba986c72e1cb0d80af536  ./tools/derive-tasks-from-history.mjs
 18ae69fccdd4a9c3c321f1355a1d5e3daf8b29e6c9dc91352c68dc74db37b45e  ./tools/e2e-retention-policy.sh
 eaa8b2e10a2194c433e6ee58e376cd7aa6f87664cd2710becf0f893ab547d234  ./tools/emit-conformance-report.mjs

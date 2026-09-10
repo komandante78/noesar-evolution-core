@@ -297,6 +297,25 @@ run_tool -- --apply --authorized-by-owner --set SECRET_A=leaked
 [ "$(code)" = "2" ] && pass "set: refuses a secret-looking name (ps would show it)" || fail "set: refuses secrets" "got $(code)"
 [ "$(stat_ inst)" = "running" ] && pass "set: that refusal happens before any mutation" || fail "set: refusal pre-mutation" "$(stat_ inst)"
 grep -q 'rotate-secret' "$FAKE_ROOT/stderr" && pass "set: the refusal names what to use instead" || fail "set: refusal is actionable" "no pointer"
+
+# `--set-secret VAR` is the sanctioned way to land an operator-supplied secret — an external
+# provider API key is the reason it exists. The value arrives on stdin, joins the same 0600 path
+# `--set` uses, and must appear on NO stream and NEVER in argv.
+new_world setsecretok
+SS_VAL='sk-ant-synthetic-0000000000000000000000'
+printf '%s' "$SS_VAL" | run_tool -- --apply --authorized-by-owner --set-secret ANTHROPIC_API_KEY
+[ "$(code)" = "0" ] && pass "set-secret: exit 0" || fail "set-secret: exit 0" "got $(code)"
+[ "$(envof inst ANTHROPIC_API_KEY)" = "$SS_VAL" ] && pass "set-secret: the key landed in the container environment" || fail "set-secret: key landed" "$(envof inst ANTHROPIC_API_KEY)"
+ss_leak=0
+for f in "$FAKE_ROOT/stdout" "$FAKE_ROOT/stderr" "$FAKE_ROOT/journal"; do
+  grep -qF "$SS_VAL" "$f" 2>/dev/null && { fail "set-secret: no leak in $(basename "$f")" "value found"; ss_leak=1; }
+done
+[ "$ss_leak" = "0" ] && pass "set-secret: the value is on no stream — stdout, stderr or the argv journal"
+grep -qE '^run .*ANTHROPIC_API_KEY=' "$FAKE_ROOT/journal" 2>/dev/null \
+  && fail "set-secret: no secret in argv" "passed on the command line" || pass "set-secret: never travelled in argv"
+run_tool -- --apply --authorized-by-owner --set-secret ANTHROPIC_API_KEY=inline
+[ "$(code)" = "2" ] && pass "set-secret: refuses NAME=VALUE (value must come from stdin)" || fail "set-secret: refuses inline value" "got $(code)"
+
 new_world setmalformed
 run_tool -- --apply --authorized-by-owner --set NOEQUALSIGN
 [ "$(code)" = "2" ] && pass "set: refuses VAR without =VALUE" || fail "set: refuses malformed" "got $(code)"

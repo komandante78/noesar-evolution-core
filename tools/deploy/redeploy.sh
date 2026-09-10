@@ -6,8 +6,13 @@
 #   tools/deploy/redeploy.sh --source <container> --check
 #   tools/deploy/redeploy.sh --source <container> --apply --authorized-by-owner \
 #                            [--rotate-secret VAR[,VAR…]] [--image TAG] \
-#                            [--set VAR=VALUE]… [--unset VAR[,VAR…]] [--ip ADDR] \
-#                            [--bind SRC:DST[:MODE]]… [--gpus]
+#                            [--set VAR=VALUE]… [--set-secret VAR]… [--unset VAR[,VAR…]] \
+#                            [--ip ADDR] [--bind SRC:DST[:MODE]]… [--gpus]
+#
+#   --set-secret VAR   like --set, for a value that must NOT be in argv: it is read from stdin
+#                      (hidden at a terminal, piped in a script) and travels the same 0600 path.
+#                      This is how an operator-supplied secret — an external provider API key —
+#                      reaches the container without --rotate-secret generating it.
 #
 # # Why this exists, measured rather than argued
 #
@@ -87,9 +92,21 @@ while [ $# -gt 0 ]; do
       esac
       case "${2%%=*}" in
         *SECRET*|*TOKEN*|*PASSWORD*|*_KEY|*_KEYS)
-          echo "REFUSED: --set would put ${2%%=*} in argv, where ps shows it — use --rotate-secret" >&2; exit 2 ;;
+          echo "REFUSED: --set would put ${2%%=*} in argv, where ps shows it — use --set-secret ${2%%=*} (value from stdin), or --rotate-secret to generate one" >&2; exit 2 ;;
       esac
       SET_PAIRS+=("$2"); shift 2 ;;
+    # `--set-secret VAR` is `--set` for a value that must never reach argv (property 4). The value
+    # is read from stdin — hidden at a terminal, piped in a script — and then joins SET_PAIRS, so
+    # from here on it is byte-identical to `--set` and STEP 3b prints only its name. An
+    # operator-supplied external provider API key is the reason this exists.
+    --set-secret)
+      _ssn="${2:?--set-secret needs a VARIABLE name}"
+      case "$_ssn" in *=*) echo "REFUSED: --set-secret takes a NAME only — its value is read from stdin, never argv" >&2; exit 2 ;; esac
+      if [ -t 0 ]; then printf 'value for %s (hidden): ' "$_ssn" >&2; fi
+      IFS= read -rs _ssv || true
+      if [ -t 0 ]; then echo >&2; fi
+      [ -n "$_ssv" ] || { echo "REFUSED: --set-secret $_ssn read an empty value from stdin" >&2; exit 2; }
+      SET_PAIRS+=("$_ssn=$_ssv"); unset _ssn _ssv; shift 2 ;;
     --unset) UNSET_VARS="${2:?--unset needs VAR[,VAR…]}"; shift 2 ;;
     # The address is READ BACK and carried like everything else below; this flag exists to
     # RE-ESTABLISH a pin that was already lost, which is not a thing a read-back can do.
@@ -102,7 +119,7 @@ while [ $# -gt 0 ]; do
     --bind) EXTRA_BINDS+=("${2:?--bind needs SRC:DST[:MODE]}"); shift 2 ;;
     --gpus) NEW_GPUS=1; shift ;;
     --image) NEW_IMAGE="${2:?--image needs a tag}"; shift 2 ;;
-    -h|--help) sed -n '3,10p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '3,15p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -309,7 +326,7 @@ fi
 [ "$AUTHORIZED" -eq 1 ] || { say "REFUSED: --apply requires --authorized-by-owner."; exit 2; }
 [ -n "$ROTATE_VARS" ] || [ -n "$NEW_IMAGE" ] || [ "${#SET_PAIRS[@]}" -gt 0 ] || [ -n "$UNSET_VARS" ] || [ -n "$NEW_IP" ] \
   || [ "$NEW_GPUS" = "1" ] || [ "${#EXTRA_BINDS[@]}" -gt 0 ] \
-  || { say "REFUSED: --apply changes nothing — name --rotate-secret, --image, --set, --unset, --ip, --gpus or --bind."; exit 2; }
+  || { say "REFUSED: --apply changes nothing — name --rotate-secret, --image, --set, --set-secret, --unset, --ip, --gpus or --bind."; exit 2; }
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 WORK="$(mktemp -d)"; ENVFILE="$WORK/env"
