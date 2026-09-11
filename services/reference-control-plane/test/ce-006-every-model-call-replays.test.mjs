@@ -28,12 +28,22 @@ import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 
+// The Author EDITS a file that already has contents (`applyEditBlocks`): a file larger than
+// the answer budget cannot be restated, only changed. `edited` says what these tests always
+// said — replace everything that is there with this — in the shape the contract now takes.
+const edited = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const digest = (text) => createHash('sha256').update(String(text)).digest('hex');
 const fenced = (body) => `Here you go:\n\n\`\`\`js\n${body}\n\`\`\`\n`;
 /** A fence whose contents are EXACTLY `body` — `fenced` adds a newline before the closing
  *  fence, which is right for prose and wrong for the one case that must come back
  *  byte-identical to what was on disk. */
-const fencedExact = (body) => `Here you go:\n\n\`\`\`js\n${body}\`\`\`\n`;
 
 /** A concluded session: a real orchestrator, a real workspace, a real Author over a stub model
  *  that answers differently per file — including one answer the rules must refuse, because a
@@ -48,11 +58,11 @@ function concludedSession() {
   writeFileSync(join(workspace, 'README.md'), '# demo\n\nA login route with no rate limiting.\n');
 
   const author = new Author({
-    generate: async ({ path }) => {
+    generate: async ({ path, contents }) => {
       // Three shapes on purpose, so the fixtures of one session are not all alike:
       if (path === 'README.md') return 'no fenced block here at all, just prose';        // refused
-      if (path === 'src/rate-limit.js') return fencedExact('export const limit = 1;\n');   // unchanged
-      return fenced('export function loginRoute() { /* rate limited */ }\n');             // written
+      if (path === 'src/rate-limit.js') return edited(contents, 'export const limit = 1;\n');   // unchanged
+      return edited(contents, 'export function loginRoute() { /* rate limited */ }\n');             // written
     },
   });
 
@@ -121,7 +131,7 @@ test('the three outcomes of one session each replay as themselves, not as each o
   assert.equal(byPath.get('src/rate-limit.js').decision.outcome, 'unchanged',
     'a model that returns the file unchanged is a real answer, and the replay must reproduce THAT verdict');
   assert.equal(byPath.get('README.md').decision.outcome, 'refused');
-  assert.equal(byPath.get('README.md').decision.refusal.code, 'NO_FENCE');
+  assert.equal(byPath.get('README.md').decision.refusal.code, 'NO_EDITS');
   // `unchanged` vs `written` is a comparison against what the file held before the call. Until
   // `beforeDigest` was recorded, this verdict was the one a replay could not rebuild at all.
   assert.notEqual(byPath.get('src/login.js').decision.contentsDigest,

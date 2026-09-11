@@ -13,6 +13,17 @@ import assert from 'node:assert/strict';
 import { buildAuthoringPrompt, extractBody, Author } from '../src/author.mjs';
 import { AdoptedSkillRegistry, skillCatalogStatus } from '../src/skill-catalog.mjs';
 
+// The Author EDITS a file that already has contents — `applyEditBlocks` — because "return the
+// complete new contents" is an instruction a model cannot carry out on a file larger than its
+// answer. These tests still say what they always said: replace everything with this.
+const editAll = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const BASE = {
   goal: 'tighten the retry budget',
   step: 'lower the ceiling to three',
@@ -114,7 +125,7 @@ describe('a skill cannot renegotiate the contract of the call', () => {
     // ever returns paths it was given, so "also rewrite src/secrets.mjs" cannot widen it.
     const author = new Author({
       model: 'test',
-      generate: async () => '```\nexport const RETRIES = 3;\n```',
+      generate: async ({ contents }) => editAll(contents, 'export const RETRIES = 3;'),
     });
     const result = await author.author({
       goal: BASE.goal,
@@ -131,7 +142,7 @@ describe('a skill cannot renegotiate the contract of the call', () => {
     const seen = [];
     const author = new Author({
       model: 'test',
-      generate: async ({ prompt }) => { seen.push(prompt); return '```\nx\n```'; },
+      generate: async ({ prompt, contents }) => { seen.push(prompt); return editAll(contents, 'x'); },
     });
     return author.author({
       goal: BASE.goal, step: BASE.step,

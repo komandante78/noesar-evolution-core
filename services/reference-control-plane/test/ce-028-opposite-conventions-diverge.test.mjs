@@ -33,6 +33,17 @@ import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 
+// The Author EDITS a file that already has contents (`applyEditBlocks`): a file larger than
+// the answer budget cannot be restated, only changed. `edited` says what these tests always
+// said — replace everything that is there with this — in the shape the contract now takes.
+const edited = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const NOW = Math.floor(Date.now() / 1000);
 const git = (cwd, ...args) => execFileSync('git', args, {
   cwd,
@@ -107,7 +118,7 @@ test('two repositories with opposite histories produce opposite profiles for the
  *  section. That is exactly the behaviour under test — whether the Author SHOWS the conventions
  *  — and nothing more is claimed of it. */
 function conventionReadingGenerator(seen) {
-  return async ({ prompt }) => {
+  return async ({ prompt, contents }) => {
     seen.push(prompt);
     const wantsTest = /- tests: (high|medium)/.test(prompt);
     const partner = /- co-change: (high|medium)/.test(prompt);
@@ -115,7 +126,7 @@ function conventionReadingGenerator(seen) {
       wantsTest ? '// this repository expects a test with a change like this' : null,
       partner ? '// and the file it is usually changed with' : null,
     ].filter(Boolean).join('\n');
-    return `Here:\n\n\`\`\`js\n${notes}${notes ? '\n' : ''}export function loginRoute() { /* rate limited */ }\n\`\`\`\n`;
+    return edited(contents, `${notes}${notes ? '\n' : ''}export function loginRoute() { /* rate limited */ }`);
   };
 }
 

@@ -32,8 +32,18 @@ import { WorkspaceActionOrchestrator, WorkspaceActionError } from '../src/worksp
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 
+// The Author EDITS a file that already has contents (`applyEditBlocks`): a file larger than
+// the answer budget cannot be restated, only changed. `edited` says what these tests always
+// said — replace everything that is there with this — in the shape the contract now takes.
+const edited = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const NOW = Math.floor(Date.now() / 1000);
-const fenced = (body) => `Here you go:\n\n\`\`\`js\n${body}\n\`\`\`\n`;
 
 /** A bench whose model can be told what to answer next, so "the same content twice" is a fact of
  *  the run and not of the assertion. */
@@ -44,10 +54,10 @@ function bench({ noveltyBudget = 5 } = {}) {
   mkdirSync(join(workspace, 'src'), { recursive: true });
   writeFileSync(join(workspace, 'src/login.js'), 'export function loginRoute() {}\n');
 
-  let answer = fenced('export function loginRoute() { /* first approach */ }\n');
+  let answerBody = 'export function loginRoute() { /* first approach */ }';
   const promptsSeen = [];
   const author = new Author({
-    generate: async ({ prompt }) => { promptsSeen.push(prompt); return answer; },
+    generate: async ({ prompt, contents }) => { promptsSeen.push(prompt); return edited(contents, answerBody); },
   });
   const events = new EventLedger();
   const orchestrator = new WorkspaceActionOrchestrator({
@@ -56,7 +66,7 @@ function bench({ noveltyBudget = 5 } = {}) {
   });
   return {
     orchestrator, events, promptsSeen,
-    say: (body) => { answer = fenced(body); },
+    say: (body) => { answerBody = body; },
     plan: (conversationId) => orchestrator.plan({
       request: 'rate limit the login route',
       files: [{ path: 'src/login.js', contents: 'export function loginRoute() {}\n' }],

@@ -32,8 +32,17 @@ import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 
+// The Author EDITS a file that already has contents (`applyEditBlocks`). Replacing everything
+// that is there is what this test always meant by "the model answered with these contents".
+const edited = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const NOW = Math.floor(Date.now() / 1000);
-const fenced = (body) => `Here you go:\n\n\`\`\`js\n${body}\n\`\`\`\n`;
 
 /** A session that authors more than one file, so "the session replays" is a claim about a
  *  session and not about a single call that happened to survive. */
@@ -51,7 +60,7 @@ function session() {
   // accident here.
   let call = 0;
   const author = new Author({
-    generate: async () => { call += 1; return fenced(`export const answer = ${call}; // ${Math.random()}\n`); },
+    generate: async ({ contents }) => { call += 1; return edited(contents, `export const answer = ${call}; // ${Math.random()}`); },
   });
   const events = new EventLedger();
   const orchestrator = new WorkspaceActionOrchestrator({

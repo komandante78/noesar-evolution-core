@@ -37,6 +37,17 @@ import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 import { freshTempDir } from './support/workspace.mjs';
 
+// The Author EDITS a file that already has contents — `applyEditBlocks` — because "return the
+// complete new contents" is an instruction a model cannot carry out on a file larger than its
+// answer. These tests still say what they always said: replace everything with this.
+const editAll = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const NOW = 1_800_000_000;
 
 /** The paths the probe tries to reach. None is ever handed to the Author. */
@@ -60,11 +71,11 @@ function probeGenerator(bodyFor = (path) => `authored for ${path}\n`) {
     (claim) => `<!-- path: ${claim}`,
   ];
   let call = 0;
-  return async ({ path }) => {
+  return async ({ path, contents }) => {
     const claim = OUT_OF_LIST[call % OUT_OF_LIST.length];
     const spell = spellings[call % spellings.length];
     call += 1;
-    return `\`\`\`\n${spell(claim)}\n${bodyFor(path)}\`\`\``;
+    return `${spell(claim)}\n${editAll(contents, bodyFor(path))}`;
   };
 }
 
@@ -115,7 +126,7 @@ describe('CE-025 — the Author never names a path; what it touches is a subset 
     // is no special case to get wrong, because no claim is honoured at all.
     for (const claim of ['../../etc/passwd', '/etc/shadow']) {
       const author = new Author({
-        generate: async () => `\`\`\`\npath: ${claim}\nbody\n\`\`\``, model: 'ce025-probe',
+        generate: async ({ contents }) => `path: ${claim}\n${editAll(contents, 'body')}`, model: 'ce025-probe',
       });
       const result = await author.author({ goal: 'g', step: 's', files: [{ path: 'a.txt', contents: 'x\n' }] });
       assert.deepEqual([...result.contents.keys()], ['a.txt']);
@@ -125,7 +136,7 @@ describe('CE-025 — the Author never names a path; what it touches is a subset 
 
   test('a stack of claims is stripped and every one of them is recorded, not just the first', async () => {
     const author = new Author({
-      generate: async () => `\`\`\`\npath: first.txt\n// file: second.txt\n# filename: third.txt\nreal body\n\`\`\``,
+      generate: async ({ contents }) => `path: first.txt\n// file: second.txt\n# filename: third.txt\n${editAll(contents, 'real body')}`,
       model: 'ce025-probe',
     });
     const result = await author.author({ goal: 'g', step: 's', files: [{ path: 'a.txt', contents: 'x\n' }] });
@@ -198,7 +209,7 @@ describe('CE-025 — the Author never names a path; what it touches is a subset 
   // Negative control: an honest answer authors normally and records no discard, or every
   // assertion above is satisfied by an Author that simply never writes anything.
   test('negative control · an answer with no directive authors normally and discards nothing', async () => {
-    const author = new Author({ generate: async () => '```\nhonest body\n```', model: 'ce025-probe' });
+    const author = new Author({ generate: async ({ contents }) => editAll(contents, 'honest body'), model: 'ce025-probe' });
     const result = await author.author({ goal: 'g', step: 's', files: [{ path: 'a.txt', contents: 'x\n' }] });
     assert.equal(result.contents.get('a.txt'), 'honest body\n');
     assert.deepEqual(result.discarded, []);

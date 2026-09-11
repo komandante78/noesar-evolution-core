@@ -23,6 +23,17 @@ import { EventLedger } from '../src/events.mjs';
 import { reasoningSummary, frequencySummary, createView } from '../../../apps/webui-static/coden-view-model.js';
 import { freshTempDir } from './support/workspace.mjs';
 
+// The Author EDITS a file that already has contents (`applyEditBlocks`): a file larger than
+// the answer budget cannot be restated, only changed. `edited` says what these tests always
+// said — replace everything that is there with this — in the shape the contract now takes.
+const edited = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 /** An installation that selected ATOM. `fetchImpl` is what decides whether ATOM is up. */
 const ATOM_ENV = {
   NOESAR_REASONING_MODE: 'rust-external',
@@ -142,7 +153,7 @@ test('ATOM REFUSING counts as ATOM having answered, so a later fall still checkp
 
 test('the authoring fallback is chosen at assembly, declared, and never inside the port', async () => {
   const atomDown = async () => { throw new AuthoringUnavailable('ATOM at http://atom.test could not be reached for authoring: fetch failed'); };
-  const model = async () => '```\nexport const authored = true;\n```';
+  const model = async ({ contents }) => edited(contents, 'export const authored = true;');
   const told = [];
   const generate = declaredFallbackGenerator({ primary: atomDown, fallback: model, onDegrade: (record) => told.push(record) });
 
@@ -186,7 +197,7 @@ test('a whole task completes with ATOM down, and the Session Proof says how', as
     author: new Author({
       generate: declaredFallbackGenerator({
         primary: async () => { throw new AuthoringUnavailable('ATOM at http://atom.test:8410 could not be reached for authoring: fetch failed'); },
-        fallback: async () => '```\nexport function loginRoute(app) {\n  app.post("/login", limiter, handler);\n}\n```',
+        fallback: async ({ contents }) => edited(contents, 'export function loginRoute(app) {\n  app.post("/login", limiter, handler);\n}'),
       }),
       model: 'chain',
     }),

@@ -44,25 +44,35 @@ import { Author } from '../src/author.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 
+// The Author EDITS a file that already has contents (`applyEditBlocks`): a file larger than
+// the answer budget cannot be restated, only changed. `edited` says what these tests always
+// said — replace everything that is there with this — in the shape the contract now takes.
+const edited = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const NOW = Math.floor(Date.now() / 1000);
 const ORIGINAL = 'original\n';
-const fenced = (body) => `\`\`\`\n${body}\`\`\``;
 
 /**
  * `answers` is consumed one per model call; the last one repeats, so a test that wants "the
  * model keeps saying the same thing" says it with one element instead of a counter.
  */
-function fixture({ answers = [fenced(ORIGINAL)], noveltyBudget = 5 } = {}) {
+function fixture({ answers = [ORIGINAL], noveltyBudget = 5 } = {}) {
   const ws = mkdtempSync(join(tmpdir(), 'noesar-cycle-ws-'));
   writeFileSync(join(ws, 'a.txt'), ORIGINAL);
   const shadows = mkdtempSync(join(tmpdir(), 'noesar-cycle-shadows-'));
   const prompts = [];
   const author = new Author({
     model: 'test-model',
-    generate: async ({ prompt }) => {
-      const answer = answers[Math.min(prompts.length, answers.length - 1)];
+    generate: async ({ prompt, contents }) => {
+      const body = answers[Math.min(prompts.length, answers.length - 1)];
       prompts.push(prompt);
-      return answer;
+      return edited(contents, body);
     },
   });
   const orch = new WorkspaceActionOrchestrator({
@@ -99,7 +109,7 @@ const refusal = async (work) => {
 
 test('the repair prompt carries the failure the measurement found', async () => {
   // THE criterion of this whole piece of work. Everything else here protects it.
-  const fx = fixture({ answers: [fenced(ORIGINAL), fenced('repaired\n')] });
+  const fx = fixture({ answers: [ORIGINAL, 'repaired\n'] });
   try {
     const { runId } = await fx.plan();
     const first = fx.orch.measure({ runId, actor: 'owner', nowUnix: NOW });
@@ -123,7 +133,7 @@ test('the repair prompt carries the failure the measurement found', async () => 
 });
 
 test('the cycle closes: a run that measured dirty is repaired and measures clean', async () => {
-  const fx = fixture({ answers: [fenced(ORIGINAL), fenced('repaired\n')] });
+  const fx = fixture({ answers: [ORIGINAL, 'repaired\n'] });
   try {
     const { runId } = await fx.plan();
     const outcome = await fx.orch.iterate({ runId, actor: 'owner', nowUnix: NOW, maxAttempts: 3 });
@@ -148,7 +158,7 @@ test('a repaired run is PENDING_APPROVAL again, and approve() refuses it — CE-
   // The reason `repair()` is a separate call and not a flag on `measure()`. New bytes nobody
   // has measured must not be approvable, and the refusal must be the SAME one CE-008 already
   // gives — not a new kind a shell would have to learn.
-  const fx = fixture({ answers: [fenced(ORIGINAL)] });
+  const fx = fixture({ answers: [ORIGINAL] });
   try {
     const { runId } = await fx.plan();
     fx.orch.measure({ runId, actor: 'owner', nowUnix: NOW });
@@ -164,7 +174,7 @@ test('a repaired run is PENDING_APPROVAL again, and approve() refuses it — CE-
 });
 
 test('a clean run is not repairable: a measured result the approver can act on is not replaced', async () => {
-  const fx = fixture({ answers: [fenced('repaired\n')] });
+  const fx = fixture({ answers: ['repaired\n'] });
   try {
     const { runId } = await fx.plan();
     const measured = fx.orch.measure({ runId, actor: 'owner', nowUnix: NOW });
@@ -191,7 +201,7 @@ test('the loop stops at maxAttempts and never spends a measurement more than it 
   // The ceiling is the property, whatever the run does: `maxAttempts` is what the caller is
   // paying for, and a loop that took one more measurement than it was given would be a cost
   // nobody authorised.
-  const fx = fixture({ answers: [fenced(ORIGINAL)] });
+  const fx = fixture({ answers: [ORIGINAL] });
   try {
     const { runId } = await fx.plan();
     const outcome = await fx.orch.iterate({ runId, actor: 'owner', nowUnix: NOW, maxAttempts: 2 });
@@ -205,7 +215,7 @@ test('a model that repeats itself stops the loop, and its bytes are still measur
   // `CE-030` / `15` §5 — a repeat is not an attempt. Asking again would spend a model call to
   // receive the same answer, so the ASKING stops; but the run must still carry a verdict about
   // the bytes it actually holds, or a caller would read a failure belonging to replaced text.
-  const fx = fixture({ answers: [fenced(ORIGINAL)] });
+  const fx = fixture({ answers: [ORIGINAL] });
   try {
     const { runId } = await fx.plan();
     const outcome = await fx.orch.iterate({ runId, actor: 'owner', nowUnix: NOW, maxAttempts: 5 });
@@ -217,7 +227,7 @@ test('a model that repeats itself stops the loop, and its bytes are still measur
 });
 
 test('the exhausted novelty budget stops the loop as a refusal, with its reason', async () => {
-  const fx = fixture({ answers: [fenced(ORIGINAL), fenced('b\n'), fenced('c\n')], noveltyBudget: 1 });
+  const fx = fixture({ answers: [ORIGINAL, 'b\n', 'c\n'], noveltyBudget: 1 });
   try {
     const { runId } = await fx.plan();
     const outcome = await fx.orch.iterate({ runId, actor: 'owner', nowUnix: NOW, maxAttempts: 5 });

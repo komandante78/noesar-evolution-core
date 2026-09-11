@@ -24,6 +24,17 @@ import { createSessionDispatch, SESSION_METHOD_POLICY } from '../src/session-pro
 import { divergenceLines, divergenceSummary, DIVERGENCE_LEVELS } from '../../../apps/webui-static/coden-view-model.js';
 import { freshTempDir } from './support/workspace.mjs';
 
+// The Author EDITS a file that already has contents (`applyEditBlocks`): a file larger than
+// the answer budget cannot be restated, only changed. `edited` says what these tests always
+// said — replace everything that is there with this — in the shape the contract now takes.
+const edited = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], {
   encoding: 'utf8',
   env: {
@@ -132,7 +143,7 @@ test('plan() computes the profile before authoring and returns it beside the cha
     shadowsRoot: freshTempDir('noesar-phase7-shadows-'),
     minter: new TokenMinter(randomBytes(32)), events: new EventLedger(),
     author: new Author({
-      generate: async ({ profile }) => { seen.push(profile); return '```\nexport const a = 9;\n```'; },
+      generate: async ({ profile, contents }) => { seen.push(profile); return edited(contents, 'export const a = 9;'); },
       model: 'stub',
     }),
   });

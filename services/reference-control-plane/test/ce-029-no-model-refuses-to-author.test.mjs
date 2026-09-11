@@ -38,6 +38,17 @@ import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 import { freshTempDir } from './support/workspace.mjs';
 
+// The Author EDITS a file that already has contents — `applyEditBlocks` — because "return the
+// complete new contents" is an instruction a model cannot carry out on a file larger than its
+// answer. These tests still say what they always said: replace everything with this.
+const editAll = (contents, body) => [
+  '<<<<<<< SEARCH',
+  String(contents).replace(/\n$/, ''),
+  '=======',
+  String(body).replace(/\n$/, ''),
+  '>>>>>>> REPLACE',
+].join('\n');
+
 const NOW = 1_800_000_000;
 const CALLER_BYTES = 'the caller wrote this line themselves\n';
 
@@ -174,7 +185,7 @@ describe('CE-029 — an installation with no model refuses to author, and says w
   test('a configured model whose every answer is empty still writes nothing, and the run says so', async () => {
     // The nastiest shape of this criterion: a model IS configured, so `available` is true —
     // and the run must still not present empty contents as a result.
-    const author = new Author({ generate: async () => '```\n\n```', model: 'stub' });
+    const author = new Author({ generate: async ({ contents }) => editAll(contents, ''), model: 'stub' });
     const fx = fixture({ author });
     const planned = await planOnce(fx.orch);
 
@@ -192,7 +203,7 @@ describe('CE-029 — an installation with no model refuses to author, and says w
   // fixture never writes anything.
   test('negative control · a model that answers properly authors the file, and the run says so', async () => {
     const authored = 'the model wrote this line\n';
-    const author = new Author({ generate: async () => `\`\`\`\n${authored}\`\`\``, model: 'stub' });
+    const author = new Author({ generate: async ({ contents }) => editAll(contents, authored), model: 'stub' });
     const fx = fixture({ author });
     const planned = await planOnce(fx.orch);
 
