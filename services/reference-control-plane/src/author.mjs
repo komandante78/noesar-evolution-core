@@ -344,7 +344,7 @@ export function replayAuthoringCall({ fixture, prompt, answer }) {
   return { kind: 'RE_APPLIED', faithful: diffs.length === 0, decision, diffs, reason: null };
 }
 
-export function buildAuthoringPrompt({ goal, step, path, contents, profile = [], attempts = [], skills = [] }) {
+export function buildAuthoringPrompt({ goal, step, path, contents, profile = [], attempts = [], skills = [], background = '' }) {
   // A file that already has contents is EDITED, and one that does not is WRITTEN. The split is
   // not a preference: an edit anchors to text that exists, so there is nothing for it to hold
   // on to in an empty file. See `applyEditBlocks` for why the editing side had to exist.
@@ -372,6 +372,18 @@ export function buildAuthoringPrompt({ goal, step, path, contents, profile = [],
       'Do not write a file path, a file name or any commentary inside the block.',
     ];
   lines.push('', `Goal: ${goal}`, `Step: ${step}`, `File: ${path}`);
+  // `goal` and `step` are a title: `intent.goal` is the request's first sentence, kept
+  // short on purpose because it is what run lists and history entries show as a heading
+  // (`app.js` renders it in an `<h3>`, four other places print it as a label — none of
+  // them wants a multi-paragraph issue report). Measured 11/09 on astropy-12907: that
+  // first sentence was ALL the model saw. The actual report carried three code examples
+  // (expected output vs actual, for a plain compound model and a nested one) that pinned
+  // the bug to one line; on the title alone, the model renamed an unrelated function and
+  // left the real line untouched. `background` is the request verbatim, shown ONLY here —
+  // never shortened for a UI, because nothing here is a UI.
+  if (background && background.trim() && background.trim() !== goal.trim()) {
+    lines.push('', 'Full request, verbatim (the goal above is only its first sentence):', background.trim());
+  }
   // Adopted skills — the wiring `skillCatalogStatus` reported as `enforced:false` from the
   // day the registry was built (`D-0343`) until this line existed. A skill is instructions:
   // it tells the writer HOW, which is only worth anything if it arrives BEFORE the writing.
@@ -454,7 +466,7 @@ export class Author {
    *   novelty         'novel' | 'repeat' — `15` §5 counts novelty, not calls
    *   attemptDigest   what novelty is judged on: the produced content set, not the prompt
    */
-  async author({ goal, step, files, profile = [], attempts = [], previousAttemptDigests = [], skills = [] }) {
+  async author({ goal, step, files, profile = [], attempts = [], previousAttemptDigests = [], skills = [], background = '' }) {
     if (!this.available) throw new AuthoringUnavailable(Author.NO_MODEL_REASON);
     if (!Array.isArray(files) || !files.length) {
       throw new AuthoringRefused('NO_FILES', 'authoring needs the closed set of files the Plan settled on, and it was empty');
@@ -476,7 +488,7 @@ export class Author {
     const calls = [];
 
     for (const file of files) {
-      const prompt = buildAuthoringPrompt({ goal, step, path: file.path, contents: file.contents, profile, attempts, skills });
+      const prompt = buildAuthoringPrompt({ goal, step, path: file.path, contents: file.contents, profile, attempts, skills, background });
       let answer;
       try {
         answer = await this.#generate({

@@ -1219,6 +1219,11 @@ export class WorkspaceActionOrchestrator {
         const result = await this.#author.author({
           goal: intent.goal,
           step: plan.steps?.[0]?.description ?? intent.goal,
+          // The request verbatim, not `intent.goal`: `interpret()` keeps `goal` to its
+          // first sentence on purpose (it is the string every run list and history entry
+          // shows as a title), which throws away the reproduction detail a real bug report
+          // carries. The Author gets what the operator actually wrote; the UI keeps its title.
+          background: request,
           files: planFiles,
           // Rule 6 of `16` §3.2, and the reason the profile is computed above rather than
           // beside the diff: the Author writes WITH the repository's conventions in hand.
