@@ -6262,7 +6262,7 @@ be05625dc43694b55cb3d8d52e9eaf901380bee54a65ba88ad473962f9194e56  ./services/ref
 cd1b093d32bf114bb8cb223ffe9824d6f37aec04ae2823f049a5dd7f8c6a217a  ./services/reference-control-plane/src/auth-crypto.mjs
 ea52412b9ae35c7d01d41771d30b351b8427f5333b913e0233f79437f6ae544f  ./services/reference-control-plane/src/auth-store.mjs
 8da564eded08c14c9f65f36ba27a82daf97d937b86f3548b254c3ace68bedfa0  ./services/reference-control-plane/src/auth.mjs
-e00d738e0999170fe7ff10494c940116750c19452cc204aaaaa8c7225e5d87b2  ./services/reference-control-plane/src/author.mjs
+96a1b197af77a29478e519ff39a19948a38412e8eedaeba80bca4f5f9e8dc31b  ./services/reference-control-plane/src/author.mjs
 704def32b7f8b31030702ae64c0c8090ca85d86b0648504d973512db83bfabd6  ./services/reference-control-plane/src/authoring-replay-store.mjs
 cd58f69b41fa23085926175ddd2b9414451a2065f371c4d17eb2d34b33897b3b  ./services/reference-control-plane/src/authority-external-client.mjs
 a179feb4fd5b1ac894c7d5d5c6bcffd053344728daa1a139c862b6f2ce65797f  ./services/reference-control-plane/src/authority-ipc-frame.mjs
@@ -6378,7 +6378,7 @@ b3b79a84b7a531c4a48329d081ed8bb0d7f79475d5d4373b3b7ed5a2c8e64fad  ./services/ref
 f453d0d696573a9e0a8ec9e9484635f6021ab5a38a000b4ed34359b1e545ca69  ./services/reference-control-plane/test/audit.test.mjs
 1ec4f31a9d991b17782d2a2efab5342c1a8387ba9c5e0eac4bbbabbe42851a73  ./services/reference-control-plane/test/auth.test.mjs
 833d29339ec0d8f646d9cfbff2b9353a0dcf68d536dd1528ed86be67e7e04a75  ./services/reference-control-plane/test/author-skill-composition.test.mjs
-89a08a99c792e387f57d1f707d1df925d8a089e0fa9af18a9d889c811992e535  ./services/reference-control-plane/test/author.test.mjs
+934344fe11316e99504563c328b3a5db9d1b0039ed42396537f89bd72decae0d  ./services/reference-control-plane/test/author.test.mjs
 9f9ac9c2c1570cd9fc26471aea29d260e6078ed8040ce1a7ae4e18ec52abe85f  ./services/reference-control-plane/test/authoring-reason-reaches-the-shells.test.mjs
 a251900909efd5b7d2eec868a58a7b07221166d5ca9f4c6649cbe67696cce8d1  ./services/reference-control-plane/test/authoring-replay-retention.test.mjs
 9acd6fc361ffea18f404a54973a210c543080884e7d57d10781b1d6804f14240  ./services/reference-control-plane/test/authority-external-client.test.mjs

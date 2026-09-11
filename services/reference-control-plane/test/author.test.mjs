@@ -301,6 +301,32 @@ test('the ATOM port returns a checked file, and says whether ATOM had to regener
   assert.equal(fixture.provenance.firstRejection, 'no fenced block');
 });
 
+test('the profile divergence-profile.mjs actually produces reaches ATOM in ITS wire shape, not this one\'s', () => {
+  // divergence-profile.mjs:172 names each entry's field \'id\', carries observed/usual/detail
+  // alongside it, and this is exactly that shape - not the {signal, level} literal the test
+  // above hand-builds. Measured live 2026-09-11: this exact shape, sent unchanged, made ATOM
+  // refuse every profiled repair() attempt with BAD_REQUEST 'missing field `signal`' - the
+  // bug this test exists to keep closed.
+  const realSignal = {
+    id: 'scope', observed: { files: 3, layers: 2 }, usual: { files: 1, layers: 1 },
+    level: 'high', detail: undefined,
+  };
+  let seenBody;
+  const generate = atomAuthoringGenerator({
+    endpoint: 'http://atom.test/', token: 't',
+    fetchImpl: async (url, init) => {
+      seenBody = JSON.parse(init.body);
+      return { ok: true, status: 200, text: async () => JSON.stringify({ ok: true, value: {
+        contents: 'x', discardedPaths: [], regenerated: false, firstRejection: null, worldDigest: null,
+      } }) };
+    },
+  });
+  return generate({ goal: 'g', step: 's', path: 'src/login.js', contents: 'x', profile: [realSignal] }).then(() => {
+    assert.deepEqual(seenBody.profile, [{ signal: 'scope', level: 'high' }],
+      'ATOM sees {signal, level} — the extra fields divergence-profile.mjs carries for the prompt are not its schema');
+  });
+});
+
 test('a raw-string port records that NOTHING checked the answer before this side did', async () => {
   const result = await new Author({ generate: async () => fenced('written') }).author({ goal: 'g', step: 's', files: FILES });
   assert.equal(result.fixtures[0].provenance, null, 'null is the fact that no provider checked it');

@@ -526,6 +526,14 @@ export function atomAuthoringGenerator({ endpoint, token = '', sessionId = null,
   const base = String(endpoint ?? '').replace(/\/+$/, '');
   if (!base) throw new AuthoringUnavailable('an ATOM endpoint is required to author through ATOM');
   return async ({ goal, step, path, contents, profile = [], attempts = [] }) => {
+    // divergence-profile.mjs names each entry's field 'id' - the same name
+    // buildAuthoringPrompt reads. ATOM's own /v1/author wire contract names the same
+    // thing 'signal' and rejects an entry that lacks it. Never exercised against the real
+    // binary until repair()/iterate() became reachable: every profiled attempt failed
+    // BAD_REQUEST: missing field 'signal', because nothing translated the shape at this
+    // boundary. Extra fields (observed, usual, detail) are dropped here on purpose -
+    // they are for the prompt a model reads, not for ATOM's schema.
+    const wireProfile = profile.map(({ signal, id, level }) => ({ signal: signal ?? id, level }));
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let response;
@@ -537,7 +545,7 @@ export function atomAuthoringGenerator({ endpoint, token = '', sessionId = null,
           'x-atom-token': token,
           ...(sessionId ? { 'x-atom-session': sessionId } : {}),
         },
-        body: JSON.stringify({ goal, step, path, contents, profile, attempts }),
+        body: JSON.stringify({ goal, step, path, contents, profile: wireProfile, attempts }),
         signal: controller.signal,
       });
     } catch (error) {
