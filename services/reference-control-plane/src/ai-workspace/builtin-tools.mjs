@@ -84,6 +84,8 @@ export const EFFECT = Object.freeze({
   'workspace.approve': 'write',
   'workspace.reject': 'write',
   'workspace.restore': 'write',
+  'workspace.repair': 'write',
+  'workspace.iterate': 'write',
   'workspace.get': 'read',
   'workspace.runs': 'read',
   'repoMap.scan': 'read',
@@ -134,6 +136,7 @@ export const EFFECT = Object.freeze({
 const object = (properties = {}, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const str = (description) => ({ type: 'string', description });
 const strings = (description) => ({ type: 'array', items: { type: 'string' }, description });
+const num = (description) => ({ type: 'integer', description });
 
 export const SCHEMA = Object.freeze({
   'workspace.plan': object({
@@ -150,6 +153,8 @@ export const SCHEMA = Object.freeze({
   'workspace.approve': object({ runId: str('the MEASURED run to promote') }, ['runId']),
   'workspace.reject': object({ runId: str('the run to reject'), reason: str('why') }, ['runId']),
   'workspace.restore': object({ runId: str('the promoted run to undo') }, ['runId']),
+  'workspace.repair': object({ runId: str('the MEASURED, not-clean run to try again') }, ['runId']),
+  'workspace.iterate': object({ runId: str('the run to measure, repair, and measure again'), maxAttempts: num('how many repair attempts before giving up, default 3') }, ['runId']),
   'workspace.get': object({ runId: str('the run to read') }, ['runId']),
   'workspace.runs': object({
     scope: str('all, pending, promoted or rejected'),

@@ -132,6 +132,8 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'approve', argument: '<run>', summary: 'Approve a MEASURED plan — promotes the shadow you were shown', group: 'work', kind: 'call', method: 'workspace.approve', permission: 'workspace.write' },
   { name: 'reject', argument: '<run> [why]', summary: 'Reject a pending plan', group: 'work', kind: 'call', method: 'workspace.reject', permission: 'workspace.write' },
   { name: 'restore', argument: '<run>', summary: 'Undo a promoted run', group: 'work', kind: 'call', method: 'workspace.restore', permission: 'workspace.write' },
+  { name: 'repair', argument: '<run>', summary: 'Read the measured failure and try again — a new attempt, not the same bytes measured twice', group: 'work', kind: 'call', method: 'workspace.repair', permission: 'workspace.write' },
+  { name: 'iterate', argument: '<run> [maxAttempts]', summary: 'Measure, repair, measure again — up to maxAttempts times or until the run comes back clean', group: 'work', kind: 'call', method: 'workspace.iterate', permission: 'workspace.write' },
   { name: 'diff', argument: '<run>', summary: 'What a run changed, against the shadow', group: 'work', kind: 'call', method: 'workspace.get', permission: null },
   { name: 'map', argument: '[path]', summary: 'Scan the workspace: languages, entry points, symbols', group: 'work', kind: 'call', method: 'repoMap.scan', permission: 'workspace.read' },
   { name: 'search', argument: '<text>', summary: 'Literal search across the workspace', group: 'work', kind: 'call', method: 'repoMap.search', permission: 'workspace.read' },

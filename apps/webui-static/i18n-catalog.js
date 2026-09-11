@@ -2121,6 +2121,8 @@ const it = {
   'Approve a MEASURED plan — promotes the shadow you were shown': 'Approva un piano MISURATO — promuove l\'ombra che ti è stata mostrata',
   'Reject a pending plan': 'Rifiuta un piano in attesa',
   'Undo a promoted run': 'Annulla un\'esecuzione promossa',
+  'Read the measured failure and try again — a new attempt, not the same bytes measured twice': 'Legge il fallimento misurato e ritenta — un nuovo tentativo, non gli stessi byte misurati due volte',
+  'Measure, repair, measure again — up to maxAttempts times or until the run comes back clean': 'Misura, ripara, misura di nuovo — fino al numero di tentativi indicato o finché l\'esecuzione non torna pulita',
   'What a run changed, against the shadow': 'Che cosa ha cambiato un\'esecuzione, a confronto con l\'ombra',
   'Scan the workspace: languages, entry points, symbols': 'Scansiona lo spazio di lavoro: linguaggi, punti di ingresso, simboli',
   'Literal search across the workspace': 'Ricerca letterale in tutto lo spazio di lavoro',
@@ -2165,6 +2167,7 @@ const it = {
   // no entry for `[why]` on its own — no command shows it alone, and an entry matching no screen
   // is a claim of coverage nothing can honour, which the measurement tool refuses by name.
   '<run> [why]': '<esecuzione> [perché]',
+  '<run> [maxAttempts]': '<esecuzione> [tentativi]',
   // `<token>` describes what to type — the id of a live grant, read off `/grants` or the
   // Authority panel — so it is listed rather than exempted, on the same reading as `<run>`.
   // The Italian is the same word: "token" is the term this product's own Italian prose already

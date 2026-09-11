@@ -4417,7 +4417,7 @@ const requestListener = async (req, res) => {
     // against — `CE-008` — and it carries the same permission and CSRF gate as `approve`,
     // because it mints a token and writes into a shadow even though nothing reaches the
     // workspace from it.
-    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/(measure|approve|reject|restore)$/);
+    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/(measure|approve|reject|restore|repair|iterate)$/);
     if (workspaceActionMatch && req.method === 'POST') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
       if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
@@ -4442,6 +4442,12 @@ const requestListener = async (req, res) => {
           const outcome = workspaceActions.reject({ runId, approverId: authenticated.user.id, reason: payload?.reason ?? null, nowUnix });
           compactRunAfterDecision(runId);
           return json(res, 200, outcome);
+        }
+        if (verb === 'repair') {
+          return json(res, 200, workspaceActions.repair({ runId, actor: authenticated.user.id, nowUnix }));
+        }
+        if (verb === 'iterate') {
+          return json(res, 200, workspaceActions.iterate({ runId, actor: authenticated.user.id, nowUnix, maxAttempts: payload?.maxAttempts }));
         }
         const outcome = workspaceActions.restore({ runId, actor: authenticated.user.id, nowUnix });
         return json(res, 200, outcome);

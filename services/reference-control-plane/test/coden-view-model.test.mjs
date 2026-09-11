@@ -92,6 +92,18 @@ describe('the view model — what a session looks like, decided once', () => {
     assert.deepEqual(turn.params, { request: 'restore the session token', files: [] });
   });
 
+  test('`/iterate <run> <n>` sends the run id and maxAttempts as a number', () => {
+    const turn = planTurn('/iterate abc123 5', deps);
+    assert.equal(turn.method, 'workspace.iterate');
+    assert.deepEqual(turn.params, { runId: 'abc123', maxAttempts: 5 });
+  });
+
+  test('`/iterate <run>` with no count omits maxAttempts, so the engine default applies', () => {
+    const turn = planTurn('/iterate abc123', deps);
+    assert.equal(turn.method, 'workspace.iterate');
+    assert.deepEqual(turn.params, { runId: 'abc123', maxAttempts: undefined });
+  });
+
   test('`/` and `/help` both return the command list, formatted once', () => {
     for (const typed of ['/', '/help']) {
       const turn = planTurn(typed, deps);

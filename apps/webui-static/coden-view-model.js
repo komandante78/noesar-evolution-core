@@ -50,6 +50,11 @@ export const RUN = {
     return ['workspace.reject', { runId, reason: why.join(' ') || undefined }];
   },
   restore: (argument) => ['workspace.restore', { runId: argument }],
+  repair: (argument) => ['workspace.repair', { runId: argument }],
+  iterate: (argument) => {
+    const [runId, maxAttempts] = argument.split(' ');
+    return ['workspace.iterate', { runId, maxAttempts: maxAttempts ? Number(maxAttempts) : undefined }];
+  },
   diff: (argument) => ['workspace.get', { runId: argument }],
   map: (argument) => ['repoMap.scan', argument ? { path: argument } : {}],
   search: (argument) => ['repoMap.search', { q: argument }],

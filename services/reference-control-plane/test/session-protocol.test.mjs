@@ -303,6 +303,29 @@ describe('session protocol — unix socket transport', () => {
     assert.ok(trail.events.map((event) => event.action).includes('workspace_action.promoted'));
   });
 
+  test('workspace.repair and workspace.iterate reach the real orchestrator over the socket', async () => {
+    const planned = await call(authenticatedSocket, 'workspace.plan', { request: 'a second socket-driven plan', files: [{ path: 'from-socket-2.txt', contents: 'y' }] });
+    const measured = await call(authenticatedSocket, 'workspace.measure', { runId: planned.runId });
+    assert.equal(measured.clean, true);
+
+    // Measured clean: nothing for a repair to act on. The refusal proves the socket reaches
+    // the real `repair()` rather than answering "no transport" or a stub — the class of bug
+    // this pair of methods existed unwired for a day.
+    await assert.rejects(
+      () => call(authenticatedSocket, 'workspace.repair', { runId: planned.runId }),
+      (error) => error.kind === 'NOTHING_TO_REPAIR',
+    );
+
+    // A fresh plan, still PENDING_APPROVAL: `iterate()` owns the measure step itself, so it
+    // must start from a run nobody has manually measured yet — the run above is already
+    // MEASURED and `measure()` itself refuses to re-measure one that is.
+    const plannedForIterate = await call(authenticatedSocket, 'workspace.plan', { request: 'a third socket-driven plan', files: [{ path: 'from-socket-3.txt', contents: 'z' }] });
+    const iterated = await call(authenticatedSocket, 'workspace.iterate', { runId: plannedForIterate.runId });
+    assert.equal(iterated.clean, true);
+    assert.equal(iterated.stopped, 'clean');
+    assert.equal(iterated.attempts.length, 1);
+  });
+
   // The socket dispatch reads plan fields by name exactly as the HTTP route does, and dropped
   // the rest in the same silence. Run RED against the unguarded dispatch, where this planned.
   test('the socket refuses a plan field nothing reads, exactly as the browser route does', async () => {

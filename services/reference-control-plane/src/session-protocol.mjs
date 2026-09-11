@@ -129,6 +129,8 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   'workspace.approve': { permission: 'workspace.write', bridged: true },
   'workspace.reject': { permission: 'workspace.write', bridged: true },
   'workspace.restore': { permission: 'workspace.write', bridged: true },
+  'workspace.repair': { permission: 'workspace.write', bridged: true },
+  'workspace.iterate': { permission: 'workspace.write', bridged: true },
   'workspace.get': { permission: null, bridged: true },
   // Point 4b. The terminal can READ which chat owns which run — including its own runs, which
   // own none — even though it can never CREATE that link (see `workspace.plan` in the dispatch
@@ -324,6 +326,8 @@ export function createSessionDispatch({
     'workspace.approve': ({ params, actor }) => workspaceActions.approve({ runId: params?.runId, approverId: actor, nowUnix: nowUnix() }),
     'workspace.reject': ({ params, actor }) => workspaceActions.reject({ runId: params?.runId, approverId: actor, reason: params?.reason ?? null, nowUnix: nowUnix() }),
     'workspace.restore': ({ params, actor }) => workspaceActions.restore({ runId: params?.runId, actor, nowUnix: nowUnix() }),
+    'workspace.repair': ({ params, actor }) => workspaceActions.repair({ runId: params?.runId, actor, nowUnix: nowUnix() }),
+    'workspace.iterate': ({ params, actor }) => workspaceActions.iterate({ runId: params?.runId, actor, nowUnix: nowUnix(), maxAttempts: params?.maxAttempts }),
     // Point 4b. Same orchestrator instance the browser reads (see this function's own doc
     // comment), so both shells group one set of runs — not two lists that agree by luck.
     'workspace.runs': ({ params }) => workspaceActions.runsFor({
