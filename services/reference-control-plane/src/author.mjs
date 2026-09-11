@@ -636,17 +636,36 @@ export function declaredFallbackGenerator({ primary, fallback, onDegrade = () =>
  *
  * No token, no filesystem, no repository: a prompt in, a string out.
  */
-export function openAiChatGenerator({ endpoint, model = null, apiKey = null, timeoutMs = 120_000, fetchImpl = fetch, temperature = 0.2 }) {
+export function openAiChatGenerator({
+  endpoint, model = null, apiKey = null, fetchImpl = fetch, temperature = 0.2,
+  maxTokens = 4096, minTokensPerSecond = 3, timeoutMs = null,
+}) {
   const base = String(endpoint ?? '').replace(/\/+$/, '');
   if (!base) throw new AuthoringUnavailable(Author.NO_MODEL_REASON);
+  // Measured 2026-09-11: every authoring request against this installation's own local
+  // runtime aborted, because nothing bounded how much it was asked to write AND the timeout
+  // was a fixed number picked for no card in particular. A file rewrite is bounded work, so
+  // maxTokens says so; the timeout is DERIVED from it at a conservative floor rather than
+  // fixed, so the two can never drift apart in silence the way they did tonight. Raise
+  // minTokensPerSecond only against a real measurement on real hardware, never a guess -
+  // hardware is never the ideal on paper.
+  const effectiveTimeoutMs = timeoutMs ?? Math.ceil((maxTokens / minTokensPerSecond) * 1000) + 30_000;
   return async ({ prompt }) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
     try {
       const response = await fetchImpl(`${base}/v1/chat/completions`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
-        body: JSON.stringify({ ...(model ? { model } : {}), temperature, messages: [{ role: 'user', content: prompt }] }),
+        body: JSON.stringify({
+          ...(model ? { model } : {}), temperature, max_tokens: maxTokens,
+          // This installation's own local runtime only, per this function's own contract
+          // above - never a real external provider, which goes through provider-gateway.mjs
+          // instead. Thinking a model does for a file rewrite is pure overhead: measured at
+          // 300 tokens without this, still mid-thought, zero code written.
+          chat_template_kwargs: { enable_thinking: false },
+          messages: [{ role: 'user', content: prompt }],
+        }),
         signal: controller.signal,
       });
       if (!response.ok) {

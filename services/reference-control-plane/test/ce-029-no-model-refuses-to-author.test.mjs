@@ -140,6 +140,23 @@ describe('CE-029 — an installation with no model refuses to author, and says w
     );
   });
 
+  test('an authoring request declares a token budget and turns thinking off', async () => {
+    // Measured live 2026-09-11: with neither bound, a real rewrite ran for minutes and every
+    // authoring request aborted at the old fixed 120s timeout - unbounded output asked of a
+    // model that also spends hundreds of tokens thinking before it writes a line of code.
+    let seenBody;
+    const generate = openAiChatGenerator({
+      endpoint: 'http://127.0.0.1:9', maxTokens: 1000,
+      fetchImpl: async (url, init) => {
+        seenBody = JSON.parse(init.body);
+        return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) };
+      },
+    });
+    await generate({ prompt: 'p' });
+    assert.equal(seenBody.max_tokens, 1000);
+    assert.deepEqual(seenBody.chat_template_kwargs, { enable_thinking: false });
+  });
+
   test('a reachable model that answers with no content is unavailable, not a source of empty bytes', async () => {
     const generate = openAiChatGenerator({
       endpoint: 'http://127.0.0.1:9',
