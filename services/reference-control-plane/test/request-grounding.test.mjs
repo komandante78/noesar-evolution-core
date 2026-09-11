@@ -49,6 +49,19 @@ describe('the terms a goal is searched by', () => {
     assert.deepEqual(searchTermsOf(''), []);
     assert.deepEqual(searchTermsOf('please do it for the'), []);
   });
+
+  test("issue-tracker chrome does not spend the budget a real word needed", () => {
+    // Measured on a real SWE-bench report (django-10097): the sentence carrying the actual
+    // bug — "core.validators.URLValidator" — came AFTER this template boilerplate, and
+    // MAX_TERMS (12) was spent before reaching it. `validators` never became a search term
+    // at all, on a report that names the file by its own module path.
+    const report = "Make URLValidator reject invalid characters in the username and password Description (last modified by Tim Bell) Since #20003, core.validators.URLValidator accepts URLs with usernames and passwords";
+    const terms = searchTermsOf(report);
+    assert.ok(!terms.includes('description'), 'the template label is not a search term');
+    assert.ok(!terms.includes('last') && !terms.includes('modified'), 'the timestamp phrase is not a search term');
+    assert.ok(!terms.includes('since'), 'the boilerplate transition word is not a search term');
+    assert.ok(terms.includes('validators'), 'the actual module name now has a slot to land in');
+  });
 });
 
 describe('grounding a goal in a real repository', () => {

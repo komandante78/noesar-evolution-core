@@ -72,6 +72,10 @@ const STOP_WORDS = new Set([
   'it', 'is', 'to', 'of', 'in', 'on', 'at', 'by', 'as', 'or', 'do', 'does', 'did', 'be', 'we',
   'you', 'they', 'them', 'their', 'there', 'here', 'then', 'than', 'also', 'please', 'need',
   'needs', 'want', 'wants', 'fix', 'change', 'update', 'new', 'old',
+  // Issue-tracker template chrome, not content — measured on django-10097: the whole
+  // MAX_TERMS budget was spent on "Description ... (last modified by Tim Bell) ... Since
+  // #20003" before a single real word from the report's body was ever extracted.
+  'description', 'last', 'modified', 'since',
   // Italian
   'che', 'per', 'con', 'del', 'della', 'delle', 'dei', 'degli', 'dal', 'dalla', 'nel', 'nella',
   'sul', 'sulla', 'una', 'uno', 'gli', 'le', 'la', 'il', 'lo', 'un', 'di', 'da', 'in', 'su',
