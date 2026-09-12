@@ -365,3 +365,62 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
     });
   });
 });
+
+/**
+ * The CodeN workbench's own capabilities, as the HTTP surface gates them, and whether a SHELL can
+ * reach each one.
+ *
+ * `CE-021` is about the two shells reaching the same WORK, and the tests above guard the method
+ * table in both directions. What no test could see until this one is a capability that exists
+ * only as an HTTP ROUTE: it is in neither direction of that table, so both shells lack it and
+ * nothing says so. Found 2026-09-12, from the Owner's own observation — while CodeN is working,
+ * no consent appears where the work is happening.
+ *
+ * Restricted to `coden.*` deliberately. Nineteen permissions gate routes in this file, and
+ * `user.manage`, `provider.manage`, `audit.read` and their neighbours gate PAGES: asserting those
+ * are shell-reachable would produce fifteen obvious exceptions and no signal. The workbench's own
+ * family is the one where a page-only capability is a divergence rather than a design.
+ */
+const CODEN_PERMISSIONS_NOT_REACHABLE_FROM_A_SHELL = Object.freeze({
+  'coden.authorize': 'A GAP, not a decision. Measured 2026-09-12: the browser\'s Authority page '
+    + 'calls POST /api/v1/coden/authorize directly (apps/webui-static/app.js, the `authorizePlan` '
+    + 'button beside the `consentScope` select), and neither shell can — the method is in no '
+    + 'session policy, so it is unreachable over the unix socket AND over /api/v1/tui/command, '
+    + 'which both go through the same dispatch. Consequence, in the operator\'s words: while '
+    + 'CodeN is working, there is no way to grant a consent scope from where the work is '
+    + 'happening. Closing it means SHARING that route\'s recomputation with the dispatch — '
+    + 'SEC-003 recomputes the path plan because the submitted one is the caller\'s own claim — '
+    + 'and never copying it, because a security check written twice is two checks.',
+  'coden.owner-bypass': 'Page-only for a reason that outlives this comment: the route it gates '
+    + 'also requires a RECENT STRONG REAUTHENTICATION (`session.elevatedUntil`), and no shell '
+    + 'can perform one — `reauth` appears nowhere in session-protocol.mjs, while the browser has '
+    + '/api/v1/auth/reauth. Giving a shell the bypass without the second factor would widen the '
+    + 'most privileged mode this product has, which is the opposite of parity.',
+});
+
+test('every coden capability the HTTP surface gates is reachable from a shell, or named page-only here', () => {
+  const gated = new Set([...serverSource.matchAll(/requireSession\(req, ?res, ?'(coden\.[a-zA-Z.-]+)'/g)]
+    .map((match) => match[1]));
+  assert.ok(gated.size >= 3, 'the route gate moved or was reworded; this test cannot see it any more');
+
+  const reachableFromAShell = new Set(Object.values(SESSION_METHOD_POLICY)
+    .map((entry) => entry.permission).filter(Boolean));
+
+  for (const permission of gated) {
+    if (reachableFromAShell.has(permission)) continue;
+    assert.ok(CODEN_PERMISSIONS_NOT_REACHABLE_FROM_A_SHELL[permission],
+      `\`${permission}\` gates a CodeN capability on the HTTP surface and no session method asks for it: `
+      + 'either give the shells a method, or name it in CODEN_PERMISSIONS_NOT_REACHABLE_FROM_A_SHELL '
+      + 'with the reason it belongs to a page alone');
+  }
+
+  // The other direction, for the same reason the table above is checked both ways: a warning that
+  // has stopped being true teaches a reader to ignore the list.
+  for (const [permission, reason] of Object.entries(CODEN_PERMISSIONS_NOT_REACHABLE_FROM_A_SHELL)) {
+    assert.ok(!reachableFromAShell.has(permission),
+      `\`${permission}\` is reachable from a shell now — take it out of the page-only list: ${reason.slice(0, 60)}…`);
+    assert.ok(gated.has(permission),
+      `\`${permission}\` is named as page-only and no route gates it any more: the entry is stale`);
+    assert.ok(reason.length > 80, `\`${permission}\` is named page-only without a reason worth reading`);
+  }
+});

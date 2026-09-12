@@ -6564,7 +6564,7 @@ fb563aba09baf5e9506afa3bc76100d453f633c91a61782d7ccfd4f96eb97b14  ./services/ref
 40ef1a252134ff0d62fe495ccde27dd0302b4ec90dd6f728d221a9b7f8edebad  ./services/reference-control-plane/test/tui-client-sessions.test.mjs
 e5173932822e336e97804f868649e2b274dd52b1ce24e8996a37a9c4fb7a8ef0  ./services/reference-control-plane/test/tui-import-closure.test.mjs
 99e062768ca7191e1281d4620f9c8f7f3d7e10e784b15b01c7b542f7ff378f72  ./services/reference-control-plane/test/tui-screen-layout.test.mjs
-c1c2f8446a3b4b96d26c8ef63f9cf52f2eccee5dd07316c7010acf0117f6a79e  ./services/reference-control-plane/test/two-shells-parity.test.mjs
+84963d56b2a04ea10981cb7bdb9799bf8c16ab663507f0625f6b0019e232c3d1  ./services/reference-control-plane/test/two-shells-parity.test.mjs
 305afeeeb530ea882ff279372a5c332f7e8bde30bd685deaffa2b12d8576934a  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
 8d57f04b38e657a89196f51f705e815a3e47d5afa6d88537b1873b7f14639e88  ./services/reference-control-plane/test/update-manager.test.mjs
 66f1525b9946e61f2932df27cee921067f6de3c85e5aeecf3577eb87223d210c  ./services/reference-control-plane/test/updates-channel-key-http.test.mjs
