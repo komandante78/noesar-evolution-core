@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, readdirSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
-import { Author, AuthoringUnavailable, AuthoringRefused, atomAuthoringGenerator, openAiChatGenerator, declaredFallbackGenerator, looksLikeContextExceeded, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
+import { Author, AuthoringUnavailable, AuthoringRefused, atomAuthoringGenerator, openAiChatGenerator, declaredFallbackGenerator, looksLikeContextExceeded, excerptAround, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
 import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
@@ -588,4 +588,125 @@ test('ATOM saying the window was exceeded does not degrade to the same window', 
     },
   );
   assert.equal(degraded, 0, 'a file that does not fit is not a degradation: nothing fell over');
+});
+
+// --- a file too big to show is not a file too big to edit -------------------------------------
+//
+// Measured 2026-09-12: `n_ctx` 16 384 with 4 096 reserved for the answer, and the files a plan
+// picks are routinely 45-63 KiB. Eight of fourteen SWE-bench instances produced no bytes at all
+// because of it. The edit-block contract bounded the ANSWER; this is the other half.
+
+const bigFile = (() => {
+  const lines = [];
+  for (let i = 1; i <= 400; i += 1) lines.push(`filler line ${i} about nothing in particular`);
+  lines[199] = 'def parse_duration(value):';
+  lines[200] = '    return _broken(value)';
+  return lines.join('\n');
+})();
+
+test('an excerpt keeps the lines that mention the request, verbatim, and NAMES the gaps', () => {
+  const view = excerptAround(bigFile, 'parse_duration is broken', { radius: 5 });
+  assert.ok(view, 'a 400-line file with one relevant region must be narrowable');
+  // Verbatim, because an anchor copied out of this view has to match the real file exactly.
+  assert.ok(view.includes('def parse_duration(value):'), view.slice(0, 200));
+  assert.ok(view.includes('    return _broken(value)'));
+  // The holes are declared, with the numbers they stand for.
+  assert.match(view, /… lines 1-\d+ of this file are not shown …/);
+  assert.ok(view.split('\n').length < bigFile.split('\n').length / 2,
+    `the view must actually be smaller: ${view.split('\n').length} of ${bigFile.split('\n').length}`);
+  // And it must not invent: every line that is not a gap marker is a line of the real file.
+  const real = new Set(bigFile.split('\n'));
+  for (const line of view.split('\n')) {
+    if (line.startsWith('… lines ')) continue;
+    assert.ok(real.has(line), `the view introduced a line the file does not have: ${JSON.stringify(line)}`);
+  }
+});
+
+test('it refuses to narrow rather than pretend', () => {
+  // Nothing matches: there is no honest excerpt, so there is none.
+  assert.equal(excerptAround(bigFile, 'zzqqxx unobtainium'), null);
+  // A word on every line: the «view» would be the file, and a second call would be refused for
+  // exactly the same reason as the first.
+  assert.equal(excerptAround(bigFile, 'filler'), null);
+  assert.equal(excerptAround('', 'anything'), null);
+});
+
+test('a file refused for the window is asked again as an excerpt, ONCE', async () => {
+  const prompts = [];
+  const generate = async ({ prompt }) => {
+    prompts.push(prompt);
+    if (!prompt.includes('EXCERPT')) {
+      throw new AuthoringRefused('CONTEXT_EXCEEDED', 'request (60012 tokens) exceeds the available context size (16384 tokens)', 'big.py');
+    }
+    return editAll('    return _broken(value)', '    return _fixed(value)');
+  };
+  const result = await new Author({ generate, model: 'test' }).author({
+    goal: 'parse_duration is broken', step: 'fix parse_duration',
+    files: [{ path: 'big.py', contents: bigFile }],
+  });
+
+  assert.equal(prompts.length, 2, 'exactly two views: the whole file, then the excerpt');
+  assert.ok(!prompts[0].includes('EXCERPT'), 'the first ask is the whole file');
+  assert.ok(prompts[1].includes('EXCERPT'), 'the second ask says what it is');
+  assert.ok(prompts[1].length < prompts[0].length, 'the second ask must be smaller than the first');
+
+  // THE SAFETY CLAIM, as an assertion: the answer is applied to the REAL file, so everything the
+  // model never saw is still there, byte for byte.
+  const after = result.contents.get('big.py');
+  assert.ok(after.includes('    return _fixed(value)'), 'the edit did not land');
+  assert.ok(after.includes('filler line 1 about nothing in particular'), 'a line outside the excerpt was lost');
+  assert.ok(after.includes('filler line 400 about nothing in particular'), 'the tail of the file was lost');
+  // Byte for byte the original with ONE line replaced. Stronger than counting lines: it says
+  // that nothing the model never saw moved, and nothing the view added arrived. (The trailing
+  // newline is the product normalising a file to end with one, which is not this change.)
+  assert.equal(
+    after.trimEnd(),
+    bigFile.replace('    return _broken(value)', '    return _fixed(value)').trimEnd(),
+    'the parts of the file the model never saw did not survive the edit',
+  );
+  assert.ok(!after.includes('… lines '), 'a gap marker reached the file');
+});
+
+test('a refusal on a view that is already an excerpt is the end, not a smaller excerpt', async () => {
+  let calls = 0;
+  const generate = async () => {
+    calls += 1;
+    throw new AuthoringRefused('CONTEXT_EXCEEDED', 'exceeds the available context size', 'big.py');
+  };
+  const result = await new Author({ generate, model: 'test' }).author({
+    goal: 'parse_duration is broken', step: 'fix parse_duration',
+    files: [{ path: 'big.py', contents: bigFile }],
+  });
+  assert.equal(calls, 2, 'one narrowing, never a staircase');
+  assert.equal(result.contents.size, 0);
+  assert.equal(result.refusals[0].code, 'CONTEXT_EXCEEDED');
+});
+
+test('a file that cannot be narrowed keeps the refusal it already had', async () => {
+  // `filler` is on every line, so there is no smaller view: the call must not be repeated.
+  let calls = 0;
+  const generate = async () => {
+    calls += 1;
+    throw new AuthoringRefused('CONTEXT_EXCEEDED', 'exceeds the available context size', 'big.py');
+  };
+  const result = await new Author({ generate, model: 'test' }).author({
+    goal: 'filler', step: 'filler',
+    files: [{ path: 'big.py', contents: bigFile }],
+  });
+  assert.equal(calls, 1, 'nothing to cut means nothing to ask again');
+  assert.equal(result.refusals[0].code, 'CONTEXT_EXCEEDED');
+});
+
+test('a refusal that is not about the window is not narrowed at all', async () => {
+  let calls = 0;
+  const generate = async () => {
+    calls += 1;
+    throw new AuthoringRefused('NOT_A_FILE', 'ATOM refused this answer: it is prose', 'big.py');
+  };
+  const result = await new Author({ generate, model: 'test' }).author({
+    goal: 'parse_duration is broken', step: 'fix parse_duration',
+    files: [{ path: 'big.py', contents: bigFile }],
+  });
+  assert.equal(calls, 1, 'only a window refusal buys a second view');
+  assert.equal(result.refusals[0].code, 'NOT_A_FILE');
 });
