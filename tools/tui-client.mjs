@@ -34,7 +34,7 @@ import { createInterface, emitKeypressEvents } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { runFullScreen } from './tui-fullscreen.mjs';
-import { accountFromUser } from '../apps/shared/coden/agent-commands.js';
+import { accountFromUser, nextStepsFor } from '../apps/shared/coden/agent-commands.js';
 import { matchAddresses } from '../apps/webui-static/coden-view-model.js';
 import { printJson, runSessionsList, showAddress } from '../apps/shared/coden/coden-address-views.mjs';
 import { clearCredential, credentialPath, readCredential, terminalLabel, writeCredential } from './terminal-credential.mjs';
@@ -337,6 +337,25 @@ async function runPlanFlow(reader, session, request = '') {
     if (grounding.goalRelatedToRequest === false) {
       console.log('  ⚠ the interpreted goal shares no searchable word with what you asked — read the plan before approving');
     }
+  }
+
+  // What to type next. Until this line the flow printed the run's state and stopped, which left
+  // the operator to remember a state machine that lives in `workspace-actions.mjs` — the Owner
+  // said so plainly on 2026-09-12: the suggestions do not appear in the terminal.
+  //
+  // The list and its words come from `nextStepsFor`, the one declaration both shells read, so
+  // this shell cannot come to offer a different set than the browser. And they are suggestions of
+  // what to TYPE, never a keystroke: `15` §13 — «in a terminal `y` is one paste away from being
+  // typed by something that is not you» — and approving a change deserves that caution more than
+  // logging out does.
+  //
+  // `authoring.available === false` is read rather than ignored: an installation with no model
+  // refuses `repair` every time, and offering it would send somebody to discover by typing what
+  // the plan already answered in words (`CE-029`).
+  const steps = nextStepsFor(planned.status, { authorAvailable: planned.authoring?.available !== false });
+  if (steps.length) {
+    console.log('next:');
+    for (const step of steps) console.log(`  /${step.name} ${planned.runId}`.padEnd(30), step.summary);
   }
   console.log('');
 }

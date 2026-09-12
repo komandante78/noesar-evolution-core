@@ -250,6 +250,85 @@ export const AGENT_COMMANDS = Object.freeze([
 ]);
 
 /**
+ * What can be done NEXT with a run — one declaration, both shells.
+ *
+ * # Why this exists
+ *
+ * Measured 2026-09-12, from the Owner's own words: «while CodeN works, the keys to choose the
+ * consents and the suggestions do not appear in the terminal». `runPlanFlow` in
+ * `tools/tui-client.mjs` printed the run id, the state, the risk, the confidence and who chose
+ * the files — and then stopped. Every one of those lines is honest and none of them says what to
+ * do next, so the shell left the operator to remember a state machine that lives in another file.
+ *
+ * # Why here and not in each shell
+ *
+ * `D-0230`, one program two shells: a list of next steps written in the browser and again in the
+ * terminal is two lists, and within a month they disagree about a state. This file already is the
+ * single vocabulary for that reason, and the WORDS come from each command's own `summary` — a
+ * second wording of «measure» would be a second thing to keep true.
+ *
+ * # The table is the engine's refusals, read from the engine
+ *
+ * Taken from `workspace-actions.mjs`, not from habit:
+ *
+ *   `simulate`  refuses unless PENDING_APPROVAL                                        (:1411)
+ *   `measure`   refuses unless PENDING_APPROVAL, or MEASURED with its shadow GONE      (:1477)
+ *   `repair`    refuses on PENDING_APPROVAL («nothing to repair against»), needs
+ *               MEASURED, refuses NOTHING_TO_REPAIR when the measurement was clean,
+ *               and NO_AUTHOR with no model underneath                            (:1621-1634)
+ *   `approve`   refuses on PENDING_APPROVAL («NOT_MEASURED»), needs MEASURED          (:1816)
+ *   `reject`    allowed on PENDING_APPROVAL and MEASURED                              (:1897)
+ *   `restore`   needs PROMOTED, refuses when already RESTORED                         (:1965)
+ *
+ * `iterate` is offered on PENDING_APPROVAL only. It measures first, so on a MEASURED run it
+ * would hit `measure`'s own refusal — except in the one case where the process restarted and the
+ * shadow is gone, which is too narrow to suggest and not wrong to omit: a suggestion that is
+ * usually refused is worse than a suggestion that is missing.
+ *
+ * # What this is NOT
+ *
+ * It is not a keystroke. `/logout` a few lines above needs a TYPED word for the reason `15` §13
+ * gives — «in a terminal `y` is one paste away from being typed by something that is not you» —
+ * and that reason applies with more force to approving a change or granting a consent scope than
+ * it does to logging out. These are suggestions of what to TYPE.
+ */
+export const NEXT_STEPS = Object.freeze({
+  PENDING_APPROVAL: Object.freeze(['simulate', 'measure', 'iterate', 'reject']),
+  MEASURED_CLEAN: Object.freeze(['diff', 'approve', 'reject']),
+  MEASURED_DIRTY: Object.freeze(['diff', 'repair', 'reject']),
+  PROMOTED: Object.freeze(['diff', 'restore']),
+  REJECTED: Object.freeze([]),
+  RESTORED: Object.freeze([]),
+});
+
+/**
+ * The commands worth typing next, as `{ name, argument, summary }` taken from `AGENT_COMMANDS`.
+ *
+ * `clean` splits MEASURED in two because the engine does: a clean measurement refuses `repair`
+ * with NOTHING_TO_REPAIR, and a dirty one refuses `approve`. `null` means the caller does not
+ * know yet, and then both halves are offered rather than a guess.
+ *
+ * `authorAvailable: false` drops `repair`: an installation with no model refuses it with
+ * NO_AUTHOR every single time, and `CE-029` is about saying that rather than letting somebody
+ * discover it by typing.
+ */
+export function nextStepsFor(status, { clean = null, authorAvailable = true } = {}) {
+  const state = String(status ?? '').toUpperCase();
+  let names;
+  if (state === 'MEASURED') {
+    names = clean === null
+      ? [...new Set([...NEXT_STEPS.MEASURED_CLEAN, ...NEXT_STEPS.MEASURED_DIRTY])]
+      : [...(clean ? NEXT_STEPS.MEASURED_CLEAN : NEXT_STEPS.MEASURED_DIRTY)];
+  } else {
+    names = [...(NEXT_STEPS[state] ?? [])];
+  }
+  if (!authorAvailable) names = names.filter((name) => name !== 'repair' && name !== 'iterate');
+  const byName = new Map(AGENT_COMMANDS.map((command) => [command.name, command]));
+  return names.map((name) => byName.get(name)).filter(Boolean)
+    .map(({ name, argument, summary }) => ({ name, argument, summary }));
+}
+
+/**
  * True when what is typed should open the command menu: a `/` that begins the prompt.
  *
  * Deliberately NOT "the text contains a slash" — a prompt is prose, and `and/or` or a path

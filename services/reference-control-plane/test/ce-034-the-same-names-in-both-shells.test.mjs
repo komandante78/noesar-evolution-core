@@ -43,7 +43,7 @@ import { readFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AGENT_COMMANDS, menuFor, resolveCommand } from '../../../apps/shared/coden/agent-commands.js';
+import { AGENT_COMMANDS, NEXT_STEPS, menuFor, nextStepsFor, resolveCommand } from '../../../apps/shared/coden/agent-commands.js';
 import { addressEntries } from '../../../apps/webui-static/coden-view-model.js';
 import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
 
@@ -157,5 +157,80 @@ describe('CE-034 — the two shells offer the same set of names', () => {
     input.emit('keypress', null, { name: 'c', ctrl: true });
     await finished.catch(() => {});
     assert.ok(offered.length, 'the offered set must not be empty, or the assertion above passes vacuously');
+  });
+});
+
+// --- what to type NEXT: one declaration, and it has to keep naming real things ----------------
+//
+// Added 2026-09-12, from the Owner's observation: «while CodeN works, the keys to choose the
+// consents and the suggestions do not appear in the terminal». `runPlanFlow` printed the run's
+// state and stopped, leaving the operator to remember a state machine that lives in the engine.
+//
+// The same discipline as the rest of this file: the suggestion list is compared against the
+// SOURCES it claims to describe — the command table it names, and the engine whose states it
+// covers — never against itself.
+describe('CE-034 · the next step is suggested from one declaration, and it names real things', () => {
+  const suggestHere = dirname(fileURLToPath(import.meta.url));
+  const engineSource = readFileSync(join(suggestHere, '../src/workspace-actions.mjs'), 'utf8');
+  const tuiSource = readFileSync(join(suggestHere, '../../../tools/tui-client.mjs'), 'utf8');
+
+  test('every suggested name is a command both shells actually offer', () => {
+    // The real drift risk: a command renamed in the table above, and a suggestion still pointing
+    // at the old word. The operator would be told to type something that does not exist.
+    const offered = new Set(AGENT_COMMANDS.map((command) => command.name));
+    for (const [state, names] of Object.entries(NEXT_STEPS)) {
+      for (const name of names) {
+        assert.ok(offered.has(name), `\`${state}\` suggests \`/${name}\`, which no command declares`);
+      }
+    }
+  });
+
+  test('the table names every state the ENGINE can put a run in', () => {
+    // Read from the engine's own assignments, so a new state cannot arrive without this failing.
+    // A run in a state nobody wrote a row for would print no next step at all, which reads as
+    // «there is nothing to do» — the one answer that must never be a side effect of an omission.
+    const states = new Set([...engineSource.matchAll(/run\.status = '([A-Z_]+)'/g)].map((m) => m[1]));
+    assert.ok(states.size >= 4, 'the engine no longer assigns run.status this way; this test is blind');
+    for (const state of states) {
+      const named = state === 'MEASURED'
+        ? Object.hasOwn(NEXT_STEPS, 'MEASURED_CLEAN') && Object.hasOwn(NEXT_STEPS, 'MEASURED_DIRTY')
+        : Object.hasOwn(NEXT_STEPS, state);
+      assert.ok(named, `the engine can put a run in \`${state}\` and NEXT_STEPS has no row for it`);
+    }
+  });
+
+  test('a clean measurement is not offered a repair, and a dirty one is not offered an approval', () => {
+    // Not a preference: `repair()` refuses a clean run with NOTHING_TO_REPAIR and `approve()`
+    // refuses a dirty one, so offering either would be offering a refusal.
+    const clean = nextStepsFor('MEASURED', { clean: true }).map((step) => step.name);
+    const dirty = nextStepsFor('MEASURED', { clean: false }).map((step) => step.name);
+    assert.ok(clean.includes('approve') && !clean.includes('repair'), clean.join(' '));
+    assert.ok(dirty.includes('repair') && !dirty.includes('approve'), dirty.join(' '));
+    // Unknown cleanliness offers both halves rather than guessing which one the run is in.
+    const unknown = nextStepsFor('MEASURED').map((step) => step.name);
+    assert.ok(unknown.includes('approve') && unknown.includes('repair'), unknown.join(' '));
+  });
+
+  test('an installation with no model is not told to repair', () => {
+    // `CE-029`: with no model `repair()` answers NO_AUTHOR every time. Suggesting it would be
+    // sending somebody to discover by typing what the plan already said in words.
+    const steps = nextStepsFor('MEASURED', { clean: false, authorAvailable: false }).map((s) => s.name);
+    assert.ok(!steps.includes('repair'), steps.join(' '));
+    assert.ok(!steps.includes('iterate'), steps.join(' '));
+    assert.ok(steps.includes('reject'), 'stopping must always be offered');
+  });
+
+  test('a state nobody decided about suggests nothing, rather than something', () => {
+    assert.deepEqual(nextStepsFor('REJECTED'), []);
+    assert.deepEqual(nextStepsFor('BANANA'), []);
+    assert.deepEqual(nextStepsFor(null), []);
+  });
+
+  test('the line shell actually prints them, so the declaration is read and not just kept', () => {
+    // A list nobody renders is scaffolding. This is the assertion that keeps it wired.
+    assert.match(tuiSource, /nextStepsFor\(/,
+      'tools/tui-client.mjs no longer asks what comes next: the plan flow went back to printing a state and stopping');
+    assert.match(tuiSource, /from '\.\.\/apps\/shared\/coden\/agent-commands\.js'/,
+      'the line shell must take the suggestions from the shared declaration, not from a copy');
   });
 });
