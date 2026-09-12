@@ -4443,11 +4443,21 @@ const requestListener = async (req, res) => {
           compactRunAfterDecision(runId);
           return json(res, 200, outcome);
         }
+        // `await`, and it is not decoration: these two are the only ASYNC methods on this
+        // route, and without it `json()` serialised the Promise — `JSON.stringify` of one is
+        // `{}` — so the caller was answered `200 {}` while the work ran on unwatched. Worse
+        // than the empty body: a refusal (`NO_AUTHOR`, `BUDGET_SPENT`, `NOT_MEASURED`) could
+        // not reach the `catch` below that turns it into a 422, so it landed in
+        // `process.on('unhandledRejection')` — logged as «a defect, not a normal path» and
+        // never told to the person who asked. That is the silent refusal `CE-029` forbids, on
+        // the surface nobody had tested: the shells go through `sessionDispatch`, which awaits,
+        // and the engine's own 13 tests never cross this route. Found 2026-09-12, reading the
+        // route while a run was measuring.
         if (verb === 'repair') {
-          return json(res, 200, workspaceActions.repair({ runId, actor: authenticated.user.id, nowUnix }));
+          return json(res, 200, await workspaceActions.repair({ runId, actor: authenticated.user.id, nowUnix }));
         }
         if (verb === 'iterate') {
-          return json(res, 200, workspaceActions.iterate({ runId, actor: authenticated.user.id, nowUnix, maxAttempts: payload?.maxAttempts }));
+          return json(res, 200, await workspaceActions.iterate({ runId, actor: authenticated.user.id, nowUnix, maxAttempts: payload?.maxAttempts }));
         }
         const outcome = workspaceActions.restore({ runId, actor: authenticated.user.id, nowUnix });
         return json(res, 200, outcome);

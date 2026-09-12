@@ -314,4 +314,51 @@ describe('CE-029 · the response of an installation with no provider configured'
     const written = readFileSync(join(httpWorkspace, 'ce029-bytes.txt'), 'utf8');
     assert.equal(written, CALLER_BYTES);
   });
+
+  // The same criterion, on the two routes added last (`repair`, `iterate`) and never crossed by
+  // a test until 2026-09-12. They are the only ASYNC methods this route dispatches, and they
+  // were handed to `json()` without `await`: `JSON.stringify` of a Promise is `{}`, so the
+  // caller got `200 {}` and a refusal could not reach the `catch` that turns it into a 422 —
+  // it went to `process.on('unhandledRejection')` instead, logged and never spoken. A refusal
+  // this installation cannot avoid, answered with an empty body, is exactly the «rifiuto muto»
+  // this criterion exists to forbid; that both shells were fine (`sessionDispatch` awaits) is
+  // what kept it invisible.
+  test('a repair this installation cannot do is REFUSED to the caller, never an empty body', async () => {
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'ce-029 repair route', files: [{ path: 'ce029-repair.txt', contents: CALLER_BYTES }] },
+    });
+    assert.equal(planned.status, 201, planned.text.slice(0, 200));
+    const runId = planned.json.runId;
+    const measured = await authed(`/api/v1/workspace-actions/${runId}/measure`, { method: 'POST', payload: {} });
+    assert.equal(measured.status, 200, measured.text.slice(0, 200));
+
+    const repaired = await authed(`/api/v1/workspace-actions/${runId}/repair`, { method: 'POST', payload: {} });
+    assert.notDeepEqual(repaired.json, {},
+      'an empty object is what an unawaited Promise serialises to: the route answered nothing');
+    assert.equal(repaired.status, 422, `the refusal must reach the caller: ${repaired.text.slice(0, 200)}`);
+    assert.equal(repaired.json.error, 'workspace_action_refused');
+    assert.ok(String(repaired.json.kind ?? '').length > 0, 'a refusal names its kind');
+    assert.ok(String(repaired.json.reason ?? '').length > 0, 'and says why, in words');
+  });
+
+  test('an iterate answers with the loop it ran, not with a serialised Promise', async () => {
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'ce-029 iterate route', files: [{ path: 'ce029-iterate.txt', contents: CALLER_BYTES }] },
+    });
+    assert.equal(planned.status, 201, planned.text.slice(0, 200));
+    const runId = planned.json.runId;
+
+    // `maxAttempts: 1` — one measurement, no repair asked for, so this asserts the SHAPE of the
+    // answer without depending on a model this installation does not have.
+    const iterated = await authed(`/api/v1/workspace-actions/${runId}/iterate`, {
+      method: 'POST', payload: { maxAttempts: 1 },
+    });
+    assert.equal(iterated.status, 200, iterated.text.slice(0, 200));
+    assert.equal(iterated.json.runId, runId, 'the answer must describe the run that was iterated');
+    assert.ok(Array.isArray(iterated.json.attempts), 'the attempts are the whole point of the call');
+    assert.ok(typeof iterated.json.stopped === 'string' && iterated.json.stopped.length > 0,
+      'the loop must say WHY it stopped: that is the field a shell prints');
+  });
 });

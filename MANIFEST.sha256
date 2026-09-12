@@ -6333,7 +6333,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-9fd5cf18d31bdfa0a1b0848af1434664e978d3e4927de88952774a0b238aa1ef  ./services/reference-control-plane/src/server.mjs
+7bdced2876df0d99fb00668291719d7f16dc3c248e09941e65a5aac35eda1e75  ./services/reference-control-plane/src/server.mjs
 34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6416,7 +6416,7 @@ ff184fd02fc7b8fbfad6ea8a30f4452c30c698afdc9f548972eaefd0bbe82177  ./services/ref
 7136fe119c3fffdd30b54b5c8b1ff5530f78670d17a4501ee1694e029c6e0c8f  ./services/reference-control-plane/test/ce-025-author-never-names-a-path.test.mjs
 2ca564614b18088352655676365646676453ef0afae787f191c6e906dadf455f  ./services/reference-control-plane/test/ce-027-the-session-replays-its-decisions.test.mjs
 628fa56a36eda1e85ff9d9c8f7d242aa58d48314f522965820130ce81e0e98a1  ./services/reference-control-plane/test/ce-028-opposite-conventions-diverge.test.mjs
-c3f63267a4f0c5a9def55d5e8a330406dcd1450c7894c7e03a64ff77e59d8c9c  ./services/reference-control-plane/test/ce-029-no-model-refuses-to-author.test.mjs
+e7a8313ae57bc86d1b9245d1b4dd877563ac7d08d2d2caea5b4413aa28e3cde0  ./services/reference-control-plane/test/ce-029-no-model-refuses-to-author.test.mjs
 6c7ff5a290830ed6d367d52077843eb50ea834384371090b7aaef9def1da7b68  ./services/reference-control-plane/test/ce-030-a-repeat-is-not-an-attempt.test.mjs
 2bcaae90270df4692bdf4805a188d6f34fbee1c6bc552227dbe2f05a6c176012  ./services/reference-control-plane/test/ce-033-the-two-shells-have-the-same-regions.test.mjs
 64ae9ad2bf8f4f0fe84212e484c2efadd8af240dce0133033bfc399ff915d88a  ./services/reference-control-plane/test/ce-034-the-same-names-in-both-shells.test.mjs
