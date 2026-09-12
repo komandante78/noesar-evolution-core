@@ -61,6 +61,37 @@ const digest = (text) => createHash('sha256').update(String(text)).digest('hex')
 const shortDigest = (text) => digest(text).slice(0, 16);
 
 /**
+ * Did the model refuse because of THIS FILE, or is the model gone?
+ *
+ * # Why the difference decides more than a message
+ *
+ * `author()` handles the two shapes differently and must: a refusal is about one file and the
+ * loop goes on to the next one («one file the model could not answer for does not throw away the
+ * files it could»), while unreachability is about the installation and stops everything. A
+ * request that does not FIT is a fact about the file that was sent, so it belongs on the first
+ * side — and until this existed it was on the second, which is why one oversized file in a plan
+ * of five discarded the four the model would have written.
+ *
+ * Measured 2026-09-12 on a resolve-rate run: EIGHT of fourteen instances ended
+ * `REPAIR_REFUSED` — the whole repair thrown away — because one file among five was over the
+ * window. Every one of those plans held a 53-62 KiB file, and a 16 384-token window that
+ * reserves 4 096 for the answer cannot hold one.
+ *
+ * # It reads a sentence, and that is a declared weakness
+ *
+ * The runtime answers `{"error":{"message":"request (60012 tokens) exceeds the available context
+ * size (16384 tokens)","type":"exceed_context_size_error",…}}`, and ATOM passes its own model's
+ * body up as `http 400: …`, so one matcher covers both paths. Matching TEXT is fragile by
+ * construction — a runtime that reworded this would put the case back on the unreachable side,
+ * which is the old behaviour and not a new failure. The alternative is asking the provider for
+ * its window, which this product deliberately does not do (`s317`: declared, never probed).
+ */
+export function looksLikeContextExceeded(text) {
+  return /exceed_context_size_error|exceeds? the (?:available|maximum) context|context (?:window|length|size) exceeded|too many tokens/i
+    .test(String(text ?? ''));
+}
+
+/**
  * A line that tries to tell the engine which file this is.
  *
  * These are not parsed — that is the point. They are detected so they can be REPORTED as
@@ -737,6 +768,17 @@ export function atomAuthoringGenerator({
       // Two different facts, kept apart all the way up: an installation problem, and this
       // request having failed to produce a file after ATOM had already tried twice.
       if (kind === 'NOT_A_FILE') throw new AuthoringRefused('NOT_A_FILE', `ATOM refused this answer: ${reason}`, path);
+      // ATOM asks a model of its own, and passes that model's body up. When the body says the
+      // request did not fit, the fact is about this file on both sides of the wire — and
+      // degrading to the plain model would send the same bytes to the same window. Same
+      // reasoning as the direct path above; see `looksLikeContextExceeded`.
+      if (looksLikeContextExceeded(reason)) {
+        throw new AuthoringRefused(
+          'CONTEXT_EXCEEDED',
+          `\`${path}\` does not fit the window of the model ATOM asked, which said: ${reason}`,
+          path,
+        );
+      }
       throw new AuthoringUnavailable(`ATOM refused to author \`${path}\`: ${kind} — ${reason}`);
     }
     return {
@@ -821,7 +863,7 @@ export function openAiChatGenerator({
   // minTokensPerSecond only against a real measurement on real hardware, never a guess -
   // hardware is never the ideal on paper.
   const effectiveTimeoutMs = timeoutMs ?? Math.ceil((maxTokens / minTokensPerSecond) * 1000) + 30_000;
-  return async ({ prompt }) => {
+  return async ({ prompt, path = null }) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
     try {
@@ -851,6 +893,16 @@ export function openAiChatGenerator({
           (text) => text.trim().slice(0, 400),
           () => '',
         );
+        // A request that does not FIT is a fact about this file, not about the installation —
+        // see `looksLikeContextExceeded`. Raised as a refusal so `author()` records it against
+        // the path and goes on to the other files in the plan instead of discarding them.
+        if (looksLikeContextExceeded(detail)) {
+          throw new AuthoringRefused(
+            'CONTEXT_EXCEEDED',
+            `\`${path ?? 'this file'}\` does not fit the window of the model at ${base}, which said: ${detail}`,
+            path ?? null,
+          );
+        }
         throw new AuthoringUnavailable(
           `the model at ${base} answered ${response.status} to an authoring request${detail ? `: ${detail}` : ''}`,
         );
@@ -863,6 +915,10 @@ export function openAiChatGenerator({
       return text;
     } catch (error) {
       if (error instanceof AuthoringUnavailable) throw error;
+      // A refusal raised above is a VERDICT about this file and must not be rewritten into
+      // «could not be reached»: `author()` routes the two differently on purpose, and wrapping
+      // one as the other put a per-file fact back on the installation-wide path.
+      if (error instanceof AuthoringRefused) throw error;
       throw new AuthoringUnavailable(`the model at ${base} could not be reached for authoring: ${error?.message ?? error}`);
     } finally {
       clearTimeout(timer);

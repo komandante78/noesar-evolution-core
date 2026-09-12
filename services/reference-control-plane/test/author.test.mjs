@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, readdirSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
-import { Author, AuthoringUnavailable, AuthoringRefused, atomAuthoringGenerator, openAiChatGenerator, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
+import { Author, AuthoringUnavailable, AuthoringRefused, atomAuthoringGenerator, openAiChatGenerator, declaredFallbackGenerator, looksLikeContextExceeded, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
 import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
@@ -462,14 +462,14 @@ test('a refusal from the model carries the runtime\'s own words, not just its st
     fetchImpl: async () => ({
       ok: false,
       status: 400,
-      text: async () => '{"error":{"message":"the request exceeds the available context size"}}',
+      text: async () => '{"error":{"message":"unknown field: chat_template_kwargs"}}',
       json: async () => ({}),
     }),
   });
   await assert.rejects(() => generate({ prompt: 'rewrite this file' }), (error) => {
     assert.ok(error instanceof AuthoringUnavailable, `wrong type: ${error?.name}`);
     assert.match(error.message, /400/, 'the status must stay');
-    assert.match(error.message, /exceeds the available context size/,
+    assert.match(error.message, /unknown field: chat_template_kwargs/,
       `the runtime's reason must reach the caller: ${error.message}`);
     return true;
   });
@@ -491,4 +491,101 @@ test('a refusal with an unreadable body still says what it can', async () => {
     assert.match(error.message, /503/);
     return true;
   });
+});
+
+// --- A request that does not fit is a fact about one file ------------------------------------
+//
+// Measured 2026-09-12 on a resolve-rate run of fourteen SWE-bench instances: EIGHT ended with the
+// whole repair discarded (`REPAIR_REFUSED`) because ONE file among five was over the model's
+// window. The loop already had the right rule for this — «one file the model could not answer for
+// does not throw away the files it could» — and it only applied to refusals, while a request over
+// the window arrived as unreachability, which stops everything.
+const CONTEXT_400 = '{"error":{"code":400,"message":"request (60012 tokens) exceeds the available '
+  + 'context size (16384 tokens), try increasing it","type":"exceed_context_size_error",'
+  + '"n_prompt_tokens":60012,"n_ctx":16384}}';
+
+test('the sentence a runtime uses for a request that does not fit is recognised, and nothing else is', () => {
+  for (const text of [
+    CONTEXT_400,
+    'request (20012 tokens) exceeds the available context size (16384 tokens)',
+    'ERROR: context window exceeded',
+    'too many tokens in the prompt',
+    'model unavailable: http 400: exceed_context_size_error',
+  ]) {
+    assert.equal(looksLikeContextExceeded(text), true, `must be recognised: ${text.slice(0, 60)}`);
+  }
+  // Everything else stays unreachability, which is the behaviour this changes nothing about.
+  for (const text of [
+    '', 'connection refused', 'model unavailable: i/o error: Resource temporarily unavailable',
+    'http 503: upstream is restarting', 'BAD_REQUEST: missing field \'signal\'',
+  ]) {
+    assert.equal(looksLikeContextExceeded(text), false, `must NOT be recognised: ${text}`);
+  }
+});
+
+test('a file over the window is refused BY PATH, and the other files are still written', async () => {
+  // The oracle for the whole change: before it, `big.py` raised unreachability, `author()`
+  // rethrew, and `small.py` — which the model answered perfectly well — was lost with it.
+  const generate = openAiChatGenerator({
+    endpoint: 'http://model.test',
+    fetchImpl: async (_url, init) => {
+      const prompt = JSON.parse(init.body).messages[0].content;
+      if (prompt.includes('File: big.py')) {
+        return { ok: false, status: 400, text: async () => CONTEXT_400, json: async () => ({}) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: editAll('keep = 1', 'keep = 2') } }] }),
+        text: async () => '',
+      };
+    },
+  });
+  const result = await new Author({ generate, model: 'test' }).author({
+    goal: 'g',
+    step: 's',
+    files: [{ path: 'big.py', contents: 'irrelevant but present' }, { path: 'small.py', contents: 'keep = 1\n' }],
+  });
+
+  assert.deepEqual([...result.contents.keys()], ['small.py'],
+    'the file the model could answer for must survive the one it could not');
+  assert.equal(result.contents.get('small.py'), 'keep = 2\n');
+
+  const refusal = (result.refusals ?? []).find((entry) => entry.path === 'big.py');
+  assert.ok(refusal, `the oversized file must be refused by path: ${JSON.stringify(result.refusals)}`);
+  assert.equal(refusal.code, 'CONTEXT_EXCEEDED');
+  assert.match(refusal.reason, /16384/, 'the window must be in the reason, in the runtime\'s own words');
+  assert.match(refusal.reason, /big\.py/, 'and the file it is about');
+});
+
+test('ATOM saying the window was exceeded does not degrade to the same window', async () => {
+  // `declaredFallbackGenerator` degrades on unreachability and passes a refusal up. A file that
+  // does not fit would not fit the plain model either — it is the same runtime behind ATOM — so
+  // the refusal must reach the caller instead of spending a second call to be told again.
+  let degraded = 0;
+  const primary = atomAuthoringGenerator({
+    endpoint: 'http://atom.test',
+    fetchImpl: async () => ({
+      ok: true, status: 200,
+      text: async () => JSON.stringify({
+        ok: false,
+        error: { kind: 'MODEL_UNAVAILABLE', reason: 'model unavailable: http 400: ' + CONTEXT_400 },
+      }),
+    }),
+  });
+  const generate = declaredFallbackGenerator({
+    primary,
+    fallback: async () => { throw new Error('the fallback must not be reached'); },
+    onDegrade: () => { degraded += 1; },
+  });
+  await assert.rejects(
+    () => generate({ prompt: 'p', path: 'big.py', contents: 'x' }),
+    (error) => {
+      assert.equal(error.name, 'AuthoringRefused');
+      assert.equal(error.code, 'CONTEXT_EXCEEDED');
+      assert.equal(error.path, 'big.py');
+      return true;
+    },
+  );
+  assert.equal(degraded, 0, 'a file that does not fit is not a degradation: nothing fell over');
 });
