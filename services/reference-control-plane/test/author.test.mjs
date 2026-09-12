@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, readdirSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
-import { Author, AuthoringUnavailable, AuthoringRefused, atomAuthoringGenerator, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
+import { Author, AuthoringUnavailable, AuthoringRefused, atomAuthoringGenerator, openAiChatGenerator, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
 import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
@@ -449,4 +449,46 @@ test('what ATOM is given follows the floor it is derived from, and an explicit b
   await atomAuthoringGenerator({ endpoint: 'http://atom.test', timeoutMs: 5_000, fetchImpl })(
     { path: 'a.js', contents: 'x' });
   assert.deepEqual(scheduled, [5_000]);
+});
+
+// The reason a local runtime refuses is in the BODY, and the status alone discards it. Measured
+// 2026-09-12: a resolve-rate run reported «the model at http://127.0.0.1:8420 answered 400 to an
+// authoring request» on two instances and there was no way to learn why from the product — a 400
+// from a runtime is a statement about the request that was just sent, which is the one class of
+// failure whose cause is both knowable and actionable.
+test('a refusal from the model carries the runtime\'s own words, not just its status', async () => {
+  const generate = openAiChatGenerator({
+    endpoint: 'http://model.test',
+    fetchImpl: async () => ({
+      ok: false,
+      status: 400,
+      text: async () => '{"error":{"message":"the request exceeds the available context size"}}',
+      json: async () => ({}),
+    }),
+  });
+  await assert.rejects(() => generate({ prompt: 'rewrite this file' }), (error) => {
+    assert.ok(error instanceof AuthoringUnavailable, `wrong type: ${error?.name}`);
+    assert.match(error.message, /400/, 'the status must stay');
+    assert.match(error.message, /exceeds the available context size/,
+      `the runtime's reason must reach the caller: ${error.message}`);
+    return true;
+  });
+});
+
+test('a refusal with an unreadable body still says what it can', async () => {
+  // A body that cannot be read must not turn a refusal into a different kind of failure.
+  const generate = openAiChatGenerator({
+    endpoint: 'http://model.test',
+    fetchImpl: async () => ({
+      ok: false,
+      status: 503,
+      text: async () => { throw new Error('socket closed'); },
+      json: async () => ({}),
+    }),
+  });
+  await assert.rejects(() => generate({ prompt: 'rewrite this file' }), (error) => {
+    assert.ok(error instanceof AuthoringUnavailable, `wrong type: ${error?.name}`);
+    assert.match(error.message, /503/);
+    return true;
+  });
 });

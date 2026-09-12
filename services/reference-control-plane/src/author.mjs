@@ -840,7 +840,20 @@ export function openAiChatGenerator({
         signal: controller.signal,
       });
       if (!response.ok) {
-        throw new AuthoringUnavailable(`the model at ${base} answered ${response.status} to an authoring request`);
+        // The runtime says WHY in the body, and the status alone throws it away. Measured
+        // 2026-09-12 on a resolve-rate run: two instances stopped with «the model answered 400
+        // to an authoring request» and nothing else — a 400 from a local runtime is a statement
+        // about the request that was sent (too many tokens for the window, a field it does not
+        // accept), which is exactly the class of failure an operator can act on and the only
+        // class this message made unreadable. Truncated because a runtime that answers 400 can
+        // also answer with a megabyte, and a refusal is not a place to paste one.
+        const detail = await response.text().then(
+          (text) => text.trim().slice(0, 400),
+          () => '',
+        );
+        throw new AuthoringUnavailable(
+          `the model at ${base} answered ${response.status} to an authoring request${detail ? `: ${detail}` : ''}`,
+        );
       }
       const body = await response.json();
       const text = body?.choices?.[0]?.message?.content;
