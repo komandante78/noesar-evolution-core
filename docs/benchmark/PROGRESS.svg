@@ -16,51 +16,79 @@
 <text x="94" y="129.22580645161293" font-size="11" fill="#6b7280" text-anchor="end">125</text>
 <line x1="104" y1="85.87096774193547" x2="910" y2="85.87096774193547" stroke="#e4e7eb"/>
 <text x="94" y="89.87096774193547" font-size="11" fill="#6b7280" text-anchor="end">150</text>
-<line x1="794.8571428571428" y1="301.5354838709677" x2="910" y2="281.0709677419355" stroke="#2563eb" stroke-width="2"/>
+<line x1="476" y1="301.5354838709677" x2="538" y2="281.0709677419355" stroke="#2563eb" stroke-width="2"/>
+<line x1="600" y1="276.3483870967742" x2="662" y2="290.51612903225805" stroke="#2563eb" stroke-width="2"/>
+<line x1="662" y1="290.51612903225805" x2="724" y2="273.20000000000005" stroke="#2563eb" stroke-width="2"/>
+<line x1="786" y1="259.0322580645161" x2="848" y2="282.64516129032256" stroke="#2563eb" stroke-width="2"/>
+<line x1="848" y1="282.64516129032256" x2="910" y2="224.4" stroke="#2563eb" stroke-width="2"/>
 <circle cx="104" cy="301.5354838709677" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
 <text x="104" y="289.5354838709677" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">13</text>
 <g transform="translate(104,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">baseline</text></g>
 <g transform="translate(104,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-09 · unrecorded</text></g>
-<circle cx="219.14285714285714" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
-<text x="219.14285714285714" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
-<g transform="translate(219.14285714285714,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">after-idf</text></g>
-<g transform="translate(219.14285714285714,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-09 · unrecorded</text></g>
-<circle cx="334.2857142857143" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
-<text x="334.2857142857143" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
-<g transform="translate(334.2857142857143,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">after-onewalk</text></g>
-<g transform="translate(334.2857142857143,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
-<circle cx="449.4285714285714" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
-<text x="449.4285714285714" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
-<g transform="translate(449.4285714285714,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">rep1</text></g>
-<g transform="translate(449.4285714285714,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
-<circle cx="564.5714285714286" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
-<text x="564.5714285714286" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
-<g transform="translate(564.5714285714286,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">rep2</text></g>
-<g transform="translate(564.5714285714286,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
-<circle cx="679.7142857142858" cy="299.9612903225807" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
-<text x="679.7142857142858" y="287.9612903225807" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">14</text>
-<g transform="translate(679.7142857142858,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">with-model-onewalk</text></g>
-<g transform="translate(679.7142857142858,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
-<circle cx="794.8571428571428" cy="301.5354838709677" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
-<text x="794.8571428571428" y="289.5354838709677" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">13</text>
-<g transform="translate(794.8571428571428,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">capture-with-model</text></g>
-<g transform="translate(794.8571428571428,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · 44 degr.</text></g>
-<circle cx="910" cy="281.0709677419355" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
-<text x="910" y="269.0709677419355" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">26</text>
-<g transform="translate(910,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">bm25-live</text></g>
-<g transform="translate(910,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · 43 degr.</text></g>
+<circle cx="166" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+<text x="166" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
+<g transform="translate(166,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">after-idf</text></g>
+<g transform="translate(166,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-09 · unrecorded</text></g>
+<circle cx="228" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+<text x="228" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
+<g transform="translate(228,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">after-onewalk</text></g>
+<g transform="translate(228,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
+<circle cx="290" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+<text x="290" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
+<g transform="translate(290,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">rep1</text></g>
+<g transform="translate(290,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
+<circle cx="352" cy="306.258064516129" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+<text x="352" y="294.258064516129" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">10</text>
+<g transform="translate(352,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">rep2</text></g>
+<g transform="translate(352,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
+<circle cx="414" cy="299.9612903225807" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+<text x="414" y="287.9612903225807" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">14</text>
+<g transform="translate(414,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">with-model-onewalk</text></g>
+<g transform="translate(414,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · unrecorded</text></g>
+<circle cx="476" cy="301.5354838709677" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="476" y="289.5354838709677" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">13</text>
+<g transform="translate(476,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">capture-with-model</text></g>
+<g transform="translate(476,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · 44 degr.</text></g>
+<circle cx="538" cy="281.0709677419355" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="538" y="269.0709677419355" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">26</text>
+<g transform="translate(538,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">bm25-live</text></g>
+<g transform="translate(538,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-10 · 43 degr.</text></g>
+<circle cx="600" cy="276.3483870967742" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="600" y="264.3483870967742" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">29</text>
+<g transform="translate(600,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">maxterms12-baseline</text></g>
+<g transform="translate(600,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-11 · 0 degr.</text></g>
+<circle cx="662" cy="290.51612903225805" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="662" y="278.51612903225805" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">20</text>
+<g transform="translate(662,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">maxterms40</text></g>
+<g transform="translate(662,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-11 · 0 degr.</text></g>
+<circle cx="724" cy="273.20000000000005" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="724" y="261.20000000000005" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">31</text>
+<g transform="translate(724,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">stopwords-v2</text></g>
+<g transform="translate(724,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-11 · 0 degr.</text></g>
+<circle cx="786" cy="259.0322580645161" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="786" y="247.0322580645161" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">40</text>
+<g transform="translate(786,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">perfile-cap-01</text></g>
+<g transform="translate(786,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-12 · 0 degr.</text></g>
+<circle cx="848" cy="282.64516129032256" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="848" y="270.64516129032256" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">25</text>
+<g transform="translate(848,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">baseline-live-01</text></g>
+<g transform="translate(848,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-12 · 0 degr.</text></g>
+<circle cx="910" cy="224.4" r="5" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+<text x="910" y="212.4" font-size="12" font-weight="600" fill="#1f2328" text-anchor="middle">62</text>
+<g transform="translate(910,338) rotate(-35)"><text font-size="11" fill="#1f2328" text-anchor="end">testpenalty-01</text></g>
+<g transform="translate(910,338) rotate(-35)"><text y="13" font-size="9" fill="#6b7280" text-anchor="end">09-12 · 0 degr.</text></g>
 <text x="104" y="446" font-size="10" fill="#6b7280">Filled point: reasoning conditions recorded. Hollow point: unrecorded, never comparable. Line: only between runs made under the same conditions.</text>
 <text x="104" y="498" font-size="15" font-weight="600" fill="#1f2328">2 · Score against model size</text>
 <text x="104" y="516" font-size="11" fill="#6b7280">localization@5 against model memory. A competitor enters only if it publishes the same quantity.</text>
 <rect x="104" y="532" width="806" height="244" fill="#fafafa" stroke="#e4e7eb" stroke-dasharray="6 4"/>
 <text x="507" y="596" font-size="14" font-weight="600" fill="#b45309" text-anchor="middle">Missing number: a resolve rate of our own, over as few as 10-20 instances.</text>
-<text x="507" y="620" font-size="12" font-weight="400" fill="#6b7280" text-anchor="middle">We measure localisation today (26/155); competitors publish how many they resolve.</text>
+<text x="507" y="620" font-size="12" font-weight="400" fill="#6b7280" text-anchor="middle">We measure localisation today (62/155); competitors publish how many they resolve.</text>
 <text x="507" y="644" font-size="12" font-weight="400" fill="#6b7280" text-anchor="middle">Nobody publishes "localization@5", so there is no honest comparison to draw.</text>
 <text x="507" y="668" font-size="12" font-weight="400" fill="#6b7280" text-anchor="middle">This fills itself in once bench.mjs writes a "resolved" field and rivals.json has rows.</text>
 <text x="104" y="952" font-size="15" font-weight="600" fill="#1f2328">3 · Score against step count</text>
 <text x="104" y="970" font-size="11" fill="#6b7280">How much a plan improves when the agent tries, reads the failure, and repairs.</text>
 <rect x="104" y="986" width="806" height="244" fill="#fafafa" stroke="#e4e7eb" stroke-dasharray="6 4"/>
-<text x="507" y="1050" font-size="14" font-weight="600" fill="#b45309" text-anchor="middle">Missing loop: every plan is 1 step, across all 1240 rows measured.</text>
+<text x="507" y="1050" font-size="14" font-weight="600" fill="#b45309" text-anchor="middle">Missing loop: every plan is 1 step, across all 2170 rows measured.</text>
 <text x="507" y="1074" font-size="12" font-weight="400" fill="#6b7280" text-anchor="middle">One value on the x axis is not a curve, it is a point.</text>
 <text x="507" y="1098" font-size="12" font-weight="400" fill="#6b7280" text-anchor="middle">It needs edit -&gt; run the tests -&gt; read the error -&gt; repair, measured again at each turn.</text>
 <text x="507" y="1122" font-size="12" font-weight="400" fill="#6b7280" text-anchor="middle">This fills itself in as soon as a run contains plans of more than one step.</text>
