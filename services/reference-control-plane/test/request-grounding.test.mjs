@@ -345,7 +345,7 @@ describe('one walk for many terms — the batch must be the single search, not m
       'nested/deep.mjs': '// session and rotation\n',
     });
     try {
-      const options = { caseSensitive: false, maxMatches: 12 };
+      const options = { caseSensitive: false, maxMatches: 10 };
       const terms = ['session', 'rotation'];
       const batched = literalSearchMany(root, terms, options);
       assert.equal(batched.caseSensitive, false);

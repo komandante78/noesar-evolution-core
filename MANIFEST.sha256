@@ -6321,7 +6321,7 @@ f14bf42997db0cb520a6ba058f8a0f1be3c61162d08fd05daed13766b417d570  ./services/ref
 7c0a0f91e1f2f959ff48d9ccc6188d3dff167521d3b462a25630f7871360034c  ./services/reference-control-plane/src/reasoning.mjs
 d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/reference-control-plane/src/remote-target-fetch.mjs
 39808f513eb4ed769c9bbc85e29e9344fd55f34e4635655479a346d4b78216dc  ./services/reference-control-plane/src/remote-target-registry.mjs
-caed6819756c62db3c68d4730a2be1a3e3d4938693f52ec8c2b483c122b6cfaa  ./services/reference-control-plane/src/repo-map.mjs
+fbc6e01ac5dc9be0947788eaddcbcc131823948549f5eb365bdda82741b8cb07  ./services/reference-control-plane/src/repo-map.mjs
 8b8790535e94850373a32f49d414145da5771084b6732a9a77e779f546f6cb9b  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
@@ -6518,8 +6518,8 @@ da7bd3a761002fb576920029e20f0cc88955563deede878f3db5b064e4f7a263  ./services/ref
 5d7cdf7c0ced8b6df4f03c87c8d67708b08ccc80e50c2c09b222b56075c918f9  ./services/reference-control-plane/test/remote-target-fetch.test.mjs
 e10ae6bd9b2ae015cd359f159eabbbc110d0db62e520477665606192a80c5b0b  ./services/reference-control-plane/test/remote-target-http.test.mjs
 35e43fdad998d565436c17793e15ba30965af81fcb234d3c33f6cb1ec2af0dc2  ./services/reference-control-plane/test/remote-target-registry.test.mjs
-ba765554025611edab0c9fb8d316227ccc6b3762ac5be05cdc63a4d8ae8563de  ./services/reference-control-plane/test/repo-map.test.mjs
-eb9741c199d760ffaa5e60b6d23421b8c8d5310fde6c114568af295edc97b8b1  ./services/reference-control-plane/test/request-grounding.test.mjs
+1587522ae474570154d4229aee4c0b2a3ee011634ca46b1230f7744f840fb2eb  ./services/reference-control-plane/test/repo-map.test.mjs
+2d100ad173d11d599e115015cbff31020c15a7fc1c8c7c178b13cedbf4fc39dd  ./services/reference-control-plane/test/request-grounding.test.mjs
 993825730490cf06f52291b8a06978b20dd3517ec16b59c742af59108e2c04de  ./services/reference-control-plane/test/request-origin.test.mjs
 977ef559f66f651cf18773923463e3e83611115c6fa421c2ad33492634f4cda1  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs
 e5c01db43905e4d5851037a2a3c3bc24cd775520066db77e619714071ffb768f  ./services/reference-control-plane/test/research-gate.test.mjs

@@ -552,6 +552,15 @@ export function literalSearch(rootDir, query, options = {}) {
   const maxFiles = options.maxFiles ?? 20000;
   const maxFileBytes = options.maxFileBytes ?? 512 * 1024;
   const maxMatches = options.maxMatches ?? 500;
+  // One file cannot spend the whole budget by repeating the same word. Without this, a file
+  // that happens to be walked early and mentions the term hundreds of times (a changelog, a
+  // vendored bundle, a test fixture) can reach `maxMatches` by itself, and every file walked
+  // after it goes unsearched for that term -- not because it lacks the word, but because
+  // nothing was left to record it with. Measured 2026-09-12 on `groundRequest`'s caller,
+  // `literalSearchMany` below: `astropy/timeseries/core.py`, the gold file for a real
+  // SWE-bench instance, never became a search candidate for ANY of the six terms it genuinely
+  // contains, because each one had already saturated on files walked earlier in the same tree.
+  const maxMatchesPerFile = options.maxMatchesPerFile ?? 5;
   const caseSensitive = options.caseSensitive !== false;
   const needle = caseSensitive ? text : text.toLowerCase();
 
@@ -563,10 +572,13 @@ export function literalSearch(rootDir, query, options = {}) {
     const content = readBounded(file, maxFileBytes);
     if (content === null) continue;
     const lines = content.split('\n');
+    let inThisFile = 0;
     for (let index = 0; index < lines.length; index += 1) {
+      if (inThisFile >= maxMatchesPerFile) break;
       const haystack = caseSensitive ? lines[index] : lines[index].toLowerCase();
       if (haystack.includes(needle)) {
         matches.push({ path:relative(root, file), line:index + 1, text:lines[index].slice(0, 400) });
+        inThisFile += 1;
         if (matches.length >= maxMatches) { truncated = true; break; }
       }
     }
@@ -601,6 +613,10 @@ export function literalSearchMany(rootDir, queries, options = {}) {
   const maxFiles = options.maxFiles ?? 20000;
   const maxFileBytes = options.maxFileBytes ?? 512 * 1024;
   const maxMatches = options.maxMatches ?? 500;
+  // Same reason as literalSearch's own maxMatchesPerFile, and it has to be the same DEFAULT
+  // for the two functions to stay interchangeable (see the test that checks exactly that): a
+  // file walked early must not be able to spend a query's whole shared budget by itself.
+  const maxMatchesPerFile = options.maxMatchesPerFile ?? 5;
   const caseSensitive = options.caseSensitive !== false;
   const needles = texts.map((text) => (caseSensitive ? text : text.toLowerCase()));
 
@@ -616,14 +632,17 @@ export function literalSearchMany(rootDir, queries, options = {}) {
     if (content === null) continue;
     const path = relative(root, file);
     const lines = content.split('\n');
+    const inThisFile = new Array(needles.length).fill(0);
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       const haystack = caseSensitive ? line : line.toLowerCase();
       for (let query = 0; query < needles.length; query += 1) {
         const result = results[query];
         if (result.matches.length >= maxMatches) continue;
+        if (inThisFile[query] >= maxMatchesPerFile) continue;
         if (!haystack.includes(needles[query])) continue;
         result.matches.push({ path, line:index + 1, text:line.slice(0, 400) });
+        inThisFile[query] += 1;
         if (result.matches.length >= maxMatches) { result.truncated = true; searching -= 1; }
       }
     }

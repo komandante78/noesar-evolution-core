@@ -230,6 +230,29 @@ test('literal search reports truncation once maxMatches is reached', () => {
   } finally { rmSync(dir, { recursive:true, force:true }); }
 });
 
+test('one file cannot spend a term\'s whole budget and starve every file walked after it', () => {
+  // Walk order here follows directory-entry order, which on this fixture sorts by name (see
+  // walk() in repo-map.mjs) -- so the heavy repeater is named to be walked FIRST, and the
+  // genuine single mention LAST, the shape that actually starved a real gold file. Measured
+  // 2026-09-12 on a live SWE-bench instance: `astropy/timeseries/core.py` never became a
+  // search candidate for any of the six terms it genuinely contains, because each one had
+  // already reached the old 200-line-match cap on files walked earlier in the tree.
+  const dir = fixture();
+  write(dir, 'a-repeats-the-term.mjs', Array.from({ length:30 }, () => 'widget').join('\n'));
+  write(dir, 'z-mentions-it-once.mjs', 'widget\n');
+  try {
+    // Without a per-file cap, the first file's 30 raw matches alone exceed maxMatches:10 and
+    // the walk stops inside it -- the second file is never reached. Oracle run both ways
+    // 2026-09-12: with maxMatchesPerFile raised past 30, this same assertion fails.
+    const found = literalSearch(dir, 'widget', { maxMatches:10, maxMatchesPerFile:4 });
+    const paths = new Set(found.matches.map((m) => m.path));
+    assert.ok(
+      paths.has('z-mentions-it-once.mjs'),
+      'a file walked after a heavy repeater lost visibility for a term it genuinely contains',
+    );
+  } finally { rmSync(dir, { recursive:true, force:true }); }
+});
+
 test('status declares the heuristic and the phase-2 boundary, not a stronger claim', () => {
   const status = repoMapStatus();
   assert.equal(status.astParsing, false);
