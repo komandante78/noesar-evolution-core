@@ -143,10 +143,14 @@ export function searchTermsOf(goal) {
 // or configuration scores half, so it has to be twice as good to outrank source. Measured, not
 // guessed — see the ranking note on `groundRequest`. A file with no extension (AUTHORS,
 // LICENSE, Makefile) counts as prose: that is where pure IDF went to lose in the 09/09 attempt.
-const BM25_K1 = 1.5;
-const BM25_B = 0.75;
-const PROSE_WEIGHT = 0.5;
-const PROSE_EXTENSIONS = new Set(['', '.md', '.rst', '.txt', '.cfg', '.toml', '.ini', '.yml', '.yaml']);
+export const BM25_K1 = 1.5;
+export const BM25_B = 0.75;
+export const PROSE_WEIGHT = 0.5;
+export const PROSE_EXTENSIONS = new Set(['', '.md', '.rst', '.txt', '.cfg', '.toml', '.ini', '.yml', '.yaml']);
+// Exported so a debugging or lab tool (e.g. BENCH_SWE/rank-*.mjs, outside this repo) can
+// import the real constants instead of hand-copying them. A hand copy is exactly how
+// rank-django-10097.mjs ended up scoring against a 3-extension PROSE_EXT instead of these
+// real 9 — found 2026-09-12 while investigating why localization misses files it should not.
 const extensionOf = (path) => {
   const name = path.slice(path.lastIndexOf('/') + 1);
   const dot = name.lastIndexOf('.');
