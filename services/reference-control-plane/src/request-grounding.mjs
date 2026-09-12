@@ -199,6 +199,24 @@ export const SUPPORTING_STEMS = new Set([
  * lives outside this repository, and a hand copy of this rule would drift from it. That already
  * happened once — `rank-django-10097.mjs` scored against three prose extensions instead of nine.
  */
+// 12/09 pomeriggio, terza famiglia, misurata prima di essere scelta: il codice che non e' di
+// QUESTO progetto. Una delle istanze che ha riparato nel posto sbagliato ha scritto in
+// `cextern/wcslib/C/spc.h` — una libreria C vendorizzata dentro astropy. Un bug di astropy non si
+// ripara nel codice di terzi che astropy trasporta, un esempio non e' il prodotto, e una pagina di
+// documentazione non lo e' nemmeno quando e' scritta in Python (`docs/conf.py` sfuggiva alla
+// penalita' sulla prosa, che guarda l'estensione).
+//
+// Misurato su `rank-lab.mjs`, 155 istanze, stessa camminata: @5 da 63 a 64, @1 da 34 a 38,
+// mediana da 4 a 3. Il guadagno vero e' il RANGO, non il totale.
+//
+// `scripts` e `tools` sono stati PROVATI e scartati: danno gli stessi numeri esatti (64 / 38 / 3),
+// quindi non comprano nulla — e in questo stesso prodotto `tools/tui-client.mjs` e
+// `tools/generate-manifest.mjs` sono codice vero, che avrebbe pagato il doppio per niente.
+export const OUTSIDE_PROJECT_DIRECTORIES = new Set([
+  'vendor', 'vendored', 'third_party', 'thirdparty', 'cextern', 'extern', 'node_modules',
+  'examples', 'example', 'docs', 'doc', 'benchmarks', 'benchmark',
+]);
+
 export function rankingWeight(path) {
   if (PROSE_EXTENSIONS.has(extensionOf(path))) return PROSE_WEIGHT;
   const parts = String(path).split('/');
@@ -206,6 +224,7 @@ export function rankingWeight(path) {
   if (parts.slice(0, -1).some((part) => TEST_DIRECTORIES.has(part))) return PROSE_WEIGHT;
   if (TEST_FILENAMES.test(name)) return PROSE_WEIGHT;
   if (SUPPORTING_STEMS.has(name.replace(/\.[^.]*$/, '').toUpperCase())) return PROSE_WEIGHT;
+  if (parts.slice(0, -1).some((part) => OUTSIDE_PROJECT_DIRECTORIES.has(part))) return PROSE_WEIGHT;
   return 1;
 }
 

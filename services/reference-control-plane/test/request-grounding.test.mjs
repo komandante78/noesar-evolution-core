@@ -416,6 +416,50 @@ describe('the ranking — a file is not a better answer for being longer', () =>
     assert.equal(rankingWeight('docs/guide.rst'), PROSE_WEIGHT);
     assert.equal(rankingWeight('AUTHORS'), PROSE_WEIGHT);
   });
+
+  // --- 12/09 pomeriggio: e il codice che non e' di questo progetto ------------------------------
+
+  test('a vendored library inside the repository is not where a bug in the repository is fixed', () => {
+    // The real case: `astropy-13033` was «repaired» in `cextern/wcslib/C/spc.h`, a C library
+    // astropy CARRIES. Both files below name every term; the one that belongs to the project wins.
+    // The two files say the same words, so BM25 ties and the tie-break decides — and the
+    // tie-break is alphabetical, which puts `cextern/` FIRST. That is the whole point of the
+    // fixture: only the prior can move the project's own file above the library it carries.
+    const body = 'wcs_units spectral_axis conversion';
+    const root = workspace({
+      'cextern/wcslib/C/spc.h': body,
+      'spectral/units.py': body,
+    });
+    try {
+      const result = groundRequest({
+        workspaceRoot: root,
+        request: 'wcs_units conversion is wrong on the spectral_axis',
+        goal: 'fix the wcs_units conversion for spectral_axis',
+      });
+      assert.equal(result.grounding.selected[0], 'spectral/units.py',
+        `vendored code outranked the project: ${result.grounding.selected.join(', ')}`);
+      assert.ok(result.grounding.selected.includes('cextern/wcslib/C/spc.h'),
+        'a penalty, not a partition — vendored code a request really is about must stay reachable');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('the third family knows a project directory from somebody else\'s', () => {
+    for (const path of [
+      'cextern/wcslib/C/spc.h', 'vendor/lib/x.py', 'third_party/zlib/z.c', 'node_modules/a/b.js',
+      'examples/io/plot.py', 'docs/conf.py', 'doc/make.py', 'benchmarks/asv_bench.py',
+    ]) {
+      assert.equal(rankingWeight(path), PROSE_WEIGHT, `${path} must be weighed as outside the project`);
+    }
+    // Measured and REFUSED: `scripts` and `tools` buy nothing on the sample (identical 64/38/3) and
+    // this product's own `tools/` is real code. A prior that costs and does not pay is not kept.
+    for (const path of [
+      'tools/tui-client.mjs', 'tools/generate-manifest.mjs', 'scripts/deploy.sh',
+      // And a segment that merely CONTAINS one of the words is not one of them.
+      'src/documentation.py', 'src/vendors/list.py', 'astropy/exampled.py',
+    ]) {
+      assert.equal(rankingWeight(path), 1, `${path} must keep full weight`);
+    }
+  });
 });
 
 describe('one walk for many terms — the batch must be the single search, not merely like it', () => {
