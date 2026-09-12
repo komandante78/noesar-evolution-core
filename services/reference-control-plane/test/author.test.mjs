@@ -397,3 +397,56 @@ test('ATOM answering NOT_A_FILE is a different fact from ATOM being down', async
   });
   await assert.rejects(() => down({ path: 'a.js', contents: 'x\n' }), AuthoringUnavailable);
 });
+
+// The clock ATOM is given. Measured 2026-09-12 on a SWE-bench resolve-rate run: this was
+// `180_000` flat, while the model ATOM asks underneath is allowed `4096/3 s + 30 s` per call and
+// `/v1/author` asks a SECOND time when its own check fails. A bound shorter than the work it is
+// waiting for aborts a WORKING ATOM, and the fallback to the plain model would then be declared
+// honestly and be completely wrong — the chain would look broken while every part of it worked.
+//
+// The number is asserted where it is HANDED OVER, not by spending it: 46 minutes of real waiting
+// is not a test anybody can run, and a test nobody runs proves nothing.
+const ATOM_ANSWERED = { ok: true, status: 200, text: async () => JSON.stringify({ ok: true, value: {
+  contents: 'y', discardedPaths: [], regenerated: false, firstRejection: null, worldDigest: null,
+} }) };
+
+test('the bound handed to the clock covers what the model underneath may take, twice', async (t) => {
+  const scheduled = [];
+  t.mock.method(globalThis, 'setTimeout', (fn, ms) => { scheduled.push({ fn, ms }); return 0; });
+  let seenInit = null;
+  const generate = atomAuthoringGenerator({
+    endpoint: 'http://atom.test',
+    fetchImpl: async (_url, init) => { seenInit = init; return ATOM_ANSWERED; },
+  });
+  await generate({ path: 'a.js', contents: 'x' });
+
+  // ceil(4096/3 * 1000) = 1 365 334 ms of generation, + 30 000 of head start, twice over =
+  // 2 790 668. Pinned as a literal and not as the expression the code uses: an assertion that
+  // recomputes the formula agrees with a formula that is wrong.
+  assert.deepEqual(scheduled.map((entry) => entry.ms), [2_790_668]);
+
+  // And it is still a bound: when it expires, the request is abandoned. An unbounded wait would
+  // pass the assertion above and be a worse product than the one with the wrong number.
+  assert.equal(seenInit.signal.aborted, false);
+  scheduled[0].fn();
+  assert.equal(seenInit.signal.aborted, true);
+});
+
+// The floor is declared, not hidden: a caller on hardware it has actually measured can say so,
+// and a caller that names a whole bound owns it.
+test('what ATOM is given follows the floor it is derived from, and an explicit bound wins', async (t) => {
+  const scheduled = [];
+  t.mock.method(globalThis, 'setTimeout', (fn, ms) => { scheduled.push(ms); return 0; });
+  const fetchImpl = async () => ATOM_ANSWERED;
+
+  // 30 tok/s measured instead of the 3 tok/s floor: 136 534 + 30 000, twice = 333 068. Ten
+  // times the floor buys back 41 minutes of patience, which is the point of declaring it.
+  await atomAuthoringGenerator({ endpoint: 'http://atom.test', minTokensPerSecond: 30, fetchImpl })(
+    { path: 'a.js', contents: 'x' });
+  assert.deepEqual(scheduled, [333_068]);
+
+  scheduled.length = 0;
+  await atomAuthoringGenerator({ endpoint: 'http://atom.test', timeoutMs: 5_000, fetchImpl })(
+    { path: 'a.js', contents: 'x' });
+  assert.deepEqual(scheduled, [5_000]);
+});

@@ -677,9 +677,25 @@ export class Author {
  * chosen here, inside a port, would be exactly the silent kind. Choosing it belongs to whoever
  * assembles the Author, where the degradation can be declared.
  */
-export function atomAuthoringGenerator({ endpoint, token = '', sessionId = null, timeoutMs = 180_000, fetchImpl = fetch }) {
+export function atomAuthoringGenerator({
+  endpoint, token = '', sessionId = null, fetchImpl = fetch,
+  maxTokens = 4096, minTokensPerSecond = 3, atomModelCalls = 2, timeoutMs = null,
+}) {
   const base = String(endpoint ?? '').replace(/\/+$/, '');
   if (!base) throw new AuthoringUnavailable('an ATOM endpoint is required to author through ATOM');
+  // Derived for the same reason `openAiChatGenerator` derives its own, and measured on
+  // 2026-09-12: this was 180_000 flat, «a fixed number picked for no card in particular» on the
+  // one path where the number belongs to somebody else's clock. ATOM does not answer from
+  // itself — it asks the model underneath, and `/v1/author` asks a SECOND time when its own
+  // check fails, which is the behaviour this port exists to buy. So the bound here has to cover
+  // what that model is allowed to take, twice, or this side aborts a working ATOM and falls
+  // back to the plain model: the degradation would be declared, honestly, and completely
+  // wrong.
+  //
+  // `atomModelCalls` is not a safety margin. It is ATOM asking once and then once more with
+  // the reason named (`author_model.rs`): lower it only if that behaviour changes.
+  const effectiveTimeoutMs = timeoutMs
+    ?? (Math.ceil((maxTokens / minTokensPerSecond) * 1000) + 30_000) * atomModelCalls;
   return async ({ goal, step, path, contents, profile = [], attempts = [] }) => {
     // divergence-profile.mjs names each entry's field 'id' - the same name
     // buildAuthoringPrompt reads. ATOM's own /v1/author wire contract names the same
@@ -690,7 +706,7 @@ export function atomAuthoringGenerator({ endpoint, token = '', sessionId = null,
     // they are for the prompt a model reads, not for ATOM's schema.
     const wireProfile = profile.map(({ signal, id, level }) => ({ signal: signal ?? id, level }));
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
     let response;
     try {
       response = await fetchImpl(`${base}/v1/author`, {
