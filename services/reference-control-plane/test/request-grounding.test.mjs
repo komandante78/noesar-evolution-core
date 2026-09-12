@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { groundRequest, searchTermsOf, GroundingRefused } from '../src/request-grounding.mjs';
+import { groundRequest, searchTermsOf, GroundingRefused, rankingWeight, PROSE_WEIGHT } from '../src/request-grounding.mjs';
 import { literalSearch, literalSearchMany } from '../src/repo-map.mjs';
 
 function workspace(files) {
@@ -329,6 +329,92 @@ describe('the ranking — a file is not a better answer for being longer', () =>
       const result = groundRequest({ workspaceRoot: root, request: 'the installation instructions are wrong', goal: 'fix the installation instructions' });
       assert.equal(result.grounding.selected[0], 'docs/install.rst');
     } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  // --- 2026-09-12: the same half weight for the two families the per-file match cap exposed.
+  // Measured on the 155-instance capture before being chosen: prose only localises 42, with
+  // tests at half weight 62, with changelog-by-name too 63.
+
+  test('a test file that exercises the term does not outrank the source file that defines it', () => {
+    // The two files say the SAME words the same number of times, so BM25 ties to the last
+    // decimal and the tie-break decides — and the tie-break is alphabetical, which put
+    // `tests/` first for no reason anybody would defend out loud. That is the shape of the real
+    // case: on `django-10999` the five places went to five test files and the gold file,
+    // `django/utils/dateparse.py`, fell out of the top five entirely.
+    //
+    // RUNS RED against the prose-only ranking, where `tests/test_dateparse.py` came first.
+    const body = 'parse_duration negative dateparse';
+    const root = workspace({
+      'tests/test_dateparse.py': body,
+      'utils/dateparse.py': body,
+    });
+    try {
+      const result = groundRequest({
+        workspaceRoot: root,
+        request: 'parse_duration fails on negative durations',
+        goal: 'fix parse_duration for negative values in dateparse',
+      });
+      assert.equal(result.grounding.selected[0], 'utils/dateparse.py',
+        `the test outranked the source it exercises: ${result.grounding.selected.join(', ')}`);
+      // A penalty, not a partition — exactly as for prose. A ranking that DROPPED the test file
+      // would pass the assertion above and be a worse thing: a change often needs its test.
+      assert.ok(result.grounding.selected.includes('tests/test_dateparse.py'),
+        'the test file was removed rather than ranked below');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('a test file still wins when the request really is about the test', () => {
+    // The declared cost of the prior, as a test: half weight is a handicap, not a ban. This is
+    // the request that pays it — and still gets the right answer.
+    const root = workspace({
+      'tests/test_flaky.py': 'def test_flaky():\n    assert flaky_helper()\n    # flaky under load\n',
+      'src/unrelated.mjs': '// nothing to do with it\n',
+    });
+    try {
+      const result = groundRequest({
+        workspaceRoot: root,
+        request: 'test_flaky is flaky and should be rewritten',
+        goal: 'rewrite the flaky test test_flaky',
+      });
+      assert.equal(result.grounding.selected[0], 'tests/test_flaky.py');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('a changelog is a changelog whatever follows the dot', () => {
+    // `.old` is not one of the nine prose extensions, so `CHANGES.old` escaped the prose prior
+    // entirely and ranked FIRST on `sphinx-10323` — measured, then fixed by reading the name.
+    const repeated = ['literalinclude', 'dedent', 'directive']
+      .map((term) => Array.from({ length: 6 }, () => `* fixed ${term} handling`).join('\n')).join('\n');
+    const root = workspace({
+      'CHANGES.old': `${repeated}\n`,
+      'directives/code.py': 'class LiteralInclude:\n    # dedent\n    # directive\n    pass\n',
+    });
+    try {
+      const result = groundRequest({
+        workspaceRoot: root,
+        request: 'literalinclude dedent is wrong in the code directive',
+        goal: 'fix dedent in the literalinclude directive',
+      });
+      assert.equal(result.grounding.selected[0], 'directives/code.py',
+        `the changelog outranked the source: ${result.grounding.selected.join(', ')}`);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('the prior knows what is NOT a supporting file', () => {
+    // The edges, one assertion each, because a prior that swept up source would cost more than
+    // it buys. `setup.py` and `Makefile` are how a project builds itself; `latest.py` merely
+    // ends in a word that contains "test".
+    for (const path of ['tests/test_x.py', 'a/tests/helpers.py', 'x_test.py', 'x.test.js',
+      'conftest.py', 'tests.py', 'CHANGES.old', 'CHANGELOG.1', 'testing/support.py']) {
+      assert.equal(rankingWeight(path), PROSE_WEIGHT, `${path} must be weighed as supporting`);
+    }
+    for (const path of ['setup.py', 'Makefile.am', 'src/latest.py', 'src/contest.py',
+      'src/protester.js', 'utils/dateparse.py', 'testament/main.py']) {
+      assert.equal(rankingWeight(path), 1, `${path} must keep full weight`);
+    }
+    // And the prose rule it already had, unchanged.
+    assert.equal(rankingWeight('docs/guide.rst'), PROSE_WEIGHT);
+    assert.equal(rankingWeight('AUTHORS'), PROSE_WEIGHT);
   });
 });
 

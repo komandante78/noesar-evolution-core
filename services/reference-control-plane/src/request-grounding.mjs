@@ -157,6 +157,58 @@ const extensionOf = (path) => {
   return dot <= 0 ? '' : name.slice(dot);
 };
 
+// Two more families at the SAME half weight, measured 2026-09-12 on the 155-instance capture:
+// `bm25Doc50` (prose only) localises 42, with tests at half weight 62, with changelog-by-name as
+// well 63. Same walk, same terms, only the weights differ — `BENCH_SWE/rank-lab.mjs`, whose
+// control agrees with the live run on the instances it shares.
+//
+// # Why a TEST file is not where a change goes — as a prior, not as a benchmark rule
+//
+// The file that DEFINES a behaviour is a likelier place to change it than a file that EXERCISES
+// it. That holds outside any benchmark: it is the difference between the thing and its witness.
+// What made it visible here was a regression — the per-file match cap (`repo-map.mjs`,
+// 2026-09-12) took away the advantage of the file that names a term fifty times and left
+// untouched the file that names it five, so on `django-10999` and `sphinx-10323` the gold file
+// fell out of the top five and five test files took the places.
+//
+// # Why a changelog needs its own rule
+//
+// The prose prior reads the EXTENSION, and `sphinx/CHANGES.old` is not one of the nine. It
+// ranked FIRST on `sphinx-10323` regardless. A file called `CHANGES` is a changelog whatever is
+// after the dot, and its name is the honest way to say so.
+//
+// # Half, and not less
+//
+// `testQuarter` also measures 62-63. Half is kept because this is a PENALTY and not a partition,
+// the same decision taken for prose on 2026-09-10: at half weight a request that really is
+// about a test file pays double and can still win, and both ceilings are covered by a test
+// below. A quarter buys no localisation and costs that request twice as much.
+export const TEST_DIRECTORIES = new Set(['test', 'tests', 'testing']);
+export const TEST_FILENAMES = /^test_|_test\.|\.test\.|^conftest\.py$|^tests?\.py$/;
+// Only the changelog-and-credits family. `Makefile`, `Dockerfile` and `setup.py` are code, and a
+// prior that swept up every shouting filename would take source with it.
+export const SUPPORTING_STEMS = new Set([
+  'CHANGES', 'CHANGELOG', 'HISTORY', 'NEWS', 'CREDITS', 'THANKS', 'TODO',
+  'AUTHORS', 'CONTRIBUTORS', 'COPYING', 'LICENSE', 'LICENCE', 'NOTICE', 'INSTALL', 'README',
+]);
+
+/**
+ * `PROSE_WEIGHT` for a file that documents or exercises the code, `1` for one that defines it.
+ *
+ * Exported for the same reason the constants above it are: the lab tool that chose these weights
+ * lives outside this repository, and a hand copy of this rule would drift from it. That already
+ * happened once — `rank-django-10097.mjs` scored against three prose extensions instead of nine.
+ */
+export function rankingWeight(path) {
+  if (PROSE_EXTENSIONS.has(extensionOf(path))) return PROSE_WEIGHT;
+  const parts = String(path).split('/');
+  const name = parts.at(-1) ?? '';
+  if (parts.slice(0, -1).some((part) => TEST_DIRECTORIES.has(part))) return PROSE_WEIGHT;
+  if (TEST_FILENAMES.test(name)) return PROSE_WEIGHT;
+  if (SUPPORTING_STEMS.has(name.replace(/\.[^.]*$/, '').toUpperCase())) return PROSE_WEIGHT;
+  return 1;
+}
+
 export function groundRequest({
   workspaceRoot,
   goal,
@@ -224,7 +276,7 @@ export function groundRequest({
           / (howManyTimes + BM25_K1 * (1 - BM25_B + BM25_B * (entry.matches / (averageMatches || 1))));
         score += rarity * saturation;
       }
-      if (PROSE_EXTENSIONS.has(extensionOf(path))) score *= PROSE_WEIGHT;
+      score *= rankingWeight(path);
       return { path, score, distinctTerms: entry.terms.size, matches: entry.matches, terms: [...entry.terms.keys()].sort() };
     })
     .sort((a, b) => (
