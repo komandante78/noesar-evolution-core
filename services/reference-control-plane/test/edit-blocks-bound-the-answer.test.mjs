@@ -59,6 +59,19 @@ test('an anchor that is not unique is refused, never guessed at', () => {
   assert.equal(refusal(() => applyEditBlocks(twice, ORIGINAL, 'separable.py')), 'EDIT_NOT_UNIQUE');
 });
 
+// Measured 2026-09-13, astropy-12907 (SWE-bench, ctxfix-resolve-01): a real answer put a
+// second `=======` inside its own replacement text -- not a second block, one block whose
+// replacement happened to contain the separator again -- and the old parser had a rule for
+// EDIT_OPEN appearing there (break, fall through to EDIT_UNTERMINATED) but none for
+// EDIT_SEPARATOR, so it silently became four bytes of the replacement. Spliced into
+// astropy/modeling/utils.py ahead of an unrelated function, it broke that module's import
+// and every one of 15 unrelated tests failed to even collect. Confirmed in isolation:
+// dropping that file and keeping only the other, well-formed edit made the same run 15/15.
+test('a replacement that itself contains a second separator is refused, not spliced in', () => {
+  const malformed = ['<<<<<<< SEARCH', '    return cright', '=======', '    return None', '=======', '    return cright', '>>>>>>> REPLACE'].join('\n');
+  assert.equal(refusal(() => applyEditBlocks(malformed, ORIGINAL, 'a.py')), 'EDIT_MARKER_LEAKED');
+});
+
 test('an anchor that is absent is refused, and an empty one too', () => {
   assert.equal(refusal(() => applyEditBlocks(block('no such line', 'x'), ORIGINAL, 'a.py')), 'EDIT_NOT_FOUND');
   assert.equal(refusal(() => applyEditBlocks(block('', 'x'), ORIGINAL, 'a.py')), 'EDIT_EMPTY_ANCHOR');

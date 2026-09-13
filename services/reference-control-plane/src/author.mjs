@@ -204,6 +204,19 @@ export function applyEditBlocks(answer, current, path) {
       if (lines[j].trimEnd() === EDIT_OPEN) break;
       if (separator === -1 && lines[j].trimEnd() === EDIT_SEPARATOR) separator = j;
       else if (separator !== -1 && lines[j].trimEnd() === EDIT_CLOSE) { close = j; break; }
+      // Measured 2026-09-13, astropy-12907 (SWE-bench, ctxfix-resolve-01): a second
+      // EDIT_SEPARATOR landed here, between the real separator and the real close, and the
+      // old code had no rule for it -- it is neither one (this branch already ran) nor the
+      // other, so it fell through into the replacement text as four bytes of literal
+      // garbage. That block edited astropy/modeling/utils.py, spliced a stray separator
+      // ahead of ellipse_extent, and the file no longer parsed: every test in an UNRELATED
+      // module failed at import, not the one the edit was about. Isolated and confirmed by
+      // re-running the eval with only the other, well-formed edit block applied: 15/15
+      // pass. This is the anchor rule again -- 'REFUSED rather than guessed at' -- extended
+      // to the replacement text, not just the search text.
+      else if (separator !== -1 && lines[j].trimEnd() === EDIT_SEPARATOR) {
+        throw new AuthoringRefused('EDIT_MARKER_LEAKED', `an edit block's replacement contains a second \`${EDIT_SEPARATOR}\`, which means the answer is malformed rather than merely large`, path);
+      }
     }
     if (separator === -1 || close === -1) {
       throw new AuthoringRefused('EDIT_UNTERMINATED', `an edit block was opened and never closed with \`${EDIT_SEPARATOR}\` and \`${EDIT_CLOSE}\``, path);
