@@ -66,6 +66,19 @@ const CASES = [
   // own tag is a real, already-committed evidence format (D-0442) and must not be swallowed
   // by broadening the pattern past the three leaking prefixes above.
   ['EVIDENCE/docker_images_pre_hygiene_20260814T092746Z.txt', 'PRESERVED'],
+  // --- 13/09/2026: the NLnet grant dossier, found untracked-but-NOT-ignored in the working
+  // tree. FUNDING/ has never been committed (`git log --all -- FUNDING` is empty) and must
+  // never be: this repository is meant to go public and the dossier is versioned by hand
+  // outside it. It was one `git add -A` from publication. The copy found here was also STALE
+  // — 23 files against the 25 of the copy of record, missing 20_GENAI_DISCLOSURE.md and still
+  // carrying the pre-13/09 test counts — so a reader landing on it would have quoted
+  // superseded numbers into a funding application. The copy was moved out of the tree; this
+  // rule is the defence in depth that survives somebody putting it back. ---
+  ['FUNDING/01_PROJECT_EXECUTIVE_SUMMARY.md', 'EXCLUDED'],
+  ['FUNDING/PROMPT_LOG.md', 'EXCLUDED'],
+  // The boundary the other direction, as the target/ rules keep it: anchored to the root, so
+  // a real directory somebody later names FUNDING deeper in the tree is NOT swallowed.
+  ['docs/FUNDING/README.md', 'PRESERVED'],
 ];
 
 function run() {

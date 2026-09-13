@@ -1,7 +1,7 @@
 e90b1a7e51ad86e8ca0c9c4836101fea65232869319c7320faef3d11c2cad81c  ./.dockerignore
 5cf81b36bc39d3ee492830353b68f320c9c0806c0ebe58b61b70c0d912c4e077  ./.githooks/pre-commit
 f4b0f0030a52be9207447b519eedfa7ef2d1164a402a03986dc79eb10c3d1ed6  ./.github/workflows/noesar-sandbox-extraction.yml
-410caa5a8586c94212b7723c057fdf731917c4e2bdad081e1b2b1cca1e65d07b  ./.gitignore
+77b7a430a9f22f016e620bcd9d9eda2ecb49c2c5838857e15a986a3bff906d53  ./.gitignore
 228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  ./.gitleaks.toml
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
 79f4cbbb6909d201fa3b0c5e965f6dc4208bc18a43353c017a0cbc8bee383c3e  ./DOCUMENTATION/ACCEPTANCE_CHECKLIST.md
@@ -6682,7 +6682,7 @@ c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/termin
 67ccb1110fb7d3abfba1419fc33407e83b99708258ca9bc960bd31198688407c  ./tools/test-cross-platform-installers.mjs
 89f8d7634a65596cfa8ece1a192d8ec61e3edfe756dcaccbc601281652087379  ./tools/test-e2e-retention.sh
 90c25b2dc354d76851de0fbc954470199733e569fb490d2e5c7e792f3b6639c1  ./tools/test-installer-hardening.mjs
-78f979fc518db9ae7f12e5c2335131cb09982e62ea1301189234ee6bb9e35a52  ./tools/test-packaging-filters.mjs
+445db8f0c89f8b7ab737b4ae267c9964cc8662b0ebe260ffb89885716764430c  ./tools/test-packaging-filters.mjs
 f833e096bb996a7e466f5a3b69feca311d5c13e89547726be6b32bb943bcabc3  ./tools/test-powershell-installers.ps1
 208c811f41e2b4b6f2a8b01178737172f97537a1e0e084079135bbb884ddeea5  ./tools/test-rust-build-provenance.py
 07a1d0df08751b09bcb27ac8b9be150d582b5cb129ec16bdead036b2b95b8a57  ./tools/test-sign-model-descriptor.mjs

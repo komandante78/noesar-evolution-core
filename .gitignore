@@ -102,6 +102,18 @@ credentials/
 id_rsa*
 id_ed25519*
 
+# The NLnet grant dossier. FUNDING/ has never been committed (`git log --all -- FUNDING` was
+# empty on 13/09/2026) and must never be: this repository is meant to go public, and the
+# dossier is versioned by hand outside it. It was found here untracked-but-NOT-ignored — one
+# `git add -A` from publication — and stale besides: 23 files against the 25 of the copy of
+# record, without 20_GENAI_DISCLOSURE.md and still carrying the pre-13/09 test counts, so a
+# reader landing on it would have quoted superseded numbers into a funding application. That
+# copy was moved out of the tree; this rule is what survives somebody putting it back.
+# Anchored, so a real directory somebody later names FUNDING deeper in the tree is not
+# swallowed — the same boundary the target/ rules above keep.
+# Regression test: tools/test-packaging-filters.mjs
+/FUNDING/
+
 # Project-local operational directories
 BACKUPS/
 BUILD_ARTIFACTS/
