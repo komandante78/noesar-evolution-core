@@ -453,6 +453,20 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
     'Install-Noesar.ps1 must clear the destination before copying, or a reinstall nests the tree');
   check(/refusing to install outside/.test(windows.install),
     'that removal must be guarded to a path under the install root');
+// F-WIN-001 (docs/OPEN_FINDINGS.tsv): PowerShell's default execution policy on a personal
+  // Windows machine refuses to run an unsigned .ps1 at all, so a person who double-clicks
+  // Install-Noesar.ps1 sees "L'esecuzione di script e disabilitata nel sistema in uso" (or its
+  // English equivalent) and gets no further -- measured on a real Windows 11 machine,
+  // 2026-08-31. deployment/container/Install-CodenCli.ps1 already carries the fix for the
+  // script IT installs; the installer itself never got the same shim.
+  check(existsSync(join(repoRoot, 'deployment/windows/Install-Noesar.cmd')),
+    'deployment/windows/Install-Noesar.cmd must exist -- a person on a default Windows has to be able to double-click something');
+  const shim = readFileSync(join(repoRoot, 'deployment/windows/Install-Noesar.cmd'), 'utf8');
+  check(/-ExecutionPolicy Bypass/.test(shim),
+    'Install-Noesar.cmd must pass -ExecutionPolicy Bypass, or it fails on the exact machine it exists for');
+  check(/Install-Noesar\.ps1/.test(shim),
+    'Install-Noesar.cmd must invoke Install-Noesar.ps1, not some other script');
+
   note('Uninstall-Noesar.ps1 removes nothing; it prints two advisory lines. Whether that is deliberate caution or an unfinished script is an Owner question.');
   // Was a fixed note, printed on every run whether or not it was still true. It described a
   // real defect (a shipped script citing a report this repository does not carry), the defect
