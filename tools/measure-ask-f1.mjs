@@ -119,6 +119,60 @@ function makeJudge() {
   );
 }
 
+// The second namer, and the question it exists to answer.
+//
+// The shipped reference provider names ambiguities by matching ten vague words, because it has
+// no model and refuses to produce model-shaped output without one. That is correct for what it
+// is, and it caps recall hard. Before changing the PRODUCT to fix that, the cheap question is
+// whether the model would do better at all — so this asks it, over the same tasks, scored by
+// the same calibrated judge.
+//
+// This prompt was written ONCE and is not revised against the score. Tuning it while watching
+// the number is fitting these 200 tasks, which is the one thing that would make the whole
+// campaign worthless.
+function namerPrompt(problem) {
+  return [
+    'Below is a task description given to a developer.',
+    '',
+    'Some tasks are missing information that CANNOT be worked out from the text or the code:',
+    'a value that is never given, a name that is never stated, a choice between two readings,',
+    'or two statements that contradict each other.',
+    '',
+    'List only those. One per line, each phrased as a short, specific question you would have',
+    'to ask before starting. No numbering, no preamble, no explanation.',
+    'If nothing is genuinely missing, answer with exactly: NOTHING',
+    '',
+    '--- task description ---',
+    problem,
+  ].join('\n');
+}
+
+function parseNamed(text) {
+  const lines = String(text ?? '').split('\n').map((line) => line.replace(/^[-*\d.)\s]+/, '').trim());
+  if (lines.some((line) => /^NOTHING$/i.test(line))) return [];
+  // A line that asks nothing is not a question, and a namer padding its list must not be paid
+  // for the padding — precision is what punishes over-asking, so the filter stays this plain.
+  return lines.filter((line) => line.length > 10 && line.includes('?')).slice(0, 12);
+}
+
+function makeModelNamer() {
+  const generate = openAiChatGenerator({
+    endpoint: JUDGE_ENDPOINT,
+    model: process.env.NOESAR_JUDGE_MODEL || null,
+    temperature: 0,
+    maxTokens: 400,
+  });
+  return async (problem) => {
+    try {
+      return { named: parseNamed(await generate({ prompt: namerPrompt(problem) })), unreadable: null };
+    } catch (error) {
+      // A task that does not FIT the window is not a task the namer scored zero on. Counted
+      // apart, or the denominator fills up with our own hardware.
+      return { named: [], unreadable: error?.code ?? error?.message?.slice(0, 80) ?? 'namer failed' };
+    }
+  };
+}
+
 const cleanQuestion = (raw) => String(raw ?? '').replace(/^[-*\s]+/, '').trim();
 const withBlockers = (tasks) => tasks.filter(
   (task) => Array.isArray(task.blocker_registry) && task.blocker_registry.length > 0,
@@ -161,17 +215,25 @@ async function calibrate(tasks, pairs) {
   };
 }
 
-async function judgeRun(tasks) {
+async function judgeRun(tasks, namerKind) {
   const provider = new ReferenceReasoningProvider('/workspace');
+  const modelNamer = namerKind === 'model' ? makeModelNamer() : null;
   const judge = makeJudge();
   const rows = [];
+  let unreadable = 0;
   for (const task of withBlockers(tasks)) {
     const problem = String(task.problem ?? '').trim();
     if (!problem) continue;
     let named;
-    try {
-      named = provider.interpret(problem, []).ambiguities;
-    } catch { continue; }
+    if (modelNamer) {
+      const out = await modelNamer(problem);
+      if (out.unreadable) { unreadable += 1; continue; }
+      named = out.named;
+    } else {
+      try {
+        named = provider.interpret(problem, []).ambiguities;
+      } catch { continue; }
+    }
     // A blocker counts once however many notes point at it: recall asks how many blockers were
     // found, not how many times each was named.
     const found = new Set();
@@ -193,7 +255,7 @@ async function judgeRun(tasks) {
   const precision = named > 0 ? hits / named : 0;
   const recall = blockers > 0 ? hits / blockers : 0;
   return {
-    tasks: rows.length, blockers, named, hits, precision, recall,
+    tasks: rows.length, blockers, named, hits, precision, recall, unreadable,
     askF1: precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0,
     silentTasks: rows.filter((row) => row.named === 0).length,
     rows,
@@ -218,6 +280,15 @@ function selfcheck() {
   assert.ok(!/NOESAR|provider|interpret|ambiguit/i.test(prompt), 'the judge must not be told whose note it is');
   // The floor is a constant of this file, not something a run can move.
   assert.ok(Object.isFrozen(JUDGE_FLOOR));
+  // The namer's parser decides the precision denominator, so it carries its own oracle too.
+  assert.deepEqual(parseNamed('NOTHING'), [], 'NOTHING names nothing');
+  assert.deepEqual(parseNamed('- What timeout value?\n- Which cleanup method?').length, 2);
+  assert.deepEqual(parseNamed('Here is my analysis of the task.'), [], 'prose with no question is not a question');
+  assert.deepEqual(parseNamed('Why?'), [], 'a question too short to name anything does not count');
+  assert.equal(parseNamed('1. What value?\n2. What name?')[0], 'What value?', 'numbering is stripped');
+  // A namer that answers NOTHING alongside a list has not named anything: the explicit
+  // no-blockers answer wins, or padding after it would be paid for.
+  assert.deepEqual(parseNamed('NOTHING\nWhat about the timeout value here?'), []);
   console.log('selfcheck: ok');
 }
 
@@ -233,6 +304,10 @@ async function main() {
   if (only) tasks = tasks.filter((task) => task.task_type === only);
   const pairsAt = args.indexOf('--pairs');
   const pairs = pairsAt === -1 ? 15 : Number(args[pairsAt + 1]);
+  // A pilot takes the FIRST n in dataset order, never a sample chosen by this file: picking
+  // which tasks to be measured on is the oldest way to publish a flattering number.
+  const limitAt = args.indexOf('--limit');
+  if (limitAt !== -1) tasks = tasks.slice(0, Number(args[limitAt + 1]));
 
   console.log(`dataset     ${DATA}`);
   console.log(`            sha256:${digest}  ${tasks.length} task (${only ?? 'all'})`);
@@ -254,23 +329,32 @@ async function main() {
   }
   if (args.includes('--calibrate')) return;
 
-  const result = await judgeRun(tasks);
+  const namerAt = args.indexOf('--namer');
+  const namerKind = namerAt === -1 ? 'reference' : args[namerAt + 1];
+  if (!['reference', 'model'].includes(namerKind)) throw new Error(`--namer sconosciuto: ${namerKind}`);
+  const namerName = namerKind === 'model'
+    ? `il modello a ${JUDGE_ENDPOINT} (prompt scritto una volta, mai riscritto sul punteggio)`
+    : 'ReferenceReasoningProvider.interpret() (senza modello, 10 parole vaghe)';
+  console.log(`== MISURA — chi nomina: ${namerName} ==`);
+
+  const result = await judgeRun(tasks, namerKind);
   const report = {
     at: new Date().toISOString(),
     dataset: { path: DATA, sha256Prefix: digest, tasks: result.tasks, type: only ?? 'all' },
-    provider: 'ReferenceReasoningProvider (no model)',
+    namer: namerKind,
     judge: { endpoint: JUDGE_ENDPOINT, ...cal, rows: undefined },
     askF1: result.askF1, precision: result.precision, recall: result.recall,
     blockers: result.blockers, named: result.named, hits: result.hits,
+    silentTasks: result.silentTasks, unreadable: result.unreadable,
   };
   if (args.includes('--json')) {
     console.log(JSON.stringify({ ...report, rows: result.rows }, null, 2));
     return;
   }
-  console.log('== MISURA ==');
-  console.log(`  task            ${result.tasks}`);
+  console.log(`  task            ${result.tasks}   (non entrati nella finestra: ${result.unreadable})`);
   console.log(`  blocchi umani   ${result.blockers}`);
   console.log(`  nominate        ${result.named}`);
+  console.log(`  task muti       ${result.silentTasks}`);
   console.log(`  riconosciute    ${result.hits}   (dal giudice, non da noi)`);
   console.log('');
   console.log(`  precision       ${result.precision.toFixed(4)}`);
