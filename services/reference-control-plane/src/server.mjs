@@ -322,7 +322,15 @@ function buildAuthor() {
   // No model underneath means there is nothing to author with and nothing to fall back to.
   // Absent beats a guess — the same posture `simulate` takes with `supported:false`.
   if (!modelEndpoint) return null;
-  const model = openAiChatGenerator({ endpoint: modelEndpoint, model: process.env.NOESAR_AUTHORING_MODEL || null });
+  const model = openAiChatGenerator({
+    endpoint: modelEndpoint,
+    model: process.env.NOESAR_AUTHORING_MODEL || null,
+    // Unset in production, so nothing about the installed product changes. A measurement run
+    // sets this to 0 because `openAiChatGenerator`'s own default (0.2) makes the generator
+    // non-deterministic, and a resolve-rate sample of a few dozen instances cannot tell a real
+    // ±1 from noise at that setting (measured 2026-09-12, ctxfix-resolve-01 vs perfile-cap-resolve-01).
+    temperature: Number(process.env.NOESAR_AUTHORING_TEMPERATURE ?? 0.2),
+  });
   if (!atomEndpoint) return new Author({ generate: model, model: modelEndpoint });
   const chain = declaredFallbackGenerator({
     primary: atomAuthoringGenerator({ endpoint: atomEndpoint, token: process.env.NOESAR_RUST_REASONING_TOKEN ?? '' }),
