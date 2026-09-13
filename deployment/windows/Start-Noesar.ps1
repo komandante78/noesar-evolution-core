@@ -13,7 +13,6 @@ $env:NOESAR_SECURE_COOKIES = "false"
 $env:NOESAR_RELEASE_CHANNEL = "development"
 $env:NOESAR_AUTHORITY_MODE = "reference-node"
 $env:NOESAR_DATA_PLANE = "reference-json"
-$env:NOESAR_SETUP_TOKEN_FILE = Join-Path $Workspace "config\first-owner-setup.token"
 $env:NODE_ENV = "production"
 # NOTE: the pre-consolidation runtime-bin\runtime-preflight.mjs preflight check was never
 # carried into this candidate and has no functional equivalent elsewhere in the product; it

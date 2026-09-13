@@ -477,7 +477,7 @@ aa9c9ce3bcff71f9b2b918025e325e7090064bb8ccb83195c174909719474380  ./deployment/u
 61c904911fe878db3e878c5f91ada5d89083fca14c3cde21182d3ed6f75ef776  ./deployment/windows/Install-Noesar.cmd
 2496181486b3521e4c18ac41bfc22354cbcd459f7e812104aa096a1ecbd2e559  ./deployment/windows/Install-Noesar.ps1
 7c48dc5ccd801686bfb00e7de7043345dd5c411ed97670c42fc38568df5253bf  ./deployment/windows/Show-FirstOwnerToken.ps1
-ea5a9867be585d6b9f548706017d7d069a49606f6897adecb313537685884b58  ./deployment/windows/Start-Noesar.ps1
+668ceba560a865eafb1df77a5ad29b3ab16a654c09f5cca8453cbaeefaedb333  ./deployment/windows/Start-Noesar.ps1
 6d80172a53ff39fb51f0d6d2d7886c935013f8beb31873f80c71b1bdc7666edc  ./deployment/windows/Test-Noesar.ps1
 b5748d8de7715a30f182e9fcbabbddc25a85978d4743f38bcf0e7ea87b70a813  ./deployment/windows/Uninstall-Noesar.ps1
 29214c4b4170e601e8c4884c9bb02ad75583df6a29de3f83d8810fdd4eb4ce9d  ./docs/ACCEPTANCE_RESULTS.tsv
