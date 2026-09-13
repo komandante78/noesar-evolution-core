@@ -309,21 +309,29 @@ async function main() {
   const limitAt = args.indexOf('--limit');
   if (limitAt !== -1) tasks = tasks.slice(0, Number(args[limitAt + 1]));
 
-  console.log(`dataset     ${DATA}`);
-  console.log(`            sha256:${digest}  ${tasks.length} task (${only ?? 'all'})`);
-  console.log(`giudice     ${JUDGE_ENDPOINT}  temperature=0`);
-  console.log('');
-  console.log(`== CALIBRAZIONE (${pairs} coppie) — il giudice si prova prima di giudicare ==`);
+  // `--json` means the stream IS the report. Measured the hard way: the first full run wrote
+  // this preamble above the JSON and the file would not parse, so a 48-minute result had to be
+  // recovered by hand. A flag that says "machine readable" has to mean it on every line.
+  const asJson = args.includes('--json');
+  const say = (...parts) => { if (!asJson) console.log(...parts); };
+
+  say(`dataset     ${DATA}`);
+  say(`            sha256:${digest}  ${tasks.length} task (${only ?? 'all'})`);
+  say(`giudice     ${JUDGE_ENDPOINT}  temperature=0`);
+  say('');
+  say(`== CALIBRAZIONE (${pairs} coppie) — il giudice si prova prima di giudicare ==`);
   const cal = await calibrate(tasks, pairs);
-  console.log(`  positivi  ${cal.positiveHits}/${cal.positives}  = ${cal.positiveRate.toFixed(3)}  (soglia ${JUDGE_FLOOR.positive})`);
-  console.log(`  negativi  ${cal.negativeHits}/${cal.negatives}  = ${cal.negativeRate.toFixed(3)}  (soglia ${JUDGE_FLOOR.negative})`);
-  for (const failure of cal.failures) console.log(`    ! ${failure}`);
-  console.log(`  esito     ${cal.passes ? 'PASSA' : 'NON PASSA'}`);
-  console.log('');
+  say(`  positivi  ${cal.positiveHits}/${cal.positives}  = ${cal.positiveRate.toFixed(3)}  (soglia ${JUDGE_FLOOR.positive})`);
+  say(`  negativi  ${cal.negativeHits}/${cal.negatives}  = ${cal.negativeRate.toFixed(3)}  (soglia ${JUDGE_FLOOR.negative})`);
+  for (const failure of cal.failures) say(`    ! ${failure}`);
+  say(`  esito     ${cal.passes ? 'PASSA' : 'NON PASSA'}`);
+  say('');
 
   if (!cal.passes) {
-    console.log('Il giudice non ha superato il proprio oracolo, quindi NON misura.');
-    console.log('Un punteggio prodotto da un giudice non calibrato non e un punteggio.');
+    // stderr, so a run piped to a file leaves the refusal visible instead of writing it into
+    // the report a consumer would then parse as a result.
+    console.error('Il giudice non ha superato il proprio oracolo, quindi NON misura.');
+    console.error('Un punteggio prodotto da un giudice non calibrato non e un punteggio.');
     process.exitCode = 3;
     return;
   }
@@ -335,9 +343,27 @@ async function main() {
   const namerName = namerKind === 'model'
     ? `il modello a ${JUDGE_ENDPOINT} (prompt scritto una volta, mai riscritto sul punteggio)`
     : 'ReferenceReasoningProvider.interpret() (senza modello, 10 parole vaghe)';
-  console.log(`== MISURA — chi nomina: ${namerName} ==`);
+  say(`== MISURA — chi nomina: ${namerName} ==`);
 
   const result = await judgeRun(tasks, namerKind);
+  // Split by task type in the tool, not by hand afterwards. The pooled number hid a real
+  // difference on the first full run: SQL scored far above SWE, and a single figure would have
+  // reported neither.
+  const byType = {};
+  for (const type of [...new Set(result.rows.map((row) => row.type))].sort()) {
+    const of = result.rows.filter((row) => row.type === type);
+    const total = (pick) => of.reduce((sum, row) => sum + pick(row), 0);
+    const n = total((row) => row.named);
+    const b = total((row) => row.blockers);
+    const h = total((row) => row.hits);
+    const precision = n ? h / n : 0;
+    const recall = b ? h / b : 0;
+    byType[type] = {
+      tasks: of.length, named: n, blockers: b, hits: h, precision, recall,
+      askF1: precision + recall ? (2 * precision * recall) / (precision + recall) : 0,
+      silentTasks: of.filter((row) => row.named === 0).length,
+    };
+  }
   const report = {
     at: new Date().toISOString(),
     dataset: { path: DATA, sha256Prefix: digest, tasks: result.tasks, type: only ?? 'all' },
@@ -346,8 +372,9 @@ async function main() {
     askF1: result.askF1, precision: result.precision, recall: result.recall,
     blockers: result.blockers, named: result.named, hits: result.hits,
     silentTasks: result.silentTasks, unreadable: result.unreadable,
+    byType,
   };
-  if (args.includes('--json')) {
+  if (asJson) {
     console.log(JSON.stringify({ ...report, rows: result.rows }, null, 2));
     return;
   }
@@ -360,6 +387,10 @@ async function main() {
   console.log(`  precision       ${result.precision.toFixed(4)}`);
   console.log(`  recall          ${result.recall.toFixed(4)}`);
   console.log(`  ASK-F1          ${result.askF1.toFixed(4)}`);
+  console.log('');
+  for (const [type, stats] of Object.entries(byType)) {
+    console.log(`  ${type.toUpperCase().padEnd(4)} task ${String(stats.tasks).padStart(3)}  muti ${String(stats.silentTasks).padStart(3)}  precision ${stats.precision.toFixed(4)}  recall ${stats.recall.toFixed(4)}  ASK-F1 ${stats.askF1.toFixed(4)}`);
+  }
   console.log('');
   console.log(`Il giudice sbaglia ${((1 - cal.positiveRate) * 100).toFixed(0)}% dei positivi e`);
   console.log(`${((1 - cal.negativeRate) * 100).toFixed(0)}% dei negativi sul proprio oracolo: il numero sopra porta quell'errore dentro.`);
