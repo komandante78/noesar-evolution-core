@@ -56,6 +56,12 @@ Install-Tree -Source (Join-Path $Root "apps") `
 Install-Tree -Source (Join-Path $Root "packages") `
   -Target (Join-Path $NoesarRoot "packages") -Guard $NoesarRoot
 Copy-Item -Force (Join-Path $Root "deployment\windows\Start-Noesar.ps1") $Destination
+# Measured 2026-09-13, first real end-to-end run of this installer: Show-FirstOwnerToken.ps1
+# reads the setup token from $Workspace, which only exists AFTER this install runs, and the
+# script was not being copied here -- so the one tool that reveals the token needed to
+# finish setup was unreachable the moment a person deleted the source checkout.
+$tokenHelper = Join-Path $Root "deployment\windows\Show-FirstOwnerToken.ps1"
+if (Test-Path $tokenHelper) { Copy-Item -Force $tokenHelper $Destination }
 
 # The session, in one word — for a from-source installation on this platform too. Until
 # this was added the word existed only on a container installation, and only in its POSIX

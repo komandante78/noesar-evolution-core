@@ -453,6 +453,13 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
     'Install-Noesar.ps1 must clear the destination before copying, or a reinstall nests the tree');
   check(/refusing to install outside/.test(windows.install),
     'that removal must be guarded to a path under the install root');
+
+  // Measured 2026-09-13, first real run of this installer end to end: Show-FirstOwnerToken.ps1
+  // reads the setup token, and the token only exists in the workspace THIS install creates --
+  // but the script was never copied there, so the one tool that reveals it was unreachable the
+  // moment a person deleted the source checkout they installed from.
+  check(/Show-FirstOwnerToken\.ps1/.test(windows.install),
+    'Install-Noesar.ps1 must copy Show-FirstOwnerToken.ps1 next to Start-Noesar.ps1, or nobody can read the token after the source checkout is gone');
 // F-WIN-001 (docs/OPEN_FINDINGS.tsv): PowerShell's default execution policy on a personal
   // Windows machine refuses to run an unsigned .ps1 at all, so a person who double-clicks
   // Install-Noesar.ps1 sees "L'esecuzione di script e disabilitata nel sistema in uso" (or its
