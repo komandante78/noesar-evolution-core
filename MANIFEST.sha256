@@ -6630,6 +6630,15 @@ c8cfe46403df2ac4dbabb5fa26df2f77318622c70409424935372b38b3c602c0  ./tools/accept
 c90cb060e56d5dee2039f9c4aa588137b051fb07ad37e64ea66cc82c83fb5fad  ./tools/accessibility-audit.mjs
 debd631ef132698f6b6285a04e922237fc752ba9a18509d34314e1971023b6ac  ./tools/auth-http-smoke.mjs
 c93f39e1874d24997b7fb1de42530806f25a087b5f9d19a3937da703a800d231  ./tools/benchmarks/README.md
+3ffdc0ddbfcc119b7009344f4d173c3b4e3936e13f8602b021aeaa96b9982c09  ./tools/benchmarks/hilbench/README.md
+ecf93c53863ca3457c5f8fcb80f2e4a6d8267b531df3e1a6c620519c659198bc  ./tools/benchmarks/hilbench/build-csv.py
+991e31393ea708351297be6bf9ad95bf1607ffa9200ad746f25c52fa842ea4aa  ./tools/benchmarks/hilbench/gate-check.sh
+961ec46a662c4d65965941efc4113e917c393cdb7181df915445f4953e1ac626  ./tools/benchmarks/hilbench/hil-sql-agent.mjs
+c563e85d187e984c94a40257a15080e9a64bc2b44d0bd7804e8552fc5f7de87b  ./tools/benchmarks/hilbench/hil-sql-score.mjs
+43bfc5e93c46fc2bb878acea0dad6ab299e723f965e4e723ca0649460cac3efd  ./tools/benchmarks/hilbench/reproduce.sh
+af8a7b1f66bbcbe25522f422ba7941b99ccd82b2eb225a3ac194a18be1daed9f  ./tools/benchmarks/hilbench/run-sql-batch.sh
+49a26efdd1ee61d091f9d45a5ec5e06de3b4bd1c86db4bdce70fc17312f1775b  ./tools/benchmarks/hilbench/run-sql-task.sh
+6950198318cb24c11c7160dce27d22356fb08b5129a2d8831d133421bb0459d8  ./tools/benchmarks/hilbench/setup.sh
 fcf262e912884b3d345df9d72490c8b9905ed266b11ad07865df6eccd1aea3a0  ./tools/benchmarks/results-s336.jsonl
 ed02e17a5c5f0f00cdb836e425127206af63fe3da8c16633e0df811750de31a2  ./tools/benchmarks/run-bench.mjs
 493c8c6e8e89bd62f84cf78faed2807ae65717982f0b7ccce314f4f7d5cab7b4  ./tools/browser-e2e.mjs
