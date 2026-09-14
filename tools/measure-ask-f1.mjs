@@ -51,6 +51,7 @@ import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { ReferenceReasoningProvider } from '../services/reference-control-plane/src/reasoning.mjs';
 import { openAiChatGenerator } from '../services/reference-control-plane/src/author.mjs';
+import { namerPrompt, readNamed } from '../services/reference-control-plane/src/ambiguity-namer.mjs';
 
 const DATA = process.env.NOESAR_HILBENCH_DATA
   ?? '/mnt/cachec/BENCH_SWE/hilbench-data/hil-bench.json';
@@ -130,30 +131,11 @@ function makeJudge() {
 // This prompt was written ONCE and is not revised against the score. Tuning it while watching
 // the number is fitting these 200 tasks, which is the one thing that would make the whole
 // campaign worthless.
-function namerPrompt(problem) {
-  return [
-    'Below is a task description given to a developer.',
-    '',
-    'Some tasks are missing information that CANNOT be worked out from the text or the code:',
-    'a value that is never given, a name that is never stated, a choice between two readings,',
-    'or two statements that contradict each other.',
-    '',
-    'List only those. One per line, each phrased as a short, specific question you would have',
-    'to ask before starting. No numbering, no preamble, no explanation.',
-    'If nothing is genuinely missing, answer with exactly: NOTHING',
-    '',
-    '--- task description ---',
-    problem,
-  ].join('\n');
-}
-
-function parseNamed(text) {
-  const lines = String(text ?? '').split('\n').map((line) => line.replace(/^[-*\d.)\s]+/, '').trim());
-  if (lines.some((line) => /^NOTHING$/i.test(line))) return [];
-  // A line that asks nothing is not a question, and a namer padding its list must not be paid
-  // for the padding — precision is what punishes over-asking, so the filter stays this plain.
-  return lines.filter((line) => line.length > 10 && line.includes('?')).slice(0, 12);
-}
+//
+// The prompt and its reading moved to `ambiguity-namer.mjs` unchanged, shared with the product
+// that routes `interpret` to the local model: one implementation, so what ships is what was
+// measured. This instrument keeps its original reading — an unreadable answer names nothing.
+const parseNamed = (text) => readNamed(text).named;
 
 function makeModelNamer() {
   const generate = openAiChatGenerator({

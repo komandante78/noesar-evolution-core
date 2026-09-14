@@ -28,8 +28,11 @@
 //   provider and this file changes nothing about how the product behaves. `09_PIANO.md` §3 is
 //   measured in that state: if "done" needed an external provider, it would not be done.
 
+import { createHash } from 'node:crypto';
 import { ReferenceReasoningProvider, ReasoningRefused, ReasoningMode } from './reasoning.mjs';
 import { AtomClient, ReasoningUnavailable } from './atom-client.mjs';
+import { openAiChatGenerator } from './author.mjs';
+import { namerPrompt, readNamed } from './ambiguity-namer.mjs';
 
 /**
  * The surfaces an external provider is asked for by default.
@@ -50,6 +53,20 @@ const ROUTABLE = Object.freeze([
   'interpret', 'hypothesize', 'plan', 'decompose', 'expect', 'constrain',
   'classify', 'confidence', 'evidence', 'cancel', 'fixtures', 'simulate',
 ]);
+
+/**
+ * What the LOCAL model may be asked for: one surface, and on it one field.
+ *
+ * Decided with the Owner (14/09/2026): the model names what a request leaves out —
+ * `interpret().ambiguities` — and nothing else. The goal stays the engine's quote because grounding
+ * searches on it (`workspace-actions.mjs`, `#runDecisionLayer`), and a model rewording it would move
+ * every file the product finds. Measured before it was built, not assumed: on HiL-Bench the ten
+ * vague words left 131 of 200 tasks mute and the model left none (`tools/measure-ask-f1.mjs`).
+ */
+const LOCAL_MODEL_ROUTABLE = Object.freeze(['interpret']);
+
+/** The same content address `authoring-replay-store.mjs` names its objects by. */
+const digestOf = (text) => createHash('sha256').update(String(text)).digest('hex');
 
 /** Reads the routing out of the environment, and reports what it read rather than assuming. */
 export function routingFrom(env = process.env) {
@@ -74,6 +91,13 @@ export function routingFrom(env = process.env) {
   // variable being absent, carries on and declares the degradation.
   const fallback = String(env.NOESAR_ATOM_FALLBACK ?? 'declared').trim().toLowerCase();
 
+  // The local model: off unless a surface is named for it, and reached at the runtime the Author
+  // already uses — one model setting, not two to keep in step. A surface named with no model to
+  // ask, or one the local model may not answer, is reported rather than dropped.
+  const localRequested = String(env.NOESAR_LOCAL_MODEL_SURFACES ?? '')
+    .split(',').map((name) => name.trim().toLowerCase()).filter(Boolean);
+  const localEndpoint = String(env.NOESAR_AUTHORING_ENDPOINT ?? '').trim();
+
   return Object.freeze({
     mode,
     endpoint: endpoint || null,
@@ -85,6 +109,10 @@ export function routingFrom(env = process.env) {
     // external provider was selected but has no endpoint" are different situations.
     externalSelected: mode === ReasoningMode.RUST_EXTERNAL,
     endpointMissing: mode === ReasoningMode.RUST_EXTERNAL && !endpoint,
+    localModelSurfaces: Object.freeze(localEndpoint ? localRequested.filter((name) => LOCAL_MODEL_ROUTABLE.includes(name)) : []),
+    unknownLocalModelSurfaces: Object.freeze(localRequested.filter((name) => !LOCAL_MODEL_ROUTABLE.includes(name))),
+    localModelEndpoint: localEndpoint || null,
+    localModelEndpointMissing: localRequested.length > 0 && !localEndpoint,
   });
 }
 
@@ -106,7 +134,10 @@ export function degradationSummary({ reasoning = [], authoring = [] } = {}) {
   return Object.freeze({
     degraded: all.length > 0,
     provider: all.length > 0 ? 'reference' : 'atom',
-    requestedProvider: 'atom',
+    // Who was asked for and could not answer, read off the records now that ATOM is not the only
+    // provider a surface can be routed to. Every record written before the local model existed
+    // says `atom`, so an installation without one writes exactly what it wrote before.
+    requestedProvider: [...new Set(all.map((entry) => entry.requestedProvider ?? 'atom'))].join('+') || 'atom',
     events: Object.freeze(all.map((entry) => Object.freeze({ ...entry }))),
     surfaces: Object.freeze(reasoning.map((entry) => entry.surface)),
     authoredPaths: Object.freeze(authoring.map((entry) => entry.path).filter(Boolean)),
@@ -191,14 +222,21 @@ export class ReasoningRouter {
    *  makes the difference between "ATOM was never there" (degrade) and "ATOM fell mid-step"
    *  (stop with a checkpoint) a fact rather than a guess. */
   #answeredExternally = [];
+  #generateAmbiguities = null;
+  #recordedAmbiguities = null;
+  #modelCalls = [];
 
   /**
    * `sessionId` is optional and changes nothing about the answers. It lets an external
    * provider keep one recorder across the calls of a single piece of work, which is what
    * makes `fixtures` able to return a replay pack instead of refusing — a provider asked
    * without a session has no session to hand back.
+   *
+   * `generateAmbiguities` is the port to the local model, injectable for the reason `fetchImpl`
+   * is. `recordedAmbiguities` is what `replay()` hands in — promptDigest → the recorded answer —
+   * and with it the model is never asked at all.
    */
-  constructor({ workspaceRoot = '/workspace', env = process.env, fetchImpl, sessionId } = {}) {
+  constructor({ workspaceRoot = '/workspace', env = process.env, fetchImpl, sessionId, generateAmbiguities, recordedAmbiguities = null } = {}) {
     this.#reference = new ReferenceReasoningProvider(workspaceRoot);
     this.#routing = routingFrom(env);
     this.#client = null;
@@ -211,6 +249,18 @@ export class ReasoningRouter {
         ...(fetchImpl ? { fetchImpl } : {}),
       });
     }
+    if (this.#routing.localModelSurfaces.length > 0) {
+      // The Author's own port, at the settings the measurement used — temperature 0 and a
+      // 400-token answer — so the product asks what was measured the way it was measured.
+      this.#generateAmbiguities = generateAmbiguities ?? openAiChatGenerator({
+        endpoint: this.#routing.localModelEndpoint,
+        model: env.NOESAR_AUTHORING_MODEL || null,
+        temperature: 0,
+        maxTokens: 400,
+        ...(fetchImpl ? { fetchImpl } : {}),
+      });
+    }
+    this.#recordedAmbiguities = recordedAmbiguities;
   }
 
   get sessionId() { return this.#sessionId; }
@@ -231,6 +281,13 @@ export class ReasoningRouter {
 
   /** One boolean for a status line, so a shell does not have to derive it from a list. */
   get degraded() { return this.#degradations.length > 0; }
+
+  /**
+   * The calls this session made to the local model, WITH their bytes (`CE-006`). This file has
+   * no filesystem, like the Author: the orchestrator, which owns the store, persists `prompt` and
+   * `answer` by digest and keeps only the digests on the run.
+   */
+  modelCalls() { return this.#modelCalls.map((call) => ({ ...call })); }
 
   identity() { return this.#reference.identity(); }
 
@@ -330,10 +387,72 @@ export class ReasoningRouter {
   }
 
   async interpret(request, projectRules = []) {
-    if (!this.#routes('interpret')) {
-      return this.#local('interpret', () => this.#reference.interpret(request, projectRules));
+    const intent = this.#routes('interpret')
+      ? await this.#external('interpret', { request, projectRules, mapDigest: '' }, () => this.#reference.interpret(request, projectRules))
+      : this.#local('interpret', () => this.#reference.interpret(request, projectRules));
+    if (!this.#routing.localModelSurfaces.includes('interpret')) return intent;
+    // One field, asked only once the rest of the intent exists: an empty request has already been
+    // refused above, before any model is asked.
+    return { ...intent, ambiguities: await this.#ambiguitiesFromModel(request, intent.ambiguities) };
+  }
+
+  /**
+   * `interpret().ambiguities` named by the local model — or, when it cannot, by whichever provider
+   * answered the rest of the intent, DECLARED exactly like a fall of ATOM. Never an empty list
+   * standing in for an answer nobody gave.
+   *
+   * ponytail: one model call per session (a plan asks `interpret` once), so `D-0312`'s stop at two
+   * qualities has nothing to stop here; a second surface routed to the local model would need it.
+   */
+  async #ambiguitiesFromModel(request, fallback) {
+    const prompt = namerPrompt(String(request).trim());
+    const promptDigest = digestOf(prompt);
+    let answer = null;
+    let reason = null;
+    if (this.#recordedAmbiguities) {
+      // Replay: the answer comes from the record or not at all. Asking the model again would report
+      // its non-determinism as drift in this code, the one thing a replay must never manufacture.
+      const recorded = this.#recordedAmbiguities.get(promptDigest);
+      if (!recorded) {
+        throw new ReasoningUnavailable('this run recorded no answer of the local model for `interpret`', { surface: 'interpret' });
+      }
+      if (recorded.missing) {
+        throw new ReasoningUnavailable(`the recorded answer of the local model for \`interpret\` cannot be read: ${recorded.missing}`, { surface: 'interpret' });
+      }
+      ({ answer, reason } = recorded);
+    } else {
+      try {
+        answer = await this.#generateAmbiguities({ prompt });
+      } catch (error) {
+        reason = error?.reason ?? error?.message ?? String(error);
+      }
     }
-    return this.#external('interpret', { request, projectRules, mapDigest: '' }, () => this.#reference.interpret(request, projectRules));
+    if (typeof answer !== 'string') answer = null;
+    const read = answer === null ? null : readNamed(answer);
+    if (!read && reason === null) reason = 'the local model returned no answer';
+    if (read?.unreadable) reason = 'the local model named no question and did not answer NOTHING';
+    if (!this.#recordedAmbiguities) {
+      this.#modelCalls.push({
+        surface: 'interpret', field: 'ambiguities', prompt, answer, promptDigest,
+        answerDigest: answer === null ? null : digestOf(answer), reason,
+      });
+    }
+    if (reason === null) {
+      this.#provenance.push({ surface: 'interpret', provider: 'local-model', fields: ['ambiguities'] });
+      return read.named;
+    }
+    const record = Object.freeze({
+      surface: 'interpret',
+      provider: this.#provenance.findLast((entry) => entry.surface === 'interpret')?.provider ?? 'reference',
+      requestedProvider: 'local-model',
+      reason,
+      endpoint: this.#routing.localModelEndpoint,
+      atUnix: Math.floor(Date.now() / 1000),
+      at: new Date().toISOString(),
+    });
+    this.#degradations.push(record);
+    this.#provenance.push({ surface: 'interpret', provider: record.provider, fields: ['ambiguities'], degraded: true, reason, at: record.at });
+    return fallback;
   }
 
   async hypothesize(intent, gathered = []) {

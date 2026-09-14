@@ -392,7 +392,10 @@ export class WorkspaceActionOrchestrator {
     // router.mjs's own comment: "what makes `fixtures` able to return a replay pack instead
     // of refusing"). Before this, every call here used no session at all, so `fixtures()`
     // had nothing to hand back for ANY run — the capture SESS-001 declared missing.
-    this.#reasoningFor = reasoningFor ?? ((sessionId) => new ReasoningRouter({ workspaceRoot, sessionId, env: this.#env }));
+    //
+    // `options` carries what `replay()` hands a router so it re-reads a recorded model answer
+    // instead of asking the model again (`recordedAmbiguities`); `plan()` passes none.
+    this.#reasoningFor = reasoningFor ?? ((sessionId, options = {}) => new ReasoningRouter({ workspaceRoot, sessionId, env: this.#env, ...options }));
   }
 
   /**
@@ -468,6 +471,9 @@ export class WorkspaceActionOrchestrator {
     return {
       intent, hypotheses, plan: constrainedPlan, risk, confidence, expectation,
       provenance: provider.provenance(), files: resolvedFiles, grounding,
+      // The local-model calls this decision made, bytes included, for `plan()` to persist
+      // (`CE-006`). A provider that asks no model has none, and says so with an empty list.
+      modelCalls: typeof provider.modelCalls === 'function' ? provider.modelCalls() : [],
     };
   }
 
@@ -648,7 +654,9 @@ export class WorkspaceActionOrchestrator {
 
     const usedExternal = run.provenance.some((entry) => entry.provider === 'atom' && DECISION_SURFACES.includes(entry.surface));
     if (!usedExternal) {
-      const provider = this.#reasoningFor(`replay-${runId}`);
+      // A local-model answer this run recorded is RE-READ, never regenerated: the same asymmetry
+      // as the authoring below — decisions recomputed, the model's contents from the fixtures.
+      const provider = this.#reasoningFor(`replay-${runId}`, { recordedAmbiguities: this.#recordedAmbiguitiesOf(run) });
       let recomputed;
       try {
         recomputed = await this.#runDecisionLayer({
@@ -661,6 +669,12 @@ export class WorkspaceActionOrchestrator {
         });
       } catch (error) {
         if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
+        if (error instanceof ReasoningUnavailable) {
+          // A recorded model answer the store can no longer produce, or a provider this replay
+          // needs and cannot reach. Nothing was recomputed, so this is neither a divergence nor a
+          // refusal: it is not replayable, and the reason says why — the EXTERNAL_PACK shape.
+          return { runId, method: 'LOCAL_RECOMPUTE', replayable: false, reason: error.reason };
+        }
         if (error instanceof WorkspaceActionError) {
           // CONSTRAINED_AWAY on replay means the current code would now refuse a plan the
           // original run was approved under — real divergence, reported not thrown.
@@ -726,6 +740,30 @@ export class WorkspaceActionOrchestrator {
     this.#record(runId, run.planEventId, actor, 'workspace_action.replayed',
       { method: 'EXTERNAL_PACK', faithful: report.faithful }, nowUnix);
     return { runId, method: 'EXTERNAL_PACK', replayable: true, faithful: report.faithful, atomReport: report };
+  }
+
+  /**
+   * The local-model answers a run recorded, keyed the way the router looks them up (by prompt
+   * digest), read back from the store for `replay()`.
+   *
+   * A call that degraded at plan time is handed back as degraded, so the replay degrades the same
+   * way instead of looking for an answer that never existed. A call whose bytes are gone or altered
+   * is handed back as `missing` with the store's own reason — "nobody kept it" and "what was kept
+   * has been changed" must reach the operator as different sentences.
+   */
+  #recordedAmbiguitiesOf(run) {
+    const recorded = new Map();
+    for (const fixture of run.reasoningFixtures ?? []) {
+      if (fixture.answerDigest === null) {
+        recorded.set(fixture.promptDigest, { answer: null, reason: fixture.reason });
+        continue;
+      }
+      const read = this.#authoringReplayStore.read(fixture.answerDigest);
+      recorded.set(fixture.promptDigest, read.status === 'ok'
+        ? { answer: read.body, reason: fixture.reason }
+        : { missing: read.reason });
+    }
+    return recorded;
   }
 
   /**
@@ -871,11 +909,15 @@ export class WorkspaceActionOrchestrator {
    */
   authoringReplayReferences() {
     const digests = new Set();
-    for (const runId of this.#runs.keys()) {
+    for (const [runId, run] of this.#runs) {
       for (const event of this.#events.correlation(runId) ?? []) {
         if (event.action !== 'workspace_action.authored') continue;
         for (const digest of referencedDigests(parseEventPayload(event).fixtures)) digests.add(digest);
       }
+      // The local-model answers `replay()` re-reads live in the same store. Named here, or a
+      // sweep deletes them while the run still claims to be replayable — `D-0606`'s defect, in a
+      // second place.
+      for (const digest of referencedDigests(run.reasoningFixtures)) digests.add(digest);
     }
     return digests;
   }
@@ -1106,6 +1148,21 @@ export class WorkspaceActionOrchestrator {
     // off the router rather than derived from `provenance`, so the reason and the instant come
     // from where the decision was made instead of being reconstructed after the fact.
     const reasoningDegradations = typeof provider.degradations === 'function' ? provider.degradations() : [];
+    // `CE-006` for reasoning, the way `D-0597` did it for authoring: the bytes of every local-model
+    // call go in the content-addressed store and the run keeps only the digests. Projected by
+    // name, so a field the router adds later does not ride onto the run unannounced. A store
+    // write that fails must not fail the plan — `replay()` then answers not replayable, the truth.
+    const reasoningFixtures = decision.modelCalls.map((call) => ({
+      surface: call.surface, field: call.field, promptDigest: call.promptDigest, answerDigest: call.answerDigest, reason: call.reason,
+    }));
+    try {
+      for (const call of decision.modelCalls) {
+        this.#authoringReplayStore.put(call.prompt);
+        if (call.answer !== null) this.#authoringReplayStore.put(call.answer);
+      }
+    } catch (error) {
+      this.#damagedRuns.push({ file: 'authoring-replay', reason: `could not record the reasoning model calls of ${runId}: ${error.message}` });
+    }
     // The files the decision layer settled on — the caller's when it named any, the
     // repository's when it did not. Everything below (the recorded run, the shadow, the
     // executor, the session proof) must see the same list the plan was built from.
@@ -1305,6 +1362,9 @@ export class WorkspaceActionOrchestrator {
       // found by a search is part of what an auditor is reading this line to learn, and a
       // record that omits it cannot be asked the question later.
       grounding,
+      // The local-model calls this plan made, by digest — present only when there were any, so
+      // every run that asked no model writes the line it always wrote.
+      ...(reasoningFixtures.length ? { reasoningFixtures } : {}),
     }, nowUnix);
     // Now that the run has a root, the stage-9b line can hang off it with a real causation.
     if (authoringEvent) this.#record(runId, rootEventId, actor, authoringEvent[0], authoringEvent[1], nowUnix);
@@ -1336,6 +1396,9 @@ export class WorkspaceActionOrchestrator {
       // Phase 6: kept on the RUN, because the Session Proof is assembled from the run long
       // after the router that made these records has gone out of scope.
       reasoningDegradations,
+      // `CE-006`: the local-model calls of this run, by digest. On the RUN because `replay()` and
+      // the retention sweep read runs, and the bytes are in the store under these names.
+      reasoningFixtures,
       divergence,
       // `D-0345`. Which adopted skills reached the Author for THIS run, by id and size.
       // Always present, `composed: 0` included: a field that appears only when something
