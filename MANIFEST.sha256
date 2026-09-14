@@ -6255,6 +6255,7 @@ b6e4b823b8783fde1d3c96232d6fb9d4d0e63c43bca44b9045773de1dc0c3ab2  ./services/ref
 913636b128b917bba9a6676edc032c704de8631701caa6c57daa92ebda587a76  ./services/reference-control-plane/src/ai-workspace/vision-caption.mjs
 0d188afd02c1614eb30f618337c37a97a58ebfe5f8da724a44608622e7724672  ./services/reference-control-plane/src/ai-workspace/workflow-service.mjs
 a57e5965e74d70508adbb034748338c70d0330f5ab251923003e108c8157ae56  ./services/reference-control-plane/src/ai-workspace/workspace-service.mjs
+6c43ec2221f683149158bb8e820e514db4b610bc1b951fa8b76bea82e37e9407  ./services/reference-control-plane/src/ambiguity-namer.mjs
 27047e2bd35db0100a21aa05b2578d50b71fb8f47a6d5caf6eaa9ab5819a146a  ./services/reference-control-plane/src/api-target-probe.mjs
 714d3f1ce4ea46e6de6c5c5c3d5aa6408b9d55b648f2e2b2816c3b0796e5e515  ./services/reference-control-plane/src/api-target-registry.mjs
 c5f9e279a16c40fe287cafe17393256dbe7a2eeac9ffd809167ebb2a56accc44  ./services/reference-control-plane/src/approval-queue.mjs
@@ -6471,6 +6472,7 @@ c662f8af3924621e343139e6ca802f0fc109f1af94bc45a3f8980634efa42a45  ./services/ref
 bab20e90e687dd7bd16b3dc91b53648e06c7c0f450fd4f3af0bdd0eea66c0791  ./services/reference-control-plane/test/isolation.test.mjs
 446f6b2e6821eb398489afb64ef142d44acde494969b0105ad30dcf5a7d71145  ./services/reference-control-plane/test/lan-exposure.test.mjs
 ed93607cb2f6eeb8458e207c7f8ffa92d3e85eab8fdd859bf1dea1dbd6b2f36a  ./services/reference-control-plane/test/launcher-portability.test.mjs
+386bfecb1a20a39ea12e53817cef0e37e9d859609a8243674c9daf4c2ca47e6f  ./services/reference-control-plane/test/local-model-ambiguities.test.mjs
 04edf6549f7808cc3212134aafce3bcc881bb392e748c5fa83b9210c1100881b  ./services/reference-control-plane/test/local-model-runtime.test.mjs
 bc2c8ab71d5c7c3e7d1b943edf7513541c51cc3f52e76e6719a4f1b879c3c05e  ./services/reference-control-plane/test/logging.test.mjs
 ebb79c1ff4068ab86ebbcefcc008b9a2167f5043ff88b9861f862766de9520f7  ./services/reference-control-plane/test/login-malformed-username.test.mjs
