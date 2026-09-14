@@ -6336,7 +6336,7 @@ bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/ref
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
 2dd9400801c29063fe409506cd1cf3c1c92c173679b20fce7610ee3a33cb12a0  ./services/reference-control-plane/src/server.mjs
-34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  ./services/reference-control-plane/src/session-proof.mjs
+fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
@@ -6541,7 +6541,7 @@ b8e3eeef6cab990beba0eeafaab9d575a9e61e992105d510cfdcd55556228137  ./services/ref
 27c9878a89d2d7fcca2be18727d6cdc60209c00be3d19579179596429a04f3e0  ./services/reference-control-plane/test/security.test.mjs
 70912902970dde54bf5ce0ea01bbf620d3e3b40b2b2130af05825b0c1f8ea4b9  ./services/reference-control-plane/test/service-token-http-auth.test.mjs
 e46cef2a310f9e9a5ee681f01b3481f4bd5233f2ec35e4b17b29c5f083961724  ./services/reference-control-plane/test/session-lifecycle.test.mjs
-f98f96b0b9fc9c26ef17b41e8642542b741ea32d858b8fa5fd47a391b3cea861  ./services/reference-control-plane/test/session-proof.test.mjs
+74febd764d39fc61259d24b1f426e35576d80602e2e037e68ff9cd374d66250b  ./services/reference-control-plane/test/session-proof.test.mjs
 613d393da29912b743d2eca80d4fbcb3de676cfac88eefe49be3d2d915cd210f  ./services/reference-control-plane/test/session-protocol.test.mjs
 1bf914819be6aa38736014e6df0e6788b6c06ed4c444bc988e2bb25bb8a1b275  ./services/reference-control-plane/test/session-replay.test.mjs
 f41afa9babed25b3f3aa4044045de32a5eb7e1bff6c31df59d730752552ea357  ./services/reference-control-plane/test/setup-token.test.mjs

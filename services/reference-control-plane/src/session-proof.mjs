@@ -215,11 +215,17 @@ export function assembleSessionProof({ run, events }) {
   // never half-assembled and never partially served.
   const coverage = decided ? coverageOf(run) : null;
   const notDone = decided ? notDoneOf(run, coverage) : null;
+  // Who answered each reasoning surface, as the run recorded it. A provider fixed in a string here
+  // was false wherever ATOM answers, and for the `ambiguities` the local model fills.
+  const answered = (surface) => {
+    const entries = (run.provenance ?? []).filter((entry) => entry.surface === surface);
+    return entries.length ? JSON.stringify(entries) : 'no provenance recorded';
+  };
   const fields = {
-    intento: { source: 'ReferenceReasoningProvider.interpret(), recorded on the run at plan()', value: run.intent },
-    ipotesi: { source: 'ReferenceReasoningProvider.hypothesize(), recorded on the run at plan()', value: run.hypotheses },
+    intento: { source: `ReasoningRouter.interpret(), recorded on the run at plan() — provenance: ${answered('interpret')}`, value: run.intent },
+    ipotesi: { source: `ReasoningRouter.hypothesize(), recorded on the run at plan() — provenance: ${answered('hypothesize')}`, value: run.hypotheses },
     piano: { source: `ReasoningRouter.buildPlan()+constrain() — provenance: ${JSON.stringify(run.provenance)}`, value: run.plan },
-    attesa: { source: 'ReferenceReasoningProvider.expect(), recorded on the run at plan()', value: run.expectation },
+    attesa: { source: `ReasoningRouter.expect(), recorded on the run at plan() — provenance: ${answered('expect')}`, value: run.expectation },
     realta: decided
       ? { source: 'executor.mjs execute() against the whole-workspace shadow, plus workspace-actions.mjs#diff()', value: { result: run.result, diff: run.diff } }
       : { source: null, value: null, reason: NOT_DECIDED_YET(run) },
@@ -231,7 +237,7 @@ export function assembleSessionProof({ run, events }) {
     },
     provenienza: { source: 'the `files` array supplied to plan() by the caller — the only sources this reference implementation reads', value: provenanceOf(run) },
     esito: decided
-      ? { source: 'workspace-actions.mjs#diff() + verification.mjs projectionCoverage() + ReferenceReasoningProvider.classify()', value: { diff: run.diff, coverage, risk: run.risk, promoted: run.status === 'PROMOTED', notDone } }
+      ? { source: `workspace-actions.mjs#diff() + verification.mjs projectionCoverage() + ReasoningRouter.classify() — provenance: ${answered('classify')}`, value: { diff: run.diff, coverage, risk: run.risk, promoted: run.status === 'PROMOTED', notDone } }
       : { source: null, value: null, reason: NOT_DECIDED_YET(run) },
     fixture: { source: 'the exact inputs given to plan(), stored on the run', value: fixtureOf(run) },
   };

@@ -139,6 +139,52 @@ test('an orchestrator with no privacyStateFor reports an honest empty egress, no
   } finally { rmSync(ws, { recursive: true, force: true }); rmSync(shadows, { recursive: true, force: true }); }
 });
 
+test('each reasoning field names who answered its surface, read from the run, never a fixed provider', () => {
+  // Found 2026-09-14: `intento`, `ipotesi`, `attesa` and `esito` named ReferenceReasoningProvider
+  // on every run — false wherever ATOM answers those surfaces, and false for the `ambiguities`
+  // the local model fills. The run already records who answered; the proof must say that.
+  const run = {
+    runId: 'r2', status: 'REFUSED', intent: { goal: 'g', ambiguities: ['Which table holds the orders?'] },
+    hypotheses: [], plan: { steps: [] }, expectation: {}, files: [{ path: 'a.txt', contents: 'x' }],
+    provenance: [
+      { surface: 'interpret', provider: 'atom' },
+      { surface: 'interpret', provider: 'local-model', fields: ['ambiguities'] },
+      { surface: 'hypothesize', provider: 'atom' },
+      { surface: 'expect', provider: 'reference', degraded: true, reason: 'ATOM did not answer', at: '2026-09-14T00:00:00.000Z' },
+      { surface: 'classify', provider: 'atom' },
+    ],
+    request: 'r', projectRules: [], constraints: [], mode: 'safe', policy: 'restrictive', claims: [],
+    createdAtUnix: NOW, decidedAtUnix: NOW + 1, egressSamples: [], risk: { overall: 'LOW' },
+    result: null, diff: [],
+    coverage: {
+      total: 0, recomputed: 0, matched: 0, contradicted: [], unrecomputed: [],
+      coverageFraction: null, complete: false, declaration: 'no claims were declared for this change',
+    },
+  };
+  const { fields } = assembleSessionProof({ run, events: [] });
+  for (const name of ['intento', 'ipotesi', 'attesa', 'esito']) {
+    assert.doesNotMatch(fields[name].source, /ReferenceReasoningProvider/, `\`${name}\` names a provider the run does not record`);
+  }
+  assert.match(fields.intento.source, /"surface":"interpret","provider":"atom"/);
+  assert.match(fields.intento.source, /"provider":"local-model","fields":\["ambiguities"\]/);
+  assert.match(fields.ipotesi.source, /"surface":"hypothesize","provider":"atom"/);
+  assert.doesNotMatch(fields.ipotesi.source, /interpret/, 'a field carries the provenance of its own surface only');
+  assert.match(fields.attesa.source, /"provider":"reference","degraded":true/);
+  assert.match(fields.esito.source, /"surface":"classify","provider":"atom"/);
+});
+
+test('a surface the run has no provenance for is said to have none, not attributed to anyone', () => {
+  const run = {
+    runId: 'r3', status: 'PENDING_APPROVAL', intent: { goal: 'g' }, hypotheses: [], plan: { steps: [] },
+    expectation: {}, files: [{ path: 'a.txt', contents: 'x' }], provenance: [],
+    request: 'r', projectRules: [], constraints: [], mode: 'safe', policy: 'restrictive', claims: [],
+    createdAtUnix: NOW, egressSamples: [],
+  };
+  const { fields } = assembleSessionProof({ run, events: [] });
+  assert.match(fields.intento.source, /no provenance recorded/);
+  assert.doesNotMatch(fields.intento.source, /ReferenceReasoningProvider/);
+});
+
 test('unknown runId returns null rather than an empty-shaped proof', () => {
   const fx = fixture();
   try {
