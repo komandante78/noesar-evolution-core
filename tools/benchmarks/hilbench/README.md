@@ -1,11 +1,12 @@
-# HiL-Bench, SQL half — the harness NOESAR is measured with
+# HiL-Bench — the harness NOESAR is measured with
 
 [HiL-Bench](https://arxiv.org/abs/2604.09408) (Scale AI) scores whether an agent **asks** when a task
 leaves something out: Ask-F1 is the harmonic mean of precision (blockers resolved per question) and
 recall (blockers resolved per blocker present), aggregated over all questions and blockers of a run.
 
 This directory runs the **SQL half** (100 public tasks) with their pieces wherever a piece exists,
-in two arms that differ in one thing only:
+and the **SWE half** one task at a time ([below](#the-swe-half--one-task-at-a-time)), in two arms that
+differ in one thing only:
 
 | arm | what runs |
 |---|---|
@@ -30,6 +31,7 @@ again to resume. `sh gate-check.sh` shows the harness's own gates failing and pa
 |---|---|
 | `HIL_BENCH` | their repository; cloned there at the pinned commit if absent |
 | `HIL_WORK` | tasks (19 GB for all 100), runs, NOESAR snapshots |
+| `HIL_GENERATE_ARGS` | which tasks `setup.sh` generates: default `--all`; e.g. `--indices 0 1 2` for three |
 | `HIL_MODEL_CONTAINER` | the container whose network namespace serves the model at `HIL_MODEL_URL` (default `http://127.0.0.1:8420`). The judge and the agent join that namespace, so the model is never exposed |
 | `HIL_NETWORK` | a Docker network that container is attached to; two MCP servers join it |
 
@@ -71,6 +73,48 @@ Written once, before any B1 score existed, and not revised against one:
 
 The scorer checks that the first questions their server logged are NOESAR's, in NOESAR's order.
 
+## The SWE half — one task at a time
+
+Their pieces again: their SWE-agent fork (1.1.0, SWE-ReX 1.4.0) with their config for this model
+(`configs/swe/ask_config_qwen3_30b_a3b_instruct_2507.yaml`), their task images, their `ask-human`
+judge, and their verifier (`tests/test.sh`) run on the agent's patch in a clean copy of the image. The
+one piece they did not publish, the server their `ask_human` tool posts to, is `hil-ask-bridge.mjs`;
+arm B1 asks through it too, under the same B1 rule as the SQL half. There is no batch runner and no
+`reproduce.sh` for this half yet.
+
+```sh
+docker build -t hil-swe-agent:1.1.0 -f tools/benchmarks/hilbench/swe-agent.Dockerfile "$HIL_BENCH/SWE-agent"
+HIL_BENCH=… HIL_SWE_ARCH=… HIL_WORK=… sh tools/benchmarks/hilbench/swe-pipeline-check.sh 0
+HIL_BENCH=… HIL_SWE_ARCH=… HIL_WORK=… HIL_MODEL_CONTAINER=… HIL_NETWORK=… \
+  RUN=b0 sh tools/benchmarks/hilbench/run-swe-task.sh 0
+HIL_BENCH=… HIL_SWE_ARCH=… HIL_WORK=… HIL_MODEL_CONTAINER=… HIL_NETWORK=… \
+  RUN=b1 HIL_NOESAR=interpret HIL_NOESAR_COMMIT=<sha> sh tools/benchmarks/hilbench/run-swe-task.sh 0
+node tools/benchmarks/hilbench/hil-swe-score.mjs "$HIL_WORK/runs/b0"
+```
+
+`swe-pipeline-check.sh` proves the chain with no model in it (their gold patch must score 1); run it
+before any agent.
+
+| variable | what it is |
+|---|---|
+| `HIL_SWE_ARCH` | where the image archives are kept (185.8 GiB for all 100; the largest is 5.77 GiB) |
+| `HIL_TASK_TIMEOUT` | the whole task's budget, default 7200 s (their agent cap) |
+| `HIL_CONTEXT_TOKENS` | the model's context window, default 16384 |
+| `HIL_CLEANUP` | `1` (default) removes the task containers SWE-ReX leaves behind for this task's image only; `0` reports them |
+| `HIL_AGENT_IMAGE` | default `hil-swe-agent:1.1.0` |
+
+What differs, stated with every number:
+
+| | theirs | here |
+|---|---|---|
+| judge model | Llama-3.3-70B-Instruct, frozen | the same local model as the agent |
+| context window | `max_input_tokens` 96 000, whole history kept | `HIL_CONTEXT_TOKENS`, and the history kept inside it with their own `last_n_observations` (n 5) |
+| task images | pinned by size, sha256 and image id in their repository | **not pinned**: the bucket serves rebuilt images for all 100 tasks; what was loaded is written to `provenance.json` beside every run, and a number names the date its images were fetched |
+| agent image | not published | `swe-agent.Dockerfile`; Python packages unpinned beyond their setup |
+
+Their config places `history_processors` under `agent.tools`, where SWE-agent does not read it; it
+applies neither there nor here.
+
 ## Pins
 
 | what | pinned at | enforced by |
@@ -93,6 +137,13 @@ The scorer checks that the first questions their server logged are NOESAR's, in 
 | `hil-sql-agent.mjs` | the agent (`--selfcheck` for its own checks) |
 | `hil-sql-score.mjs` | the score of one run |
 | `gate-check.sh` | the gates, each seen failing and passing; safe beside a run in progress |
+| `swe-agent.Dockerfile` | their SWE-agent, installed as is |
+| `swe-image.sh` | one SWE task's image, loaded, and a record of which image it was |
+| `swe-pipeline-check.sh` | the SWE chain on one task with their gold patch, no model |
+| `run-swe-task.sh` | one SWE task: judge, bridge, (B1) NOESAR's questions, their agent, their verifier |
+| `hil-ask-bridge.mjs` | the server their `ask_human` tool posts to, in front of their MCP judge |
+| `hil-noesar-ask.mjs` | arm B1 of the SWE half (`--selfcheck`) |
+| `hil-swe-score.mjs` | the score of one SWE run |
 
 ## Provenance of the first runs
 
