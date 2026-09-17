@@ -79,8 +79,8 @@ Their pieces again: their SWE-agent fork (1.1.0, SWE-ReX 1.4.0) with their confi
 (`configs/swe/ask_config_qwen3_30b_a3b_instruct_2507.yaml`), their task images, their `ask-human`
 judge, and their verifier (`tests/test.sh`) run on the agent's patch in a clean copy of the image. The
 one piece they did not publish, the server their `ask_human` tool posts to, is `hil-ask-bridge.mjs`;
-arm B1 asks through it too, under the same B1 rule as the SQL half. There is no batch runner and no
-`reproduce.sh` for this half yet.
+arm B1 asks through it too, under the same B1 rule as the SQL half. `run-swe-batch.sh [from] [to]` runs
+both arms task by task, resumable; there is no `reproduce.sh` for this half yet.
 
 ```sh
 docker build -t hil-swe-agent:1.1.0 -f tools/benchmarks/hilbench/swe-agent.Dockerfile "$HIL_BENCH/SWE-agent"
@@ -100,6 +100,8 @@ before any agent.
 | `HIL_SWE_ARCH` | where the image archives are kept (185.8 GiB for all 100; the largest is 5.77 GiB) |
 | `HIL_TASK_TIMEOUT` | the whole task's budget, default 7200 s (their agent cap) |
 | `HIL_CONTEXT_TOKENS` | the model's context window, default 16384 |
+| `HIL_OBSERVATION_CHARS` | the most one observation may carry, default 6000 (the SQL half's cap) |
+| `HIL_B0_RUN`, `HIL_B1_RUN` | the two run names of `run-swe-batch.sh`, default `b0-swe` / `b1-swe`; new conditions take new names |
 | `HIL_CLEANUP` | `1` (default) removes the task containers SWE-ReX leaves behind for this task's image only; `0` reports them |
 | `HIL_AGENT_IMAGE` | default `hil-swe-agent:1.1.0` |
 
@@ -108,7 +110,7 @@ What differs, stated with every number:
 | | theirs | here |
 |---|---|---|
 | judge model | Llama-3.3-70B-Instruct, frozen | the same local model as the agent |
-| context window | `max_input_tokens` 96 000, whole history kept | `HIL_CONTEXT_TOKENS`, and the history kept inside it with their own `last_n_observations` (n 5) |
+| context window | `max_input_tokens` 96 000, whole history kept, one observation up to 100 000 characters | `HIL_CONTEXT_TOKENS`; the history kept inside it with their own `last_n_observations` (n 5), and each observation clipped at `HIL_OBSERVATION_CHARS` |
 | task images | pinned by size, sha256 and image id in their repository | **not pinned**: the bucket serves rebuilt images for all 100 tasks; what was loaded is written to `provenance.json` beside every run, and a number names the date its images were fetched |
 | agent image | not published | `swe-agent.Dockerfile`; Python packages unpinned beyond their setup |
 
@@ -140,6 +142,7 @@ applies neither there nor here.
 | `swe-agent.Dockerfile` | their SWE-agent, installed as is |
 | `swe-image.sh` | one SWE task's image, loaded, and a record of which image it was |
 | `swe-pipeline-check.sh` | the SWE chain on one task with their gold patch, no model |
+| `run-swe-batch.sh` | both arms of the SWE half, task by task, resumable |
 | `run-swe-task.sh` | one SWE task: judge, bridge, (B1) NOESAR's questions, their agent, their verifier |
 | `hil-ask-bridge.mjs` | the server their `ask_human` tool posts to, in front of their MCP judge |
 | `hil-noesar-ask.mjs` | arm B1 of the SWE half (`--selfcheck`) |

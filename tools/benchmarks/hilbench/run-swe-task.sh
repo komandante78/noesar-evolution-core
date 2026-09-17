@@ -180,10 +180,16 @@ docker run --rm -v "$OUT:/out" -v "$TASK/shared:/task:ro" node:22-bookworm-slim 
 # is declared to SWE-agent, and the history is kept inside it with THEIR processor, the one their
 # paper used (last_n_observations, n 5) — the SWE counterpart of the SQL half's elision. Same for
 # both arms. (Their own history_processors sits under agent.tools in that file, so it never applied.)
+# Keeping five observations bounds how many, not how big: SWE-agent clips one observation at 100 000
+# characters, far past the window. Measured 17/09/2026 (b1-swe, swe_0): `git show --stat` returned
+# 314 459 characters at step 19, and the run died on exit_context with the last prompt at 3 079 tokens.
+# HIL_OBSERVATION_CHARS, default 6000: the SQL half's cap (its trajectories: conditions.maxObservationChars).
 cat > "$OUT/deployment.yaml" <<YAML
 agent:
   model:
     max_input_tokens: ${HIL_CONTEXT_TOKENS:-16384}
+  templates:
+    max_observation_length: ${HIL_OBSERVATION_CHARS:-6000}
   history_processors:
     - type: last_n_observations
       n: 5
