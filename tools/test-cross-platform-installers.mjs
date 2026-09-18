@@ -454,6 +454,14 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
     'Install-Noesar.ps1 must record whether the notices were acknowledged');
   check(/NOESAR_ACCEPT_NOTICES/.test(windows.install),
     'Install-Noesar.ps1 must honour the same unattended acknowledgement as the POSIX installers');
+  // Measured on the first live run of that screen: read without -Encoding UTF8, Windows
+  // PowerShell 5.1 decodes the notices in the system ANSI codepage and the first line comes out
+  // mojibake. And a JSON file with a byte-order mark in front of it is one JSON.parse away from
+  // throwing at whoever reads it first.
+  check(/Get-Content -Raw -Encoding UTF8 \$Welcome/.test(windows.install),
+    'Install-Noesar.ps1 must read the notices as UTF-8, which is what they are');
+  check(/UTF8Encoding \$false/.test(windows.install),
+    'Install-Noesar.ps1 must write the consent record without a byte-order mark');
   for (const [name, source] of [['linux/install-portable.sh', linuxPortable],
     ['macos/install-portable.sh', macosPortable]]) {
     check(/noesar_print_welcome/.test(source),

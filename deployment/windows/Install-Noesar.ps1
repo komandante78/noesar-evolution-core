@@ -22,7 +22,12 @@ $Welcome = Join-Path $Root "INSTALLATION\WELCOME.txt"
 if (-not (Test-Path $Welcome)) {
   throw "The installation notices are missing from this tree: $Welcome. Refusing to install silently what the notices exist to say out loud."
 }
-Write-Host (Get-Content -Raw $Welcome)
+# Windows PowerShell 5.1 reads a file in the system ANSI codepage unless told otherwise, and
+# the notices are UTF-8: the first live run of this screen printed its em dash as mojibake, on
+# the first line of the one screen that asks to be read carefully. Both ends have to say UTF-8 --
+# the read, and the console the text goes to.
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
+Write-Host (Get-Content -Raw -Encoding UTF8 $Welcome)
 
 $ConsentFile = Join-Path $Destination "workspace\config\install-consent.json"
 if (Test-Path $ConsentFile) {
@@ -43,12 +48,18 @@ if (Test-Path $ConsentFile) {
     Write-Host "No terminal to ask on. The notices above were printed, not acknowledged."
   }
   New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ConsentFile) | Out-Null
-  [ordered]@{
+  # Two things Set-Content would get wrong here. It writes a byte-order mark in front of the
+  # file, and JSON.parse throws on one -- nothing reads this record today, so the mark would have
+  # waited quietly for whoever first did. And .NET resolves a relative path against its own
+  # working directory, not the shell's, so the directory just created is asked where it is.
+  $ConsentFile = Join-Path (Resolve-Path (Split-Path -Parent $ConsentFile)).Path "install-consent.json"
+  $ConsentJson = [ordered]@{
     notices = "INSTALLATION/WELCOME.txt"
     acknowledgedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
     acknowledgedBy = $AcknowledgedBy
     note = "Written by the NOESAR Evolution installer. Delete this file to be shown the notices again on the next install."
-  } | ConvertTo-Json | Set-Content -Path $ConsentFile -Encoding UTF8
+  } | ConvertTo-Json
+  [IO.File]::WriteAllText($ConsentFile, $ConsentJson, (New-Object System.Text.UTF8Encoding $false))
 }
 
 $NoesarRoot = Join-Path $Destination "noesar"
