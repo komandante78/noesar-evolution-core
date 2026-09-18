@@ -1,0 +1,94 @@
+name: Defect report
+description: Something this product does that it should not, or does not do that it says it does.
+labels: ["defect"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **A security vulnerability does not go here.** Close this form and read
+        [`SECURITY.md`](../blob/main/SECURITY.md): an unfixed vulnerability in a public issue is
+        a working exploit with instructions.
+
+        Everything else is welcome, including "the documentation says X and the product does Y".
+        This project treats a number nobody can reproduce as a defect; so is a screen that
+        states something untrue.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >-
+        The About page shows it, and the server prints it at startup in the `runtime.started`
+        line, field `version`. If you cannot reach either, say so and give the commit you
+        installed from.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where it runs
+      options:
+        - Linux
+        - Windows
+        - macOS
+        - Other / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How it was installed
+      description: The script you ran, not the one you meant to run.
+      options:
+        - deployment/docker/run.sh
+        - deployment/unraid/install-complete.sh
+        - deployment/linux/install-portable.sh
+        - deployment/macos/install-portable.sh
+        - deployment/windows/Install-Noesar.ps1
+        - By hand, from a clone
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw. Paste the message or describe the screen, rather than naming the conclusion you drew from it.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: And, if it applies, where the product or the documentation told you to expect it.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reach it again
+      description: >-
+        The shortest sequence that produces it. "Only happened once" is an answer: say that
+        rather than inventing steps.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines, if you have them
+      description: >-
+        From the workspace's `logs/` directory or the terminal that started the server. Read them
+        before pasting: remove anything private. The log redacts IP addresses, not your file
+        names or your prompts.
+      render: text
+  - type: checkboxes
+    id: not-a-vulnerability
+    attributes:
+      label: Before you send it
+      options:
+        - label: This is not a security vulnerability. If it is, I will close this and follow SECURITY.md instead.
+          required: true

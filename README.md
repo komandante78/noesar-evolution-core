@@ -195,6 +195,24 @@ git log --format=%B | grep -ci "co-authored-by:.*claude"
 The disclosure written for the grant application, including the sessions whose transcripts no
 longer exist, is [`FUNDING/20_GENAI_DISCLOSURE.md`](FUNDING/20_GENAI_DISCLOSURE.md).
 
+## Found a defect?
+
+Open one: [**Issues**](https://github.com/komandante78/noesar-evolution-core/issues). The form
+asks for the version, the platform and the installer you ran, because those three decide which
+half of this product you are standing in — the same defect can be a two-line fix on one platform
+and absent on another.
+
+**A security vulnerability never goes in a public issue while it is unfixed.**
+[`SECURITY.md`](SECURITY.md) says where it goes instead.
+
+What counts as a defect here is wider than a crash. A number in this README that you cannot
+reproduce is one. So is a screen that tells you something untrue, or a document that describes a
+product this repository does not contain. [`docs/OPEN_FINDINGS.tsv`](docs/OPEN_FINDINGS.tsv)
+carries the ones already found, with the evidence and what was decided about each, and
+[`CHANGELOG.md`](CHANGELOG.md) names what the current release does not do and which platforms
+nobody has run. Check those two before reporting one of them — and report it anyway if the entry
+is wrong.
+
 ## License
 
 [`AGPL-3.0-or-later`](LICENSE) for the open core, with an additional commercial license planned for
