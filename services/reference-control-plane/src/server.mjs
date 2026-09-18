@@ -471,7 +471,18 @@ const PRODUCT_IDENTITY = Object.freeze({ name:'NOESAR Evolution', edition:'Open 
  * in order not to offer what was never configured. Reachability is what `/api/v1/voice/state`
  * is for, and it is the surface that already reports it.
  */
-const installationSnapshotForChat = () => installationFromState(aiStore.read(), process.env, PRODUCT_IDENTITY);
+// F-MODEL-002: `route()` already leads with the running local model ("the running model
+// leads the default route" — ProviderGateway.route()), because a stored profile's own
+// `defaultModel` can go stale the moment an operator loads a different one without updating
+// it by hand. The system message must not describe a different model than the one route()
+// will actually answer from, so it defers to the same live-derived profile, when there is
+// one, and falls back to the stored snapshot's fields only when nothing is currently serving.
+const installationSnapshotForChat = () => {
+  const snapshot = installationFromState(aiStore.read(), process.env, PRODUCT_IDENTITY);
+  const { profile } = providerGateway.activeRuntimeProfile();
+  if (!profile) return snapshot;
+  return { ...snapshot, modelName: profile.defaultModel, providerName: profile.name, providerIsLocal: true };
+};
 const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat, toolExecutor });
 const hardware = discoverHardware();
 // The bootstrap token is resolved from a 0600 runtime file, not from the

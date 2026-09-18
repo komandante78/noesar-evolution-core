@@ -6272,7 +6272,7 @@ be05625dc43694b55cb3d8d52e9eaf901380bee54a65ba88ad473962f9194e56  ./services/ref
 cd1b093d32bf114bb8cb223ffe9824d6f37aec04ae2823f049a5dd7f8c6a217a  ./services/reference-control-plane/src/auth-crypto.mjs
 ea52412b9ae35c7d01d41771d30b351b8427f5333b913e0233f79437f6ae544f  ./services/reference-control-plane/src/auth-store.mjs
 8da564eded08c14c9f65f36ba27a82daf97d937b86f3548b254c3ace68bedfa0  ./services/reference-control-plane/src/auth.mjs
-eac0cb3ba8c8ec60387353b6c937cb69cb106c02f98f6edd96c982c95665f72f  ./services/reference-control-plane/src/author.mjs
+d779085de8364c6fc51206ba9ff625654c17c294fbe279a06f35deff93eff76a  ./services/reference-control-plane/src/author.mjs
 704def32b7f8b31030702ae64c0c8090ca85d86b0648504d973512db83bfabd6  ./services/reference-control-plane/src/authoring-replay-store.mjs
 cd58f69b41fa23085926175ddd2b9414451a2065f371c4d17eb2d34b33897b3b  ./services/reference-control-plane/src/authority-external-client.mjs
 a179feb4fd5b1ac894c7d5d5c6bcffd053344728daa1a139c862b6f2ce65797f  ./services/reference-control-plane/src/authority-ipc-frame.mjs
@@ -6344,7 +6344,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-09b493aae3b17a7a0ac6940026e02247af40379bf68a8ab7a086f4defcb7ee62  ./services/reference-control-plane/src/server.mjs
+f43c06149bd0c0c468307533a6910417c708db7213689d942fcfd1d025afa82e  ./services/reference-control-plane/src/server.mjs
 fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs

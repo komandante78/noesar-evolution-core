@@ -944,7 +944,7 @@ export function atomAuthoringGenerator({
  * ledger, in the Session Proof and in both status lines. A degradation nobody is told about is
  * the one thing `D-0312` actually forbids.
  */
-export function declaredFallbackGenerator({ primary, fallback, onDegrade = () => {} }) {
+export function declaredFallbackGenerator({ primary, fallback, onDegrade = () => {}, retryDelayMs = 2000 }) {
   if (typeof primary !== 'function') throw new AuthoringUnavailable('a primary generator is required');
   if (typeof fallback !== 'function') throw new AuthoringUnavailable('a fallback generator is required, or there is nothing to degrade to');
   // Accumulated here and DRAINED by the Author at the end of each authoring run, so the records
@@ -957,6 +957,20 @@ export function declaredFallbackGenerator({ primary, fallback, onDegrade = () =>
     } catch (error) {
       // A content refusal is ATOM having answered. Only unreachability degrades.
       if (!(error instanceof AuthoringUnavailable)) throw error;
+      // The local runtime has one inference slot: ATOM and a concurrent chat turn contend for
+      // it, and losing that race throws AuthoringUnavailable (EAGAIN) almost instantly, not
+      // after a real timeout. One short retry catches that transient case without weakening
+      // "never fall back in silence" - a second failure still degrades and is still declared
+      // below, exactly as before this retry existed.
+      // ponytail: fixed single retry/delay, not a backoff policy - revisit if contention shows
+      // up as more than an occasional EAGAIN.
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      try {
+        return await primary(request);
+      } catch (retryError) {
+        if (!(retryError instanceof AuthoringUnavailable)) throw retryError;
+        error = retryError;
+      }
       const record = Object.freeze({
         path: request?.path ?? null,
         requestedProvider: 'atom',
