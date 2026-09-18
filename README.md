@@ -221,6 +221,10 @@ explaining is a defect in the screen.
 **A security vulnerability never goes in a public issue while it is unfixed.**
 [`SECURITY.md`](SECURITY.md) says where it goes instead.
 
+**You want to send code** → [`CONTRIBUTING.md`](CONTRIBUTING.md). It names the gate that runs on
+every commit, the one step that will make the suite go red if you skip it, and the four things
+that will fail a change here whatever else is right about it.
+
 What counts as a defect here is wider than a crash. A number in this README that you cannot
 reproduce is one. So is a screen that tells you something untrue, or a document that describes a
 product this repository does not contain. [`docs/OPEN_FINDINGS.tsv`](docs/OPEN_FINDINGS.tsv)
