@@ -39,10 +39,12 @@ It is a `0.x` on purpose. The limits below are the reason, and they are measured
   that platform, and this release does not claim they work.
 - **`deployment/windows/Uninstall-Noesar.ps1` removes nothing.** It is three lines and prints
   two; uninstalling on Windows is a manual deletion of the installation directory.
-- **Three medium findings are open**, recorded with their evidence in `docs/OPEN_FINDINGS.tsv`:
-  `F4W-005` (the hand-written QR encoder is verified only for versions 1–6), `F4W-006` (the login
-  identity store and the multi-user directory are two different stores), `F-CE021-001` (a driven
-  probe asserts an approval flow the engine deliberately no longer has).
+- **Two medium findings are open**, recorded with their evidence in `docs/OPEN_FINDINGS.tsv`:
+  `F4W-005` (the hand-written QR encoder is verified only for versions 1–6, so a username longer
+  than 25 characters is refused a QR code and has to enrol with the manual key) and `F4W-006`
+  (the login identity store and the multi-user directory are two different stores).
+- **No gate runs the driven acceptance probes** in `tools/acceptance/`, recorded as `F-CE021-002`.
+  One of them was wrong for eleven days before a hand run found it.
 - **Continuous integration covers one crate.** `.github/workflows/noesar-sandbox-extraction.yml`
   proves `rust/crates/noesar-sandbox` still builds outside this repository, and it is the only
   workflow. The suite, both manifests and the linter are gated by `.githooks/pre-commit`, which a
