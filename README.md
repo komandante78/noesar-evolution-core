@@ -32,6 +32,25 @@ Built in Italy by **Alessandro Barci**
 
 ---
 
+## What it looks like
+
+Both shots are a real installation, not a mock-up: Windows 11, release `0.1.0`, installed from a
+clean clone on 2026-09-18 and photographed on its first run. The orange strip is the product
+enforcing its own rule — the first sign-in uses a password every installation starts with, and it
+says so until you change it.
+
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="The home page of a fresh installation: Ask, Create, Act, and a Start here panel that names what this build can and cannot do" width="900">
+</p>
+
+The one below is the claim this project is built around, in the interface rather than in a
+document: every tool the engine exposes is labelled, and a step that uses one marked
+**· mutative** stops and waits for a person.
+
+<p align="center">
+  <img src="docs/screenshots/agents.png" alt="The Agents page: the tool list marks each tool mutative or not, and the text states that a mutative step always stops for approval" width="900">
+</p>
+
 ## The problem
 
 Useful AI work increasingly means letting a model **act** — read a repository, run a command,
