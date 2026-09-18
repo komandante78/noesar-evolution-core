@@ -369,6 +369,7 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
   const windows = {
     install: readFileSync(join(repoRoot, 'deployment/windows/Install-Noesar.ps1'), 'utf8'),
     start: readFileSync(join(repoRoot, 'deployment/windows/Start-Noesar.ps1'), 'utf8'),
+    token: readFileSync(join(repoRoot, 'deployment/windows/Show-FirstOwnerToken.ps1'), 'utf8'),
     test: readFileSync(join(repoRoot, 'deployment/windows/Test-Noesar.ps1'), 'utf8'),
   };
 
@@ -425,6 +426,23 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
   // Loopback only, like every other platform's default.
   check(/NOESAR_HOST\s*=\s*"127\.0\.0\.1"/.test(windows.start),
     'Start-Noesar.ps1 must bind loopback by default');
+
+  // Both of these files are COPIED into whatever -Destination the installer was given, so a
+  // fixed path inside them belongs to some other installation. Measured on 2026-09-18: an
+  // install into NOESAR-R1-Test produced a launcher that started the tree in NOESAR-Evolution
+  // and served its older code, with nothing in the output to say so. The check is on the
+  // absence of the fixed path, not on the presence of a comment about it.
+  for (const [name, source] of [['Start-Noesar.ps1', windows.start],
+    ['Show-FirstOwnerToken.ps1', windows.token]]) {
+    check(!/NOESAR-Evolution/.test(source),
+      `${name} is copied into the installation directory, so it must not name a fixed one`);
+    check(/\$PSScriptRoot/.test(source),
+      `${name} must take its default from $PSScriptRoot, the directory it was installed into`);
+  }
+  // And when there is no installation where it stands, it has to say so: a launcher that
+  // silently starts something else is the defect above, not a recovery from it.
+  check(/No installation found at/.test(windows.start),
+    'Start-Noesar.ps1 must refuse loudly when no installation sits at its install root');
 
   // The channel it sets must be one the Docker/Podman scripts would accept, or the
   // platforms disagree about the product they are running.

@@ -4,7 +4,7 @@ f4b0f0030a52be9207447b519eedfa7ef2d1164a402a03986dc79eb10c3d1ed6  ./.github/work
 77b7a430a9f22f016e620bcd9d9eda2ecb49c2c5838857e15a986a3bff906d53  ./.gitignore
 228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  ./.gitleaks.toml
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
-2ed1ba7e2ccee5b4601ff6a2611fc2945cd39c1156081127473e047535ad41b2  ./CHANGELOG.md
+b0095207ffe2f93f07a132ec6715947707f3a54417638f9b0471c23e52b06277  ./CHANGELOG.md
 79f4cbbb6909d201fa3b0c5e965f6dc4208bc18a43353c017a0cbc8bee383c3e  ./DOCUMENTATION/ACCEPTANCE_CHECKLIST.md
 22009696a48cf2eb2d242d1538d8632891dbb2db54683fa4f62773e881bf5dcd  ./DOCUMENTATION/AI_PROVIDER_RUNTIME.md
 a9b2b6d74d12b45bc1699520d701cb8b015f83f14094fe461748fa9df8c4ae53  ./DOCUMENTATION/AI_WORKSPACE/AI_WORKSPACE_P0_IMPLEMENTATION.md
@@ -477,8 +477,8 @@ a6f6be42fe1d898c08ca01813423d57e8b0f612dbb2be0f1137320d1f877c03c  ./deployment/p
 aa9c9ce3bcff71f9b2b918025e325e7090064bb8ccb83195c174909719474380  ./deployment/unraid/noesar-evolution.xml
 61c904911fe878db3e878c5f91ada5d89083fca14c3cde21182d3ed6f75ef776  ./deployment/windows/Install-Noesar.cmd
 2496181486b3521e4c18ac41bfc22354cbcd459f7e812104aa096a1ecbd2e559  ./deployment/windows/Install-Noesar.ps1
-7c48dc5ccd801686bfb00e7de7043345dd5c411ed97670c42fc38568df5253bf  ./deployment/windows/Show-FirstOwnerToken.ps1
-668ceba560a865eafb1df77a5ad29b3ab16a654c09f5cca8453cbaeefaedb333  ./deployment/windows/Start-Noesar.ps1
+8168065a19d705b3de4fd65ac8593b66862daf683980101066216b11ba016fac  ./deployment/windows/Show-FirstOwnerToken.ps1
+4245a803a1365166244d424ecd9569aaebb94165fd1b6be0ce739635d2fd201b  ./deployment/windows/Start-Noesar.ps1
 6d80172a53ff39fb51f0d6d2d7886c935013f8beb31873f80c71b1bdc7666edc  ./deployment/windows/Test-Noesar.ps1
 b5748d8de7715a30f182e9fcbabbddc25a85978d4743f38bcf0e7ea87b70a813  ./deployment/windows/Uninstall-Noesar.ps1
 29214c4b4170e601e8c4884c9bb02ad75583df6a29de3f83d8810fdd4eb4ce9d  ./docs/ACCEPTANCE_RESULTS.tsv
@@ -6702,7 +6702,7 @@ ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-u
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
-67ccb1110fb7d3abfba1419fc33407e83b99708258ca9bc960bd31198688407c  ./tools/test-cross-platform-installers.mjs
+371c594e628a8c2a3dcfdcafa32dc131bef305c943f1bd73bebb24106f47cea4  ./tools/test-cross-platform-installers.mjs
 89f8d7634a65596cfa8ece1a192d8ec61e3edfe756dcaccbc601281652087379  ./tools/test-e2e-retention.sh
 90c25b2dc354d76851de0fbc954470199733e569fb490d2e5c7e792f3b6639c1  ./tools/test-installer-hardening.mjs
 445db8f0c89f8b7ab737b4ae267c9964cc8662b0ebe260ffb89885716764430c  ./tools/test-packaging-filters.mjs

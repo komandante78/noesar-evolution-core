@@ -1,10 +1,29 @@
 param(
-  [string]$InstallRoot = "$env:LOCALAPPDATA\NOESAR-Evolution",
-  [string]$Workspace = "$env:LOCALAPPDATA\NOESAR-Evolution\workspace",
+  # Where this launcher was installed: its OWN directory, never a fixed path.
+  #
+  # The default used to be one fixed directory under the user profile -- not repeated here,
+  # because the cross-platform check reads this file for exactly that string. Install-Noesar.ps1
+  # copies this launcher into whatever -Destination it was given, so every installation that was
+  # not the default one carried a launcher that started a DIFFERENT installation. Measured on
+  # 2026-09-18: installed into a second directory, ran the launcher sitting in it, and the
+  # process that came up was the older tree in the first one -- the address printed, the server
+  # answered, and nothing in the output said it was the wrong product.
+  #
+  # $PSScriptRoot is the one value that is correct for every destination, the default included.
+  [string]$InstallRoot = $PSScriptRoot,
+  [string]$Workspace = (Join-Path $PSScriptRoot "workspace"),
   [int]$Port = 8088
 )
 $ErrorActionPreference = "Stop"
 $env:NOESAR_RUNTIME_ROOT = Join-Path $InstallRoot "noesar"
+
+# An installation that starts the wrong tree in silence is worse than one that refuses: the
+# person has no way to see it. If there is no entrypoint under $InstallRoot, say so and stop.
+$Entrypoint = Join-Path $env:NOESAR_RUNTIME_ROOT "services\reference-control-plane\src\server.mjs"
+if (-not (Test-Path $Entrypoint)) {
+  throw "No installation found at $InstallRoot (expected $Entrypoint). Run the Start-Noesar.ps1 that Install-Noesar.ps1 placed in the installation directory, or pass -InstallRoot."
+}
+
 $env:NOESAR_WORKSPACE = $Workspace
 $env:NOESAR_HOST = "127.0.0.1"
 $env:NOESAR_PORT = "$Port"

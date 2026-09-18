@@ -32,6 +32,18 @@ It is a `0.x` on purpose. The limits below are the reason, and they are measured
 - `package.json` declares `license` (`AGPL-3.0-or-later`, the identifier already at the top of
   every source file and the licence in `LICENSE`) and `repository`. It carried neither.
 
+### Fixed
+
+- **A Windows installation made anywhere but the default directory started a different one.**
+  `Install-Noesar.ps1` copies `Start-Noesar.ps1` and `Show-FirstOwnerToken.ps1` into its
+  `-Destination`, and both took their default from one fixed directory under the user profile.
+  Measured on 2026-09-18: an install into a second directory, started with the launcher sitting
+  in that second directory, brought up the older tree in the first one — it printed an address,
+  it answered, and nothing in the output said it was the wrong product. Both now default to
+  `$PSScriptRoot`, and the launcher refuses, naming the path it looked at, when no installation
+  is there. `tools/test-cross-platform-installers.mjs` gained five checks; they fail on the
+  files as they stood before this release.
+
 ### Known limits
 
 - **macOS has never been executed.** `deployment/macos/install-portable.sh` and
