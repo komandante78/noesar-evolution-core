@@ -108,6 +108,20 @@ Install-Tree -Source (Join-Path $Root "apps") `
 # a hand-kept list of imports does not track the import graph. 412 KB, all four packages.
 Install-Tree -Source (Join-Path $Root "packages") `
   -Target (Join-Path $NoesarRoot "packages") -Guard $NoesarRoot
+
+# What the control plane READS from its own installation, as opposed to what it imports. No
+# installer carried any of it until 2026-09-18, and the product said so on its own first screen:
+# a fresh Windows installation answered 500 on GET /api/v1/sector-modules/catalog, because
+# sector-modules.mjs opens schemas/industry-module-manifest.schema.json and it was not there.
+# capabilities/ holds the model catalogue seed and the permission and trust policies;
+# docs/governance/ holds the technology-radar seed. 500 KB in total.
+Install-Tree -Source (Join-Path $Root "schemas") `
+  -Target (Join-Path $NoesarRoot "schemas") -Guard $NoesarRoot
+Install-Tree -Source (Join-Path $Root "capabilities") `
+  -Target (Join-Path $NoesarRoot "capabilities") -Guard $NoesarRoot
+New-Item -ItemType Directory -Force -Path (Join-Path $NoesarRoot "docs") | Out-Null
+Install-Tree -Source (Join-Path $Root "docs\governance") `
+  -Target (Join-Path $NoesarRoot "docs\governance") -Guard $NoesarRoot
 Copy-Item -Force (Join-Path $Root "deployment\windows\Start-Noesar.ps1") $Destination
 # Measured 2026-09-13, first real end-to-end run of this installer: Show-FirstOwnerToken.ps1
 # reads the setup token from $Workspace, which only exists AFTER this install runs, and the

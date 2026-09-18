@@ -444,6 +444,40 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
   check(/No installation found at/.test(windows.start),
     'Start-Noesar.ps1 must refuse loudly when no installation sits at its install root');
 
+  // What the control plane READS from its own installation, taken from the code instead of from
+  // a list somebody keeps by hand. The import scan above follows imports and cannot see a
+  // readFileSync, which is why a fresh installation could answer 500 on its own home page with
+  // every check green: schemas/ was missing and nothing was looking for it.
+  const runtimeSources = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.mjs')) runtimeSources.push(readFileSync(full, 'utf8'));
+    }
+  };
+  walk(join(repoRoot, 'services/reference-control-plane/src'));
+  const readAtRuntime = new Set();
+  for (const source of runtimeSources) {
+    for (const m of source.matchAll(/(?:join|resolve)\((?:repoRoot|productRoot|runtimeRoot),\s*'([^']+)'/g)) {
+      const top = m[1].split('/')[0];
+      // A dot directory is state this installation creates for itself, not something shipped.
+      if (!top.startsWith('.') && top.includes('.') === false) readAtRuntime.add(top);
+    }
+  }
+  check(readAtRuntime.size > 0, 'the runtime-path scan found nothing — the scan itself is broken');
+  // Read here rather than reusing the two consts further down: this block runs before them.
+  const posixInstallers = [
+    ['linux/install-portable.sh', readFileSync(join(repoRoot, 'deployment/linux/install-portable.sh'), 'utf8')],
+    ['macos/install-portable.sh', readFileSync(join(repoRoot, 'deployment/macos/install-portable.sh'), 'utf8')],
+  ];
+  for (const top of [...readAtRuntime].sort()) {
+    for (const [name, source] of [['Install-Noesar.ps1', windows.install], ...posixInstallers]) {
+      check(source.includes(top),
+        `${name} must carry ${top}/ — the control plane reads it from the installation`);
+    }
+  }
+
   // An installation that never shows the notices is the container path's promise broken on
   // every other path. These read the scripts, not a comment: the file has to be named.
   const linuxPortable = readFileSync(join(repoRoot, 'deployment/linux/install-portable.sh'), 'utf8');

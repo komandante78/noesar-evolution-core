@@ -28,6 +28,17 @@ mkdir -p "$DESTINATION/noesar/services" "$DESTINATION/noesar/apps"
 cp "$ROOT/package.json" "$DESTINATION/noesar/package.json"
 cp -R "$ROOT/services/reference-control-plane" "$DESTINATION/noesar/services/reference-control-plane"
 cp -R "$ROOT/apps/webui-static" "$DESTINATION/noesar/apps/webui-static"
+# Everything below is read from the installation at runtime, and none of it was ever copied by
+# this script. Windows learned two of them on 2026-08-31 -- apps/shared and packages/, both
+# ERR_MODULE_NOT_FOUND on a real machine -- and these portable installers never got that fix.
+# The rest was measured on 2026-09-18: a fresh installation answers 500 on its own home page,
+# because sector-modules.mjs opens schemas/industry-module-manifest.schema.json. Under 1 MB.
+cp -R "$ROOT/apps/shared" "$DESTINATION/noesar/apps/shared"
+cp -R "$ROOT/packages" "$DESTINATION/noesar/packages"
+cp -R "$ROOT/schemas" "$DESTINATION/noesar/schemas"
+cp -R "$ROOT/capabilities" "$DESTINATION/noesar/capabilities"
+mkdir -p "$DESTINATION/noesar/docs"
+cp -R "$ROOT/docs/governance" "$DESTINATION/noesar/docs/governance"
 
 cat > "$DESTINATION/portable-start.sh" <<EOF
 #!/usr/bin/env sh
