@@ -195,12 +195,21 @@ git log --format=%B | grep -ci "co-authored-by:.*claude"
 The disclosure written for the grant application, including the sessions whose transcripts no
 longer exist, is [`FUNDING/20_GENAI_DISCLOSURE.md`](FUNDING/20_GENAI_DISCLOSURE.md).
 
-## Found a defect?
+## An early version — tell me what breaks, and what should be different
 
-Open one: [**Issues**](https://github.com/komandante78/noesar-evolution-core/issues). The form
-asks for the version, the platform and the installer you ran, because those three decide which
+`0.1.0` is published as a **pre-release**, and the word is meant literally: it is the first
+version of this that somebody other than its author can install, and the reason to put it out is
+to find out what happens when it meets a machine nobody here has ever seen. Expect to find
+defects. Finding one is the point, not an accident.
+
+**Something is broken** → [report a defect](https://github.com/komandante78/noesar-evolution-core/issues/new?template=bug_report.yml). The form asks
+for the version, the platform and the installer you actually ran, because those three decide which
 half of this product you are standing in — the same defect can be a two-line fix on one platform
 and absent on another.
+
+**Something should be different** → [say so](https://github.com/komandante78/noesar-evolution-core/issues/new?template=idea.yml). An idea does not
+have to be a finished design, and "this was confusing" is a real report: a screen that needs
+explaining is a defect in the screen.
 
 **A security vulnerability never goes in a public issue while it is unfixed.**
 [`SECURITY.md`](SECURITY.md) says where it goes instead.

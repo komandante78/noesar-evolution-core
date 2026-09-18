@@ -16,6 +16,10 @@ It is `0.1.0`, and the number is not modesty: nothing has been released before t
 higher one would tell a reader about versions that never existed. The limits below are the rest
 of the reason, and they are measured, not estimated.
 
+It is published as a **pre-release**. Install it expecting to find defects, and say what you
+find — `README.md` has the two forms, one for something broken and one for something that
+should be different.
+
 ### Added
 
 - `CHANGELOG.md` — this file. Releases before this one have no entry and will not be given one

@@ -1,0 +1,50 @@
+name: Idea or improvement
+description: Something that should work differently, be easier, or exist at all.
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is an early version and the point of publishing it is to hear this.** An idea does
+        not have to be a finished design, and "this was confusing" is a real report: a screen that
+        needs explaining is a defect in the screen.
+
+        If something is broken rather than missing, the defect form asks better questions.
+        If it is a security vulnerability, it never goes in a public issue —
+        [`SECURITY.md`](../blob/main/SECURITY.md) says where it goes instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What should be different
+      description: Describe it as the thing you wanted to happen, not as the change you would make to the code.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What were you trying to do when you wanted it
+      description: >-
+        The task, not the feature. This is the part that decides whether the answer is the feature
+        you asked for or a better one — and it is the part nobody writes.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: The workaround, if there is one, or "nothing, I stopped".
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of it
+      options:
+        - Installation and first start
+        - The web interface
+        - The terminal session
+        - Models and providers
+        - Agents, tools and approvals
+        - Security, audit and permissions
+        - Documentation
+        - Something else / not sure
+    validations:
+      required: true
