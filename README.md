@@ -127,7 +127,7 @@ Unraid has a direct installer:
 Assets for Podman, Linux, macOS and Windows live under `deployment/`.
 
 > **Portability, stated honestly.** On **Windows 11** the whole path was walked on 2026-09-18 for
-> release 0.7.0 — clean clone, install, notices, first start, `/livez`, `/readyz`,
+> release 0.1.0 — clean clone, install, notices, first start, `/livez`, `/readyz`,
 > `/api/v1/auth/status` and the first sign-in — and every command is in
 > [`docs/INSTALLATION_LEDGER.md`](docs/INSTALLATION_LEDGER.md). On **Linux** the product runs as the
 > development host, and `deployment/linux/install-portable.sh` was executed from this tree the same

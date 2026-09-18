@@ -6392,3 +6392,18 @@ prove: nessun modello, nessuna sessione, nessun lavoro vero.
 **Stato lasciato.** L'installazione di prova `NOESAR-R1-Test` e il clone usa-e-getta restano sul
 portatile dell'Owner; l'installazione del 13/09 (`NOESAR-Evolution`) non e stata toccata, salvo
 essere stata avviata e subito fermata dal difetto 1.
+
+## Correzione — la release si chiama `0.1.0`, non `0.7.0` — 2026-09-18
+
+**Questa e una correzione, non una riscrittura.** La voce qui sopra dice `version 0.7.0` perche e
+quello che il server ha stampato davvero in quel momento: era la versione scritta nell'albero.
+Quel numero e stato cambiato **dopo**, e la misura resta com'era.
+
+**Perche.** `0.7.0` veniva dal `0.6.0` interno del pacchetto V4 importato il 25/07, che non e mai
+stato pubblicato. Chiamare `0.7.0` la prima pubblicazione racconta a chi legge sei release che non
+sono mai esistite. Deciso dall'Owner: la prima release pubblica e `0.1.0`.
+
+**Cosa cambia davvero.** Solo il numero: `RELEASE_VERSION`, `package.json`, `package-lock.json`,
+l'intestazione del CHANGELOG e la riga del README. Il codice installato e provato stamattina e lo
+stesso, byte per byte, a parte quella costante. Il tag `v0.7.0`, pubblico per meno di un'ora e mai
+scaricato, e stato cancellato dal remoto e sostituito da `v0.1.0`.

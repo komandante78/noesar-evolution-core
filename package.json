@@ -38,5 +38,5 @@
     "test:conformance-package": "node --test packages/verified-acquisition/test/*.test.mjs"
   },
   "type": "module",
-  "version": "0.7.0"
+  "version": "0.1.0"
 }

@@ -6,13 +6,15 @@ reproduce from the tree is a defect, the same rule `README.md` states for its nu
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] — 2026-09-18
+## [0.1.0] — 2026-09-18
 
 The first tagged release. The product has run since this source line's first commit on
 2026-07-25, and `git tag` was empty until today: what was missing was not the software but a
 version a person can install, name and report a defect against. This tag is that name.
 
-It is a `0.x` on purpose. The limits below are the reason, and they are measured, not estimated.
+It is `0.1.0`, and the number is not modesty: nothing has been released before this, so a
+higher one would tell a reader about versions that never existed. The limits below are the rest
+of the reason, and they are measured, not estimated.
 
 ### Added
 
@@ -82,4 +84,4 @@ It is a `0.x` on purpose. The limits below are the reason, and they are measured
   header on every source file are what governs this release; that document records an intended
   direction and has not been reviewed by counsel.
 
-[0.7.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.7.0
+[0.1.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.0

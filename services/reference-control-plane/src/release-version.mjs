@@ -11,4 +11,4 @@
 // The three inside the code now read this constant. The two outside it cannot, so
 // `test/release-version.test.mjs` fails when they stop agreeing with it — the only thing that
 // keeps a release number honest across files that no import can reach.
-export const RELEASE_VERSION = '0.7.0';
+export const RELEASE_VERSION = '0.1.0';
