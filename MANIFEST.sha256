@@ -4,7 +4,7 @@ f4b0f0030a52be9207447b519eedfa7ef2d1164a402a03986dc79eb10c3d1ed6  ./.github/work
 77b7a430a9f22f016e620bcd9d9eda2ecb49c2c5838857e15a986a3bff906d53  ./.gitignore
 228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  ./.gitleaks.toml
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
-ba0473a858562c4ba8217c1d360bc7994194275153b9d7d2b972c88a696a9de0  ./CHANGELOG.md
+64c9fcfa0bc3ce9ad4bf3f65979233da31216ba95c3a606f0b74e1bd6103835a  ./CHANGELOG.md
 79f4cbbb6909d201fa3b0c5e965f6dc4208bc18a43353c017a0cbc8bee383c3e  ./DOCUMENTATION/ACCEPTANCE_CHECKLIST.md
 22009696a48cf2eb2d242d1538d8632891dbb2db54683fa4f62773e881bf5dcd  ./DOCUMENTATION/AI_PROVIDER_RUNTIME.md
 a9b2b6d74d12b45bc1699520d701cb8b015f83f14094fe461748fa9df8c4ae53  ./DOCUMENTATION/AI_WORKSPACE/AI_WORKSPACE_P0_IMPLEMENTATION.md
@@ -466,7 +466,7 @@ ae572199d17074b07bd8b8d3aa6db9e33de57ba4882d23aba2948219f79af80d  ./deployment/l
 3490a6dd685a02cf62ed90702604db9328887ba402bdf5710995c95cd2c6afe1  ./deployment/linux/noesar-evolution.service
 14515595863a0ae86e95c7bf6f3c9abed59b69a246ca03dda4cb1acc8b171283  ./deployment/linux/uninstall-portable.sh
 45065a15c84b3bef885d9df48ccfe3621ac066d5a6e96dfa8c27eb549ba5e82d  ./deployment/macos/com.noesar.evolution.plist
-ac18ae0ed0af457ff6e6090527d91918b1f22a8f15922d578a715dfa0155cb05  ./deployment/macos/install-portable.sh
+b7b4c95742762b48bf499dcd3a6835e3f2094f4ef753374e743d3d7d802c65e0  ./deployment/macos/install-portable.sh
 5b03052743e2d87c2dc8c3565f1ddfa1232b0966258d83de3f1393f0fa0ae040  ./deployment/podman/build.sh
 87cd1842dcb8e2ff3ca1bfb25e2b9113dfc5d452220a149edb7514aeb1cf6d34  ./deployment/podman/run.sh
 a6f6be42fe1d898c08ca01813423d57e8b0f612dbb2be0f1137320d1f877c03c  ./deployment/production/README.md
@@ -6702,7 +6702,7 @@ ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-u
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
-aa597135aad3715ed8ef79c8dc6c08dfab2ab85e1db28be519a0d4337cbd6cab  ./tools/test-cross-platform-installers.mjs
+ac144ec0d5064b423976d361ed8cc605a6839bcbdd7b27760ad502aee0eb88c0  ./tools/test-cross-platform-installers.mjs
 89f8d7634a65596cfa8ece1a192d8ec61e3edfe756dcaccbc601281652087379  ./tools/test-e2e-retention.sh
 90c25b2dc354d76851de0fbc954470199733e569fb490d2e5c7e792f3b6639c1  ./tools/test-installer-hardening.mjs
 445db8f0c89f8b7ab737b4ae267c9964cc8662b0ebe260ffb89885716764430c  ./tools/test-packaging-filters.mjs

@@ -62,7 +62,13 @@ chmod 0755 "$DESTINATION/coden_evolution"
 
 echo "Installed to $DESTINATION"
 echo "Open the session with: \"$DESTINATION/coden_evolution\""
-echo "Or in a browser, with nothing installed: http://localhost:8100/"
+# This said port 8100 -- the port the Unraid container publishes, which has nothing to do with
+# what this script installs. Nothing listens there after a from-source installation, so the line
+# sent people to look for the fault in their browser and their router. Same defect as ac4b7e0d
+# fixed on Windows, still alive here. And the script that starts the server was written by this
+# installer and then never named to the person who ran it.
+echo "Start the server with: \"$DESTINATION/portable-start.sh\""
+echo "Then open in a browser: http://localhost:8088/   (NOESAR_PORT changes it)"
 echo "The Metal/Core ML bridge remains a separate authenticated host component."
 
 # The one thing a person cannot do without, and could not read anywhere: how to get in.

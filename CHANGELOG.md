@@ -54,6 +54,13 @@ It is a `0.x` on purpose. The limits below are the reason, and they are measured
   a copy of the text or of the default credentials: both are read from the file that owns them,
   and a check fails if a copy ever appears.
 
+- **The macOS installer sent people to a port nothing listens on.** It ended by offering
+  `http://localhost:8100/` — the port the Unraid container publishes — after a from-source
+  installation that listens on 8088, and it never named `portable-start.sh`, the script it had
+  just written to start the server. The same defect was fixed on Windows on 2026-08-31 and was
+  still alive here. A check now reads the server's own default port and fails on any address an
+  installer prints that disagrees with it.
+
 ### Known limits
 
 - **macOS has never been executed.** `deployment/macos/install-portable.sh` and

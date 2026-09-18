@@ -462,6 +462,21 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
     'Install-Noesar.ps1 must read the notices as UTF-8, which is what they are');
   check(/UTF8Encoding \$false/.test(windows.install),
     'Install-Noesar.ps1 must write the consent record without a byte-order mark');
+  // An installer that prints an address nothing answers on is worse than one that fails: it
+  // sends the person to hunt in the browser and the router. The port is not written here
+  // either -- it is read from the server's own default, so this check cannot drift from it.
+  const serverDefaultPort = readFileSync(
+    join(repoRoot, 'services/reference-control-plane/src/server.mjs'), 'utf8',
+  ).match(/process\.env\.NOESAR_PORT \?\? (\d+)/)?.[1];
+  check(Boolean(serverDefaultPort), 'the server must still declare a default port this check can read');
+  for (const [name, source] of [['linux/install-portable.sh', linuxPortable],
+    ['macos/install-portable.sh', macosPortable]]) {
+    for (const printed of source.match(/http:\/\/[^"'\s]+/g) ?? []) {
+      const port = printed.match(/:(\d+)/)?.[1];
+      check(!port || port === serverDefaultPort,
+        `${name} prints ${printed}, and this installation listens on ${serverDefaultPort}`);
+    }
+  }
   for (const [name, source] of [['linux/install-portable.sh', linuxPortable],
     ['macos/install-portable.sh', macosPortable]]) {
     check(/noesar_print_welcome/.test(source),
