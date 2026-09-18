@@ -126,10 +126,13 @@ Unraid has a direct installer:
 
 Assets for Podman, Linux, macOS and Windows live under `deployment/`.
 
-> **Portability, stated honestly.** This has been installed and exercised on **one** host. The
-> project's own rules already forbid presuming a second one — but not presuming is not the same as
-> having proven it. Cross-platform installation evidence is open work, and it is named as such in
-> [`docs/SESSION_HANDOFF.md`](docs/SESSION_HANDOFF.md) rather than blurred here.
+> **Portability, stated honestly.** On **Windows 11** the whole path was walked on 2026-09-18 for
+> release 0.7.0 — clean clone, install, notices, first start, `/livez`, `/readyz`,
+> `/api/v1/auth/status` and the first sign-in — and every command is in
+> [`docs/INSTALLATION_LEDGER.md`](docs/INSTALLATION_LEDGER.md). On **Linux** the product runs as the
+> development host, and `deployment/linux/install-portable.sh` was executed from this tree the same
+> day. **macOS has never been run by anyone**: its installer is carried and statically checked,
+> which is not the same as proven, and the difference is the point of this paragraph.
 
 ## Every badge above has a command behind it
 

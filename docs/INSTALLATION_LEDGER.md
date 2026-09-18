@@ -6342,3 +6342,53 @@ reti **10 → 10**, volumi **65 → 65**. Superstiti: **due**. Nessun tag usa-e-
 **Non provato qui.** Un giro di chat vero da capo a fondo: `B-016` — il modello configurato
 non emette tool call (`atom-evolution-model` non ha `--jinja`, verificato con `docker inspect`,
 container di un altro progetto). Tutto ciò che sta **sotto** il modello è provato.
+
+## `0.7.0` su Windows 11 — prima installazione da clone pulito — 2026-09-18
+
+**UTC:** 2026-09-18T07:08:02Z — **Host:** Windows 11 Pro 26200, Node v24.19.0, PowerShell 5.1
+**Origine:** `git clone --depth 1` dell'albero di rilascio (nessun `git pull` su un clone gia
+usato: a ogni giro il clone e stato cancellato e rifatto), destinazione
+`%LOCALAPPDATA%\NOESAR-R1-Test`, porta 8088.
+
+**Perche questo giro esiste.** La lista R1 portava "Windows, account owner mai creato" e
+"schermata senza token non riverificata dal vivo" dal 13/09. Provare significa partire da quello
+che riceve uno sconosciuto, quindi: clone nuovo, installer, avvio, e le quattro prove.
+
+**Cosa ha trovato, prima di passare.** Tre difetti veri, tutti invisibili da chi aveva gia il
+prodotto installato:
+1. Il launcher copiato nella destinazione partiva con la radice fissa dell'installazione di
+   default: installato in `NOESAR-R1-Test`, `Start-Noesar.ps1` ha avviato l'albero di
+   `NOESAR-Evolution` e ha servito codice di cinque giorni prima (`runtime.started version
+   0.6.0` da un albero 0.7.0). Riparato in `d5d5cd54`, cancello di 5 controlli.
+2. Nessun avviso, nessun consenso, nessuna credenziale: l'installazione da sorgente non mostrava
+   `INSTALLATION/WELCOME.txt` su nessuna delle tre piattaforme (il grafo: un solo chiamante di
+   `noesar_install_intro`, `deployment/docker/run.sh:35`). Riparato in `4ccb68ea`.
+3. Gli avvisi stampati in ANSI invece che UTF-8 (em dash mojibake sulla prima riga) e il record
+   di consenso scritto con un BOM davanti al JSON. Riparato in `748517b1`.
+
+**Le quattro prove, sull'installazione riparata** (`748517b1`, poi `fad930ab`):
+
+| prova | esito |
+|---|---|
+| `runtime.started` | `version 0.7.0`, porta 8088, `exposure_scope loopback` |
+| `GET /livez` | 200, `status alive` |
+| `GET /readyz` | 200, `ready true`, `setupPending false` |
+| `GET /api/v1/auth/status` | `initialized true`, **`setupTokenRequired false`** |
+| `POST /api/v1/auth/login` root/noesar | 200, ruolo `owner`, **`mustChangePassword true`** |
+
+Il `setupTokenRequired false` e la verifica dal vivo di `0c7d27f7` (13/09), che era rimasta
+"non riverificata": la schermata non chiede piu un token di setup.
+
+**Linux, lo stesso giorno.** `sh deployment/linux/install-portable.sh /tmp/...` eseguito per
+davvero sul Tower su tre rami del consenso (nessun terminale / gia accettato /
+`NOESAR_ACCEPT_NOTICES=true`), avvisi stampati, `install-consent.json` scritto, credenziali
+stampate in coda. Destinazioni di prova e i due launcher in `~/.local/bin` rimossi dopo.
+
+**Non provato.** macOS, da nessuno, mai. Il prompt interattivo `accept` su nessuna piattaforma
+(nessun terminale in sessione): provato il ramo non interattivo, che e quello di ogni
+installazione non presidiata. E l'installazione Windows non e stata usata oltre le quattro
+prove: nessun modello, nessuna sessione, nessun lavoro vero.
+
+**Stato lasciato.** L'installazione di prova `NOESAR-R1-Test` e il clone usa-e-getta restano sul
+portatile dell'Owner; l'installazione del 13/09 (`NOESAR-Evolution`) non e stata toccata, salvo
+essere stata avviata e subito fermata dal difetto 1.
