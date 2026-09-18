@@ -6,6 +6,50 @@ reproduce from the tree is a defect, the same rule `README.md` states for its nu
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-09-18
+
+**A fresh installation of `0.1.0` answered 500 on its own home page.** If you installed `0.1.0`,
+install this instead. Nothing you created is affected: the defect was in what the installers
+copied, not in what the product stores.
+
+### Fixed
+
+- **No installer shipped the data the product reads from its own installation.** The control plane
+  opens `schemas/`, `capabilities/` and `docs/governance/` at runtime, and no installer on any
+  platform carried them; `apps/shared` and `packages/` were carried on Windows and not by the
+  Linux and macOS portable installers, which never received the repair Windows got on 2026-08-31.
+  A fresh installation answered `GET /api/v1/sector-modules/catalog` with 500, because
+  `sector-modules.mjs` opens `schemas/industry-module-manifest.schema.json` and it was not there.
+  All five are shipped now, under 1 MB in total.
+- **The check could not have caught it, so the check changed too.**
+  `tools/test-cross-platform-installers.mjs` scanned imports, and a `readFileSync` is not an
+  import. It now derives the list from the code — every `join(repoRoot, '…')` literal under
+  `src/` — and requires each installer to carry what it finds. Those checks fail on the
+  installers exactly as they shipped in 0.1.0.
+- **The Linux uninstaller removed one of the two commands it had installed**, leaving
+  `coden_evolution` on the PATH pointing at a program tree the person believed was gone. It now
+  removes both, and prints where the tree and the workspace remain instead of leaving them behind
+  in silence.
+
+### Added
+
+- **An installation guide**, [`INSTALLATION/README.md`](INSTALLATION/README.md): every platform,
+  what the installers deliberately do not do to a machine, the four answers that prove the product
+  really came up, where your data lives, and what each uninstaller does — including the ones that
+  do nothing. Before this there were twelve lines about Unraid.
+- `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
+- An issue form for ideas beside the one for defects, because "this should work differently" had
+  nowhere to go but the defect form.
+- Two screenshots of a real installation in the README. Neither could have been taken before this
+  release: on 0.1.0 that same page carried a red error toast.
+
+### Known limits
+
+Everything named under 0.1.0 still holds. Two more were found today and are recorded with their
+evidence in `docs/OPEN_FINDINGS.tsv`: `F-UI-001` (the product's own Content-Security-Policy
+blocks the styling of the link in its own default-password banner) and `F-WIN-002` (the model
+store defaults to a container path, so the Models page opens with an ENOENT on Windows).
+
 ## [0.1.0] — 2026-09-18
 
 The first tagged release. The product has run since this source line's first commit on
@@ -88,4 +132,5 @@ should be different.
   header on every source file are what governs this release; that document records an intended
   direction and has not been reviewed by counsel.
 
+[0.1.1]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.1
 [0.1.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.0
