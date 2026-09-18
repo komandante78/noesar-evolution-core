@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID, generateKeyPairSync, createPrivateKey, createPublicKey, createHash } from 'node:crypto';
 import { AuditLedger } from './audit.mjs';
+import { RELEASE_VERSION } from './release-version.mjs';
 import { authorityStatus, assertReferenceRuntimeAllowed } from './authority.mjs';
 import {
   DataPlaneMode, dataPlaneStatus, assertDevelopmentDataPlane, describeDataPlane,
@@ -458,7 +459,7 @@ const workflowService = new WorkflowService({ store:aiStore, ledger, executor:to
 /** Who this product says it is — in ONE place. `/api/v1/bootstrap` carried these three strings as
  *  a literal and the assistant now has to state the same three; two copies of a product's own name
  *  is exactly the drift this project has been burned by before. */
-const PRODUCT_IDENTITY = Object.freeze({ name:'NOESAR Evolution', edition:'Open Core Source Implementation', version:'0.6.0' });
+const PRODUCT_IDENTITY = Object.freeze({ name:'NOESAR Evolution', edition:'Open Core Source Implementation', version:RELEASE_VERSION });
 
 /**
  * What the assistant is told about the installation it lives in.
@@ -898,7 +899,7 @@ function currentPrivacy(user = null) {
   }
 }
 
-const PRODUCT = Object.freeze({ name:'NOESAR Evolution', version:'0.6.0', releaseVersion:'0.6.0' });
+const PRODUCT = Object.freeze({ name:'NOESAR Evolution', version:RELEASE_VERSION, releaseVersion:RELEASE_VERSION });
 
 // --- observability, recovery and update subsystems ---------------------------
 const logger = new Logger({

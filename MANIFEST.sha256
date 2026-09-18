@@ -4,6 +4,7 @@ f4b0f0030a52be9207447b519eedfa7ef2d1164a402a03986dc79eb10c3d1ed6  ./.github/work
 77b7a430a9f22f016e620bcd9d9eda2ecb49c2c5838857e15a986a3bff906d53  ./.gitignore
 228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  ./.gitleaks.toml
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
+22d0a7d9bc63b03ca4389fc448997d56d208ebc17ea87d27919ca3dba07d7b2c  ./CHANGELOG.md
 79f4cbbb6909d201fa3b0c5e965f6dc4208bc18a43353c017a0cbc8bee383c3e  ./DOCUMENTATION/ACCEPTANCE_CHECKLIST.md
 22009696a48cf2eb2d242d1538d8632891dbb2db54683fa4f62773e881bf5dcd  ./DOCUMENTATION/AI_PROVIDER_RUNTIME.md
 a9b2b6d74d12b45bc1699520d701cb8b015f83f14094fe461748fa9df8c4ae53  ./DOCUMENTATION/AI_WORKSPACE/AI_WORKSPACE_P0_IMPLEMENTATION.md
@@ -850,8 +851,8 @@ c8f86bb2d71c18eed98b6872f86afcb5f8a3b4c020f2bf12657acf8a79366fb6  ./operations/r
 7434bbfd25550559df66c113dc70af8fbb12148317f4d720b2baec3be287ffe5  ./operations/runtime/verify-runtime.sh
 7013d5d46e37a68770abb246efa1f5db187ba9c7f5be7875dae7144c2495c0d6  ./operations/updates/README.md
 66a954df1cbb3fff546ea3ac3dc0887ba53e2f3f225a1ee0c3791948d4a7c3ee  ./operations/updates/verify-offline-update.py
-fbd33607ce417503ea645c55adeec9fb4527ea1d814dd9524df2ae07c65954cf  ./package-lock.json
-26a8b6e72e7fbbd7f5b216b39af201d36840079da1e41302aff7fcde51b423c3  ./package.json
+29b5dac9298a3633479fcdd75633b3f24da8dd3b4752dc35b710ff810feeec94  ./package-lock.json
+aed9fd47f4d0fcd59674617a5a92acf4d8dd25b4d487b4f3a695e9fa8782b36a  ./package.json
 0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0  ./packages/authority-containment/LICENSE
 57cbb7d5f866b17221f1842b9fddb0f007854457cc9ece9df6c3211393f307d7  ./packages/authority-containment/README.md
 5f4bf36c0ae0df648a8c89518e45ba7e7390ca099360826c40b9c3d688ab9a1c  ./packages/authority-containment/SPEC.md
@@ -6321,6 +6322,7 @@ d4dd091eca05aad1b69210196951ff0a7c8748da389066b10a0f02a0ca264fcc  ./services/ref
 11661f3c5a1bd3549f12a1e653680b9eb18a201ab6a9ea4f81b135f9e0d1f8ee  ./services/reference-control-plane/src/publisher-registry.mjs
 5499824834f51d8a38cb0bc77c11b185ff31943f8ab40a3afc107c3876b947ee  ./services/reference-control-plane/src/reasoning-router.mjs
 7c0a0f91e1f2f959ff48d9ccc6188d3dff167521d3b462a25630f7871360034c  ./services/reference-control-plane/src/reasoning.mjs
+282e1714a541c0b800c94f5bf64f1c87f093c8c71b2df40e92982fc48cd70d05  ./services/reference-control-plane/src/release-version.mjs
 d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/reference-control-plane/src/remote-target-fetch.mjs
 39808f513eb4ed769c9bbc85e29e9344fd55f34e4635655479a346d4b78216dc  ./services/reference-control-plane/src/remote-target-registry.mjs
 fbc6e01ac5dc9be0947788eaddcbcc131823948549f5eb365bdda82741b8cb07  ./services/reference-control-plane/src/repo-map.mjs
@@ -6335,7 +6337,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-2dd9400801c29063fe409506cd1cf3c1c92c173679b20fce7610ee3a33cb12a0  ./services/reference-control-plane/src/server.mjs
+09b493aae3b17a7a0ac6940026e02247af40379bf68a8ab7a086f4defcb7ee62  ./services/reference-control-plane/src/server.mjs
 fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6516,6 +6518,7 @@ ed130d0dd0735325727c5e6819f644beae3fa9bd5f5da5278691cb85366ac994  ./services/ref
 f8869130b3b423f654cc3b43324750c4a974bc016a572211af6a1620e153282d  ./services/reference-control-plane/test/reasoning-router.test.mjs
 9a4d775a76e0c8097e9a442f8b81c7d8b4c43502f998e5c8469c7f2b6cde5aa9  ./services/reference-control-plane/test/reasoning-vectors.test.mjs
 da7bd3a761002fb576920029e20f0cc88955563deede878f3db5b064e4f7a263  ./services/reference-control-plane/test/redaction-identifier-integrity.test.mjs
+676985b00dc313d36a5db9904622795ca2ae8eac720118645f397a74f2155e5f  ./services/reference-control-plane/test/release-version.test.mjs
 8e7185e74f6367d74a5b4da6f66aee6765afd6c9040ce36af327e6d3a026baff  ./services/reference-control-plane/test/remembered-terminal-client.test.mjs
 237721a9870009b8846500172559c524d087d305eb61700554fe1df743dc35a5  ./services/reference-control-plane/test/remembered-terminal.test.mjs
 5d7cdf7c0ced8b6df4f03c87c8d67708b08ccc80e50c2c09b222b56075c918f9  ./services/reference-control-plane/test/remote-target-fetch.test.mjs

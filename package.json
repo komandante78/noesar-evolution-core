@@ -2,8 +2,13 @@
   "engines": {
     "node": ">=22"
   },
+  "license": "AGPL-3.0-or-later",
   "name": "noesar-evolution-source-v4-implementation",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/komandante78/noesar-evolution-core.git"
+  },
   "scripts": {
     "lint": "tools/run-eslint.sh",
     "lint:self-test": "tools/verify-linter-detects.sh",
@@ -33,5 +38,5 @@
     "test:conformance-package": "node --test packages/verified-acquisition/test/*.test.mjs"
   },
   "type": "module",
-  "version": "0.6.0"
+  "version": "0.7.0"
 }
