@@ -124,7 +124,11 @@ Unraid has a direct installer:
 ./INSTALLATION/verify-installation.sh
 ```
 
-Assets for Podman, Linux, macOS and Windows live under `deployment/`.
+Podman, Linux, macOS and Windows have their own paths, and one page walks all of them:
+**[the installation guide](INSTALLATION/README.md)** — which command for which platform, the four
+answers that prove it really came up, the first sign-in, where your data lives, and what each
+platform's uninstaller does and does not do. Every command on it was run on 2026-09-18 except the
+macOS ones, which nobody has ever executed, and it says so there too.
 
 > **Portability, stated honestly.** On **Windows 11** the whole path was walked on 2026-09-18 for
 > release 0.1.0 — clean clone, install, notices, first start, `/livez`, `/readyz`,
