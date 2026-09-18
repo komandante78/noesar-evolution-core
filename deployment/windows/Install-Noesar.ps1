@@ -9,6 +9,48 @@ if ($Major -lt 22) { throw "Node.js 22 or newer is required." }
 
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+
+# The notices, the consent record and the first sign-in: what the container installer has done
+# since it started sourcing deployment/lib/network-access.sh, and what this one did not do at
+# all. It went straight to copying, and the five points were never shown to anyone installing
+# from source on this platform.
+#
+# The text is NOT repeated here. It is read from INSTALLATION\WELCOME.txt, the one file that
+# owns it: a screen written twice says two different things within a month, which is the lesson
+# "the five archives" already charged this project for.
+$Welcome = Join-Path $Root "INSTALLATION\WELCOME.txt"
+if (-not (Test-Path $Welcome)) {
+  throw "The installation notices are missing from this tree: $Welcome. Refusing to install silently what the notices exist to say out loud."
+}
+Write-Host (Get-Content -Raw $Welcome)
+
+$ConsentFile = Join-Path $Destination "workspace\config\install-consent.json"
+if (Test-Path $ConsentFile) {
+  Write-Host "The notices were acknowledged for this installation already ($ConsentFile)."
+} else {
+  if ($env:NOESAR_ACCEPT_NOTICES -eq "true") {
+    $AcknowledgedBy = "NOESAR_ACCEPT_NOTICES=true was set by the caller"
+  } elseif (-not [Console]::IsInputRedirected) {
+    $Answer = Read-Host 'Type "accept" if you have read the five points above (anything else stops here)'
+    if (@("accept", "Accept", "ACCEPT", "accetto", "Accetto", "ACCETTO") -notcontains $Answer) {
+      throw "Not accepted. Nothing has been installed."
+    }
+    $AcknowledgedBy = "typed at the installer prompt"
+  } else {
+    # Refusing here would break every unattended installation, so the record says in words that
+    # no person acknowledged anything -- the same choice the POSIX path makes.
+    $AcknowledgedBy = "NOT acknowledged by a person: no terminal, notices printed to the log only"
+    Write-Host "No terminal to ask on. The notices above were printed, not acknowledged."
+  }
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ConsentFile) | Out-Null
+  [ordered]@{
+    notices = "INSTALLATION/WELCOME.txt"
+    acknowledgedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    acknowledgedBy = $AcknowledgedBy
+    note = "Written by the NOESAR Evolution installer. Delete this file to be shown the notices again on the next install."
+  } | ConvertTo-Json | Set-Content -Path $ConsentFile -Encoding UTF8
+}
+
 $NoesarRoot = Join-Path $Destination "noesar"
 New-Item -ItemType Directory -Force -Path (Join-Path $NoesarRoot "services") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $NoesarRoot "apps") | Out-Null
@@ -91,3 +133,15 @@ Write-Host "Installed to $Destination"
 Write-Host "Start it with: $(Join-Path $Destination 'Start-Noesar.ps1')"
 Write-Host "It prints the address to open in a browser."
 Write-Host "Or work in the terminal: $(Join-Path $Destination 'coden_evolution.ps1')"
+
+# The two default credentials are read from the file that owns them for every other platform.
+# A password that every installation in the world starts with, written down in a second place,
+# is the drift this project keeps paying for.
+$AccessLib = Get-Content -Raw (Join-Path $Root "deployment\lib\network-access.sh")
+$DefaultUser = [regex]::Match($AccessLib, "NOESAR_DEFAULT_USERNAME='([^']+)'").Groups[1].Value
+$DefaultPassword = [regex]::Match($AccessLib, "NOESAR_DEFAULT_PASSWORD='([^']+)'").Groups[1].Value
+if (-not $DefaultUser -or -not $DefaultPassword) {
+  throw "Could not read the default sign-in from deployment\lib\network-access.sh. Refusing to guess it."
+}
+Write-Host "Sign in with  $DefaultUser / $DefaultPassword  -- the same on every installation of this product. Change it at the first sign-in; a banner stays across the top until you do."
+

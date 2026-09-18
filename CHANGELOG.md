@@ -44,6 +44,16 @@ It is a `0.x` on purpose. The limits below are the reason, and they are measured
   is there. `tools/test-cross-platform-installers.mjs` gained five checks; they fail on the
   files as they stood before this release.
 
+- **A from-source installation never showed the installation notices.** `INSTALLATION/WELCOME.txt`
+  — five points, among them that this product answers with a language model that can be
+  confidently wrong, and that the password it starts with is the same on every installation in
+  the world — was printed by `deployment/docker/run.sh` and by nothing else; the call graph has
+  one caller for `noesar_install_intro`. The three from-source installers (Linux, macOS, Windows)
+  now print that same file, record whether a person acknowledged it in
+  `<workspace>/config/install-consent.json`, and end by saying how to sign in. No installer keeps
+  a copy of the text or of the default credentials: both are read from the file that owns them,
+  and a check fails if a copy ever appears.
+
 ### Known limits
 
 - **macOS has never been executed.** `deployment/macos/install-portable.sh` and

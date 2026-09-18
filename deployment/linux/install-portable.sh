@@ -16,6 +16,21 @@ test "$MAJOR" -ge 22 || {
   exit 1
 }
 
+# The notices, and the record that they were shown.
+#
+# Until this was added they reached only the people who installed with deployment/docker/run.sh:
+# the graph has one caller for noesar_install_intro. A from-source installation went straight to
+# copying, so the five points -- among them that this product answers with a language model, and
+# that the password it starts with is the same on every installation in the world -- were never
+# put in front of the person installing it.
+#
+# The port question the container path asks is deliberately left out: this installer does not
+# choose the port, the launcher it writes does.
+# shellcheck source=../lib/network-access.sh
+. "$ROOT/deployment/lib/network-access.sh"
+noesar_print_welcome "$ROOT" || exit 1
+noesar_take_consent "$DESTINATION/workspace" "$(id -u):$(id -g)" || exit 1
+
 mkdir -p "$DESTINATION" "$BIN_DIR"
 chmod 0700 "$DESTINATION"
 rm -rf "$DESTINATION/noesar"
@@ -62,3 +77,6 @@ chmod 0755 "$BIN_DIR/coden_evolution"
 echo "Installed launcher: $BIN_DIR/noesar-evolution"
 echo "Installed session:  $BIN_DIR/coden_evolution   (type that one word to open it)"
 echo "Persistent workspace: $DESTINATION/workspace"
+
+# The one thing a person cannot do without, and could not read anywhere: how to get in.
+noesar_print_first_signin

@@ -6,6 +6,21 @@ command -v node >/dev/null 2>&1 || {
   echo "Node.js 22 or newer is required. No package is installed automatically." >&2
   exit 1
 }
+# The notices, and the record that they were shown.
+#
+# Until this was added they reached only the people who installed with deployment/docker/run.sh:
+# the graph has one caller for noesar_install_intro. A from-source installation went straight to
+# copying, so the five points -- among them that this product answers with a language model, and
+# that the password it starts with is the same on every installation in the world -- were never
+# put in front of the person installing it.
+#
+# The port question the container path asks is deliberately left out: this installer does not
+# choose the port, the launcher it writes does.
+# shellcheck source=../lib/network-access.sh
+. "$ROOT/deployment/lib/network-access.sh"
+noesar_print_welcome "$ROOT" || exit 1
+noesar_take_consent "$DESTINATION/workspace" "$(id -u):$(id -g)" || exit 1
+
 mkdir -p "$DESTINATION"
 chmod 0700 "$DESTINATION"
 rm -rf "$DESTINATION/noesar"
@@ -49,3 +64,6 @@ echo "Installed to $DESTINATION"
 echo "Open the session with: \"$DESTINATION/coden_evolution\""
 echo "Or in a browser, with nothing installed: http://localhost:8100/"
 echo "The Metal/Core ML bridge remains a separate authenticated host component."
+
+# The one thing a person cannot do without, and could not read anywhere: how to get in.
+noesar_print_first_signin

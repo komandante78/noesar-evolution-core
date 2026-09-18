@@ -4,7 +4,7 @@ f4b0f0030a52be9207447b519eedfa7ef2d1164a402a03986dc79eb10c3d1ed6  ./.github/work
 77b7a430a9f22f016e620bcd9d9eda2ecb49c2c5838857e15a986a3bff906d53  ./.gitignore
 228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  ./.gitleaks.toml
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
-b0095207ffe2f93f07a132ec6715947707f3a54417638f9b0471c23e52b06277  ./CHANGELOG.md
+ba0473a858562c4ba8217c1d360bc7994194275153b9d7d2b972c88a696a9de0  ./CHANGELOG.md
 79f4cbbb6909d201fa3b0c5e965f6dc4208bc18a43353c017a0cbc8bee383c3e  ./DOCUMENTATION/ACCEPTANCE_CHECKLIST.md
 22009696a48cf2eb2d242d1538d8632891dbb2db54683fa4f62773e881bf5dcd  ./DOCUMENTATION/AI_PROVIDER_RUNTIME.md
 a9b2b6d74d12b45bc1699520d701cb8b015f83f14094fe461748fa9df8c4ae53  ./DOCUMENTATION/AI_WORKSPACE/AI_WORKSPACE_P0_IMPLEMENTATION.md
@@ -462,11 +462,11 @@ ed396b5eecb9201177f1f779e9b1521cea47c6974a3768d77a6e497ee60cd47a  ./deployment/c
 b73f32e73a459f07004bde1567f68663a12f92984bc166037fb8d73b5a379111  ./deployment/docker/build.sh
 d48dea0e95bb039f3cbf4e475d8bbae32ed2c16fe8c93e257565d480e51fdc64  ./deployment/docker/run.sh
 d36cf0e3beed3527495bde2e18bd78ba22433f3dedfeefafef0bb281c1edef2d  ./deployment/lib/network-access.sh
-52c316dcbcb6dc4e879c6cec019a1cd0fe2ec4389b6c49bbaa85a17a3044e7d5  ./deployment/linux/install-portable.sh
+ae572199d17074b07bd8b8d3aa6db9e33de57ba4882d23aba2948219f79af80d  ./deployment/linux/install-portable.sh
 3490a6dd685a02cf62ed90702604db9328887ba402bdf5710995c95cd2c6afe1  ./deployment/linux/noesar-evolution.service
 14515595863a0ae86e95c7bf6f3c9abed59b69a246ca03dda4cb1acc8b171283  ./deployment/linux/uninstall-portable.sh
 45065a15c84b3bef885d9df48ccfe3621ac066d5a6e96dfa8c27eb549ba5e82d  ./deployment/macos/com.noesar.evolution.plist
-2941ea58ba4d6dfac9b168a58cceb8e27c60defbfa920f5eea69e50dbf3c1c48  ./deployment/macos/install-portable.sh
+ac18ae0ed0af457ff6e6090527d91918b1f22a8f15922d578a715dfa0155cb05  ./deployment/macos/install-portable.sh
 5b03052743e2d87c2dc8c3565f1ddfa1232b0966258d83de3f1393f0fa0ae040  ./deployment/podman/build.sh
 87cd1842dcb8e2ff3ca1bfb25e2b9113dfc5d452220a149edb7514aeb1cf6d34  ./deployment/podman/run.sh
 a6f6be42fe1d898c08ca01813423d57e8b0f612dbb2be0f1137320d1f877c03c  ./deployment/production/README.md
@@ -476,7 +476,7 @@ a6f6be42fe1d898c08ca01813423d57e8b0f612dbb2be0f1137320d1f877c03c  ./deployment/p
 537ff183ac9ab92fb23cb10e8668c15756b2f42981a2e6d9c9f4c32addf33cf2  ./deployment/unraid/install-complete.sh
 aa9c9ce3bcff71f9b2b918025e325e7090064bb8ccb83195c174909719474380  ./deployment/unraid/noesar-evolution.xml
 61c904911fe878db3e878c5f91ada5d89083fca14c3cde21182d3ed6f75ef776  ./deployment/windows/Install-Noesar.cmd
-2496181486b3521e4c18ac41bfc22354cbcd459f7e812104aa096a1ecbd2e559  ./deployment/windows/Install-Noesar.ps1
+54652f5967c0d267f85775f966c0aa03cda91793910be87d58e72293a0f54e5b  ./deployment/windows/Install-Noesar.ps1
 8168065a19d705b3de4fd65ac8593b66862daf683980101066216b11ba016fac  ./deployment/windows/Show-FirstOwnerToken.ps1
 4245a803a1365166244d424ecd9569aaebb94165fd1b6be0ce739635d2fd201b  ./deployment/windows/Start-Noesar.ps1
 6d80172a53ff39fb51f0d6d2d7886c935013f8beb31873f80c71b1bdc7666edc  ./deployment/windows/Test-Noesar.ps1
@@ -6702,7 +6702,7 @@ ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-u
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
-371c594e628a8c2a3dcfdcafa32dc131bef305c943f1bd73bebb24106f47cea4  ./tools/test-cross-platform-installers.mjs
+daa8f320a116c6fe3422b17859ab1b3aaa087f23895cf8e9878b84e3e1a1d0ee  ./tools/test-cross-platform-installers.mjs
 89f8d7634a65596cfa8ece1a192d8ec61e3edfe756dcaccbc601281652087379  ./tools/test-e2e-retention.sh
 90c25b2dc354d76851de0fbc954470199733e569fb490d2e5c7e792f3b6639c1  ./tools/test-installer-hardening.mjs
 445db8f0c89f8b7ab737b4ae267c9964cc8662b0ebe260ffb89885716764430c  ./tools/test-packaging-filters.mjs

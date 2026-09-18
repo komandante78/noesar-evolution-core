@@ -444,6 +444,36 @@ console.log('- deployment/windows/*.ps1  [STATIC ONLY — no PowerShell on this 
   check(/No installation found at/.test(windows.start),
     'Start-Noesar.ps1 must refuse loudly when no installation sits at its install root');
 
+  // An installation that never shows the notices is the container path's promise broken on
+  // every other path. These read the scripts, not a comment: the file has to be named.
+  const linuxPortable = readFileSync(join(repoRoot, 'deployment/linux/install-portable.sh'), 'utf8');
+  const macosPortable = readFileSync(join(repoRoot, 'deployment/macos/install-portable.sh'), 'utf8');
+  check(/INSTALLATION\\WELCOME\.txt/.test(windows.install),
+    'Install-Noesar.ps1 must print the notices from INSTALLATION/WELCOME.txt');
+  check(/install-consent\.json/.test(windows.install),
+    'Install-Noesar.ps1 must record whether the notices were acknowledged');
+  check(/NOESAR_ACCEPT_NOTICES/.test(windows.install),
+    'Install-Noesar.ps1 must honour the same unattended acknowledgement as the POSIX installers');
+  for (const [name, source] of [['linux/install-portable.sh', linuxPortable],
+    ['macos/install-portable.sh', macosPortable]]) {
+    check(/noesar_print_welcome/.test(source),
+      `${name} must print the notices, like the container installer does`);
+    check(/noesar_take_consent/.test(source),
+      `${name} must record whether the notices were acknowledged`);
+    check(/noesar_print_first_signin/.test(source),
+      `${name} must say how to sign in: nothing else in the installation does`);
+  }
+  // And nobody may keep a second copy of the notices. One distinctive line of the real file,
+  // looked for in every installer: this is how "the five archives" started.
+  const welcomeLine = readFileSync(join(repoRoot, 'INSTALLATION/WELCOME.txt'), 'utf8')
+    .split('\n').find((l) => l.includes('READ THIS BEFORE YOU CONTINUE'));
+  check(Boolean(welcomeLine), 'the notices must still carry the line this check looks for');
+  for (const [name, source] of [['Install-Noesar.ps1', windows.install],
+    ['linux/install-portable.sh', linuxPortable], ['macos/install-portable.sh', macosPortable]]) {
+    check(!source.includes(welcomeLine.trim()),
+      `${name} must point at INSTALLATION/WELCOME.txt, never carry a copy of it`);
+  }
+
   // The channel it sets must be one the Docker/Podman scripts would accept, or the
   // platforms disagree about the product they are running.
   const channel = windows.start.match(/NOESAR_RELEASE_CHANNEL\s*=\s*"([^"]+)"/)?.[1];
