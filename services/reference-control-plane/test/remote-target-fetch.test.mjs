@@ -70,7 +70,13 @@ before(async () => {
     'UsePAM no',
     'StrictModes no',
     'PidFile none',
-    'Subsystem sftp /usr/libexec/sftp-server',
+    // Measured 2026-09-20 on a GitHub runner: this line was `/usr/libexec/sftp-server`, which is
+    // where Slackware keeps it -- the machine this repository is developed on. Debian and Ubuntu
+    // keep it under /usr/lib/openssh, so sshd started, accepted the connection, failed to exec a
+    // subsystem that was not there, and scp reported "Connection closed". Everything else in this
+    // file passed, because only scp needs the subsystem: since OpenSSH 9 scp speaks SFTP.
+    // `internal-sftp` is implemented inside sshd and has no path on any platform.
+    'Subsystem sftp internal-sftp',
     'LogLevel ERROR',
   ].join('\n'));
 

@@ -533,7 +533,7 @@ e74a801ff36b51a80370ec76cc19f5c4bb3fe1d9e06da84d2feba8519a0c4fd3  ./docs/LOGGING
 531083ebc8782edfd5735c94394a4047f0b7075edffc204eb5155fb1e97a3002  ./docs/MIGRATION_COMPATIBILITY_REPORT.md
 922d603cd0c37913d6baadf6ee4844eb5f728c21cecffe986923d612398fe4af  ./docs/MODEL_CATALOG_DESIGN.md
 a911329a17ded4dc8cac8b8c22f89157cae51308448f34b888c8410a3fb5d052  ./docs/MULTI_USER_SECURITY_MODEL.md
-6772eaa113e21dba2fbc29a098ac56bbc9e3764ce2c53273de98ac5775ef07bc  ./docs/OPEN_FINDINGS.tsv
+f32e8fbaa35fb474883fe1b8101ffa7982d07336762503a53b9090c78a9ca361  ./docs/OPEN_FINDINGS.tsv
 071167e7769523d72c196f9fc3146b8402e0232427bc96ec9ed71024f8752618  ./docs/OWNER_BOOTSTRAP.md
 a94d4ea510d5804d3bd45cf70efee609b5a7bf07553aab42e6cc7b3a652c8729  ./docs/OWNER_CHANGE_LIST_S326.md
 163b73cc90f8f00b89d63416a936cd658561de8388e39242f9e8ef260a22449c  ./docs/OWNER_CHANGE_LIST_S333.md
@@ -6530,7 +6530,7 @@ da7bd3a761002fb576920029e20f0cc88955563deede878f3db5b064e4f7a263  ./services/ref
 676985b00dc313d36a5db9904622795ca2ae8eac720118645f397a74f2155e5f  ./services/reference-control-plane/test/release-version.test.mjs
 8e7185e74f6367d74a5b4da6f66aee6765afd6c9040ce36af327e6d3a026baff  ./services/reference-control-plane/test/remembered-terminal-client.test.mjs
 237721a9870009b8846500172559c524d087d305eb61700554fe1df743dc35a5  ./services/reference-control-plane/test/remembered-terminal.test.mjs
-5d7cdf7c0ced8b6df4f03c87c8d67708b08ccc80e50c2c09b222b56075c918f9  ./services/reference-control-plane/test/remote-target-fetch.test.mjs
+3402df5817c92a06d50064736a62d791d10219fffb8601c1ac9978ccebc1c09e  ./services/reference-control-plane/test/remote-target-fetch.test.mjs
 e10ae6bd9b2ae015cd359f159eabbbc110d0db62e520477665606192a80c5b0b  ./services/reference-control-plane/test/remote-target-http.test.mjs
 35e43fdad998d565436c17793e15ba30965af81fcb234d3c33f6cb1ec2af0dc2  ./services/reference-control-plane/test/remote-target-registry.test.mjs
 1587522ae474570154d4229aee4c0b2a3ee011634ca46b1230f7744f840fb2eb  ./services/reference-control-plane/test/repo-map.test.mjs
