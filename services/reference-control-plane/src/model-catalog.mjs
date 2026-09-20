@@ -384,7 +384,34 @@ export function planAcquisition({
     return { allowed: false, kind: 'EGRESS_NOT_CONSENTED', reason: 'downloading a model is egress, and this installation has not been given consent to reach the network for it' };
   }
 
+  // D-0632. A third origin, declared rather than smuggled.
+  //
+  // The two checks below ask a signed descriptor the right questions, and nothing here changes
+  // what they do to one. But a descriptor built from a publisher's OWN API names no registered
+  // publisher and carries no signature, and both of those are true statements about it rather
+  // than omissions to be read as consent. What it does carry is a digest that was read from the
+  // publisher before any byte moved, which is the property every later guarantee actually rests
+  // on: fetchArtefact streams under a ceiling and refuses by name the moment the bytes disagree.
+  //
+  // This branch is entered only by a document that says of ITSELF that nobody signed it. That is
+  // not a loophole a forged descriptor can walk through, because a descriptor saying this can
+  // only be written by the HuggingFace route: `descriptors/import` refuses anything a registered
+  // key did not sign, and the catalogue directory is 0700 to the runtime user, so planting one
+  // there already requires being the product. The digest is required HERE and not assumed,
+  // because without it this branch would allow exactly what the signed path forbids.
+  const fromPublisherApi = descriptor.provenance?.kind === 'publisher-api-digest'
+    && descriptor.provenance?.signed === false;
+  if (fromPublisherApi && !descriptor.hashes?.sha256) {
+    return {
+      allowed: false,
+      kind: 'NO_DIGEST',
+      reason: 'this descriptor was built from a publisher API and carries no SHA-256, so there would be nothing to hold the download to',
+    };
+  }
+
   const publisherId = descriptor.publisher;
+
+  if (!fromPublisherApi) {
   if (!publisherId) {
     return { allowed: false, kind: 'NO_PUBLISHER', reason: 'the descriptor names no publisher, so its origin cannot be checked' };
   }
@@ -411,6 +438,7 @@ export function planAcquisition({
         ?? 'this descriptor has not been verified against a registered publisher key, so nothing states that the publisher declared this source or this digest',
       authenticityKind: descriptorAuthenticity?.kind ?? 'NOT_CHECKED',
     };
+  }
   }
 
   const digest = declaredDigest(descriptor);

@@ -6309,7 +6309,7 @@ de9462d2d8b3f7a4e053d2a8f907c10e53c5564d78c8c6af5fe89a544d01cc9d  ./services/ref
 1eb683ef3db572897be98d69f77f6f6f2712e89830505da05273b1fabedeb567  ./services/reference-control-plane/src/memory-service.mjs
 338373ba4428a88efdaca1131a6d0b7299bb45767f599344b59e8d0b0c1b7c2b  ./services/reference-control-plane/src/metrics.mjs
 2204dc3d07f1b12bd47ccf247e94bb5b1934029e5ed7cd5e6870167b7347c5e8  ./services/reference-control-plane/src/model-acquisition.mjs
-4471c1ff99a4259cbe38551be35580dd0afb54560a24d18b008d267e0bca5b94  ./services/reference-control-plane/src/model-catalog.mjs
+602524551d13583a2b47904c3309e2f1d40df3889cd2f4fdd8225062658d5e42  ./services/reference-control-plane/src/model-catalog.mjs
 c842e84c6063424cc4fdffe750be69daec7f518d59b0f5e9baa4892ee520b4a6  ./services/reference-control-plane/src/model-descriptor-authenticity.mjs
 c7e84d03d71d9e94e9322c123c8c8805f35b7188fa14c6ace43bd845b3054540  ./services/reference-control-plane/src/model-removal.mjs
 a1028ee8cee61adc2097e51c0a46cf925f93a6781cb0016024e03cee57baaa04  ./services/reference-control-plane/src/model-scout.mjs
@@ -6371,6 +6371,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs
+17e79e47c0289d2474cd4998637a79a501b0e68865872213f7b0a331dcf6de2f  ./services/reference-control-plane/test/acquisition-publisher-api-digest.test.mjs
 296ee04ba874bb4e0cb53a32b4376f30a2f31e6d134618206abf74aa7bfda2bb  ./services/reference-control-plane/test/active-model-truth.test.mjs
 a3f5116bc284e43b9b7101ab48dad3dd1178643e79eadb525fa9dcd0325b48e9  ./services/reference-control-plane/test/active-model.test.mjs
 fd599a8bef7ba4d81a9f7779e1289d55c889923f238a9582cb461046c433ace7  ./services/reference-control-plane/test/active-runtime-provider.test.mjs
