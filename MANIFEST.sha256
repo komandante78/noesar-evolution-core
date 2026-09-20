@@ -6531,7 +6531,7 @@ da7bd3a761002fb576920029e20f0cc88955563deede878f3db5b064e4f7a263  ./services/ref
 8e7185e74f6367d74a5b4da6f66aee6765afd6c9040ce36af327e6d3a026baff  ./services/reference-control-plane/test/remembered-terminal-client.test.mjs
 237721a9870009b8846500172559c524d087d305eb61700554fe1df743dc35a5  ./services/reference-control-plane/test/remembered-terminal.test.mjs
 3402df5817c92a06d50064736a62d791d10219fffb8601c1ac9978ccebc1c09e  ./services/reference-control-plane/test/remote-target-fetch.test.mjs
-e10ae6bd9b2ae015cd359f159eabbbc110d0db62e520477665606192a80c5b0b  ./services/reference-control-plane/test/remote-target-http.test.mjs
+41604261a249041d2bce5609aa7bb5f76739eeee7da1eca6c7b666bf512b7c86  ./services/reference-control-plane/test/remote-target-http.test.mjs
 35e43fdad998d565436c17793e15ba30965af81fcb234d3c33f6cb1ec2af0dc2  ./services/reference-control-plane/test/remote-target-registry.test.mjs
 1587522ae474570154d4229aee4c0b2a3ee011634ca46b1230f7744f840fb2eb  ./services/reference-control-plane/test/repo-map.test.mjs
 6dc51845f6be22b29aad62e35fd0fb5ac10a5706dcb244028efb894e7805d590  ./services/reference-control-plane/test/request-grounding.test.mjs

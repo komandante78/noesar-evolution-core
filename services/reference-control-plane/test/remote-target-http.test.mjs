@@ -54,7 +54,9 @@ writeFileSync(sshdConfigPath, [
   `Port ${sshPort}`, 'ListenAddress 127.0.0.1', `HostKey ${hostKeyPath}`,
   `AuthorizedKeysFile ${authorizedKeysPath}`, 'PasswordAuthentication no', 'KbdInteractiveAuthentication no',
   'PubkeyAuthentication yes', 'UsePAM no', 'StrictModes no', 'PidFile none',
-  'Subsystem sftp /usr/libexec/sftp-server', 'LogLevel ERROR',
+  // F-TEST-001, the sibling: same hard-coded Slackware path as remote-target-fetch.test.mjs had.
+  // internal-sftp lives inside sshd and has no path on any platform.
+  'Subsystem sftp internal-sftp', 'LogLevel ERROR',
 ].join('\n'));
 const sshdProcess = await new Promise((resolve, reject) => {
   const child = spawn('/usr/sbin/sshd', ['-D', '-e', '-f', sshdConfigPath], { stdio: ['ignore', 'pipe', 'pipe'] });
