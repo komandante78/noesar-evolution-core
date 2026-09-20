@@ -992,7 +992,14 @@ const MODEL_QUARANTINE_DIR = join(workspace, 'models', 'quarantine');
 // passaggi». The GGUF files themselves live outside the workspace — the store is mounted
 // read-only — and until now their location existed ONLY inside each descriptor's runtime path,
 // which is why nothing could list what is present but not yet installed.
-const MODEL_GGUF_DIR = process.env.NOESAR_MODEL_STORE ?? '/models';
+// F-WIN-002. `/models` is this image's mount point, and a mount point is not a default: off
+// the container the same string resolves to `C:\models`, which no installer creates and no
+// person is told about, so the Models page opens on a raw ENOENT about a path nobody chose.
+// The container still gets `/models` because it is really there; every other platform gets
+// the models directory the workspace already owns and this file already creates.
+// ponytail: existsSync('/models') is the proxy for "inside the image". A host that happens to
+// own an unrelated /models reads as the container; NOESAR_MODEL_STORE overrides either way.
+const MODEL_GGUF_DIR = process.env.NOESAR_MODEL_STORE ?? (existsSync('/models') ? '/models' : join(workspace, 'models'));
 // The bundled runtime, so an architecture it cannot open is refused BEFORE a descriptor is
 // signed rather than at the first failed start. `model-install.mjs` says why in its own header.
 const MODEL_RUNTIME_LIB = process.env.NOESAR_LLAMA_LIB ?? '/opt/noesar/llama-runtime/libllama.so';

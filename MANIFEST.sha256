@@ -3,9 +3,11 @@ e90b1a7e51ad86e8ca0c9c4836101fea65232869319c7320faef3d11c2cad81c  ./.dockerignor
 3f1464e12682d679866fdc6c4e852d1b41300a3d9363a313b06c9fc995688094  ./.github/ISSUE_TEMPLATE/bug_report.yml
 87fd888d6e4c7ec6e7569f0052c637cce1c42d7a0616f36d99d04fdc95dbec0f  ./.github/ISSUE_TEMPLATE/config.yml
 05b5273f418aee4d67dbfda24691ec889292812df268e0638399d5715f069c52  ./.github/ISSUE_TEMPLATE/idea.yml
+e75ce713227fff3e87a806ea04a36e0a8ee948ba4f8e6f77756f4b585d5c58f9  ./.github/workflows/gates.yml
 f4b0f0030a52be9207447b519eedfa7ef2d1164a402a03986dc79eb10c3d1ed6  ./.github/workflows/noesar-sandbox-extraction.yml
 77b7a430a9f22f016e620bcd9d9eda2ecb49c2c5838857e15a986a3bff906d53  ./.gitignore
-228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  ./.gitleaks.toml
+6be4335f4b628c6779bc8f8eef81a7f37a161b88505466f764762b9d907b9b93  ./.gitleaks.toml
+c0e361a328ab52c27662d6ee4b422cd628c2117248e94827426aa37079cfa302  ./.graphifyignore
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
 e0233cae0d85ea60c5c0ed880e4795d4b629d5967d0c1ca1a0f131b2d1b0b754  ./CHANGELOG.md
 6beb8d22ca0280a7d64273257c2c289f78fc6431f5a3b289f7b536d131459af6  ./CODE_OF_CONDUCT.md
@@ -335,7 +337,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-c3010c02c3195ec0fc47f077771805fcaf9f5ac268aa282b63bc9e2b2a28eac6  ./apps/webui-static/app.js
+70fa6b2236ccc43935d1cde10b43b7196d82d393065044b74b9f48e4a6ee3e24  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
@@ -531,7 +533,7 @@ e74a801ff36b51a80370ec76cc19f5c4bb3fe1d9e06da84d2feba8519a0c4fd3  ./docs/LOGGING
 531083ebc8782edfd5735c94394a4047f0b7075edffc204eb5155fb1e97a3002  ./docs/MIGRATION_COMPATIBILITY_REPORT.md
 922d603cd0c37913d6baadf6ee4844eb5f728c21cecffe986923d612398fe4af  ./docs/MODEL_CATALOG_DESIGN.md
 a911329a17ded4dc8cac8b8c22f89157cae51308448f34b888c8410a3fb5d052  ./docs/MULTI_USER_SECURITY_MODEL.md
-c23340dff1e9df84e71172a06def16e7fbec83edc9077278e848ab8c13cbbf6f  ./docs/OPEN_FINDINGS.tsv
+6772eaa113e21dba2fbc29a098ac56bbc9e3764ce2c53273de98ac5775ef07bc  ./docs/OPEN_FINDINGS.tsv
 071167e7769523d72c196f9fc3146b8402e0232427bc96ec9ed71024f8752618  ./docs/OWNER_BOOTSTRAP.md
 a94d4ea510d5804d3bd45cf70efee609b5a7bf07553aab42e6cc7b3a652c8729  ./docs/OWNER_CHANGE_LIST_S326.md
 163b73cc90f8f00b89d63416a936cd658561de8388e39242f9e8ef260a22449c  ./docs/OWNER_CHANGE_LIST_S333.md
@@ -6236,7 +6238,7 @@ e94690d94c4f94aa8ee55959225f68ba91aa24eb442ce9946aef1d82f3ad8578  ./schemas/tech
 8223aaf6fa95da40756d7e2e1c1b3388d96178202ec0ed7e1298ce93809166c6  ./schemas/tool-catalog-entry.schema.json
 f1302c6af47121dec0a1989c0c42ea5a43f5ef2131e7e0ad1f0aa504e871ef1d  ./schemas/update-metadata.schema.json
 66e948c8d497affe784ccc9506e16c2faf8e30c58222a7144e7cd745f1ee910b  ./scripts/run-reference.sh
-4357aa59b1a2fb42e56e3a629d4f5eae3df89cc3c47e43ce87c3b401a0db1bda  ./scripts/test.sh
+0f10e2abadedff0d36cf90ea28fa7c1d29d55bdc3d9bb1776f9f7be48455410b  ./scripts/test.sh
 f4a8b5aa48e62a3e86254917081e2cedb747d319fdfd97728d57c183312a5ab6  ./security/seccomp-noesar.json
 2649a1ebb289ac13144dd41140202838144652e208b7ffe1e3697e79c47220b2  ./services/reference-control-plane/bin/codev-child.mjs
 d81d7d9dd64e3f08bf65ecd874ec846be140bab30cae9b13693a78034bc43c69  ./services/reference-control-plane/bin/postgres-child.mjs
@@ -6344,7 +6346,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-f43c06149bd0c0c468307533a6910417c708db7213689d942fcfd1d025afa82e  ./services/reference-control-plane/src/server.mjs
+6bc1be19269f0dc52e16f016401a44a6c1e00506cf2f8fc22d8b783149485b7b  ./services/reference-control-plane/src/server.mjs
 fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6381,7 +6383,7 @@ c7a4d44ef429d8be0792c21e207a8a4b24bd6d743f4759348931ca3f8b269a84  ./services/ref
 b788e43a4553068fc9db158e03e61a918368fada7b2af54137201e79ca100c41  ./services/reference-control-plane/test/ai-state-migration.test.mjs
 211196abb94cd0a39a1cd5a185edf781510f2f853448d9d1b3a36c55bdb80e5d  ./services/reference-control-plane/test/ai-workspace.test.mjs
 fc1fb90903479d51017717de91437cc9bb72852caa64059284e3dce047b3b203  ./services/reference-control-plane/test/api-target-probe.test.mjs
-77fc7237231704711a97488e675f7a3c256862b229991b2bbaceea145c0e7004  ./services/reference-control-plane/test/api-target-registry.test.mjs
+894f5d2fcba3afb0d71cd2ceaf0574d5ce42675b241da182acb6fff066b03945  ./services/reference-control-plane/test/api-target-registry.test.mjs
 cbcff58008da1946bf799829fcf177d48f1458edc57ffb192e259a963db3d491  ./services/reference-control-plane/test/approval-queue.test.mjs
 b3b79a84b7a531c4a48329d081ed8bb0d7f79475d5d4373b3b7ed5a2c8e64fad  ./services/reference-control-plane/test/assistant-identity.test.mjs
 754f62d79cace41d229bc44cb15a1fb59ff5eb205029037bfc4c4ee45a3d62ca  ./services/reference-control-plane/test/atom-fallback-declared.test.mjs
@@ -6594,6 +6596,7 @@ d55d7ed7041da5e6be291addb047507853abacf6ae2e138388c1f149ff361264  ./services/ref
 aaa6fc07b584b798b8d4b7e939bdf73b2e67a789b1a0cc6d68b98a8459fc8595  ./services/reference-control-plane/test/webui-busy-label.test.mjs
 0a86bf925091c333ba75acbba7f065acf6683e2638c74cc83cc01c21ea14703b  ./services/reference-control-plane/test/webui-colour.test.mjs
 134dcf9df7b4f7d60d436bed438440bf108ea0bdbd3989658ed2d068f1794592  ./services/reference-control-plane/test/webui-health-panel.test.mjs
+b384c620443005442c5c4c3d511e4377c02239cabee32cda9051827d83279374  ./services/reference-control-plane/test/webui-inline-style-csp.test.mjs
 5073ebefb1c1b2da4de352771b77a6084bd376b24368467b33f9914a21dbb86f  ./services/reference-control-plane/test/webui-jump-to-address.test.mjs
 79c79c804d4fd794787b04d03a2612db0c0fbc0beadb4d0ddb1825d303521aee  ./services/reference-control-plane/test/webui-markup-structure.test.mjs
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs

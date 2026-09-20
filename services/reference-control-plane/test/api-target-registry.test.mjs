@@ -22,7 +22,7 @@ function fixture() {
 }
 
 const TARGET = { name: 'billing', baseUrl: 'https://api.example.test/v1', protectedPath: '/account' };
-const SECRET = 'sk-live-0123456789abcdef';
+const SECRET = 'fixture-secret-not-shaped-like-a-vendor-key';
 
 describe('D-0292 — ApiTargetRegistry: what a target may be registered as', () => {
   test('a non-absolute or non-HTTP URL is refused before anything is stored', () => {

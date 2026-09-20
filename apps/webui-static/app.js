@@ -865,7 +865,7 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // non cambia password nelle impostazioni".
   let banner=$('#defaultPasswordBanner');
   if(currentUser?.mustChangePassword){
-    if(!banner){banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.setAttribute('role','alert');banner.style.cssText='position:sticky;top:0;z-index:9999;background:#b45309;color:#fff;padding:.6rem 1rem;text-align:center;font-weight:600;';banner.innerHTML='This account is still using the default password. <a href="#settings" style="color:#fff;text-decoration:underline;">Change it in Settings</a> now.';document.body.prepend(banner);}
+    if(!banner){banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.setAttribute('role','alert');banner.style.cssText='position:sticky;top:0;z-index:9999;background:#b45309;color:#fff;padding:.6rem 1rem;text-align:center;font-weight:600;';banner.innerHTML='This account is still using the default password. <a href="#settings">Change it in Settings</a> now.';banner.querySelector('a').style.cssText='color:#fff;text-decoration:underline;';document.body.prepend(banner);}
   }else if(banner){banner.remove();}
   // The router runs at boot, before the role is known, so every gated route resolved to
   // access-denied on a cold deep link — including for the Owner. Re-apply the nav and
@@ -4458,8 +4458,13 @@ async function loadReviewMetric(){
   $('#metricRejected').textContent=String(summary.rejected.count);
   const peak=Math.max(...summary.trend.map((point)=>point.medianSeconds??0),1);
   $('#metricTrend').innerHTML=summary.trend.length
-    ?summary.trend.map((point)=>`<i style="height:${Math.max(Math.round((point.medianSeconds/peak)*100),4)}%" title="${escapeHtml(point.day)}: ${escapeHtml(humanDuration(point.medianSeconds))} across ${point.decided} decision${point.decided===1?'':'s'}"></i>`).join('')
+    ?summary.trend.map((point)=>`<i data-height="${Math.max(Math.round((point.medianSeconds/peak)*100),4)}" title="${escapeHtml(point.day)}: ${escapeHtml(humanDuration(point.medianSeconds))} across ${point.decided} decision${point.decided===1?'':'s'}"></i>`).join('')
     :'';
+  // Found 2026-09-20 beside F-UI-001, never recorded: a style attribute parsed from markup is
+  // refused by MAIN_CSP's style-src 'self' wherever it appears, so every bar in this sparkline
+  // rendered at the stylesheet's height instead of its own. The height is per-point and cannot
+  // be a class; the CSSOM route the banner two hundred lines up already uses is not blocked.
+  for(const bar of $('#metricTrend').querySelectorAll('i')){bar.style.height=`${bar.dataset.height}%`;}
   $('#metricTrend').setAttribute('aria-label',summary.trend.length
     ?`Daily median review time across ${summary.trend.length} days`
     :'No decisions in this window');

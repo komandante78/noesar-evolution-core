@@ -33,3 +33,50 @@ paths = ['''^rust/vendor/''']
 [[allowlists]]
 description = "Self-inflicted false positive: test fixture shaped like a PEM key, not a real one — commit f721d625, fixed forward same phase"
 commits = ["f721d6253c4bbfe47060fbef7dcdfcb3790c40f5"]
+
+# ---------------------------------------------------------------------------------------
+# 2026-09-20. The scan had been FAILING on eight findings, and nothing in the repository ran
+# it, so nobody knew. All eight were investigated one by one and none is a secret. They are
+# recorded here by cause, not swept under one rule, because every one of them is a shape this
+# repository will keep producing.
+#
+# A method note worth more than the entries: the first pass at this was read off a report
+# produced with `--redact`, which prints every secret as the word REDACTED. That made all
+# eight look like the literal string REDACTED. The findings below are from an UNREDACTED
+# report, classified by shape on the machine that holds it.
+#
+# Nothing here is scoped to a rule or to a whole file: a real key landing in any of these
+# same files, on any later commit, is still caught.
+
+# Four findings, in EVIDENCE/live_config_*.json: the value the capture WROTE INSTEAD of the
+# secret. Anchored at the start, so a value that merely contains the word is still a finding.
+[[allowlists]]
+description = "A captured value that begins with the redaction marker is what redaction produced, not a secret"
+regexes = ['''^REDACTED''']
+
+# Two findings, in websocket-framing.test.mjs and coden-bridge.test.mjs: the value of the
+# Sec-WebSocket-Key header. RFC 6455 makes that a 24-character base64 nonce the CLIENT invents
+# for every handshake -- it authenticates nothing, it is not a credential, and a websocket test
+# cannot be written without one.
+[[allowlists]]
+description = "Sec-WebSocket-Key: an RFC 6455 handshake nonce, invented per connection, authenticating nothing"
+regexTarget = "line"
+regexes = ['''(?i)sec-websocket-key''']
+
+# One finding, api-target-registry.test.mjs at commit 67366603: a fixture written in the shape
+# of an OpenAI key. It is 24 characters where a real one is 51, and it never left the test.
+# Scoped to that commit: the fixture is also being changed so the shape stops being produced,
+# but a commit already pushed is not rewritten (CLAUDE10 rule 14), so the history needs this.
+[[allowlists]]
+description = "Test fixture shaped like an API key, commit 67366603 -- fixed forward, history cannot be"
+commits = ["673666035b130b752d48b06b142fd4aca24e78da"]
+
+# One finding, tls.test.mjs at commit 3f75279a: the SAME four-byte PEM placeholder
+# (`-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----`) that the entry above
+# already excuses at commit f721d625. Verified 2026-09-20: OpenSSL refuses to decode it
+# ("DECODER routines::unsupported"), and `git log --diff-filter=A` over all of history shows
+# the only .pem ever added to this repository is a PUBLIC key. The lesson is in the miss: an
+# allowlist scoped to one commit does not cover the sibling commit that carries the same blob.
+[[allowlists]]
+description = "The same four-byte PEM placeholder as f721d625, on its sibling commit 3f75279a"
+commits = ["3f75279ab134239dc30816e41ef0cdb1e67eecde"]

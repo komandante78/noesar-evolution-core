@@ -1,0 +1,48 @@
+name: gates
+
+# Measured 2026-09-20: this repository is public, carries published releases, an issue template
+# and a CONTRIBUTING that invites contributions -- and the only workflow it had was scoped to a
+# single Rust crate. Nothing ran the unit suite, the manifest, eslint or the secret scan on a
+# push or a pull request, so a stranger's first contribution met almost no automated check and
+# the maintainer's own pushes met none at all.
+#
+# These four are the gates that are hermetic: they need a checkout, node and docker, never a
+# running product, a GPU or this machine. The battery's other eighteen steps drive real servers
+# on real ports and are deliberately NOT here -- F-CE021-002 records that the driven acceptance
+# probes still have no gate, and this workflow does not close it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The secret scan reads the WHOLE history, and the manifest check compares against
+          # git. A shallow clone would make both of them answer about a repository that does
+          # not exist.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Unit suite
+        run: npm test
+
+      - name: Manifest is complete against git
+        run: node tools/generate-manifest.mjs --check
+
+      - name: ESLint
+        run: bash tools/run-eslint.sh
+
+      - name: Secret scan over the whole history
+        # The script exits 2 -- "could not run here" -- when the pinned image is absent, and
+        # that third state must not read as a pass. Pulling first makes the run mean something.
+        run: |
+          docker pull zricethezav/gitleaks:latest
+          sh tools/run-secret-scan.sh

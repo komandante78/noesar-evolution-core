@@ -87,6 +87,12 @@ step source-verify   node tools/verify-source.mjs
 # red because nothing looked. This is the step that looks; the oracle that proves it can go red
 # is manifest-integrity.test.mjs, in the unit step above.
 step manifest        node tools/generate-manifest.mjs --check
+# Measured 2026-09-20. tools/run-secret-scan.sh has existed since 2026-07-27 and NOTHING ever
+# ran it: found red that day, on eight findings, with nobody watching. A scanner nobody runs is
+# not a control, and a red one nobody looks at is worse than none -- it is the check people
+# learn to skip on the day it finally has something true to say. Tristate because the script
+# exits 2, by its own design, when docker or the pinned image is absent.
+step_tristate secret-scan sh tools/run-secret-scan.sh
 step auth-smoke      node tools/auth-http-smoke.mjs
 # D-0546. `packages/verified-acquisition/` is an extracted, separately-documented component with
 # its own tests, and this runner invoked none of them: they existed only behind the npm script
