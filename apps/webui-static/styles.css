@@ -1497,6 +1497,16 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    (WCAG 2.5.8, F-A11Y-003) so it is a real target, not a decoration next to the title. */
 .icon-info{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;margin-inline-start:6px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface-raised);color:var(--accent-brand);font-size:calc(var(--text-scale) * 13px);line-height:1;cursor:pointer}
 .icon-info:hover,.icon-info[aria-expanded="true"]{border-color:var(--border-accent-hover)}
+/* D-0632. One row per file a repository publishes: the name, the bytes that will actually land
+   on the disk, and either the button or the reason there is no button. The refusal is laid out as
+   a row of the same list rather than as an error beside it, because a file that cannot be taken is
+   still an answer to what was asked. */
+.model-hf-file{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 11px;margin:6px 0;border:1px solid var(--line);border-radius:11px;background:var(--surface-raised);color:var(--text-card);font-size:calc(var(--text-scale) * 12px);text-align:start}
+.model-hf-file strong{font-weight:600;word-break:break-all}
+.model-hf-file button{margin-inline-start:auto}
+/* The reason a file is not offered takes the whole second line: it is prose, not a chip, and
+   squeezing it beside the name is how it stops being read. */
+.model-hf-file .hint{flex-basis:100%;margin:0;color:var(--muted);font-size:calc(var(--text-scale) * 11px)}
 .model-catalog-help{padding:11px;margin:4px 0 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-raised)}
 .model-catalog-help p{margin:0 0 6px;color:var(--text-card);line-height:1.5;font-size:calc(var(--text-scale) * 12px)}
 .model-catalog-help p:last-child{margin-bottom:0;color:var(--muted)}
