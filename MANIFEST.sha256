@@ -9,7 +9,7 @@ f4b0f0030a52be9207447b519eedfa7ef2d1164a402a03986dc79eb10c3d1ed6  ./.github/work
 6be4335f4b628c6779bc8f8eef81a7f37a161b88505466f764762b9d907b9b93  ./.gitleaks.toml
 c0e361a328ab52c27662d6ee4b422cd628c2117248e94827426aa37079cfa302  ./.graphifyignore
 a7d8906bf8e394adb0a55d0db2888e7de67a4d4bcc1972297c4cba2ef2b88e30  ./ARCHITECTURE.md
-e0233cae0d85ea60c5c0ed880e4795d4b629d5967d0c1ca1a0f131b2d1b0b754  ./CHANGELOG.md
+e737a78052d27f3c7c770e5065747bebd22d051904e298a44bf67ef0681b0ce8  ./CHANGELOG.md
 6beb8d22ca0280a7d64273257c2c289f78fc6431f5a3b289f7b536d131459af6  ./CODE_OF_CONDUCT.md
 07612952dd764e384e34a58dcaa1a7c236bc2042b090cdb8f4ed85e8d94fac46  ./CONTRIBUTING.md
 79f4cbbb6909d201fa3b0c5e965f6dc4208bc18a43353c017a0cbc8bee383c3e  ./DOCUMENTATION/ACCEPTANCE_CHECKLIST.md
@@ -860,8 +860,8 @@ c8f86bb2d71c18eed98b6872f86afcb5f8a3b4c020f2bf12657acf8a79366fb6  ./operations/r
 7434bbfd25550559df66c113dc70af8fbb12148317f4d720b2baec3be287ffe5  ./operations/runtime/verify-runtime.sh
 7013d5d46e37a68770abb246efa1f5db187ba9c7f5be7875dae7144c2495c0d6  ./operations/updates/README.md
 66a954df1cbb3fff546ea3ac3dc0887ba53e2f3f225a1ee0c3791948d4a7c3ee  ./operations/updates/verify-offline-update.py
-8d5d9415051031265c535ac7d0b5cefa996121201508b8527b47e82f42892ad6  ./package-lock.json
-9befd079ac408ed684d0d79977d6a01bea7aa2f12dfc7ae1a1d2f0c07c982cbd  ./package.json
+d1862e2cd226d9f0361dde15f29798e07ff135dbf812b3d09bd9e747ee7f1551  ./package-lock.json
+726edece521d754efe4ce9f2d331f73f6b372c119688e449dbe02a96b43d8c11  ./package.json
 0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0  ./packages/authority-containment/LICENSE
 57cbb7d5f866b17221f1842b9fddb0f007854457cc9ece9df6c3211393f307d7  ./packages/authority-containment/README.md
 5f4bf36c0ae0df648a8c89518e45ba7e7390ca099360826c40b9c3d688ab9a1c  ./packages/authority-containment/SPEC.md
@@ -6331,7 +6331,7 @@ d4dd091eca05aad1b69210196951ff0a7c8748da389066b10a0f02a0ca264fcc  ./services/ref
 11661f3c5a1bd3549f12a1e653680b9eb18a201ab6a9ea4f81b135f9e0d1f8ee  ./services/reference-control-plane/src/publisher-registry.mjs
 5499824834f51d8a38cb0bc77c11b185ff31943f8ab40a3afc107c3876b947ee  ./services/reference-control-plane/src/reasoning-router.mjs
 7c0a0f91e1f2f959ff48d9ccc6188d3dff167521d3b462a25630f7871360034c  ./services/reference-control-plane/src/reasoning.mjs
-41b08edaa99f96491c52cb6f3bf5859ac8c25518c2ffa1ff5e16eb79aad5ecaf  ./services/reference-control-plane/src/release-version.mjs
+6acac54d895f4d74e1a057c2732dbf43dcf83614ff68a44026a4907f8c8c7412  ./services/reference-control-plane/src/release-version.mjs
 d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/reference-control-plane/src/remote-target-fetch.mjs
 39808f513eb4ed769c9bbc85e29e9344fd55f34e4635655479a346d4b78216dc  ./services/reference-control-plane/src/remote-target-registry.mjs
 fbc6e01ac5dc9be0947788eaddcbcc131823948549f5eb365bdda82741b8cb07  ./services/reference-control-plane/src/repo-map.mjs

@@ -6,6 +6,106 @@ reproduce from the tree is a defect, the same rule `README.md` states for its nu
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-09-20
+
+A patch release. Every fix below was found by **running something** — a security audit of the
+installed product, and this repository's first real continuous integration — rather than by
+reading the code.
+
+If you installed `0.1.1`, nothing you created is affected. Three defects are product-facing: the
+chat named the wrong model, the Models page opened on an error about a path nobody chose, and two
+pieces of the interface rendered unstyled. The rest are defects a contributor would have hit and
+nobody here could see.
+
+### Security
+
+- **The secret scanner had been failing, and nothing in this repository ran it.**
+  `tools/run-secret-scan.sh` has existed since 2026-07-27 wired to nothing — not to
+  `scripts/test.sh`, not to `.githooks/pre-commit`, not to CI — so the eight findings it had been
+  reporting went unseen. All eight were investigated one at a time against an **unredacted**
+  report, and **none is a credential**: four are the value a capture wrote *instead of* a secret,
+  two are `Sec-WebSocket-Key` handshake nonces — which RFC 6455 has the client invent for every
+  connection and which authenticate nothing — one is a test fixture shaped like an API key at 24
+  characters where a real one is 51, and one is a four-byte PEM placeholder on a commit the
+  existing allowlist did not cover, being the sibling of the commit it did cover. Verified two
+  ways that do not depend on the scanner: OpenSSL refuses to decode the PEM
+  (`DECODER routines::unsupported`), and `git log --diff-filter=A` over the whole history shows
+  the only `.pem` ever added to this repository is a **public** key. `.gitleaks.toml` gained four
+  entries, one per cause, none scoped to a rule or to a whole file, so a real secret in any of
+  those same files is still caught. The scan is now a step of `scripts/test.sh` and of CI, which
+  is the part that matters: a check nobody runs is not a check.
+
+### Added
+
+- **Continuous integration over this repository's own code, for the first time.**
+  `.github/workflows/gates.yml` runs the unit suite, the manifest check, ESLint and the secret
+  scan on every push and every pull request. Until now the only workflow was scoped to a single
+  Rust crate, so a contributor's first pull request met almost no automated check. It found three
+  real defects on its first three runs — the last three entries below — each one a constant that
+  was true only on the machine this project is developed on.
+
+### Fixed
+
+- **The chat named the wrong model.** Asked which model was answering, the product named a model
+  that was not loaded, while the header, the Models page and Research all named the right one —
+  the one `llama.cpp`'s own `/v1/models` confirmed was serving every answer, including that one.
+  `installationSnapshotForChat()` built its answer from a stored profile that nothing kept in sync
+  with the model an operator later loads through the Models page. It now asks the same live
+  profile `ProviderGateway.route()` already used to decide who answers, so the two can no longer
+  disagree.
+- **A busy inference slot made authoring degrade where a moment's wait would not have.** On an
+  installation whose runtime has one slot, ATOM and a concurrent chat turn contend for it, and
+  losing that race raised `MODEL_UNAVAILABLE` almost instantly — an `EAGAIN`, not a timeout, and
+  indistinguishable from ATOM being down. `declaredFallbackGenerator()`, the single place every
+  authoring call degrades through, now retries once after a short delay before declaring the
+  degradation. A second failure still degrades and is still declared exactly as before: the rule
+  that nothing falls back in silence is untouched.
+- **On Windows the Models page opened on a raw `ENOENT` about `C:\models`.** The GGUF store
+  defaulted to `/models`, which is a mount point inside the container image and not a path that
+  exists anywhere else; no installer creates it and no one is told about it. The container still
+  gets `/models` where it really exists, so an existing installation is unaffected, and every
+  other platform now uses the models directory inside the workspace — the one the product already
+  creates. `NOESAR_MODEL_STORE` overrides both, as before.
+- **The product's Content-Security-Policy blocked two pieces of its own interface.**
+  `style-src 'self'` refuses a style attribute parsed from markup: the default-password banner's
+  link lost its colour, and — found while fixing that one, and recorded here for the first time —
+  every bar of the review-time sparkline had been rendering at the stylesheet's height instead of
+  its own. Both now set the property through the CSSOM, which the policy allows and which the
+  surrounding code already used. **The policy was not widened.** A new test forbids the whole
+  class rather than these two cases, and carries its own oracle so a check that matched nothing
+  could not pass it.
+- **Two tests failed for anyone who cloned this repository onto Debian or Ubuntu.** Two sshd
+  configurations hard-coded `Subsystem sftp /usr/libexec/sftp-server`, which is the path on the
+  distribution this project is developed on; Debian and Ubuntu keep it under `/usr/lib/openssh`.
+  Since OpenSSH 9, `scp` speaks SFTP, so that subsystem is what `scp` needs — which is why every
+  other test in the same files passed on the runner and only the two that move bytes failed. Both
+  now use `internal-sftp`, which is implemented inside sshd and has no path on any platform.
+- **The linter could not run outside this machine.** `tools/run-eslint.sh` resolved its cache
+  through two environment overrides to a final fallback that was an absolute path on the
+  development server, so with neither variable set it died on `mkdir` before reading a single
+  file. The hard-coded path is still used wherever it works; otherwise the cache now lands in the
+  system temporary directory.
+
+### Known limits
+
+Unchanged from `0.1.1` unless said otherwise.
+
+- **macOS has never been executed.** Still true, and still not claimed to work.
+- **`deployment/windows/Uninstall-Noesar.ps1` removes nothing.** Still true.
+- **Two medium findings are open**, `F4W-005` and `F4W-006`, recorded with their evidence in
+  `docs/OPEN_FINDINGS.tsv`. Still true.
+- **No gate runs the driven acceptance probes** in `tools/acceptance/`, recorded as `F-CE021-002`.
+  Still true, and narrowed rather than closed: the new workflow runs four gates that never ran on
+  a push, but the driven probes start real servers on real ports and are still started by hand.
+- **Continuous integration now covers the suite, the manifest, the linter and the secret scan**,
+  in addition to the Rust crate. It does **not** cover the twenty-odd other steps of
+  `scripts/test.sh`, which need a running product.
+- **Nine tools under `tools/` still carry this machine's absolute paths**, recorded as
+  `F-TOOL-001`. None is on the CI path, so none was measured, and whether each is a defect or a
+  deliberate reference to that server is not yet known.
+- **`docs/LICENSE_STRATEGY.md` is still marked a proposal.** `LICENSE` (AGPL-3.0) and the SPDX
+  header on every source file are what governs this release.
+
 ## [0.1.1] — 2026-09-18
 
 **A fresh installation of `0.1.0` answered 500 on its own home page.** If you installed `0.1.0`,
@@ -132,5 +232,6 @@ should be different.
   header on every source file are what governs this release; that document records an intended
   direction and has not been reviewed by counsel.
 
+[0.1.2]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.2
 [0.1.1]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.1
 [0.1.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.0
