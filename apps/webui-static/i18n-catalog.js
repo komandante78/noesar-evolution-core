@@ -1944,6 +1944,11 @@ const it = {
   'Chat is not answering from a local model': 'La chat non sta rispondendo con un modello locale',
   // D-0521 · l'autenticità del descrittore e l'importazione.
   'Import a model descriptor': 'Importa un descrittore di modello',
+  'Get a model from a link': 'Prendi un modello da un link',
+  'Paste the address of a HuggingFace repository. This reads what it publishes and the SHA-256 it declares for each file, before anything is downloaded. Nobody signs these documents: what is trusted is the publisher\'s own metadata and the connection that carried it, and that is written on every file it finds.': 'Incolla l\'indirizzo di un repository HuggingFace. Legge cosa pubblica e lo SHA-256 che dichiara per ogni file, prima che si scarichi qualunque cosa. Questi documenti non li firma nessuno: quello di cui ti fidi e la metadata del publisher stesso e la connessione che l\'ha portata, ed e scritto su ogni file che trova.',
+  'Repository': 'Repository',
+  'owner/name, or a huggingface.co address': 'proprietario/nome, oppure un indirizzo huggingface.co',
+  'See what it publishes': 'Guarda cosa pubblica',
   'Only a descriptor signed by a publisher registered on this installation is accepted. The digest every later guarantee rests on is a field of this document, so an unsigned one is refused rather than trusted.': 'È accettato solo un descrittore firmato da un pubblicatore registrato su questa installazione. L’impronta su cui poggia ogni garanzia successiva è un campo di questo documento, quindi uno non firmato è rifiutato invece che creduto.',
   'Paste a signed descriptor': 'Incolla un descrittore firmato',
   'Import this descriptor': 'Importa questo descrittore',

@@ -890,6 +890,23 @@
           <ul id="modelInstallableList" class="empty-state"></ul>
           <p class="hint" id="modelInstallOutput" hidden></p>
         </section>
+        <!-- D-0632. "Get a model" had two doors and both assumed you already had something: a file
+             already on the server, or a descriptor a registered publisher had signed. The way
+             people actually get weights - a repository address - had no door at all, and the one
+             route that came closest was folded inside a <details> named after the document format
+             rather than the task. This is that door, at the top level, named for what it does.
+             The SHA-256 is read from the publisher API and shown BEFORE anything is fetched, so
+             the number on screen is the number the download will be held to. -->
+        <section class="panel" id="modelFromLink">
+          <div class="panel-title"><h2>Get a model from a link</h2></div>
+          <p class="hint">Paste the address of a HuggingFace repository. This reads what it publishes and the SHA-256 it declares for each file, before anything is downloaded. Nobody signs these documents: what is trusted is the publisher's own metadata and the connection that carried it, and that is written on every file it finds.</p>
+          <div class="inline-form">
+            <label>Repository<input id="modelHfRepo" placeholder="owner/name, or a huggingface.co address"></label>
+            <button id="modelHfInspect" type="button">See what it publishes</button>
+          </div>
+          <div id="modelHfFiles" class="empty-state"></div>
+          <p class="hint" id="modelHfStatus" role="status"></p>
+        </section>
         <section class="panel" id="modelCatalogPanel">
           <div class="panel-title"><h2>Catalogue</h2>
             <!-- §4#2, OWNER_REVIEW_2026-08-21: «manca un'icona informativa ("i") con spiegazione

@@ -337,15 +337,15 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-70fa6b2236ccc43935d1cde10b43b7196d82d393065044b74b9f48e4a6ee3e24  ./apps/webui-static/app.js
+8504ae30366b6c6d68ae0b662be367a95feac8d9fdde410decef589fb60e37b0  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
 59c59c4db829299ca839c54ed714328f588afccd0014996b5abae07a1c11a49d  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-0cc9ac53fb3f3e848d5913781bbc0cfe1f91f8adc4b3791e258065a8821d4cf2  ./apps/webui-static/i18n-catalog.js
+9bfb92e8329497f7c93a2f5f79a83d221ea894abb04b4a4d930e99c57b1bed10  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
-888a02c54ba061fc5c5b6220c4feeb0df98e92bf08319a6360b45af9b3c32b7f  ./apps/webui-static/index.html
+53d6bec256730c6f82004537992190bf63dfd1b1fa8cc5c7d0666c00b44411d2  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
@@ -6300,6 +6300,7 @@ c7dd219eb63e4fb58c3b8cd099d5a7f084f621de4ce76521c0e6f68b6cfeb9ab  ./services/ref
 db6ad641629911060cb3b9d44b4f49978ee89322c9cd35342f65c8a640986499  ./services/reference-control-plane/src/hardware.mjs
 c92e8d917acbf8796901028a7280e6de212c1ec2afc5ba38dd51c1c9ba403691  ./services/reference-control-plane/src/home-overview.mjs
 3e3e9c63c947f3dc5d62135d664ae54fd096f2f071c60ce6c3395976016a6547  ./services/reference-control-plane/src/http-security.mjs
+5afe1f02e79d8ad6d0e627b5a37e3008bde1d1ae9210ea88447c5c0f618613dc  ./services/reference-control-plane/src/huggingface-descriptor.mjs
 de9462d2d8b3f7a4e053d2a8f907c10e53c5564d78c8c6af5fe89a544d01cc9d  ./services/reference-control-plane/src/isolation.mjs
 5e6d04c568d4da11d8c301de1bf24f739bd1bef9ddb22cbf1f8782afa2550e42  ./services/reference-control-plane/src/local-model-runtime.mjs
 0c6103875935810eb716231d5031a9d1bf495f857b44b46497ad9c5c2c260cf2  ./services/reference-control-plane/src/logging.mjs
@@ -6346,7 +6347,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-6bc1be19269f0dc52e16f016401a44a6c1e00506cf2f8fc22d8b783149485b7b  ./services/reference-control-plane/src/server.mjs
+35e5a11ba9c994ce1aaecc3a71d2bdea2968aaa4ddfa9e01c3efef828776930e  ./services/reference-control-plane/src/server.mjs
 fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6480,6 +6481,7 @@ cdff89dcde41e28c931afb3029d31154b2fc20931a2b0155797dcf77ab7d58fb  ./services/ref
 c662f8af3924621e343139e6ca802f0fc109f1af94bc45a3f8980634efa42a45  ./services/reference-control-plane/test/hardware.test.mjs
 30203d72e67ce6ac73c71ce3aaae99449e5d0c8150c31b03079dfd91576fae05  ./services/reference-control-plane/test/home-overview.test.mjs
 9111e210f12048e507a26fed9f1136ee33a488e8dfa2ba28d09344242d18d36e  ./services/reference-control-plane/test/http-security.test.mjs
+80e7a1fdfd6446136628bcc4ff39ae0cd10a113d33d8670737e8ca4b649a3469  ./services/reference-control-plane/test/huggingface-descriptor.test.mjs
 bab20e90e687dd7bd16b3dc91b53648e06c7c0f450fd4f3af0bdd0eea66c0791  ./services/reference-control-plane/test/isolation.test.mjs
 446f6b2e6821eb398489afb64ef142d44acde494969b0105ad30dcf5a7d71145  ./services/reference-control-plane/test/lan-exposure.test.mjs
 ed93607cb2f6eeb8458e207c7f8ffa92d3e85eab8fdd859bf1dea1dbd6b2f36a  ./services/reference-control-plane/test/launcher-portability.test.mjs

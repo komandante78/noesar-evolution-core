@@ -27,6 +27,7 @@ import { verifyModelDescriptor, authenticitySummary } from './model-descriptor-a
 // rules live in the module with their own tests, never in the route.
 import { previewRemoval, removeModel } from './model-removal.mjs';
 import { fetchDocument, checkSource as checkTransportSource } from './model-transport.mjs';
+import { buildDescriptorFromHuggingFace, huggingFaceApiUrls, listArtefacts } from './huggingface-descriptor.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDetail } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
@@ -2586,6 +2587,93 @@ const requestListener = async (req, res) => {
         details: { id: candidate.id, publisher: authenticity.signedBy, fingerprint: authenticity.fingerprint, source: fetchedFrom },
       });
       return json(res, 201, { id: candidate.id, authenticity, source: fetchedFrom });
+    }
+
+    // D-0632. The third door, and the one an operator actually walks through. `descriptors/import`
+    // needs a document a registered publisher signed, and nobody signs NOESAR descriptors for the
+    // weights people want, so the only ways to get a current model onto a machine were a shell or
+    // signing somebody else's weights ourselves. This is neither: HuggingFace publishes the
+    // SHA-256 of every LFS object in its own API, so the digest is read BEFORE any byte moves and
+    // the download is held to it exactly as a signed one would be. What differs is who promised —
+    // said out loud in `provenance`, never papered over with a fabricated signature.
+    //
+    // Two routes and not one. Looking at what a repository carries writes nothing and answers a
+    // different question from taking a file; folding both into one POST would be a route whose
+    // meaning depends on which fields you sent.
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/huggingface/inspect') {
+      const authenticated = requireSession(req, res, 'model.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const repository = String(request?.repository ?? '').trim();
+      const probe = buildDescriptorFromHuggingFace({ repository, file: '', info: {}, tree: [] });
+      // The name is checked before the network, because a malformed name is not worth a packet.
+      if (!probe.ok && probe.kind === 'HF_REPO_INVALID') return json(res, 422, { error: probe.reason, kind: probe.kind });
+      if (!modelEgressConsented()) {
+        return json(res, 403, { error: 'reading what a repository carries reaches that publisher, and this installation has not been given consent for it', kind: 'EGRESS_NOT_CONSENTED' });
+      }
+      const urls = huggingFaceApiUrls(repository);
+      const tree = await fetchDocument({ source: urls.tree, fetchImpl: (...args) => fetch(...args) });
+      if (!tree.ok) return json(res, 502, { error: tree.reason, kind: tree.kind });
+      let parsed;
+      try { parsed = JSON.parse(tree.text); } catch {
+        return json(res, 502, { error: 'that repository did not answer with JSON', kind: 'NOT_JSON' });
+      }
+      // Every file is reported, including the ones that cannot be acquired: a list that silently
+      // drops what it refuses teaches that the refusal never happened.
+      const files = listArtefacts(parsed).map((entry) => ({
+        path: entry.path,
+        sizeBytes: entry.sizeBytes,
+        acquirable: Boolean(entry.sha256),
+        reason: entry.sha256 ? null : 'the publisher declares no SHA-256 for this file',
+      }));
+      return json(res, 200, { repository, files, source: urls.tree });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/huggingface/import') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const repository = String(request?.repository ?? '').trim();
+      const file = String(request?.file ?? '').trim();
+      if (!modelEgressConsented()) {
+        return json(res, 403, { error: 'fetching a descriptor is egress, and this installation has not been given consent for it', kind: 'EGRESS_NOT_CONSENTED' });
+      }
+      const urls = huggingFaceApiUrls(repository);
+      const [infoDoc, treeDoc] = await Promise.all([
+        fetchDocument({ source: urls.info, fetchImpl: (...args) => fetch(...args) }),
+        fetchDocument({ source: urls.tree, fetchImpl: (...args) => fetch(...args) }),
+      ]);
+      for (const fetched of [infoDoc, treeDoc]) {
+        if (!fetched.ok) return json(res, 502, { error: fetched.reason, kind: fetched.kind });
+      }
+      let info; let tree;
+      try { info = JSON.parse(infoDoc.text); tree = JSON.parse(treeDoc.text); } catch {
+        return json(res, 502, { error: 'that repository did not answer with JSON', kind: 'NOT_JSON' });
+      }
+      const built = buildDescriptorFromHuggingFace({ repository, file, info, tree });
+      if (!built.ok) {
+        ledger.append({
+          actor: authenticated.user.id, action: 'model.huggingface-import', result: 'refused',
+          details: { repository, file, kind: built.kind },
+        });
+        return json(res, 422, { error: built.reason, kind: built.kind });
+      }
+      const descriptor = built.descriptor;
+      let name;
+      try { name = artefactName(descriptor.id); } catch (error) { return json(res, 422, { error: error.message, kind: 'INVALID_MODEL_ID' }); }
+      const target = join(MODEL_CATALOG_DIR, `${name}.json`);
+      // Rule 13, the same as the signed door: a descriptor already reviewed is not replaced by
+      // implication, and a publisher re-cutting a file is a deliberate act with its own gesture.
+      if (existsSync(target)) return json(res, 409, { error: 'a descriptor with that id is already on this installation; it is not replaced by an import', kind: 'ALREADY_PRESENT' });
+      mkdirSync(MODEL_CATALOG_DIR, { recursive: true, mode: 0o700 });
+      writeFileSync(target, JSON.stringify(descriptor), { mode: 0o600 });
+      // A distinct action name, so the register can answer "which models did nobody sign for?"
+      // without parsing a descriptor back out of the disk.
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.huggingface-import', result: 'success',
+        details: { id: descriptor.id, repository, file, sha256: descriptor.hashes.sha256, signed: false, digestFrom: descriptor.provenance.digestFrom },
+      });
+      return json(res, 201, { id: descriptor.id, signed: false, provenance: descriptor.provenance, hashes: descriptor.hashes });
     }
     // The three routes that make a long job usable: what is happening, what happened, and stop.
     // `model.read` to watch and `model.manage` to interrupt — watching a download is not the

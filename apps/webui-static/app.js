@@ -6183,6 +6183,72 @@ function wireModelCatalogue(){
     try{parsed=JSON.parse(raw);}catch{return toast(t('That is not valid JSON.'),{kind:'error'});}
     importDescriptor({descriptor:parsed});
   });
+
+/**
+ * D-0632. A repository address, and what it publishes.
+ *
+ * Every file is listed, including the ones that cannot be taken: a list that quietly drops what
+ * it refuses teaches that the refusal never happened. The digest is shown before the button that
+ * would use it, because it is the whole promise - the download is held to exactly that number.
+ */
+function huggingFaceRepository(raw){
+  const text=String(raw??'').trim();
+  if(!text)return '';
+  // A person pastes the page they were looking at, not an owner/name pair. Accept both.
+  const match=text.match(/huggingface\.co\/([^/\s?#]+\/[^/\s?#]+)/i);
+  return match?match[1]:text.replace(/^\/+|\/+$/g,'');
+}
+function renderHuggingFaceFiles(repository,files){
+  const host=$('#modelHfFiles');
+  if(!host)return;
+  if(!files.length){
+    host.innerHTML=`<p class="hint">${escapeHtml(t('That repository publishes no GGUF file on its main branch.'))}</p>`;
+    return;
+  }
+  host.innerHTML=files.map((file)=>{
+    const size=file.sizeBytes?`${(file.sizeBytes/(1024**3)).toFixed(2)} GiB`:t('size not declared');
+    if(!file.acquirable){
+      return `<div class="model-hf-file"><strong>${escapeHtml(file.path)}</strong> — ${escapeHtml(size)}
+        <span class="badge badge-off">${escapeHtml(t('no SHA-256 declared'))}</span>
+        <span class="hint">${escapeHtml(t('Without a digest from the publisher there is nothing to hold the download to, so this one is not offered.'))}</span></div>`;
+    }
+    return `<div class="model-hf-file"><strong>${escapeHtml(file.path)}</strong> — ${escapeHtml(size)}
+      <button type="button" data-hf-take="${escapeHtml(file.path)}" data-hf-repo="${escapeHtml(repository)}">${escapeHtml(t('Add this one'))}</button></div>`;
+  }).join('');
+}
+async function inspectHuggingFace(){
+  const repository=huggingFaceRepository($('#modelHfRepo')?.value);
+  const status=$('#modelHfStatus');
+  if(!repository){if(status)status.textContent=t('Give a repository as owner/name.');return;}
+  if(status)status.textContent=t('Reading what that repository publishes…');
+  try{
+    const result=await api('/api/v1/models/huggingface/inspect',{method:'POST',body:JSON.stringify({repository})});
+    renderHuggingFaceFiles(result.repository,result.files??[]);
+    if(status)status.textContent=t('Read from')+' '+result.source;
+  }catch(error){
+    if(status)status.textContent=error?.message??String(error);
+    const host=$('#modelHfFiles');if(host)host.innerHTML='';
+  }
+}
+async function takeHuggingFaceFile(repository,file){
+  const status=$('#modelHfStatus');
+  if(status)status.textContent=t('Reading the digest the publisher declares…');
+  try{
+    const result=await api('/api/v1/models/huggingface/import',{method:'POST',body:JSON.stringify({repository,file})});
+    toast(`${t('Added, and held to the digest its publisher declares')}: ${result.hashes?.sha256?.slice(0,16)}…`,{kind:'info'});
+    if(status)status.textContent=t('It is in the catalogue now. Acquire downloads it, and the download is refused if the bytes do not match.');
+    await loadModelCatalogue();
+  }catch(error){
+    if(status)status.textContent=error?.message??String(error);
+  }
+}
+  $('#modelHfInspect')?.addEventListener('click',()=>{inspectHuggingFace();});
+  $('#modelHfRepo')?.addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();inspectHuggingFace();}});
+  // Delegated: the rows are rebuilt on every look, so a listener per button would leak one per row.
+  $('#modelHfFiles')?.addEventListener('click',(event)=>{
+    const button=event.target.closest('[data-hf-take]');
+    if(button)takeHuggingFaceFile(button.dataset.hfRepo,button.dataset.hfTake);
+  });
   $('#modelDescriptorFetch')?.addEventListener('click',()=>{
     const source=$('#modelDescriptorUrl')?.value?.trim();
     if(!source)return toast(t('Give the address to fetch it from.'),{kind:'error'});
