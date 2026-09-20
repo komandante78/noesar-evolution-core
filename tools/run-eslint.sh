@@ -22,7 +22,16 @@ ESLINT_VERSION="${NOESAR_ESLINT_VERSION:-9.39.5}"
 NODE_IMAGE="${NOESAR_LINT_IMAGE:-node:22-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3}"
 
 PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-CACHE_ROOT="${NOESAR_LINT_CACHE:-${ARTIFACT_ROOT:-/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS}/lint}"
+# The default is this development machine's artifact pool, and it was the LAST link in the
+# chain, so on any other machine -- a contributor's clone, a CI runner -- the linter died on
+# mkdir before it had looked at a single file. Measured 2026-09-20 on a GitHub runner:
+# "mkdir: cannot create directory '/mnt/cachec': Permission denied". The two overrides above it
+# already existed; what was missing was a floor under them that exists everywhere.
+DEFAULT_ARTIFACT_ROOT=/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS
+if [ ! -d "$DEFAULT_ARTIFACT_ROOT" ] && ! mkdir -p "$DEFAULT_ARTIFACT_ROOT" 2>/dev/null; then
+  DEFAULT_ARTIFACT_ROOT="${TMPDIR:-/tmp}/noesar-evolution-artifacts"
+fi
+CACHE_ROOT="${NOESAR_LINT_CACHE:-${ARTIFACT_ROOT:-$DEFAULT_ARTIFACT_ROOT}/lint}"
 JSON_OUT=""
 
 while [ $# -gt 0 ]; do
