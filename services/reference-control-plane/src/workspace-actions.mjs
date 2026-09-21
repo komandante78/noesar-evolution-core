@@ -66,7 +66,7 @@ import { profileChange as defaultProfileChange, DivergenceUnavailable } from './
 import { ReasoningRouter, routingFrom, degradationSummary, degradationFrequency } from './reasoning-router.mjs';
 import { ReasoningUnavailable } from './atom-client.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
-import { ShadowWorkspace, contained } from './shadow.mjs';
+import { ShadowWorkspace, ShadowError, contained } from './shadow.mjs';
 import { execute } from './executor.mjs';
 import { verifyClaims, projectionCoverage } from './verification.mjs';
 import { assembleSessionProof } from './session-proof.mjs';
@@ -117,6 +117,18 @@ export class WorkspaceActionError extends Error {
   }
 }
 const refuse = (kind, reason) => { throw new WorkspaceActionError(kind, reason); };
+
+// A shadow the engine refuses to build — too large, not contained — is an answer the caller can
+// act on, and every route here reports WorkspaceActionError as a 422 with its reason. Thrown as a
+// ShadowError it reached the operator as "Internal request failure" (measured 2026-09-21).
+function shadowOf(workspaceRoot, shadowRoot) {
+  try {
+    return ShadowWorkspace.ofWorkspace(workspaceRoot, shadowRoot);
+  } catch (error) {
+    if (error instanceof ShadowError) refuse(`SHADOW_${error.kind}`, error.reason);
+    throw error;
+  }
+}
 
 /// Every field a shell may put on a plan. A key outside this list is REFUSED, not dropped.
 ///
@@ -1477,7 +1489,7 @@ export class WorkspaceActionOrchestrator {
 
     const provider = this.#reasoningFor();
     const shadowRoot = join(this.#shadowsRoot, `${runId}-simulate`);
-    const shadow = ShadowWorkspace.ofWorkspace(this.#workspaceRoot, shadowRoot);
+    const shadow = shadowOf(this.#workspaceRoot, shadowRoot);
     try {
       let outcome;
       try {
@@ -1589,7 +1601,7 @@ export class WorkspaceActionOrchestrator {
     // Any shadow left by a previous measurement of this run goes first: two whole-workspace
     // copies of one run under one root is scratch space nobody is accounting for.
     this.#dropShadow(runId);
-    const shadow = ShadowWorkspace.ofWorkspace(this.#workspaceRoot, join(this.#shadowsRoot, runId));
+    const shadow = shadowOf(this.#workspaceRoot, join(this.#shadowsRoot, runId));
     let kept = false;
     try {
       const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: run.authoredContents?.get(file.path) ?? file.contents }));

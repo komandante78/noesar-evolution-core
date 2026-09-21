@@ -21,6 +21,7 @@ import {
   readFileSync, readlinkSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync,
 } from 'node:fs';
 import { dirname, isAbsolute, join, normalize, relative as relativeTo, resolve, sep } from 'node:path';
+import { resolveExclusions, isEngineStatePath } from './repo-map.mjs';
 
 /** Only the paths a plan names are copied. Kept for callers that want a narrow shadow. */
 export const SHADOW_STRATEGY = 'TARGETED_COPY';
@@ -152,7 +153,18 @@ function cloneFileOnce(from, to, useReflink) {
 // EXCLUDED AND COUNTED rather than silently passed over: the live workspace holds PostgreSQL
 // sockets, so refusing outright would make the whole mechanism unusable on the real
 // installation, and skipping in silence would overstate what the shadow covers.
+//
+// The product's own state is not copied either (measured 2026-09-21): the workspace a run acts on
+// is also where the engine keeps its database, its audit chain, its credentials and the model
+// artefacts, and one downloaded 9 GB model put it over `maxBytes` — every measure() became a 500
+// and CodeN could no longer try anything. It is the list the repository map already keeps
+// (`ENGINE_STATE_PATHS`), applied with the same rule, so the two cannot disagree. Nothing becomes
+// less observable by it: `observe()` walks the whole shadow, so a run that writes into one of
+// these paths is still seen — as a file it CREATED, which no plan declares.
+const ENGINE_STATE_WHY = 'engine state — not copied; anything the run writes there is observed as created';
+
 function walkSource(sourceRoot, limits) {
+  const engineState = resolveExclusions(sourceRoot);
   const files = [];
   const directories = [];
   const links = [];
@@ -171,6 +183,10 @@ function walkSource(sourceRoot, limits) {
     for (const entry of entries) {
       const absolute = join(current, entry.name);
       const rel = relativeTo(sourceRoot, absolute);
+      if (isEngineStatePath(absolute, engineState)) {
+        excluded.push({ path:rel, why:ENGINE_STATE_WHY });
+        continue;
+      }
       if (entry.isDirectory()) {
         directories.push(rel);
         stack.push(absolute);
@@ -302,7 +318,10 @@ export class ShadowWorkspace {
       symlinkSync(readlinkSync(join(source, rel)), to);
       this.#baseline.set(rel, digestOfLink(to));
     }
-    if (this.#baseline.size === 0) {
+    // Empty because everything in it was the engine's own state is a real, empty project area —
+    // a first file is legitimately created into it, and `observe()` sees it. Empty because there
+    // was nothing at all is still the shadow of nothing it always was.
+    if (this.#baseline.size === 0 && !found.excluded.some((entry) => entry.why === ENGINE_STATE_WHY)) {
       throw new ShadowError('INVALID', 'a shadow of nothing can neither be executed nor observed');
     }
   }

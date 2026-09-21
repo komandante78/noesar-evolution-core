@@ -228,6 +228,19 @@ export function resolveExclusions(rootDir, paths = []) {
 }
 
 /**
+ * Whether an absolute path is engine state, or a COPY of an engine-state file
+ * (`state/auth.json.bak_…`) — the rule `walk()` below explains. Exported because the shadow
+ * copy needs exactly the same answer: two lists of what belongs to the engine would drift.
+ */
+export function isEngineStatePath(full, excludedPaths) {
+  if (excludedPaths.has(full)) return true;
+  for (const excluded of excludedPaths) {
+    if (basename(excluded).includes('.') && full.startsWith(`${excluded}.`)) return true;
+  }
+  return false;
+}
+
+/**
  * Walks the tree once, breadth of files only -- no content is read here. Symlinked
  * directories are listed but never entered: following one could walk outside `rootDir`
  * silently, which is exactly the escape path-auth.mjs already refuses for writes and this
@@ -251,7 +264,6 @@ function walk(rootDir, maxFiles, excludedPaths = EMPTY_EXCLUSIONS) {
   // worse failure, which is the standing choice `DELIBERATELY_SCANNED_PATHS` already records.
   // ponytail: a copied DIRECTORY (`config.bak/`) is therefore still walked. Excluding those by
   // prefix costs that same false positive; revisit when one actually appears.
-  const fileExclusions = [...excludedPaths].filter((path) => basename(path).includes('.'));
   while (stack.length && !truncated) {
     const dir = stack.pop();
     let entries;
@@ -263,8 +275,7 @@ function walk(rootDir, maxFiles, excludedPaths = EMPTY_EXCLUSIONS) {
       // which is right for `node_modules` and wrong for the product's own state: an operator's
       // repository is allowed to contain a directory called `state`, and hiding it by name
       // would be this scanner deciding part of their source tree belongs to us.
-      if (excludedPaths.has(full)
-        || fileExclusions.some((excluded) => full.startsWith(`${excluded}.`))) continue;
+      if (isEngineStatePath(full, excludedPaths)) continue;
       if (entry.isDirectory()) {
         if (IGNORED_DIRS.has(entry.name)) continue;
         stack.push(full);

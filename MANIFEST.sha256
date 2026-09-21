@@ -6338,7 +6338,7 @@ d4dd091eca05aad1b69210196951ff0a7c8748da389066b10a0f02a0ca264fcc  ./services/ref
 6acac54d895f4d74e1a057c2732dbf43dcf83614ff68a44026a4907f8c8c7412  ./services/reference-control-plane/src/release-version.mjs
 d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/reference-control-plane/src/remote-target-fetch.mjs
 39808f513eb4ed769c9bbc85e29e9344fd55f34e4635655479a346d4b78216dc  ./services/reference-control-plane/src/remote-target-registry.mjs
-fbc6e01ac5dc9be0947788eaddcbcc131823948549f5eb365bdda82741b8cb07  ./services/reference-control-plane/src/repo-map.mjs
+b15660c6ce2fa40e70cb61aed809c12a7bc4d92de4d8fb62ae2d0a4e0cd4d84e  ./services/reference-control-plane/src/repo-map.mjs
 e66b09f3218dc5cf6c0a48afb9a955348ed150c1f02d8e66dcf6c7ae4cee8063  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
@@ -6355,7 +6355,7 @@ fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/ref
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
-ee67ad4850eb08494f8053ae971559c05c300c0b223f4c6b5e9244b56f9c9b66  ./services/reference-control-plane/src/shadow.mjs
+4056d381fcdda7b91defa29c4ca8fa87fec8b703f6286aedd1a361e94216ffc1  ./services/reference-control-plane/src/shadow.mjs
 9eb1f8732606cf2ad1ce49a783a70e4dfb93debfb8efe4938e151c91966731e2  ./services/reference-control-plane/src/skill-catalog.mjs
 0959d1554ed9798117accbcf1bd04a4c8c62c7df8c7d006c0ec345224dd6ff58  ./services/reference-control-plane/src/store.mjs
 0067fbae34832e7a5564d035d54256d1e277f64aa55ee0ed97191e54926bf53d  ./services/reference-control-plane/src/technology-radar.mjs
@@ -6370,7 +6370,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 372e40a6fc034cc4f7d376f668de00c6aa169d07078f1f1d85d7236f60667d44  ./services/reference-control-plane/src/watchdog.mjs
 6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  ./services/reference-control-plane/src/webauthn.mjs
 0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  ./services/reference-control-plane/src/websocket.mjs
-713b94cd09463f2059e6beee55e6794221bb9dca725cf6e1ef19ae5dd191992c  ./services/reference-control-plane/src/workspace-actions.mjs
+1e4005df2c8afa9ef1956d577c7e0afcda57436a9ffb626163344d52be7c6a25  ./services/reference-control-plane/src/workspace-actions.mjs
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs
@@ -6565,6 +6565,7 @@ e46cef2a310f9e9a5ee681f01b3481f4bd5233f2ec35e4b17b29c5f083961724  ./services/ref
 613d393da29912b743d2eca80d4fbcb3de676cfac88eefe49be3d2d915cd210f  ./services/reference-control-plane/test/session-protocol.test.mjs
 1bf914819be6aa38736014e6df0e6788b6c06ed4c444bc988e2bb25bb8a1b275  ./services/reference-control-plane/test/session-replay.test.mjs
 f41afa9babed25b3f3aa4044045de32a5eb7e1bff6c31df59d730752552ea357  ./services/reference-control-plane/test/setup-token.test.mjs
+a94498398b99c07685c7490fb5a5f169d640064f3e3022517aa931cbfa1a1288  ./services/reference-control-plane/test/shadow-engine-state.test.mjs
 dc19903ed6316e93911f15865f4a6a1e2c5a3ea28c859309c75b88891f7126b5  ./services/reference-control-plane/test/shadow-vectors.test.mjs
 8bc07e0c8a7700eb7e4a657f261164a3edfdbc7edd010961b7c32167b6b3dd2d  ./services/reference-control-plane/test/shared-static-serving.test.mjs
 6f42f0c43cc8ee471a17f89d6895ffce8ce17b33b88482e4ee6056a605aee79e  ./services/reference-control-plane/test/skill-catalog.test.mjs
