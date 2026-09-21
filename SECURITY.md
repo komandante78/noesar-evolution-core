@@ -2,8 +2,10 @@
 
 ## Reporting a vulnerability
 
-Email **barciale1978@gmail.com**. Please do not open a public issue for a vulnerability that
-is not yet fixed. Reports are answered by the author.
+Report it **privately** through GitHub: open the **Security** tab of this repository and choose
+**Report a vulnerability** ([direct link](https://github.com/komandante78/noesar-evolution-core/security/advisories/new)).
+Please do not open a public issue for a vulnerability that is not yet fixed. Reports are answered
+by the author.
 
 Authority additions:
 
