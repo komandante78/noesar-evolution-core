@@ -6269,6 +6269,7 @@ a57e5965e74d70508adbb034748338c70d0330f5ab251923003e108c8157ae56  ./services/ref
 27047e2bd35db0100a21aa05b2578d50b71fb8f47a6d5caf6eaa9ab5819a146a  ./services/reference-control-plane/src/api-target-probe.mjs
 714d3f1ce4ea46e6de6c5c5c3d5aa6408b9d55b648f2e2b2816c3b0796e5e515  ./services/reference-control-plane/src/api-target-registry.mjs
 c5f9e279a16c40fe287cafe17393256dbe7a2eeac9ffd809167ebb2a56accc44  ./services/reference-control-plane/src/approval-queue.mjs
+cfef300fa248b8da73a1d542475792301777f63fc8b47c016aeef4a8b240e51f  ./services/reference-control-plane/src/artefact-digest.mjs
 e852eaac1ded4855f36cb24528475bc858a3d2cc74865ae2ef4a1c39a7a42161  ./services/reference-control-plane/src/atom-client.mjs
 be05625dc43694b55cb3d8d52e9eaf901380bee54a65ba88ad473962f9194e56  ./services/reference-control-plane/src/audit.mjs
 cd1b093d32bf114bb8cb223ffe9824d6f37aec04ae2823f049a5dd7f8c6a217a  ./services/reference-control-plane/src/auth-crypto.mjs
@@ -6347,7 +6348,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 bf5afde858553bda2e61cb8b7f06600a71aa175493295c319112f9fbf9bcfc8d  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-35e5a11ba9c994ce1aaecc3a71d2bdea2968aaa4ddfa9e01c3efef828776930e  ./services/reference-control-plane/src/server.mjs
+c78a348fee21be014286efae41fe63bac2bc9fecbe465dcb5d69262431170522  ./services/reference-control-plane/src/server.mjs
 fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
 26b9aed4c0d834869cfd1c22c59ecc2a162a0dd53c6bc9faf45c5adc5b36a087  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6387,6 +6388,7 @@ b788e43a4553068fc9db158e03e61a918368fada7b2af54137201e79ca100c41  ./services/ref
 fc1fb90903479d51017717de91437cc9bb72852caa64059284e3dce047b3b203  ./services/reference-control-plane/test/api-target-probe.test.mjs
 894f5d2fcba3afb0d71cd2ceaf0574d5ce42675b241da182acb6fff066b03945  ./services/reference-control-plane/test/api-target-registry.test.mjs
 cbcff58008da1946bf799829fcf177d48f1458edc57ffb192e259a963db3d491  ./services/reference-control-plane/test/approval-queue.test.mjs
+9eae6a090fee40f091cfa80d9e91ab49b29461ed3635299acd617f821e6d56c5  ./services/reference-control-plane/test/artefact-digest.test.mjs
 b3b79a84b7a531c4a48329d081ed8bb0d7f79475d5d4373b3b7ed5a2c8e64fad  ./services/reference-control-plane/test/assistant-identity.test.mjs
 754f62d79cace41d229bc44cb15a1fb59ff5eb205029037bfc4c4ee45a3d62ca  ./services/reference-control-plane/test/atom-fallback-declared.test.mjs
 429425961dccd0ef458049902cb7ca7702c21e873e49d8654c3620c95016eadc  ./services/reference-control-plane/test/attach-code.test.mjs
