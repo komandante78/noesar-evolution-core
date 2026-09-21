@@ -95,8 +95,12 @@ released as FOSS is, by definition, outside that scope. See
    `SPDX-License-Identifier: AGPL-3.0-or-later`); this closes the root `LICENSE`/`NOTICE`
    half of item 7 too.
 2. Contribution mechanism enabling dual licensing (CLA / DCO / assignment). **Still open.**
+   Since 2026-09-21 `CONTRIBUTING.md` says so and does not merge code for the core until it is
+   settled; it previously promised there would never be a contributor agreement (`D-0709`).
 3. Full dependency license audit — compatibility of every transitive dependency
-   with AGPL distribution. **Still open.**
+   with AGPL distribution. **Still open.** The repository side was re-measured on 2026-09-21
+   (`docs/DUAL_LICENSE_READINESS.md` §7): no copyleft-only dependency, one expression to decide
+   (`Unicode-3.0`). The image's OS packages and anything used only at runtime were not.
 4. Third-party asset and model licensing, where any are bundled. **Still open.**
 5. Trademark and naming policy for "NOESAR" and "ATOM". **Still open.**
 6. Commercial license terms, scope, and exception language. **Still open — the `NOTICE`

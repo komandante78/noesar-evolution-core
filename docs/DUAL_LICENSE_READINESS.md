@@ -122,3 +122,44 @@ is therefore evidence-backed. Criteria 5–11 are untouched.
 The repair added `rust/vendor/cc-1.3.0/src/target/*.rs` — official upstream MIT OR
 Apache-2.0 material, already covered by the existing `cc-1.3.0` inventory row; it adds
 no new licence obligation.
+
+---
+
+## 7. Re-measured 2026-09-21 (at `e611cf2a`)
+
+Sections 1–6 are left as written: they record what was true when they were written. This section
+records what is true now. Every figure below is reproducible from the repository root with the
+command beside it.
+
+| # | Criterion | 2026-07-25 | 2026-09-21 | Reproduce |
+|---|---|---|---|---|
+| 1 | No copyleft-only dependency | PASS | **PASS** — one expression needs a decision, see below | `grep -h '^license = ' rust/vendor/*/Cargo.toml \| sort \| uniq -c` |
+| 2 | Dependency licences enumerated | PASS | **PASS** — 113 vendored crates, 113 rows in `LICENSE_INVENTORY.tsv`; the non-crate rows were stale and are rewritten (`D-0709`) | `ls rust/vendor \| wc -l` |
+| 5 | Root `LICENSE` | FAIL | **PASS** since `D-0453` | `head -2 LICENSE` |
+| 6 | First-party components declare a licence | FAIL | **PASS** — 20/20 crates, 5/5 Node packages, the Python SDK | `git ls-files 'rust/crates/*/Cargo.toml' \| wc -l` |
+| 7 | SPDX headers on first-party sources | PARTIAL (113/86) | **PARTIAL — 564 with, 98 without**, of 662. Not comparable with July: the definition below is wider | see below |
+| 8 | Contribution mechanism | NOT STARTED | **NOT DECIDED** — and until it is, code is not merged (`CONTRIBUTING.md`, `D-0709`) | — |
+| 9 | Commercial licence text | NOT STARTED | **NOT DRAFTED** | `NOTICE` |
+| 10 | Verbatim third-party notices | NOT STARTED | **DRAFT** — and it omits `@xterm/xterm` (MIT, vendored in `apps/webui-static/vendor/xterm`) | `grep -ci xterm docs/THIRD_PARTY_NOTICES_DRAFT.md` |
+| 11 | Trademark policy | NOT STARTED | **NOT STARTED** — the name is not registered | — |
+
+SPDX count — source files are `mjs js cjs ts rs py sh ps1`, excluding vendored and historical trees:
+
+```sh
+git ls-files | grep -E '\.(mjs|js|cjs|ts|rs|py|sh|ps1)$' \
+  | grep -vE '^(rust/vendor|apps/webui-static/vendor|evidence/history|provenance)/|/node_modules/' \
+  | while read f; do head -6 "$f" | grep -q 'SPDX-License-Identifier:' && echo with || echo without; done \
+  | sort | uniq -c
+```
+
+**The one vendored expression outside the policy:** `unicode-ident-1.0.24` declares
+`(MIT OR Apache-2.0) AND Unicode-3.0`. `Unicode-3.0` is not in
+`capabilities/security/license-policy.json`, whose default is `deny`. It is **not** a copyleft
+licence, so criterion 1 holds; whether to add it to the policy is a decision for the rights holder,
+not an edit made here. Eight further crates offer a branch outside the policy (`Unlicense`,
+`LGPL-2.1-or-later`, `BSL-1.0`, `Apache-2.0 WITH LLVM-exception`) and an approved one beside it;
+the branch taken must be recorded in the verbatim notices (item 7 of §5).
+
+**Not re-measured:** the OS packages of the image (`docs/SBOM_STATUS.md`), models and
+programs used at runtime but not in this repository, and ATOM. The verdict stays **NOT READY, no
+blocking obstacle**.

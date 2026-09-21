@@ -1,20 +1,24 @@
 # Contributing
 
-This project accepts contributions. It also has opinions about what a contribution is, and they
+This project accepts contributions: reports and reviews today, code once the licensing question
+under [Licence](#licence) is settled. It also has opinions about what a contribution is, and they
 are written down here rather than discovered in a review.
 
 ## The most useful thing you can send is not a patch
 
-It is a report from a machine that is not ours. `0.1.0` is a pre-release and the whole reason it
-exists in public is that the product has been installed on very few machines. If you installed it
-and something went wrong, **that report is worth more than a fix**, because the defect is almost
-always in the part nobody here could see.
+It is a report from a machine that is not ours. This project is young — every release so far is
+in [`CHANGELOG.md`](CHANGELOG.md) — and the whole reason it exists in public is that the product
+has been installed on very few machines. If you installed it and something went wrong, **that
+report is worth more than a fix**, because the defect is almost always in the part nobody here
+could see.
 
 - something is broken → [report a defect](https://github.com/komandante78/noesar-evolution-core/issues/new?template=bug_report.yml)
 - something should be different → [say so](https://github.com/komandante78/noesar-evolution-core/issues/new?template=idea.yml)
 - a security vulnerability → **never in a public issue while it is unfixed**. [`SECURITY.md`](SECURITY.md) says where it goes.
 
 ## If you do want to send code
+
+Read [Licence](#licence) first: code for the core is not merged yet, and it says why.
 
 **You need Node.js 22 or newer, and Docker for the linter. You do not need `npm install`:** this
 product has zero runtime dependencies, and `package.json` declares none.
@@ -50,7 +54,9 @@ repair.
   reader cannot reproduce is a defect*. If you state one, name the command beside it.
 - **A claim that was not measured.** "It should work on X" is not evidence that it works on X.
   Saying *"not verified on X"* is always accepted; saying it works when it was never run is not.
-- **A missing SPDX header.** Every source file starts with `// SPDX-License-Identifier: AGPL-3.0-or-later`.
+- **A new source file without an SPDX header.** A new file starts with
+  `SPDX-License-Identifier: AGPL-3.0-or-later` in its language's comment syntax. Not every existing
+  file carries one yet; that is a known gap, not a model to copy.
 - **A second copy of a fact.** If a value already lives in a file, point at that file instead of
   copying the value. Two copies of a number are one number and one future defect — this project
   has paid for that more than once, and there are tests whose only job is to catch it.
@@ -69,9 +75,21 @@ measured. Look at `git log` for the shape. Authorship in this repository is
 
 ## Licence
 
-Contributions are accepted under the same licence as the project, **AGPL-3.0-or-later**. By
-opening a pull request you are stating that you have the right to submit the code under it. There
-is no separate contributor agreement, and there will not be one.
+The project is licensed under **AGPL-3.0-or-later** ([`LICENSE`](LICENSE)). An additional
+commercial licence is planned ([`NOTICE`](NOTICE), [`docs/LICENSE_STRATEGY.md`](docs/LICENSE_STRATEGY.md)),
+and offering one requires the project to hold sufficient rights over every line of the core. The
+mechanism that would give it those rights over outside contributions — a contributor licence
+agreement, a sign-off with an assignment, or something else — is **not decided yet**, and it will
+be decided with legal advice rather than written here first.
+
+Until it is decided, **code contributions to the core are not merged.** Reports, reproductions,
+ideas and reviews are welcome, and they are the most useful thing you can send anyway (see the top
+of this page). A pull request opened in the meantime is read and answered, and nothing in it is
+taken into the tree before that mechanism exists.
+
+This page said until 2026-09-21 that there would never be a separate contributor agreement. That
+sentence was not a recorded decision and contradicted `docs/LICENSE_STRATEGY.md`; it was
+withdrawn (`docs/DECISION_LOG.md`, `D-0709`). No outside code had been merged while it stood.
 
 ## What happens next
 

@@ -16748,3 +16748,43 @@ not built until something actually shares one. Written as a `ponytail:` comment 
 
 *Reversal cost:* none. The swept directories are unusable by definition; removing the sweep
 restores the leak.
+
+## D-0709 · The contribution page stops promising what the licence strategy leaves open — 2026-09-21
+
+*What was wrong.* `CONTRIBUTING.md` (written 2026-09-18, `e727c510`) said that contributions are
+accepted under AGPL-3.0-or-later and that *"there is no separate contributor agreement, and there
+will not be one"*. No entry in this log took that decision. It contradicted `D-0006` and
+`docs/LICENSE_STRATEGY.md` §2, which keep the mechanism **undecided** and require it settled
+*before* external contributions are accepted, and
+`PROJECT_GOVERNANCE/09_LEGAL_TEMPLATES/CONTRIBUTOR_LICENSE_AGREEMENT_REQUIREMENTS.md`, which says
+no external code is accepted before legal approval. Code accepted inbound-equals-outbound under
+AGPL cannot later be offered under the planned commercial licence without each contributor's
+consent, so the sentence quietly closed a route the strategy keeps open.
+
+*Decision (Owner, 2026-09-21).* Reports, reproductions, ideas and reviews are welcome now; **code
+for the core is not merged** until the mechanism is decided with legal advice. The page says so,
+and says that it said otherwise. No outside code was merged while the sentence stood, measured
+four ways on 2026-09-21: `git log --format=%an` shows two identities, both the project's own;
+`git rev-list --merges --count HEAD` is 0; every `Co-Authored-By` trailer names Claude, an AI
+model, not a person; and `gh pr list --state all` returns no pull request at all.
+
+*Also corrected, same measurement.*
+- `NOTICE` said `oci/vendor/atom/atomd` *"is distributed in this repository"*. It is not: the
+  path is in `.gitignore`, `git log --all -- oci/vendor/atom` is empty, and it is absent from
+  `v0.1.0`, `v0.1.1` and `v0.1.2`. The error pointed the safe way — no proprietary binary was
+  published — but a licence notice has to be exact. It now describes the private build instead.
+- `docs/LICENSE_INVENTORY.tsv` still listed 12 first-party crates and two Node packages as
+  `NOT-DECLARED`; all 20 crates and every package now declare one. Its non-crate rows are
+  rewritten from the manifests; the 113 vendored rows are unchanged byte for byte. `@xterm/xterm`
+  (MIT), vendored in `apps/webui-static`, had no row at all and now has one.
+- `CONTRIBUTING.md` said every source file starts with an SPDX header; 98 of 662 do not
+  (`docs/DUAL_LICENSE_READINESS.md` §7, with the command).
+
+*Not changed, and why.* No header was added to the 98 files: asserting a licence on a file is a
+statement about who holds its rights, and that question is open. `Unicode-3.0` was not added to
+the licence policy, and the `OR LicenseRef-NOESAR-Commercial` in the crates' metadata was not
+removed: both are questions for legal review, not edits. The dossier under `FUNDING/` (outside
+this repository) still describes the contribution policy as a DCO; it was not edited.
+
+*Reversal cost:* none for the text. The rule it states — no outside code before the mechanism —
+is the one `D-0006` already implied.

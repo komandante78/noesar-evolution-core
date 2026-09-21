@@ -61,3 +61,11 @@ Run `syft noesar-evolution:phase4 -o spdx-json` (or CycloneDX) on a host that ha
 compare its OS-package section against the 311 entries recorded here as a cross-check, and
 keep the inventory generator as the offline fallback. That is a Phase 5 packaging task; the
 gap is recorded, not papered over.
+
+## Note, 2026-09-21
+
+`apps/webui-react`, described above as a repository-only manifest with six dependencies, is no
+longer in the tree: `git ls-files apps/webui-react | wc -l` returns 0. The repository therefore
+carries **no third-party npm dependency at all** — every tracked `package.json` declares none, and
+`package-lock.json` holds only its root entry. The image figures above (311 OS packages, base
+digest) were **not** re-measured on that date.

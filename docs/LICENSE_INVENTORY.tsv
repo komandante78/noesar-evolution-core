@@ -112,20 +112,32 @@ wit-bindgen-0.57.1	vendored-rust-crate	Apache-2.0 WITH LLVM-exception OR Apache-
 zerocopy-0.8.55	vendored-rust-crate	BSD-2-Clause OR Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-BSD;LICENSE-MIT	rust/vendor/zerocopy-0.8.55	
 zerocopy-derive-0.8.55	vendored-rust-crate	BSD-2-Clause OR Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-BSD;LICENSE-MIT	rust/vendor/zerocopy-derive-0.8.55	
 zmij-1.0.23	vendored-rust-crate	MIT	LICENSE-MIT	rust/vendor/zmij-1.0.23	
-noesar-audit-ledger	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-audit-ledger	no SPDX license field — must be set before publication
-noesar-auth	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-auth	no SPDX license field — must be set before publication
-noesar-authority-api	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-api	no SPDX license field — must be set before publication
-noesar-authority-daemon	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-daemon	no SPDX license field — must be set before publication
-noesar-authority-protocol	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-protocol	no SPDX license field — must be set before publication
-noesar-authority-transport	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-transport	no SPDX license field — must be set before publication
-noesar-canonical-json	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-canonical-json	no SPDX license field — must be set before publication
-noesar-contracts	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-contracts	no SPDX license field — must be set before publication
-noesar-control-plane	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-control-plane	no SPDX license field — must be set before publication
-noesar-data-plane	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-data-plane	no SPDX license field — must be set before publication
-noesar-hardware-orchestrator	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-hardware-orchestrator	no SPDX license field — must be set before publication
-noesar-security-kernel	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-security-kernel	no SPDX license field — must be set before publication
-security/license-policy.json	license-file	SEE-FILE	file header	capabilities/security/license-policy.json	{
-@noesar/webui	node-package	NOT-DECLARED	package.json	apps/webui-react/package.json	no license field
-@noesar/sdk	node-package	Apache-2.0	package.json	evidence/history/v0.5.0/packages/sdk-skeleton/package.json	
-noesar-evolution-source-v4-implementation	node-package	NOT-DECLARED	package.json	package.json	no license field
-@noesar/sdk	node-package	Apache-2.0	LICENSE;package.json	packages/sdk/package.json	
+noesar-audit-ledger	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-audit-ledger	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-auth	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-auth	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-authority-api	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-authority-api	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-authority-daemon	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-authority-daemon	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-authority-protocol	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-authority-protocol	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-authority-transport	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-authority-transport	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-canonical-json	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-canonical-json	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-capability	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-capability	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-contracts	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-contracts	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-control-plane	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-control-plane	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-data-plane	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-data-plane	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-events	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-events	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-executor	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-executor	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-hardware-orchestrator	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-hardware-orchestrator	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-reasoning-reference	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-reasoning-reference	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-reasoning	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-reasoning	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-sandbox	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license	rust/crates/noesar-sandbox	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-security-kernel	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-security-kernel	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-shadow	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-shadow	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-supervisor	first-party-rust-crate	AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial	Cargo.toml license.workspace -> rust/Cargo.toml	rust/crates/noesar-supervisor	LicenseRef-NOESAR-Commercial names a licence that is not yet available (NOTICE)
+noesar-evolution-source-v4-implementation	node-package	AGPL-3.0-or-later	package.json license	package.json	private: true; zero dependencies
+@noesar/authority-containment	node-package	AGPL-3.0-or-later	package.json license	packages/authority-containment/package.json	private: true; zero dependencies
+@noesar/capability-token	node-package	AGPL-3.0-or-later	package.json license	packages/capability-token/package.json	private: true; zero dependencies
+@noesar/sdk	node-package	Apache-2.0	package.json license	packages/sdk/package.json	private: true; zero dependencies
+@noesar/verified-acquisition	node-package	AGPL-3.0-or-later	package.json license	packages/verified-acquisition/package.json	private: true; zero dependencies
+@noesar/sdk	node-package	Apache-2.0	package.json license	evidence/history/v0.5.0/packages/sdk-skeleton/package.json	historical evidence, not built or shipped
+noesar-sdk (python)	python-package	Apache-2.0	pyproject.toml license	packages/sdk/python/pyproject.toml	requires = []
+@xterm/xterm-6.0.0	vendored-web-asset	MIT	LICENSE;PROVENANCE.md	apps/webui-static/vendor/xterm	shipped in the image with apps/webui-static
+license-policy.json	license-file	SEE-FILE	file content	capabilities/security/license-policy.json	the policy the vendored rows are checked against
