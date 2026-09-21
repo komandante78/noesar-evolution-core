@@ -512,6 +512,7 @@ abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MA
 a68e927457accafc6907259894568debce60d34aae48783232e08ff714e2fbb9  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c4959fce92e34bfa89151c6261b8dc5afbe862cc1a390a7417a3c507763a79b3  ./docs/DUAL_LICENSE_READINESS.md
+fa672d29a640a3c61c65ac029eb991cf1d5fd97b4f29ffb8b1ef34e86b632c99  ./docs/EFFECT_RECEIPTS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
 10d05e242123bf83f0f51a33dcaa5f01b0ebe9fe0b9cdaaa01a1e4af8f04f5ce  ./docs/GAP_ANALYSIS_AND_ORIGINALITY_V1.md
 07c79d028fc06f28af0eccb85b351fa2b9997263fc0053c183a477cfefe8a559  ./docs/GAP_REGISTER.md
@@ -6293,6 +6294,7 @@ aac31df88696173d310a10907da12833903f57e8146754151556666692e0b1a2  ./services/ref
 5775d7587520b8d7caab9b8c48a84c1e53f42ebd9d0cf2790fdb0f40427b2b57  ./services/reference-control-plane/src/debug-evolution-triage.mjs
 623aabe4fcaa3eba9f388fd3bcc74b9dfa10b337a4e6dbb5080f48a76bdd3982  ./services/reference-control-plane/src/debug-mode.mjs
 baea1566bb76869a35528b61481de1e35e56d6b69d8c65b8c4ccdcaff83370b2  ./services/reference-control-plane/src/divergence-profile.mjs
+3ffa4a9a26b943099a085e4142a8034e59266bec59b51960a2ec125c78099da6  ./services/reference-control-plane/src/effect-receipt.mjs
 75f53a32bb923346eaef7580a16011ccf2beef0fe4156347543eb32c1014ebce  ./services/reference-control-plane/src/events.mjs
 8bf3f42f3efa9ba24569b4462e4279f8bcf66e9bcfd06fb1a0c15012fd2c618e  ./services/reference-control-plane/src/execute-sandbox-config.mjs
 859e42aea69b09a833b2b2a4df66abeefa9af699cfadb71d675b57715fabe5d6  ./services/reference-control-plane/src/executor.mjs
@@ -6473,6 +6475,7 @@ ee9e02df8e302ff8cb8b7e16a580d43ea24c04298ae6cfd162679d861e1290ea  ./services/ref
 b2c2959017f750b1e487e238e454edb47ceaf50b7bb55fb8a6c2d940e0dd3af0  ./services/reference-control-plane/test/divergence-profile.test.mjs
 b827da2ae8b84e6b1e79013bf20c5be0331b3c975abbd29de623c243ebcff0b5  ./services/reference-control-plane/test/durability.test.mjs
 aecf96dd49c0df0b2ac507097a723c5b3c6ab95de8defed863328752a4251512  ./services/reference-control-plane/test/edit-blocks-bound-the-answer.test.mjs
+53cbca84b7863107d5f674daa1c6377c72bc20f13c9e3f44b8f7776f91279917  ./services/reference-control-plane/test/effect-receipt.test.mjs
 fa4bf219f2dd609ccb13349c0c41d289f653cf6d81283a8048f15b85eaec5a55  ./services/reference-control-plane/test/engine-state-exclusions.test.mjs
 6b780bbaad2b8e16d05e34fc4af928a7894595a289fe85db5ab8ec2c9cb068f6  ./services/reference-control-plane/test/event-vectors.test.mjs
 ed9ea2fd9b75a18bde94cf92fcc775264785d0a1af1b2bcfcba74ab9c73877dd  ./services/reference-control-plane/test/executor-vectors.test.mjs
@@ -6680,6 +6683,7 @@ d06d25515b42818902606a3da95f56ec60ff139de13e691ccfc65a89c2951cf1  ./tools/deploy
 4892e36ce379d5e380cf04460d26653cc7ac4b11af1dec98ac5d2dea87b6aa09  ./tools/deploy/test/redeploy-fixture.sh
 cc8572dbde0c7b9b9940b9b9bb6a82e0b6103ffa3adba986c72e1cb0d80af536  ./tools/derive-tasks-from-history.mjs
 18ae69fccdd4a9c3c321f1355a1d5e3daf8b29e6c9dc91352c68dc74db37b45e  ./tools/e2e-retention-policy.sh
+650c26582aeeaae3621cb8878124902ecd531fd08b67e5cf3efe8af6dad787e1  ./tools/effect-receipt.mjs
 eaa8b2e10a2194c433e6ee58e376cd7aa6f87664cd2710becf0f893ab547d234  ./tools/emit-conformance-report.mjs
 1b10b155ec1ce0e9e6987a2072e0507258f09a6ffa113b01d108430df2e8a8b8  ./tools/extract-prompt-log.mjs
 fcbaf75d53499b906ccff89773f16efce08e1ac570a9c8ab8adbc4d4c74c1adb  ./tools/flake-stress.mjs
