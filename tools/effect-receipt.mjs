@@ -64,7 +64,11 @@ function run(options) {
   try {
     const shadow = ShadowWorkspace.ofWorkspace(workspace, join(scratch, 'copy'));
     mkdirSync(join(shadow.root, HOME_IN_COPY), { recursive: true });
-    const result = spawnSync('docker', ['run', '--rm', `--network=${network}`,
+    // As the person running it, not as root: files the command writes into the copy must be
+    // removable by the same person afterwards, or the cleanup below fails on any machine where
+    // the operator is not root (found writing the one-minute demo, 2026-09-22).
+    const asCaller = typeof process.getuid === 'function' ? ['--user', `${process.getuid()}:${process.getgid()}`] : [];
+    const result = spawnSync('docker', ['run', '--rm', `--network=${network}`, ...asCaller,
       '-v', `${shadow.root}:/work`, '-w', '/work', '-e', `HOME=/work/${HOME_IN_COPY}`,
       IMAGE, ...options.command], { stdio: ['ignore', 'inherit', 'inherit'] });
     exitCode = result.error ? null : result.status;

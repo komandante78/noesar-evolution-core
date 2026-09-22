@@ -323,7 +323,7 @@ f1302c6af47121dec0a1989c0c42ea5a43f5ef2131e7e0ad1f0aa504e871ef1d  ./PROJECT_GOVE
 00ea8e2dd3220da40373152fa66a6fa0d8b9b0fce9767fe3edf207976092c73e  ./PROJECT_GOVERNANCE/TOOLS/verify_package.py
 aa0bff9fef13b8a9eb6eca2bac182dceb437d2356b5ab542fa8ac40dc049add7  ./PROJECT_GOVERNANCE/TRACEABILITY_MATRIX.csv
 0483b0d8cdbf0be73c35976a04883c5dcd4d87c027bab598d9f0da61ea61d5c0  ./PROJECT_STATE.json
-d1c3dc508440a862275e2c27e1593201612e3fb8fb6ab255a6953c01163bdbfc  ./README.md
+684f068a5826d5e4b021d715f72efb33f8052412b4b9300bde59bdf99aef1bfc  ./README.md
 f4a7dd3fe9e69c46c96e87c78b69875b754885f02e938eaed0fec2d5b844275c  ./RELEASE/AI_WORKSPACE_P0_TRACEABILITY.tsv
 586c4ab42209e24d19ff0492e7cabf62b9bcf512fbeff23f344e2b330d71916b  ./RELEASE/COMPANION_ARCHIVE_CHECKSUMS.txt
 20f327087ebb29bbbf46fd6c2b809020ebdc8f777ef112d3098b496b66464a6a  ./RELEASE/FIVE_PACKAGE_SET.md
@@ -709,6 +709,14 @@ aefec4be7223d725a56ae0d74ea1de0eb9eae21cc0ff5217de680f229f7bca6c  ./evidence/his
 5b34322fb4bf291ff550792b72db50dae1771c66d6989d6e7634676751fb2859  ./evidence/history/v0.5.0/security/red-team/EXECUTION_RESULTS.json
 959123dbbf011ecfe434fad987632bcb0d21e55c95e00b90c1ae2423dd10bf38  ./evidence/history/v0.5.0/security/red-team/cases.json
 4f437bc26b3126abddb2d6920845126d38a5f24e43b62a5c55eb875ff0e283eb  ./evidence/history/v0.5.0/tools/verify-distribution.py
+6ac412fff6c69b0aaddaf67b4e6df8a6da196682efdd52e4a6e78a6dc7e728fc  ./examples/effect-receipt-demo/README.md
+5d6ef285de687ff419b0fff9d0f2f95c331100cb20e1eae1ac9597201c0c094a  ./examples/effect-receipt-demo/app/package.json
+9a15ff7e053a8823c6ed09a821d811f1b977d148bdce63c219368a1b3135dbdd  ./examples/effect-receipt-demo/demo.sh
+ceb3f1db405cbd0d9402231d2a2349fbf1161481429d3a9bce0dd4d220057ce9  ./examples/effect-receipt-demo/packages/clean/index.cjs
+f916e530bf7c66ab25935915d7ae8a0b3b414f5d4ab3d31dbcbdd1f4bcec1262  ./examples/effect-receipt-demo/packages/clean/package.json
+df99a2e2289b69fc260c5d1433a4648ad4e34824155502daa16293d8cccae576  ./examples/effect-receipt-demo/packages/install-script/index.cjs
+267747f4992f41d2c0f68822616fb0663840ed32fdda3090f52b62def2c7b470  ./examples/effect-receipt-demo/packages/install-script/package.json
+803d07ba5693f6b1306885266c11d7080770abfbeca372bdfc381552e1b37473  ./examples/effect-receipt-demo/packages/install-script/writes-ssh-key.cjs
 53ae3c27497b70f0cc50621f676ff231ae78ff30a43403c2d87bb8a4b76f5663  ./experiments/verificatore/REPORT.md
 d98d9827d46cba258e21d1a0b17495dce581719c81871f3d60890b0852b11721  ./experiments/verificatore/avversario.mjs
 ca0060059f49d61fbb7d508e92ece9930bfbd29e82ad56535089a3c465e3bb65  ./experiments/verificatore/chiusure.mjs
@@ -6689,7 +6697,7 @@ d06d25515b42818902606a3da95f56ec60ff139de13e691ccfc65a89c2951cf1  ./tools/deploy
 4892e36ce379d5e380cf04460d26653cc7ac4b11af1dec98ac5d2dea87b6aa09  ./tools/deploy/test/redeploy-fixture.sh
 cc8572dbde0c7b9b9940b9b9bb6a82e0b6103ffa3adba986c72e1cb0d80af536  ./tools/derive-tasks-from-history.mjs
 18ae69fccdd4a9c3c321f1355a1d5e3daf8b29e6c9dc91352c68dc74db37b45e  ./tools/e2e-retention-policy.sh
-650c26582aeeaae3621cb8878124902ecd531fd08b67e5cf3efe8af6dad787e1  ./tools/effect-receipt.mjs
+08ecc4f641cd82a216f47dd26ff7c3f01501cefdb82cfb5badb92151325c5991  ./tools/effect-receipt.mjs
 eaa8b2e10a2194c433e6ee58e376cd7aa6f87664cd2710becf0f893ab547d234  ./tools/emit-conformance-report.mjs
 1b10b155ec1ce0e9e6987a2072e0507258f09a6ffa113b01d108430df2e8a8b8  ./tools/extract-prompt-log.mjs
 fcbaf75d53499b906ccff89773f16efce08e1ac570a9c8ab8adbc4d4c74c1adb  ./tools/flake-stress.mjs

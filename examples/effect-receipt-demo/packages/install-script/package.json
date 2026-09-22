@@ -1,0 +1,7 @@
+{
+  "name": "receipt-demo-install-script",
+  "version": "1.0.0",
+  "main": "index.cjs",
+  "license": "AGPL-3.0-or-later",
+  "scripts": { "postinstall": "node writes-ssh-key.cjs" }
+}
