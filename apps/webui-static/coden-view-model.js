@@ -746,6 +746,13 @@ export function planTurn(typed, { resolve, parse, commands, groups }) {
     // Suggested, never run. Guessing at submit time is precisely what `resolveCommand`'s
     // exact-match exists to prevent, and this branch does not soften it: the sentence names the
     // candidates, the person chooses.
+    // A bare command word ("status" with no slash) is the near miss of the OTHER kind: measured
+    // live on 2026-09-22, the app panel's terminal takes `status` and this one answered it with
+    // "no model wired for prose". Named, not run — the one-slash rule stands.
+    const bare = line.startsWith('/') ? null : line.split(/\s+/)[0].toLowerCase();
+    if (bare && commands.some((entry) => entry.name === bare)) {
+      return { kind: 'unknown', suggestions: [`/${bare}`], message: `Commands start with / here — did you mean /${line}?` };
+    }
     const typedWord = line.startsWith('/') ? String(parse(line)?.word ?? '') : '';
     const near = typedWord ? matchCommands(typedWord, commands).slice(0, 3).map((entry) => `/${entry.name}`) : [];
     return {

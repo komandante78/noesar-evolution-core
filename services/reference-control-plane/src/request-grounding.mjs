@@ -318,7 +318,18 @@ function groundNamedPaths(workspaceRoot, request, maxFileBytes, limit) {
     files.push(read.file);
     if (read.isNew) created.push(path);
   }
-  return files.length === 0 ? { files, skipped } : { files, created, skipped, named };
+  if (files.length === 0) return { files, skipped };
+  // Measured live on 2026-09-22: "Create programmi/LEGGIMI.md that explains how to run
+  // programmi/somma.mjs" planned BOTH files, and the model was asked to rewrite the program it
+  // was only meant to describe. When the request creates something, the existing files it names
+  // beside it are what the new file is ABOUT: read, handed to the author, never a target.
+  // ponytail: "create X and change Y" in one request now changes only X; the second is its own
+  // request until a real one needs both in a single plan.
+  if (created.length > 0 && created.length < files.length) {
+    const context = files.filter((file) => !created.includes(file.path));
+    return { files: files.filter((file) => created.includes(file.path)), context, created, skipped, named };
+  }
+  return { files, created, skipped, named, context: [] };
 }
 
 export function groundRequest({
@@ -348,9 +359,12 @@ export function groundRequest({
   if (named && named.files.length > 0) {
     return {
       files: named.files,
+      context: named.context,
       grounding: {
         derived: false,
         namedInRequest: named.named,
+        // Named, existing, read for the author and not written: see groundNamedPaths.
+        context: named.context.map((file) => file.path),
         // Said to whoever approves: these do not exist yet, and approving CREATES them.
         created: named.created,
         selected: named.files.map((file) => file.path),

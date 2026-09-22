@@ -430,6 +430,7 @@ export class WorkspaceActionOrchestrator {
     // replay.mjs` would then report the disagreement as drift originating in this file.
     let resolvedFiles = files;
     let grounding = null;
+    let context = [];
     if (resolvedFiles.length === 0) {
       // `request` as well as the goal: a provider that answers something unrelated must not
       // be able to steer this step away from what was actually asked. Measured, not feared —
@@ -437,6 +438,7 @@ export class WorkspaceActionOrchestrator {
       const grounded = this.#groundRequest({ workspaceRoot: this.#workspaceRoot, goal: intent.goal, request });
       resolvedFiles = grounded.files;
       grounding = grounded.grounding;
+      context = grounded.context ?? [];
     }
     const hypotheses = await provider.hypothesize(intent, []);
     // `.` is the working directory a command runs in, and capability.mjs refuses to mint a
@@ -482,7 +484,7 @@ export class WorkspaceActionOrchestrator {
     const expectation = await provider.expect(constrainedPlan);
     return {
       intent, hypotheses, plan: constrainedPlan, risk, confidence, expectation,
-      provenance: provider.provenance(), files: resolvedFiles, grounding,
+      provenance: provider.provenance(), files: resolvedFiles, grounding, context,
       // The local-model calls this decision made, bytes included, for `plan()` to persist
       // (`CE-006`). A provider that asks no model has none, and says so with an empty list.
       modelCalls: typeof provider.modelCalls === 'function' ? provider.modelCalls() : [],
@@ -1155,7 +1157,7 @@ export class WorkspaceActionOrchestrator {
       // re-decided here; it is passed on intact, checkpoint included.
       throw error;
     }
-    const { intent, hypotheses, plan, risk, confidence, expectation, provenance, grounding } = decision;
+    const { intent, hypotheses, plan, risk, confidence, expectation, provenance, grounding, context } = decision;
     // Phase 6: which surfaces asked for ATOM and were served by the reference provider. Read
     // off the router rather than derived from `provenance`, so the reason and the instant come
     // from where the decision was made instead of being reconstructed after the fact.
@@ -1292,7 +1294,11 @@ export class WorkspaceActionOrchestrator {
           // first sentence on purpose (it is the string every run list and history entry
           // shows as a title), which throws away the reproduction detail a real bug report
           // carries. The Author gets what the operator actually wrote; the UI keeps its title.
-          background: request,
+          background: context.length === 0 ? request : [
+            request, '',
+            'Files the request refers to, for reading only — they are not part of this change:',
+            ...context.flatMap((file) => [`--- ${file.path}`, file.contents]),
+          ].join('\n'),
           files: planFiles,
           // Rule 6 of `16` §3.2, and the reason the profile is computed above rather than
           // beside the diff: the Author writes WITH the repository's conventions in hand.

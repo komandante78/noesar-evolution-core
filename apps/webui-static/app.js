@@ -14,7 +14,7 @@ import {
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
-  createView, say, planTurn, callResult, working, reasoningSummary, frequencySummary,
+  createView, say, planTurn, callResult, working, WORKING_NOTE, reasoningSummary, frequencySummary,
   divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuFrame, menuEntriesFor, promptKeys,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
@@ -4621,18 +4621,21 @@ const terminals={items:[{id:1,history:[]}],active:1,next:2};
 // engine instances the unix socket transport does — "the same live session as the
 // workbench", not a second client with its own state (index.html's own words, now true).
 // This is NOT a shell: every command below maps to one of the product's own already-guarded
-// operations. Plans are created in the Plan panel, not typed here — this terminal reaches
-// the same run, it does not start a second way to make one.
-const TERMINAL_HELP = 'Commands: status | get <runId> | events <runId> | map [path] | search <query> | simulate <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | help\nPlans are created in the Plan panel; this terminal reaches the same live session, not a second one.';
+// operations. Measured live on 2026-09-22 it was the one terminal of four with its own rules —
+// no slash, no `plan`, raw JSON — so the same sentence worked in one and not in the next. It
+// now takes the slash or not, plans through the same `workspace.plan` the others send, and
+// shapes its answers through the shared `callResult`.
+const TERMINAL_HELP = 'Commands, with or without /: status | plan <what to do> | measure <runId> | get <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | events <runId> | map [path] | search <query> | simulate <runId> | help\nThe same live session as the workbench and the full terminal: a plan made here is the same run everywhere.';
 async function runTerminalCommand(term, line){
   term.history.push({ kind:'command', text:line });
-  const [command,...rest]=line.trim().split(/\s+/);
+  const [command,...rest]=line.trim().replace(/^\//,'').split(/\s+/);
   const arg=rest.join(' ');
   let method=null;let params={};
   switch(command){
     case '':return;
     case 'help':term.history.push({kind:'info',text:t(TERMINAL_HELP)});return;
     case 'status':method='status';break;
+    case 'plan':method='workspace.plan';params={request:arg,files:[]};break;
     case 'get':method='workspace.get';params={runId:arg};break;
     case 'events':method='events.correlation';params={correlationId:arg};break;
     case 'map':method='repoMap.scan';params={path:arg||undefined};break;
@@ -4644,11 +4647,16 @@ async function runTerminalCommand(term, line){
     case 'restore':method='workspace.restore';params={runId:arg};break;
     default:term.history.push({kind:'error',text:`${t('Unknown command')} \`${command}\`. ${t('Type `help`.')}`});return;
   }
+  const waiting={kind:'info',text:WORKING_NOTE};
+  term.history.push(waiting);renderTerminals();
   try{
     const response=await api('/api/v1/tui/command',{method:'POST',body:JSON.stringify({method,params})});
-    term.history.push({kind:'result',text:JSON.stringify(response.result,null,2)});
+    const shown=callResult(command,response.result);
+    term.history.push({kind:'result',text:[shown.headline,...shown.lines].join('\n')});
   }catch(error){
     term.history.push({kind:'error',text:error.value?.error?.reason??error.value?.error??error.message});
+  }finally{
+    term.history.splice(term.history.indexOf(waiting),1);
   }
 }
 function renderTerminals(){

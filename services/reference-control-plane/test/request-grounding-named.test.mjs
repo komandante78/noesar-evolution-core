@@ -75,7 +75,8 @@ test('a product name is not a file to create — the program is (measured live, 
   const root = workspace({ 'Existing.js': 'x\n' });
   const ground = groundRequest({ workspaceRoot: root, goal: 'x',
     request: 'Create a new Node.js program programmi/somma.mjs on ASP.NET, and keep Existing.js; add src/Button.js' });
-  assert.deepEqual(ground.files.map((file) => file.path), ['programmi/somma.mjs', 'Existing.js', 'src/Button.js']);
+  assert.deepEqual(ground.files.map((file) => file.path), ['programmi/somma.mjs', 'src/Button.js']);
+  assert.deepEqual(ground.grounding.context, ['Existing.js'], 'an existing file named beside new ones is read, not written');
   assert.deepEqual(ground.grounding.created, ['programmi/somma.mjs', 'src/Button.js']);
   assert.deepEqual(ground.grounding.skipped.map((entry) => `${entry.path}:${entry.reason}`),
     ['Node.js:PRODUCT_NAME', 'ASP.NET:PRODUCT_NAME']);

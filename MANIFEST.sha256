@@ -337,13 +337,13 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-69621f1e270d87696848631cdac8a5c9bcbe5550d6713b56c6e3da1b653096d9  ./apps/webui-static/app.js
+154f0ed266ca22f3e78cfbe676f509074e96dd6bee3542e92874ab61c3d3053e  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
-b55597e40acb0debd1159eefac78daa94768a30901a4c52acc9a8df4d11b33e7  ./apps/webui-static/coden-view-model.js
+d1b7fd1e57d4951a8b27d2bd266236190d73d85cdd61579ce6626973a1cc9e30  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-9bfb92e8329497f7c93a2f5f79a83d221ea894abb04b4a4d930e99c57b1bed10  ./apps/webui-static/i18n-catalog.js
+6e3d6b921f333593388dd8accc5584db9fd7d4ce5faef955c24ecce9637340cd  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 bef6c6d1a72982237447b89b4900ea6ee34ebcef825f1868bdf872786f0dabae  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
@@ -6339,7 +6339,7 @@ d4dd091eca05aad1b69210196951ff0a7c8748da389066b10a0f02a0ca264fcc  ./services/ref
 d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/reference-control-plane/src/remote-target-fetch.mjs
 39808f513eb4ed769c9bbc85e29e9344fd55f34e4635655479a346d4b78216dc  ./services/reference-control-plane/src/remote-target-registry.mjs
 b15660c6ce2fa40e70cb61aed809c12a7bc4d92de4d8fb62ae2d0a4e0cd4d84e  ./services/reference-control-plane/src/repo-map.mjs
-0bbb75a104e97447d660eb84ed5299cec1209fc9694dcf08826cc5dfbb6bf101  ./services/reference-control-plane/src/request-grounding.mjs
+4efda270a31f94424f2c2db45a30131b25a14679966226b4316ab5764479b374  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
 5bc4c3644cb4ad76fb7592ae61e09c4943c720baaa4316bcfad7dcae1589a0c6  ./services/reference-control-plane/src/research.mjs
@@ -6370,7 +6370,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 372e40a6fc034cc4f7d376f668de00c6aa169d07078f1f1d85d7236f60667d44  ./services/reference-control-plane/src/watchdog.mjs
 6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  ./services/reference-control-plane/src/webauthn.mjs
 0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  ./services/reference-control-plane/src/websocket.mjs
-1caff5544333972e4fe9ba60df4df5c3bc57f202d616d5db59c7e917c5bc0c79  ./services/reference-control-plane/src/workspace-actions.mjs
+74a9fcf64ef4bf5931d6868bf3a91d1afc5b7c53adb9b0636a5e9910a7293bae  ./services/reference-control-plane/src/workspace-actions.mjs
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs
@@ -6458,6 +6458,7 @@ b719feb10da46da61d344399fec56ae640f8507222fdf489aa2432decc2184e6  ./services/ref
 f6991e3505bc006bebf6ee39818f95255f7d9e2a4483df90576e0f0121ab3132  ./services/reference-control-plane/test/coden-run-summary.test.mjs
 3070a2fd0045885e242b04486cae154ed2cb7e1aa309a12fbe30b8514c8f125b  ./services/reference-control-plane/test/coden-shell-parity.test.mjs
 e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/reference-control-plane/test/coden-spa-catchall.test.mjs
+52b04263791a7771e182086c6c72a799817ae309a533f68834a8dca4a4a592ee  ./services/reference-control-plane/test/coden-step2.test.mjs
 170021ec6f6f0213aebc62ba624470b1ca2f9ad6db979c21a98ed2298f7f9330  ./services/reference-control-plane/test/coden-terminal-client.test.mjs
 a08b7956fc398a59262ee46707f145b60bcaa3f5fdccdd5f8830ed8634748256  ./services/reference-control-plane/test/coden-view-model.test.mjs
 ea34124e0b3aaa180dc942e81b56051f302ae17f129a92c098eb397f1a22179d  ./services/reference-control-plane/test/codev-relay.test.mjs
@@ -6544,7 +6545,7 @@ da7bd3a761002fb576920029e20f0cc88955563deede878f3db5b064e4f7a263  ./services/ref
 41604261a249041d2bce5609aa7bb5f76739eeee7da1eca6c7b666bf512b7c86  ./services/reference-control-plane/test/remote-target-http.test.mjs
 35e43fdad998d565436c17793e15ba30965af81fcb234d3c33f6cb1ec2af0dc2  ./services/reference-control-plane/test/remote-target-registry.test.mjs
 1587522ae474570154d4229aee4c0b2a3ee011634ca46b1230f7744f840fb2eb  ./services/reference-control-plane/test/repo-map.test.mjs
-e96031471866208ec297e15df9374c27065cbee145741689d2855d01e48ecfdf  ./services/reference-control-plane/test/request-grounding-named.test.mjs
+2dcba264ccddcb54ce456c472b726dff3d24823fd62f766984d9c197d5daca71  ./services/reference-control-plane/test/request-grounding-named.test.mjs
 6dc51845f6be22b29aad62e35fd0fb5ac10a5706dcb244028efb894e7805d590  ./services/reference-control-plane/test/request-grounding.test.mjs
 993825730490cf06f52291b8a06978b20dd3517ec16b59c742af59108e2c04de  ./services/reference-control-plane/test/request-origin.test.mjs
 977ef559f66f651cf18773923463e3e83611115c6fa421c2ad33492634f4cda1  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs
