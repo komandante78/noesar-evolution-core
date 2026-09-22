@@ -644,7 +644,7 @@ export class Author {
             // The structured form a provider that does its own checking needs. A generator that
             // ignores these and answers from `prompt` alone is still correct — that is the
             // installation with no ATOM under it, and `CE-022` requires it to keep working.
-            goal, step, contents: view.contents, profile, attempts, skills,
+            goal, step, contents: view.contents, profile, attempts, skills, background,
           });
           refusedBy = null;
           break;
@@ -862,7 +862,16 @@ export function atomAuthoringGenerator({
   // the reason named (`author_model.rs`): lower it only if that behaviour changes.
   const effectiveTimeoutMs = timeoutMs
     ?? (Math.ceil((maxTokens / minTokensPerSecond) * 1000) + 30_000) * atomModelCalls;
-  return async ({ goal, step, path, contents, profile = [], attempts = [] }) => {
+  return async ({ goal, step, path, contents, profile = [], attempts = [], background = '' }) => {
+    // Measured live on 2026-09-22: asked for a file "with one line saying this file was written by
+    // CodeN during the live test", ATOM wrote `Attribution: PROVA_LIVE_20260922`. It had been sent
+    // `interpret`'s goal — "…containing a title and a specific attribution line" — and never the
+    // request, which `buildAuthoringPrompt` shows the local model and this body did not carry. The
+    // request rides in `goal`, the field ATOM's wire contract already has, under the same rule
+    // the prompt uses: only when it says more than the goal.
+    const told = background && background.trim() && background.trim() !== String(goal ?? '').trim()
+      ? `${goal}\n\nFull request, verbatim (the goal above is only its first sentence):\n${background.trim()}`
+      : goal;
     // divergence-profile.mjs names each entry's field 'id' - the same name
     // buildAuthoringPrompt reads. ATOM's own /v1/author wire contract names the same
     // thing 'signal' and rejects an entry that lacks it. Never exercised against the real
@@ -882,7 +891,7 @@ export function atomAuthoringGenerator({
           'x-atom-token': token,
           ...(sessionId ? { 'x-atom-session': sessionId } : {}),
         },
-        body: JSON.stringify({ goal, step, path, contents, profile: wireProfile, attempts }),
+        body: JSON.stringify({ goal: told, step, path, contents, profile: wireProfile, attempts }),
         signal: controller.signal,
       });
     } catch (error) {

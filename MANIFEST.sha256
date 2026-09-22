@@ -6276,7 +6276,7 @@ be05625dc43694b55cb3d8d52e9eaf901380bee54a65ba88ad473962f9194e56  ./services/ref
 cd1b093d32bf114bb8cb223ffe9824d6f37aec04ae2823f049a5dd7f8c6a217a  ./services/reference-control-plane/src/auth-crypto.mjs
 ea52412b9ae35c7d01d41771d30b351b8427f5333b913e0233f79437f6ae544f  ./services/reference-control-plane/src/auth-store.mjs
 8da564eded08c14c9f65f36ba27a82daf97d937b86f3548b254c3ace68bedfa0  ./services/reference-control-plane/src/auth.mjs
-d779085de8364c6fc51206ba9ff625654c17c294fbe279a06f35deff93eff76a  ./services/reference-control-plane/src/author.mjs
+02832dac1795ae407a76b325fff67f1611caeda689624b716c780384e45717a8  ./services/reference-control-plane/src/author.mjs
 704def32b7f8b31030702ae64c0c8090ca85d86b0648504d973512db83bfabd6  ./services/reference-control-plane/src/authoring-replay-store.mjs
 cd58f69b41fa23085926175ddd2b9414451a2065f371c4d17eb2d34b33897b3b  ./services/reference-control-plane/src/authority-external-client.mjs
 a179feb4fd5b1ac894c7d5d5c6bcffd053344728daa1a139c862b6f2ce65797f  ./services/reference-control-plane/src/authority-ipc-frame.mjs
@@ -6339,7 +6339,7 @@ d4dd091eca05aad1b69210196951ff0a7c8748da389066b10a0f02a0ca264fcc  ./services/ref
 d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/reference-control-plane/src/remote-target-fetch.mjs
 39808f513eb4ed769c9bbc85e29e9344fd55f34e4635655479a346d4b78216dc  ./services/reference-control-plane/src/remote-target-registry.mjs
 b15660c6ce2fa40e70cb61aed809c12a7bc4d92de4d8fb62ae2d0a4e0cd4d84e  ./services/reference-control-plane/src/repo-map.mjs
-e66b09f3218dc5cf6c0a48afb9a955348ed150c1f02d8e66dcf6c7ae4cee8063  ./services/reference-control-plane/src/request-grounding.mjs
+0bbb75a104e97447d660eb84ed5299cec1209fc9694dcf08826cc5dfbb6bf101  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
 5bc4c3644cb4ad76fb7592ae61e09c4943c720baaa4316bcfad7dcae1589a0c6  ./services/reference-control-plane/src/research.mjs
@@ -6396,6 +6396,7 @@ b3b79a84b7a531c4a48329d081ed8bb0d7f79475d5d4373b3b7ed5a2c8e64fad  ./services/ref
 429425961dccd0ef458049902cb7ca7702c21e873e49d8654c3620c95016eadc  ./services/reference-control-plane/test/attach-code.test.mjs
 f453d0d696573a9e0a8ec9e9484635f6021ab5a38a000b4ed34359b1e545ca69  ./services/reference-control-plane/test/audit.test.mjs
 1ec4f31a9d991b17782d2a2efab5342c1a8387ba9c5e0eac4bbbabbe42851a73  ./services/reference-control-plane/test/auth.test.mjs
+1d8739e3147c0270eb945a7a45cd9ba77b5a42d95dda9148e1bec5839f9a1f70  ./services/reference-control-plane/test/author-atom-request.test.mjs
 920800cbe603562a768aed9a247dd4becd9798fcfd9177e950c163f5ca834add  ./services/reference-control-plane/test/author-skill-composition.test.mjs
 4a599d827109939fbfdee88d2467e679d398d52e07b9e8d3e4f1a6970e63290e  ./services/reference-control-plane/test/author.test.mjs
 9f9ac9c2c1570cd9fc26471aea29d260e6078ed8040ce1a7ae4e18ec52abe85f  ./services/reference-control-plane/test/authoring-reason-reaches-the-shells.test.mjs
@@ -6542,6 +6543,7 @@ da7bd3a761002fb576920029e20f0cc88955563deede878f3db5b064e4f7a263  ./services/ref
 41604261a249041d2bce5609aa7bb5f76739eeee7da1eca6c7b666bf512b7c86  ./services/reference-control-plane/test/remote-target-http.test.mjs
 35e43fdad998d565436c17793e15ba30965af81fcb234d3c33f6cb1ec2af0dc2  ./services/reference-control-plane/test/remote-target-registry.test.mjs
 1587522ae474570154d4229aee4c0b2a3ee011634ca46b1230f7744f840fb2eb  ./services/reference-control-plane/test/repo-map.test.mjs
+e96031471866208ec297e15df9374c27065cbee145741689d2855d01e48ecfdf  ./services/reference-control-plane/test/request-grounding-named.test.mjs
 6dc51845f6be22b29aad62e35fd0fb5ac10a5706dcb244028efb894e7805d590  ./services/reference-control-plane/test/request-grounding.test.mjs
 993825730490cf06f52291b8a06978b20dd3517ec16b59c742af59108e2c04de  ./services/reference-control-plane/test/request-origin.test.mjs
 977ef559f66f651cf18773923463e3e83611115c6fa421c2ad33492634f4cda1  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs

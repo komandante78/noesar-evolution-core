@@ -48,7 +48,7 @@
 
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { literalSearchMany as defaultLiteralSearchMany } from './repo-map.mjs';
+import { literalSearchMany as defaultLiteralSearchMany, resolveExclusions, isEngineStatePath } from './repo-map.mjs';
 import { contained } from './shadow.mjs';
 
 export class GroundingRefused extends Error {
@@ -228,6 +228,99 @@ export function rankingWeight(path) {
   return 1;
 }
 
+// A path the PERSON wrote in the request. Measured live on 2026-09-22: `/plan Create a new markdown
+// file named PROVA_LIVE_20260922.md …` was grounded by searching `create`, `file`, `title` in the
+// files that already exist, and the plan proposed five unrelated ones (`tmp/*.mjs`, a module
+// manifest) — a file that does not exist yet can never be a search result, so CodeN could not
+// create anything from a sentence. The path comes from the request, never from the model: the
+// rule at the top of this file ("the model NEVER EMITS A PATH") is untouched.
+//
+// A slash-separated name ending in an extension of two or more characters starting with a letter,
+// so `0.1.2`, `e.g.` and `i.e.` are not paths. ponytail: a one-letter extension (`main.c`) is
+// missed too; name it in the Plan form until a real request needs it here.
+const NAMED_PATH = /(?:^|[\s`'"(])((?:[\w.-]+\/)*[\w-][\w.-]*\.[A-Za-z][A-Za-z0-9]{1,9})(?=$|[\s`'"),:;!?]|\.(?:\s|$))/g;
+
+export function pathsNamedIn(request) {
+  const found = [];
+  for (const match of String(request ?? '').matchAll(NAMED_PATH)) {
+    const path = match[1].replace(/^\.\//, '');
+    if (!found.includes(path)) found.push(path);
+  }
+  return found;
+}
+
+/** Reads one candidate the way a plan may hold it, or says why it may not. `missing` is for a
+ *  path the person named: absent there means "create it", absent in a search result cannot happen. */
+function readCandidate(workspaceRoot, path, maxFileBytes, { missing = 'UNREADABLE' } = {}) {
+  // Defence in depth. `literalSearch` walks the root and reports paths relative to it, so
+  // a candidate is inside by construction — but "by construction" is a property of another
+  // module, and this one is about to read whatever it is handed.
+  try {
+    contained(workspaceRoot, path);
+  } catch {
+    return { skip: { path, reason: 'OUTSIDE_WORKSPACE' } };
+  }
+  const absolute = join(workspaceRoot, path);
+  let size;
+  try { size = statSync(absolute).size; } catch { return missing === 'NEW' ? { file: { path, contents: '' }, isNew: true } : { skip: { path, reason: 'UNREADABLE' } }; }
+  if (size > maxFileBytes) {
+    // Not truncated. A plan reasoning over half a file, with nothing saying so, is worse
+    // than a plan that never saw it: the missing half is invisible to whoever approves.
+    return { skip: { path, reason: 'TOO_LARGE', bytes: size } };
+  }
+  let contents;
+  try {
+    contents = readFileSync(absolute, 'utf8');
+  } catch {
+    return { skip: { path, reason: 'UNREADABLE' } };
+  }
+  // Found by running this against the live installation, where the workspace root is the
+  // runtime directory: literal search matched byte coincidences INSIDE PostgreSQL heap
+  // files, and the top candidates for "fix the session protocol refusal" came back as
+  // `postgresql/data/base/16384/2664`. A plan proposing to edit a database's storage is
+  // not a weak plan, it is a dangerous one, and it looked exactly as plausible as a good
+  // one in the approval screen.
+  //
+  // A NUL byte is the cheap, standard test for "this is not text", and it is the right one
+  // here: the question is not what format a file is, it is whether editing it as text is a
+  // coherent thing to propose. Skipped and SAID to be skipped, like every other exclusion.
+  if (contents.includes('\u0000')) return { skip: { path, reason: 'NOT_TEXT' } };
+  return { file: { path, contents } };
+}
+
+/** The engine's own state stays out of a plan when it is NAMED, not only when it is searched:
+ *  the walk never enters `audit/`, so a named `audit/x` is checked against every ancestor. */
+function isEngineState(workspaceRoot, path) {
+  const excluded = resolveExclusions(workspaceRoot);
+  const parts = path.split('/');
+  return parts.some((_, index) => isEngineStatePath(join(workspaceRoot, ...parts.slice(0, index + 1)), excluded));
+}
+
+// Measured live on 2026-09-22, on the first program asked for: "Create a new Node.js program
+// programmi/somma.mjs …" planned TWO new files, `Node.js` and `programmi/somma.mjs`. A name with
+// no folder that does not exist yet, shaped like a product (`Node.js`, `Vue.js`, `ASP.NET`), is
+// not taken as a file to create. An existing file of that shape is still found, and a new one is
+// still created when its folder is given (`src/Button.js`).
+const PRODUCT_NAME = /^[A-Z][a-z0-9]*\.js$|^[^/]*\.[A-Z]{2,}$/;
+
+/** The files the person named, read or marked new; `null` when they named none that may be used. */
+function groundNamedPaths(workspaceRoot, request, maxFileBytes, limit) {
+  const named = pathsNamedIn(request);
+  if (named.length === 0) return null;
+  const files = [];
+  const created = [];
+  const skipped = [];
+  for (const path of named.slice(0, limit)) {
+    if (isEngineState(workspaceRoot, path)) { skipped.push({ path, reason: 'ENGINE_STATE' }); continue; }
+    const read = readCandidate(workspaceRoot, path, maxFileBytes, { missing: 'NEW' });
+    if (read.skip) { skipped.push(read.skip); continue; }
+    if (read.isNew && PRODUCT_NAME.test(path)) { skipped.push({ path, reason: 'PRODUCT_NAME' }); continue; }
+    files.push(read.file);
+    if (read.isNew) created.push(path);
+  }
+  return files.length === 0 ? { files, skipped } : { files, created, skipped, named };
+}
+
 export function groundRequest({
   workspaceRoot,
   goal,
@@ -251,6 +344,20 @@ export function groundRequest({
   // paraphrase ("make login faster" -> "improve authentication performance") shares no term
   // either, so refusing on an empty overlap would refuse the good case and the bad one alike.
   // Nothing executes without an approval, and the approval can now be given knowing this.
+  const named = groundNamedPaths(workspaceRoot, request, maxFileBytes, limit);
+  if (named && named.files.length > 0) {
+    return {
+      files: named.files,
+      grounding: {
+        derived: false,
+        namedInRequest: named.named,
+        // Said to whoever approves: these do not exist yet, and approving CREATES them.
+        created: named.created,
+        selected: named.files.map((file) => file.path),
+        skipped: named.skipped,
+      },
+    };
+  }
   const requestTerms = searchTermsOf(request);
   const goalTerms = searchTermsOf(goal);
   const terms = [...requestTerms];
@@ -315,47 +422,11 @@ export function groundRequest({
   const skipped = [];
   for (const candidate of ranked) {
     if (files.length >= limit) break;
-    // Defence in depth. `literalSearch` walks the root and reports paths relative to it, so
-    // a candidate is inside by construction — but "by construction" is a property of another
-    // module, and this one is about to read whatever it is handed.
-    try {
-      contained(workspaceRoot, candidate.path);
-    } catch {
-      skipped.push({ path: candidate.path, reason: 'OUTSIDE_WORKSPACE' });
-      continue;
-    }
-    const absolute = join(workspaceRoot, candidate.path);
-    let size;
-    try { size = statSync(absolute).size; } catch { skipped.push({ path: candidate.path, reason: 'UNREADABLE' }); continue; }
-    if (size > maxFileBytes) {
-      // Not truncated. A plan reasoning over half a file, with nothing saying so, is worse
-      // than a plan that never saw it: the missing half is invisible to whoever approves.
-      skipped.push({ path: candidate.path, reason: 'TOO_LARGE', bytes: size });
-      continue;
-    }
-    let contents;
-    try {
-      contents = readFileSync(absolute, 'utf8');
-    } catch {
-      skipped.push({ path: candidate.path, reason: 'UNREADABLE' });
-      continue;
-    }
-    // Found by running this against the live installation, where the workspace root is the
-    // runtime directory: literal search matched byte coincidences INSIDE PostgreSQL heap
-    // files, and the top candidates for "fix the session protocol refusal" came back as
-    // `postgresql/data/base/16384/2664`. A plan proposing to edit a database's storage is
-    // not a weak plan, it is a dangerous one, and it looked exactly as plausible as a good
-    // one in the approval screen.
-    //
-    // A NUL byte is the cheap, standard test for "this is not text", and it is the right one
-    // here: the question is not what format a file is, it is whether editing it as text is a
-    // coherent thing to propose. Skipped and SAID to be skipped, like every other exclusion.
-    if (contents.includes('\u0000')) {
-      skipped.push({ path: candidate.path, reason: 'NOT_TEXT' });
-      continue;
-    }
-    files.push({ path: candidate.path, contents });
+    const read = readCandidate(workspaceRoot, candidate.path, maxFileBytes);
+    if (read.skip) { skipped.push(read.skip); continue; }
+    files.push(read.file);
   }
+  if (named) skipped.unshift(...named.skipped);
 
   if (files.length === 0) {
     throw new GroundingRefused(
