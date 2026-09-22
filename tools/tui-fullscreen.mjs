@@ -29,7 +29,7 @@ import {
 // made this file the only place that knew, and left the browser free to invent a second answer
 // when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
 import {
-  createView, say, planTurn, detailLines, callResult, gitSummary, reasoningSummary, frequencySummary,
+  createView, say, planTurn, detailLines, callResult, working, gitSummary, reasoningSummary, frequencySummary,
   divergenceLines, divergenceSummary, CLEARED_NOTE, startForm, fillForm,
   addressEntries, menuFrame, menuViewModel,
 } from '../apps/webui-static/coden-view-model.js';
@@ -220,9 +220,11 @@ export async function runFullScreen({
     if (turn.kind !== 'call') return draw();
 
     record('tool', turn.label);
+    const done = working(view);
     draw();
     try {
       const result = await session.call(turn.method, turn.params);
+      done();
       // Phase 6 (`D-0312`): the degradation reaches the status line from the ANSWER, the same
       // way the branch does — never from a second question this shell asks on its own, which
       // is how the two shells would start disagreeing about the same session.
@@ -249,6 +251,7 @@ export async function runFullScreen({
       const shown = callResult(turn.command, result);
       record('agent', shown.headline, shown.lines);
     } catch (error) {
+      done();
       // A step that began with ATOM and lost it stops RESUMABLY rather than finishing at a
       // second quality. The checkpoint is shown, because "stopped" and "stopped with
       // everything needed to resume" are different things to be told.

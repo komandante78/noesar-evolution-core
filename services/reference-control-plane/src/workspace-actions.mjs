@@ -1958,7 +1958,10 @@ export class WorkspaceActionOrchestrator {
       // then declined to promote an unclean result, not that the person said no. The review cost
       // the same minutes either way, and `outcome` carries the difference.
       this.#sampleReview(run, 'approve');
-      return { runId, result, diff: run.diff, promoted, coverage };
+      // The status the run was just saved with, as plan(), measure() and reject() already return
+      // theirs. Without it the shells could not say PROMOTED or REFUSED, nor offer `/restore`, in
+      // the one answer where that matters most (found live on 2026-09-22).
+      return { runId, status: run.status, result, diff: run.diff, promoted, coverage };
     } finally {
       this.#dropShadow(runId);
     }

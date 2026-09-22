@@ -337,11 +337,11 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-8504ae30366b6c6d68ae0b662be367a95feac8d9fdde410decef589fb60e37b0  ./apps/webui-static/app.js
+69621f1e270d87696848631cdac8a5c9bcbe5550d6713b56c6e3da1b653096d9  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
-7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
-59c59c4db829299ca839c54ed714328f588afccd0014996b5abae07a1c11a49d  ./apps/webui-static/coden-view-model.js
+25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
+b55597e40acb0debd1159eefac78daa94768a30901a4c52acc9a8df4d11b33e7  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
 9bfb92e8329497f7c93a2f5f79a83d221ea894abb04b4a4d930e99c57b1bed10  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
@@ -6370,7 +6370,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 372e40a6fc034cc4f7d376f668de00c6aa169d07078f1f1d85d7236f60667d44  ./services/reference-control-plane/src/watchdog.mjs
 6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  ./services/reference-control-plane/src/webauthn.mjs
 0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  ./services/reference-control-plane/src/websocket.mjs
-1e4005df2c8afa9ef1956d577c7e0afcda57436a9ffb626163344d52be7c6a25  ./services/reference-control-plane/src/workspace-actions.mjs
+1caff5544333972e4fe9ba60df4df5c3bc57f202d616d5db59c7e917c5bc0c79  ./services/reference-control-plane/src/workspace-actions.mjs
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs
@@ -6455,6 +6455,7 @@ cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/ref
 deb788e4a9b4122aac1423a56bd630dc9698b06b297c054d2e841ad789ee3cd5  ./services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs
 b8c6c8ee8d926b8646435156d6222a84987d6775acf4e8592547f6d22893e2a9  ./services/reference-control-plane/test/coden-path-authorization.test.mjs
 b719feb10da46da61d344399fec56ae640f8507222fdf489aa2432decc2184e6  ./services/reference-control-plane/test/coden-repair-cycle.test.mjs
+f6991e3505bc006bebf6ee39818f95255f7d9e2a4483df90576e0f0121ab3132  ./services/reference-control-plane/test/coden-run-summary.test.mjs
 3070a2fd0045885e242b04486cae154ed2cb7e1aa309a12fbe30b8514c8f125b  ./services/reference-control-plane/test/coden-shell-parity.test.mjs
 e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/reference-control-plane/test/coden-spa-catchall.test.mjs
 170021ec6f6f0213aebc62ba624470b1ca2f9ad6db979c21a98ed2298f7f9330  ./services/reference-control-plane/test/coden-terminal-client.test.mjs
@@ -6733,7 +6734,7 @@ f833e096bb996a7e466f5a3b69feca311d5c13e89547726be6b32bb943bcabc3  ./tools/test-p
 07a1d0df08751b09bcb27ac8b9be150d582b5cb129ec16bdead036b2b95b8a57  ./tools/test-sign-model-descriptor.mjs
 8adfd1e072d92fae8dd3e83acecf4eb9bb0860e1581231dcc52226e552706165  ./tools/tls-smoke.mjs
 48e60682b62c59606e349c451a21c4c5fbb7a316a14288b91a4a1de4dc6d4752  ./tools/tui-client.mjs
-d0ff1cfbb0b916f900704ba74e3277a1873b641003ce1dee28e9c253ce36cc3a  ./tools/tui-fullscreen.mjs
+fc675b8cbd7990618484f63e9ae5883536144b88adb668c63d9ac47b5adcf2ee  ./tools/tui-fullscreen.mjs
 27253aa5c73792baeafc944a9b6eb02a91136b6ffeb37ae56806da82d51d6836  ./tools/verify-acceptance-matrix.mjs
 2e5d4be641d0304459db1eddb8902431c36c5c0987bba20bd64ce3645af7ef40  ./tools/verify-build-provenance.mjs
 5315f9ad357094b411bfa00211789c3b883f9e9b6fb8bc6e46ca472ec764314c  ./tools/verify-compliance-pack.mjs

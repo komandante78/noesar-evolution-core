@@ -30,7 +30,7 @@ import { Terminal } from './vendor/xterm/xterm.mjs';
 // The pure decisions live in the shared tree so the suite can import them without a browser.
 import { decodeInput, segmentInput, geometryFor, bridgeUrl } from '../shared/coden/terminal-input.mjs';
 import { SCREEN, renderFrame } from '../shared/coden/tui-screen.mjs';
-import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE, callResult } from './coden-view-model.js';
+import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE, callResult, working } from './coden-view-model.js';
 import {
   accountFromUser, menuFor, groupMenu, hiddenNote, resolveCommand, parseCommandPrompt,
 } from '../shared/coden/agent-commands.js';
@@ -447,9 +447,11 @@ export function mountCodenTerminal({
     if (turn.kind !== 'call') { draw(); return; }
 
     record('user', typed);
+    const done = working(view);
     draw();
     try {
       const result = await call(turn.method, turn.params);
+      done();
       // F-TERM-003 (2026-08-15), found verifying `/model`'s own fix: an untruncated
       // `JSON.stringify` of a large result (a populated model catalogue was the first thing
       // ever large enough to expose it) can occupy so much of the fixed-height transcript
@@ -468,6 +470,7 @@ export function mountCodenTerminal({
       // Errors are said into the transcript, never swallowed and never thrown at the console:
       // a terminal that silently does nothing is the failure mode this product has already
       // shipped once, and the person typing has no other channel.
+      done();
       record('error', `${error.kind ? `${error.kind}: ` : ''}${error.message}`);
     }
     draw();

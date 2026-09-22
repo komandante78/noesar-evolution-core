@@ -14,7 +14,7 @@ import {
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
-  createView, say, planTurn, callResult, reasoningSummary, frequencySummary,
+  createView, say, planTurn, callResult, working, reasoningSummary, frequencySummary,
   divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuFrame, menuEntriesFor, promptKeys,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
@@ -1929,15 +1929,18 @@ async function submitCodenPrompt(){
     return undefined;
   }
   if(turn.kind!=='call')return renderCodenTranscript();
-  say(codenView,'tool',turn.label);renderCodenTranscript();
+  say(codenView,'tool',turn.label);
+  const done=working(codenView);renderCodenTranscript();
   try{
     const result=await codenCall(turn.method,turn.params);
+    done();
     // `D-0579`, `F-AUTH-UI-001`. Same shaper as the other two shells: a plan that wrote nothing
     // said `— ok` here too, and the reason was at line 88 of a 126-line answer this printed ten
     // lines of.
     const shown=callResult(turn.command,result);
     say(codenView,'agent',shown.headline,shown.lines);
   }catch(error){
+    done();
     say(codenView,'error',`${turn.command} refused: ${error.value?.error?.reason??error.value?.error??error.message}`);
   }
   return renderCodenTranscript();

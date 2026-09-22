@@ -262,11 +262,66 @@ export function authoringSummary(authoring) {
  */
 export const AUTHORING_COMMANDS = Object.freeze(['plan']);
 
+/**
+ * What a run answer MEANS, in three lines UNDER the dump — a terminal shows the end of an answer, so
+ * the end is where they go (measured: above the dump they scrolled off a short window): where it
+ * stands, which files, and the command that comes next. Measured live on 2026-09-22: `/plan` answered with ten
+ * lines of JSON (`runId`, `plan.steps[0].description`, …) and "… 361 more lines", and nothing on
+ * the screen said that the next thing to type was `/measure <run>`.
+ *
+ * Keyed on shape like everything else here: any answer carrying a `runId` and a `status` gets it,
+ * whichever verb produced it. Nothing is added that the answer does not hold.
+ */
+const NEXT_STEP = Object.freeze({
+  PENDING_APPROVAL: (id) => `/measure ${id}   runs it in a throw-away copy; nothing real is touched`,
+  MEASURED: (id, clean) => (clean === false
+    ? `/repair ${id}  or  /reject ${id}   the measured run is not clean`
+    : `/diff ${id} to read it, then /approve ${id}  or  /reject ${id}`),
+  PROMOTED: (id) => `done — /restore ${id} undoes it`,
+  REFUSED: (id) => `the engine did not promote an unclean result — /repair ${id}  or  /reject ${id}`,
+});
+
+export function runSummary(result) {
+  if (!result || typeof result !== 'object' || typeof result.runId !== 'string' || typeof result.status !== 'string') return [];
+  const clean = typeof result.clean === 'boolean' ? result.clean
+    : typeof result.measurement?.clean === 'boolean' ? result.measurement.clean : null;
+  const facts = [result.status];
+  if (clean !== null) facts.push(clean ? 'clean' : 'NOT clean');
+  if (result.risk?.overall) facts.push(`risk ${result.risk.overall}`);
+  if (typeof result.confidence?.value === 'number') facts.push(`confidence ${result.confidence.value}`);
+  const created = new Set(result.grounding?.created ?? []);
+  const files = Array.isArray(result.diff)
+    ? result.diff.map((entry) => `${entry.path} (${String(entry.status).toLowerCase()})`)
+    : (result.plan?.steps ?? []).flatMap((step) => step.files ?? [])
+      .filter((path) => path !== '.')
+      .map((path) => (created.has(path) ? `${path} (new)` : path));
+  const next = NEXT_STEP[result.status];
+  return [
+    '',
+    `run ${result.runId} — ${facts.join(', ')}`,
+    ...(files.length ? [`files: ${files.join(' · ')}`] : []),
+    ...(next ? [`next: ${next(result.runId, clean)}`] : []),
+  ];
+}
+
+/** The line a shell shows while it waits on the engine, and the function that takes it back. A
+ *  plan takes 20-40 s with a model behind it (measured 2026-09-22), and a still screen for that
+ *  long reads as a terminal that swallowed the command. */
+export const WORKING_NOTE = 'working — waiting for the engine; a plan with a model can take a minute…';
+export function working(view) {
+  const entry = { kind: 'note', text: WORKING_NOTE };
+  view.transcript.push(entry);
+  return () => {
+    const at = view.transcript.lastIndexOf(entry);
+    if (at >= 0) view.transcript.splice(at, 1);
+  };
+}
+
 export function callResult(command, result) {
   const name = String(command ?? 'call');
   const authoring = result && typeof result === 'object' ? result.authoring : null;
   if (!authoring || typeof authoring !== 'object') {
-    return { headline: `${name} — ok`, lines: detailLines(result) };
+    return { headline: `${name} — ok`, lines: [...detailLines(result), ...runSummary(result)] };
   }
 
   const summary = authoringSummary(authoring);
@@ -291,7 +346,7 @@ export function callResult(command, result) {
   if (discarded.length) lines.push(`  discarded: ${discarded.join(' · ')}`);
 
   lines.push('');
-  lines.push(...detailLines(result));
+  lines.push(...detailLines(result), ...runSummary(result));
 
   // The headline carries the outcome, because `— ok` on a run that wrote nothing is the sentence
   // this whole change exists to stop printing — but only for the verb that DID the authoring.
