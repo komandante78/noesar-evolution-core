@@ -337,13 +337,13 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-154f0ed266ca22f3e78cfbe676f509074e96dd6bee3542e92874ab61c3d3053e  ./apps/webui-static/app.js
+518e048b1b6e82c7701d4faceb4cabe5ef7735a734a855ed312a1abcc18d454a  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
 d1b7fd1e57d4951a8b27d2bd266236190d73d85cdd61579ce6626973a1cc9e30  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-6e3d6b921f333593388dd8accc5584db9fd7d4ce5faef955c24ecce9637340cd  ./apps/webui-static/i18n-catalog.js
+9b4f3d6c637333cd1a6592f7a22c7a4f0e75607a87e338903668748c7dd16c72  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 bef6c6d1a72982237447b89b4900ea6ee34ebcef825f1868bdf872786f0dabae  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
@@ -6257,7 +6257,7 @@ dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/ref
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
 6d3c76415622d493f6e21a891b1c797ea2780c7cd6a81ba6d6ef7dc0810dd577  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
 baeffcf7725541c141f60d2b86e8af1ab3f6ad96513610f89e3ff0e598ce426b  ./services/reference-control-plane/src/ai-workspace/pii-redaction.mjs
-e9b8bb511a5f9f29a8f9f8267dc40d16d04c43034644d162aa64b5adab8fe16d  ./services/reference-control-plane/src/ai-workspace/privacy-redaction.mjs
+67352913c3a689d429dc29c01dff598ab5e84d557582de830999eddf42707b5f  ./services/reference-control-plane/src/ai-workspace/privacy-redaction.mjs
 a8267dce76e7f90cf1fc5f4dd670fd201937345d37a7c550025884de69a665dd  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
 0f8f4f23bed3fc681851fc647acacd24ad67de241dd9d44f428f2016ae109010  ./services/reference-control-plane/src/ai-workspace/search.mjs
 e3d905867839a527a995c86fbb711f26375c089d7e9e00407b0ab6baa841675c  ./services/reference-control-plane/src/ai-workspace/tool-call-stream.mjs
@@ -6573,6 +6573,7 @@ a94498398b99c07685c7490fb5a5f169d640064f3e3022517aa931cbfa1a1288  ./services/ref
 dc19903ed6316e93911f15865f4a6a1e2c5a3ea28c859309c75b88891f7126b5  ./services/reference-control-plane/test/shadow-vectors.test.mjs
 8bc07e0c8a7700eb7e4a657f261164a3edfdbc7edd010961b7c32167b6b3dd2d  ./services/reference-control-plane/test/shared-static-serving.test.mjs
 6f42f0c43cc8ee471a17f89d6895ffce8ce17b33b88482e4ee6056a605aee79e  ./services/reference-control-plane/test/skill-catalog.test.mjs
+0ebe24c82774894340992b1e747d9ddf3e15ca7213c37eefcccb6cb3ad7856e0  ./services/reference-control-plane/test/small-fixes.test.mjs
 8785b7a09f59c7e32176f6b87bcf100e81a60b5c1e1cd6280c6cd5d5d1baf53e  ./services/reference-control-plane/test/socket-path-isolation.test.mjs
 253fb7be49da2a26a1f906a542b62f252fd26a79ffd19883b48566dc196e4c41  ./services/reference-control-plane/test/static-analysis-config.test.mjs
 55317478b5dd6ebbe406c7f509286834e0c54afb35291d0e10388e0d73d3b27c  ./services/reference-control-plane/test/stream-crash-survival.test.mjs

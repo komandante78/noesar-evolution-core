@@ -5,7 +5,10 @@ const RULES = Object.freeze([
   ['email', /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[REDACTED_EMAIL]'],
   ['credit_card', /\b(?:\d[ -]*?){13,19}\b/g, '[REDACTED_PAYMENT_NUMBER]'],
   ['ipv4', /\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[REDACTED_IP]'],
-  ['phone', /(?<!\w)(?:\+?\d[\d .()-]{7,}\d)(?!\w)/g, '[REDACTED_PHONE]'],
+  // Not a number followed by a unit: measured in the live log on 2026-09-21, "the workspace
+  // exceeds 2147483648 bytes" became "exceeds [REDACTED_PHONE] bytes" — the one figure that
+  // explained the failure. A bare run of digits is still a phone (3331234567 is one).
+  ['phone', /(?<!\w)(?:\+?\d[\d .()-]{7,}\d)(?!\w)(?!\s*(?:bytes?|B|[KMGT]i?B|ms|seconds?)\b)/g, '[REDACTED_PHONE]'],
 ]);
 
 // A canonical UUID is an identifier: never a phone number, never a payment card, never an
