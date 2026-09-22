@@ -6,6 +6,116 @@ reproduce from the tree is a defect, the same rule `README.md` states for its nu
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-09-22
+
+A minor release, because it adds things you can now do and could not before: **CodeN turns a
+sentence into a new file, a working program or a repaired one**, a model can be taken straight
+from a Hugging Face repository, and an automated change can end in a signed receipt of what it
+actually touched. Every item below was found or proven by **using the installed product** — the
+browser terminal, the Models page, the chat — and the entries say what was measured.
+
+If you are on `0.1.2`, upgrade: two defects fixed here reach every installation. Opening the
+Models page stopped the whole server for up to a minute and a half, and downloading a single
+large model silently switched CodeN off.
+
+### Added
+
+- **CodeN creates the file you name.** `/plan Create programmi/somma.mjs that adds two numbers`
+  used to be grounded by searching the request's words (`create`, `file`, `title`) inside files
+  that already existed, so a file that did not exist yet could never be proposed — measured live,
+  the plan picked five unrelated files and wrote none. A path the **person** writes in the request
+  is now the plan's file: read if it exists, created if it does not, and marked `(new)` before
+  anyone approves it. The path comes from the request, never from the model. Engine state
+  (credentials, the audit chain, their copies) and paths outside the workspace are refused when
+  named. Measured on the live installation, plan → measure → approve, then executed: a Markdown
+  note, a Node.js program (`2 3` → `5`, a missing argument → exit 1), and two repairs of a buggy
+  program, each changing only the lines at fault.
+- **A file named as a reference is read, not rewritten.** "Create `LEGGIMI.txt` that explains how
+  to run `somma.mjs`" plans only the new file; the existing one is handed to the author as
+  read-only context (`grounding.context`), and the explanation was written from the real program.
+- **A third way to get a model: a repository address.** The Models page takes a Hugging Face
+  repository, lists its files, and reads the SHA-256 Hugging Face publishes for each one **before**
+  a byte moves, so the download is checked against a digest fixed in advance — the same guarantee
+  as a signed descriptor, from a different source. A descriptor from this door declares itself
+  (`provenance.kind: publisher-api-digest`, `signed: false`) and is refused if it carries no digest.
+- **Effect receipts** (prototype, command line). `tools/effect-receipt.mjs` runs an automated step
+  in a throw-away copy, compares what it touched with what it declared, and signs the verdict —
+  `CLEAN`, `UNDECLARED_EFFECT`, `DECLARED_FAILED`, `NOT_MEASURED` — as an in-toto Statement in a
+  DSSE envelope (Ed25519). Verification recomputes the verdict rather than trusting it. Measured
+  on a package whose `postinstall` wrote `~/.ssh/authorized_keys`: `UNDECLARED_EFFECT`. See
+  `docs/EFFECT_RECEIPTS.md`.
+- **The terminals say what is happening and what comes next.** A "working" line while the engine
+  is busy (a plan with a model takes 20–40 s, which read as a lost command), and every answer
+  about a run ends with its state, its files and the next command to type — `/measure`,
+  `/approve` or `/reject`, `/restore` once promoted. In all three shells.
+- **The chat shows which tools an answer used**, under the answer ("Tools used:
+  engine_coden_benchLists ✓"). The call was recorded; nothing on screen said so.
+
+### Fixed
+
+- **Opening the Models page stopped the whole server for 45–93 seconds.** Every catalogue request
+  computed the SHA-256 of every model file present, synchronously — about 45 GiB on the reference
+  installation — and nothing else could be answered meanwhile. Present in every release so far,
+`0.1.0` included (introduced on 2026-08-26 by `e9ce8eb9`).
+  Digests are now remembered per file and computed in the background at start, with the "racy
+  git" rule for a file rewritten within the same instant (found by the test itself). Measured: the
+  catalogue answers in 21–26 ms.
+- **Downloading one model switched CodeN off.** The throw-away copy CodeN measures in has a 2 GiB
+  ceiling, and the workspace it copies is also where the product keeps its own state and models:
+  one 9 GB download put it at 8.8 GB, and from then on every `/measure` answered
+  "Internal request failure". The copy now leaves the product's own state out, using the same list
+  the repository scanner keeps, and a copy that cannot be built is a refusal the caller can read
+  (422), not a 500. It also means a command run in the copy cannot read the product's credentials.
+- **ATOM wrote a file without being told what was asked.** Asked for "one line saying this file
+  was written by CodeN during the live test", it wrote `Attribution: PROVA_LIVE_20260922`: it had
+  received `interpret`'s one-sentence summary and never the request, which the local model was
+  always shown. The request now reaches ATOM too, through the field its contract already has.
+- **`Node.js` was planned as a file to create**, on the first program asked for. A new name with
+  no folder, shaped like a product (`Node.js`, `ASP.NET`), is no longer a file.
+- **The terminal inside the CodeN page had its own rules** — no `/`, no `plan`, raw JSON. It now
+  takes a command with or without the slash, plans like the others, and answers like them. In the
+  slash terminals, a bare command word is answered "did you mean /status?" instead of "no model
+  wired for prose".
+- **`approve()` did not return the status it had saved**, so no shell could say `PROMOTED` or
+  offer `/restore` in the one answer where it matters.
+- **The log redacted a byte count as a phone number** ("the workspace exceeds [REDACTED_PHONE]
+  bytes" — the one figure that explained the failure). A number followed by a unit is kept; a
+  phone number is still redacted.
+
+### Security
+
+- **`SECURITY.md` no longer names a personal mailbox.** Vulnerabilities are reported through
+  GitHub's private vulnerability reporting, enabled on this repository. Earlier commits still
+  carry that address as author; rewriting history would move every hash and tag and recall
+  nothing already copied, and was not done.
+
+### Changed
+
+- **`CONTRIBUTING.md` stopped promising what the licence strategy leaves open.** It no longer says
+  contributors will never be asked for an agreement; code from outside is not merged into the
+  core until the contribution mechanism is decided (`D-0709` in `docs/DECISION_LOG.md`). `NOTICE`,
+  the licence inventory and three documents stopped describing files this public tree does not
+  contain.
+
+### Known limits
+
+Unchanged from `0.1.2` unless said otherwise.
+
+- **CodeN cannot move, rename or delete a file.** Asked to move one, the plan makes an empty copy
+  and cannot remove the original: deleting is unwired on purpose. The plan is shown before anything
+  happens and can be rejected; nothing is written unless approved.
+- **A Markdown file carrying code examples cannot be written by CodeN.** Both ATOM and this side
+  accept exactly one fenced block per answer, and a guide with examples has several. New.
+- **CodeN works in the product's own workspace directory**, not in a project directory of its own.
+  Engine state is excluded from what it can read, copy or plan; a separate project directory is
+  not built yet.
+- **One request creates, or changes — not both.** "Create X and change Y" now changes only X.
+- **macOS has never been executed**, and Windows is checked statically by the installer gate.
+  Still true.
+- **`deployment/windows/Uninstall-Noesar.ps1` removes nothing.** Still true.
+- **`docs/LICENSE_STRATEGY.md` is still marked a proposal.** `LICENSE` (AGPL-3.0) and the SPDX
+  header on every source file are what governs this release.
+
 ## [0.1.2] — 2026-09-20
 
 A patch release. Every fix below was found by **running something** — a security audit of the
@@ -232,6 +342,7 @@ should be different.
   header on every source file are what governs this release; that document records an intended
   direction and has not been reviewed by counsel.
 
+[0.2.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.2.0
 [0.1.2]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.2
 [0.1.1]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.1
 [0.1.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.0

@@ -18,8 +18,8 @@
 [![offline](https://img.shields.io/badge/OFFLINE-NO%20API%20KEY-12C8EC?style=for-the-badge&labelColor=0F1B33)](#offline-by-default)
 [![no proprietary component](https://img.shields.io/badge/CORE%20RUNS-WITH%20NOTHING%20PROPRIETARY-F2318C?style=for-the-badge&labelColor=0F1B33)](docs/ATOM_ABSENT_ACCEPTANCE.md)
 
-[![tests](https://img.shields.io/badge/tests-3289%20passing%20%7C%201%20skipped%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
-[![eslint](https://img.shields.io/badge/eslint-491%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![tests](https://img.shields.io/badge/tests-3352%20passing%20%7C%201%20skipped%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![eslint](https://img.shields.io/badge/eslint-506%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
 [![engine methods](https://img.shields.io/badge/engine%20methods-34-1E3A6E?style=flat-square)](#what-the-model-may-do)
 [![mutative](https://img.shields.io/badge/mutative%20tools-11%20%7C%20approval%20gated-DB8B00?style=flat-square)](#what-the-model-may-do)
 [![destroy](https://img.shields.io/badge/destroying%20tools-0%20shipped-2EA043?style=flat-square)](#what-the-model-may-do)
@@ -159,18 +159,18 @@ macOS ones, which nobody has ever executed, and it says so there too.
 
 ## Every badge above has a command behind it
 
-Measured on **2026-09-18** at `5ac3e745`, on the development host, from this repository, except
+Measured on **2026-09-22** at `7061d83b`, on the development host, from this repository, except
 where a row says otherwise:
 
 | Claim | Command | Result |
 |---|---|---|
-| Unit suite | `npm test` | 3290 tests, 354 suites — **3289 pass, 0 fail, 1 skip** |
-| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **491 files, 0 errors, 0 warnings** |
-| Verification battery | `sh scripts/test.sh` | **pass=22, fail=0, partial=0, unavailable=0** |
-| Installer parity | `node tools/test-cross-platform-installers.mjs` | **124 checks, 0 failures** — Linux and macOS executed, Windows read statically |
+| Unit suite | `npm test` | 3353 tests, 354 suites — **3352 pass, 0 fail, 1 skip** |
+| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **506 files, 0 errors, 0 warnings** |
+| Verification battery | `sh scripts/test.sh` | **pass=23, fail=0, partial=0, unavailable=0** |
+| Installer parity | `node tools/test-cross-platform-installers.mjs` | **140 checks, 0 failures** — Linux and macOS executed, Windows read statically |
 | Engine surface | the `node -e` line under [What the model may do](#what-the-model-may-do) | **34 methods — 21 read, 11 write, 2 destroy**; 32 registered as tools, 0 of them destroying |
 | Rust workspace | `cargo test --workspace --offline` | vendored, no network — **last measured 2026-09-01**, in `rust:1-bookworm`, and not re-run since |
-| Repository manifest | `node tools/generate-manifest.mjs` | 6 734 files |
+| Repository manifest | `node tools/generate-manifest.mjs` | 6 756 files |
 
 A number in this README that a reader cannot reproduce is a defect. If one of the commands above
 disagrees with the badge, the badge is wrong — open an issue.
@@ -219,13 +219,13 @@ git log --format=%B | grep -ci "co-authored-by:.*claude"
 ```
 
 The disclosure written for the grant application, including the sessions whose transcripts no
-longer exist, is [`FUNDING/20_GENAI_DISCLOSURE.md`](FUNDING/20_GENAI_DISCLOSURE.md).
+longer exist, is kept with the application, outside this repository.
 
 ## An early version — tell me what breaks, and what should be different
 
-`0.1.0` is published as a **pre-release**, and the word is meant literally: it is the first
-version of this that somebody other than its author can install, and the reason to put it out is
-to find out what happens when it meets a machine nobody here has ever seen. Expect to find
+This is a `0.x` release, and early is meant literally: `0.1.0` was the first version of this
+that somebody other than its author could install, and the reason to put it out is to find out
+what happens when it meets a machine nobody here has ever seen. Expect to find
 defects. Finding one is the point, not an accident.
 
 **Something is broken** → [report a defect](https://github.com/komandante78/noesar-evolution-core/issues/new?template=bug_report.yml). The form asks
