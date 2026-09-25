@@ -322,6 +322,37 @@ const CREATABLE_EXTENSIONS = new Set([
 ]);
 const canBeCreated = (path) => CREATABLE_EXTENSIONS.has(path.slice(path.lastIndexOf('.') + 1).toLowerCase());
 
+// A NEW name is a creation only when the request ASKS for one. Measured 2026-09-25 on the 426 real
+// SWE-bench reports: after the extension rule above, 84 of them still had a name planned as a
+// file to create (`models.py`, `manage.py`, `settings.py`, `tab.txt`) — files of the reporter's
+// project, mentioned, not requested — and on the 155-instance localisation set those 36 cases
+// localised 6% against 58% for the ones the search answered. Two conditions, both required,
+// because they answer different questions:
+//   - the request is a plain INSTRUCTION, not a report: no fenced code, no blank line. The 22/09
+//     headline is "turns a SENTENCE into a file", and a report is never a sentence. 0 of 426
+//     reports pass this; every creation sentence in the tests and the live measurements does.
+//   - the name is the OBJECT of a creation verb, with nothing between them that points at an
+//     existing target: "add a field TO models.py" edits, "add models.py" creates. Without this,
+//     "fix the bug in models.py" — one line, plain — would plan an empty models.py.
+// ponytail: a long creation request (paragraphs, a code block) is no longer read as creating a
+// name; it falls to the search, as before 22/09. Name the file in the Plan form until a real
+// request needs otherwise. Pinned by a test, so it is a decision and not an accident.
+const CREATION_VERB = /\b(create|creating|add|write|make|generate|build|save|crea|creare|aggiungi|scrivi|genera|salva|nuovo|nuova|new)\b/gi;
+const POINTS_AT_EXISTING = /\b(to|into|in|inside|of|from|for|on|within|nel|nella|nello|su|di|da|per)\b/i;
+const isPlainInstruction = (request) => !/```/.test(request) && !/\n\s*\n/.test(request);
+function asksToCreate(request, path) {
+  const text = String(request ?? '');
+  if (!isPlainInstruction(text)) return false;
+  for (let at = text.indexOf(path); at >= 0; at = text.indexOf(path, at + 1)) {
+    const before = text.slice(Math.max(0, at - 60), at);
+    const verbs = [...before.matchAll(CREATION_VERB)];
+    if (verbs.length === 0) continue;
+    const last = verbs[verbs.length - 1];
+    if (!POINTS_AT_EXISTING.test(before.slice(last.index + last[0].length))) return true;
+  }
+  return false;
+}
+
 /** The files the person named, read or marked new; `null` when they named none that may be used. */
 function groundNamedPaths(workspaceRoot, request, maxFileBytes, limit) {
   const named = pathsNamedIn(request);
@@ -335,6 +366,7 @@ function groundNamedPaths(workspaceRoot, request, maxFileBytes, limit) {
     if (read.skip) { skipped.push(read.skip); continue; }
     if (read.isNew && PRODUCT_NAME.test(path)) { skipped.push({ path, reason: 'PRODUCT_NAME' }); continue; }
     if (read.isNew && !canBeCreated(path)) { skipped.push({ path, reason: 'NOT_A_FILE_NAME' }); continue; }
+    if (read.isNew && !asksToCreate(request, path)) { skipped.push({ path, reason: 'MENTIONED_NOT_CREATED' }); continue; }
     files.push(read.file);
     if (read.isNew) created.push(path);
   }

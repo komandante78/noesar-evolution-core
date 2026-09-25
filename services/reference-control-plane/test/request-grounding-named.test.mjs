@@ -107,3 +107,38 @@ test('an EXISTING file is read whatever its extension — the rule only stops in
   const ground = groundRequest({ workspaceRoot: root, goal: 'x', request: 'repair weird.array' });
   assert.deepEqual(ground.files, [{ path: 'weird.array', contents: 'real\n' }]);
 });
+
+test('a name that is MENTIONED is not a file to create: "fix the bug in models.py" plans no empty models.py (measured 2026-09-25)', () => {
+  const root = workspace({ 'app/models.py': '# user model\n', 'app/views.py': '# views\n' });
+  const ground = groundRequest({ workspaceRoot: root, goal: 'fix the user model', request: 'fix the bug in models.py, the user model breaks' });
+  assert.equal(ground.grounding.derived, true, 'no name was honoured, so the search answered');
+  assert.ok(ground.files.some((file) => file.path === 'app/models.py'), 'and found the real file');
+  assert.ok(ground.files.every((file) => file.path !== 'models.py'), 'nothing invented at the root');
+  assert.equal(ground.grounding.skipped.find((entry) => entry.path === 'models.py')?.reason, 'MENTIONED_NOT_CREATED');
+});
+
+test('the preposition decides: "add a field to models.py" edits, "add models.py" creates', () => {
+  const edit = groundRequest({ workspaceRoot: workspace({ 'app/models.py': '# model field\n' }), goal: 'model field',
+    request: 'add a field to models.py' });
+  assert.equal(edit.grounding.derived, true, 'an edit of an existing file elsewhere is not a creation');
+  const make = groundRequest({ workspaceRoot: workspace({ 'a.txt': 'x\n' }), goal: 'x', request: 'add models.py with a User class' });
+  assert.deepEqual(make.grounding.created, ['models.py']);
+});
+
+test('a bug REPORT never creates: fenced code and paragraphs are not a sentence', () => {
+  const report = 'Table conversion fails\n\nI run this:\n```python\nCreate a file test.py and run it\n```\nIt breaks in ascii.rst';
+  const root = workspace({ 'astropy/table/table.py': '# conversion table fails\n' });
+  const ground = groundRequest({ workspaceRoot: root, goal: 'Table conversion fails', request: report });
+  assert.equal(ground.grounding.derived, true);
+  assert.ok((ground.grounding.created ?? []).length === 0, 'even a creation verb inside a report creates nothing');
+});
+
+test('the known limit, pinned: a creation request with a code block is not read as creating a name', () => {
+  // A file the SEARCH can find, or the fall-through would end in NO_CANDIDATES — which is itself
+  // the proof that it fell through, but not the assertion this test is about.
+  const root = workspace({ 'src/print-report.mjs': '// report prints hello\n' });
+  const request = 'Create tools/report.py that prints this:\n```\nhello\n```';
+  const ground = groundRequest({ workspaceRoot: root, goal: 'Create tools/report.py', request });
+  assert.equal(ground.grounding.derived, true, 'the search answered, not a named path');
+  assert.ok((ground.grounding.created ?? []).length === 0, 'nothing is created — name the file in the Plan form instead');
+});
