@@ -6285,7 +6285,7 @@ be05625dc43694b55cb3d8d52e9eaf901380bee54a65ba88ad473962f9194e56  ./services/ref
 cd1b093d32bf114bb8cb223ffe9824d6f37aec04ae2823f049a5dd7f8c6a217a  ./services/reference-control-plane/src/auth-crypto.mjs
 ea52412b9ae35c7d01d41771d30b351b8427f5333b913e0233f79437f6ae544f  ./services/reference-control-plane/src/auth-store.mjs
 8da564eded08c14c9f65f36ba27a82daf97d937b86f3548b254c3ace68bedfa0  ./services/reference-control-plane/src/auth.mjs
-02832dac1795ae407a76b325fff67f1611caeda689624b716c780384e45717a8  ./services/reference-control-plane/src/author.mjs
+cab2828a67281af222f3ad6eb63ea90862b8bfced39c2cf614a0385788f47094  ./services/reference-control-plane/src/author.mjs
 704def32b7f8b31030702ae64c0c8090ca85d86b0648504d973512db83bfabd6  ./services/reference-control-plane/src/authoring-replay-store.mjs
 cd58f69b41fa23085926175ddd2b9414451a2065f371c4d17eb2d34b33897b3b  ./services/reference-control-plane/src/authority-external-client.mjs
 a179feb4fd5b1ac894c7d5d5c6bcffd053344728daa1a139c862b6f2ce65797f  ./services/reference-control-plane/src/authority-ipc-frame.mjs

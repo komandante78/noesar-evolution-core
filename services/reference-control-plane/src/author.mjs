@@ -862,7 +862,30 @@ export function atomAuthoringGenerator({
   // the reason named (`author_model.rs`): lower it only if that behaviour changes.
   const effectiveTimeoutMs = timeoutMs
     ?? (Math.ceil((maxTokens / minTokensPerSecond) * 1000) + 30_000) * atomModelCalls;
+  // ATOM writes the file WHOLE, inside a `maxTokens` answer of its own (`author_model.rs`,
+  // MAX_TOKENS = 4096), and refuses an answer that dropped most of the file (`Rejection::Truncated`,
+  // wire kind NOT_A_FILE). A refusal from a reachable ATOM STANDS, by design — see
+  // `declaredFallbackGenerator` — so a file that cannot fit an answer that size does not degrade to
+  // the model underneath: it ends authoring for that file, where the model below would have written
+  // it as edits and is not bounded by the file's size (`applyEditBlocks`).
+  //
+  // Measured 2026-09-25: today this cannot be seen only because the `atomd` inside the image
+  // times out at 30 s and that is read as "unreachable". The rebuilt one (ATOM-EVOLUTION@5575f96,
+  // which `vendor-atom.sh` refreshes into the image) does not, and would refuse every file above
+  // ~11 KB instead. Sending one is therefore never the right call.
+  //
+  // The floor is the LOWEST bytes-per-token measured with the model's own tokenizer on real source
+  // (2.87, on `test_models.py`; the same set runs to 3.84), so a file under the bound fits with
+  // room and one over it does not. Derived from `maxTokens`, not a second number to keep in step.
+  const wholeFileBytes = Math.floor(maxTokens * 2.8);
   return async ({ goal, step, path, contents, profile = [], attempts = [], background = '' }) => {
+    // UNAVAILABLE and not REFUSED: `declaredFallbackGenerator` then records the degradation, says
+    // why, and the model answers. Declared, never silent.
+    if (String(contents ?? '').length > wholeFileBytes) {
+      throw new AuthoringUnavailable(
+        `ATOM returns a file whole inside a ${maxTokens}-token answer; \`${path}\` is ${String(contents).length} bytes and does not fit — the model below writes it as edits`,
+      );
+    }
     // Measured live on 2026-09-22: asked for a file "with one line saying this file was written by
     // CodeN during the live test", ATOM wrote `Attribution: PROVA_LIVE_20260922`. It had been sent
     // `interpret`'s goal — "…containing a title and a specific attribution line" — and never the
