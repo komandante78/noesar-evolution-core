@@ -41,6 +41,10 @@ import { matchCommands } from '../shared/coden/agent-commands.js';
  *  (`agent-commands.js`); this decides only what to send with them. */
 export const RUN = {
   plan: (argument) => ['workspace.plan', { request: argument, files: [] }],
+  answer: (argument) => {
+    const [runId, ...answers] = argument.split(' ');
+    return ['workspace.answer', { runId, answers: answers.join(' ') }];
+  },
   simulate: (argument) => ['workspace.simulate', { runId: argument }],
   // `D-0567`, `CE-008`: the step that produces the result `approve` is answered against.
   measure: (argument) => ['workspace.measure', { runId: argument }],
@@ -257,10 +261,10 @@ export function authoringSummary(authoring) {
  * HEADLINE follows the verb (only the command that did the authoring reports it as its outcome).
  *
  * `coden-view-model.test.mjs` asserts this set is exactly the commands whose method is
- * `workspace.plan`, so it is derived by comparison rather than hand-kept — the difference between
+ * `workspace.plan` or `workspace.answer` (which re-plans), so it is derived by comparison rather than hand-kept — the difference between
  * this and a list that is only ever compared with itself.
  */
-export const AUTHORING_COMMANDS = Object.freeze(['plan']);
+export const AUTHORING_COMMANDS = Object.freeze(['plan', 'answer']);
 
 /**
  * What a run answer MEANS, in three lines UNDER the dump — a terminal shows the end of an answer, so
@@ -281,6 +285,17 @@ const NEXT_STEP = Object.freeze({
   REFUSED: (id) => `the engine did not promote an unclean result — /repair ${id}  or  /reject ${id}`,
 });
 
+/** A plan that stopped on questions: the questions, numbered, and the only two ways on. */
+function questionLines(result) {
+  const questions = Array.isArray(result.questions) ? result.questions : [];
+  if (questions.length === 0) return null;
+  return [
+    `questions before anything is written (${questions.length}):`,
+    ...questions.map((question, index) => `  ${index + 1}. ${question}`),
+    `next: /answer ${result.runId} <your answers, in one line>   or  /reject ${result.runId}`,
+  ];
+}
+
 export function runSummary(result) {
   if (!result || typeof result !== 'object' || typeof result.runId !== 'string' || typeof result.status !== 'string') return [];
   const clean = typeof result.clean === 'boolean' ? result.clean
@@ -296,11 +311,12 @@ export function runSummary(result) {
       .filter((path) => path !== '.')
       .map((path) => (created.has(path) ? `${path} (new)` : path));
   const next = NEXT_STEP[result.status];
+  const asked = questionLines(result);
   return [
     '',
     `run ${result.runId} — ${facts.join(', ')}`,
     ...(files.length ? [`files: ${files.join(' · ')}`] : []),
-    ...(next ? [`next: ${next(result.runId, clean)}`] : []),
+    ...(asked ?? (next ? [`next: ${next(result.runId, clean)}`] : [])),
   ];
 }
 

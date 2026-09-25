@@ -51,6 +51,7 @@ const socketPath = argv[0] ?? process.env.NOESAR_TUI_SOCKET_PATH ?? defaultSocke
 const HELP = `Commands:
   plan <what you want> plan it — say it in prose; the repository finds the files
   plan                  same, but asks for the goal, then lets you name files yourself
+  answer <runId> <text> answer the questions a plan stopped on — the work goes on as a new run
   simulate <runId>      ask what a pending plan would do, without executing it
   approve <runId>       approve a pending plan (executes into the shadow, promotes if clean)
   reject <runId> [why]  reject a pending plan
@@ -314,7 +315,11 @@ async function runPlanFlow(reader, session, request = '') {
     }
   }
 
-  const planned = await session.call('workspace.plan', { request: goal, files });
+  showPlanned(await session.call('workspace.plan', { request: goal, files }), files);
+}
+
+/** What a plan answered — shared by `plan` and by `answer`, which re-plans. */
+function showPlanned(planned, files = []) {
   console.log(`\nrunId: ${planned.runId}`);
   // The engine's word for the state, not this client's. This line printed the constant
   // `PENDING_APPROVAL` until phase 5 — true of every plan this build makes, and still a state
@@ -352,7 +357,14 @@ async function runPlanFlow(reader, session, request = '') {
   // `authoring.available === false` is read rather than ignored: an installation with no model
   // refuses `repair` every time, and offering it would send somebody to discover by typing what
   // the plan already answered in words (`CE-029`).
-  const steps = nextStepsFor(planned.status, { authorAvailable: planned.authoring?.available !== false });
+  // The questions a plan stopped on, numbered — nothing was written, and nothing can be measured,
+  // until they are answered (`workspace-actions.mjs`, `answer()`).
+  const questions = Array.isArray(planned.questions) ? planned.questions : [];
+  if (questions.length) {
+    console.log(`questions before anything is written (${questions.length}):`);
+    questions.forEach((text, index) => console.log(`  ${index + 1}. ${text}`));
+  }
+  const steps = nextStepsFor(planned.status, { authorAvailable: planned.authoring?.available !== false, questions: questions.length });
   if (steps.length) {
     console.log('next:');
     for (const step of steps) console.log(`  /${step.name} ${planned.runId}`.padEnd(30), step.summary);
@@ -559,6 +571,11 @@ export async function dispatchCommand(reader, session, line, state) {
     case '': return true;
     case 'help': console.log(HELP); return true;
     case 'plan': await runPlanFlow(reader, session, arg); return true;
+    case 'answer': {
+      const [runId, ...answers] = rest;
+      showPlanned(await session.call('workspace.answer', { runId, answers: answers.join(' ') }));
+      return true;
+    }
     case 'simulate': printJson(console.log, 'simulation', await session.call('workspace.simulate', { runId: arg })); return true;
     case 'measure': printJson(console.log, 'measurement', await session.call('workspace.measure', { runId: arg })); return true;
     case 'approve': printJson(console.log, 'result', await session.call('workspace.approve', { runId: arg })); return true;

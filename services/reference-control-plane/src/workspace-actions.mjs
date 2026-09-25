@@ -146,6 +146,9 @@ function shadowOf(workspaceRoot, shadowRoot) {
 ///
 /// ponytail: exact names only. A near-miss suggestion ("did you mean `commands`?") is a
 /// second thing to keep true; add it when a person actually asks for it.
+/** The line that separates a request from the answers a person gave to its questions. */
+export const ANSWERS_HEADING = 'Answers to the questions asked before starting:';
+
 export const PLAN_FIELDS = Object.freeze([
   'request', 'files', 'projectRules', 'constraints', 'mode', 'policy', 'claims',
   'conversationId', 'commands',
@@ -166,6 +169,11 @@ export function refuseUnknownPlanFields(payload, allowed = PLAN_FIELDS) {
 /// over the workspace. Derived once here rather than judged twice, so `#diff` and `#promote`
 /// cannot come to different answers about what an outcome is.
 const touchesAFile = (outcome) => outcome.performed && outcome.operation !== 'EXECUTE';
+
+/** Did a model name this run's ambiguities? Read off the router's own provenance: a degraded
+ *  call is recorded under the provider that answered instead, never as `local-model`. */
+const namedByModel = (provenance) => (provenance ?? [])
+  .some((entry) => entry.surface === 'interpret' && entry.provider === 'local-model' && !entry.degraded);
 
 function readTextIfSmall(path) {
   if (!existsSync(path)) return { available: true, content: null };
@@ -1080,7 +1088,15 @@ export class WorkspaceActionOrchestrator {
    * reference provider cannot derive (see the module comment) and is required, not defaulted:
    * a caller with nothing to name should not reach this at all.
    */
-  async plan({ request, files = [], projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [], conversationId = null, commands = [] }) {
+  async plan({ request: requested, files = [], projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [], conversationId = null, commands = [], answers = null }) {
+    // `answers` reaches here only from `answer()`: what a person said to the questions a plan
+    // stopped on. They travel IN the request, appended, so that everything downstream — the
+    // interpretation, the grounding, the Author, the stored run and therefore `replay()` — reads
+    // one text, and a replay recomputes from exactly what was planned from.
+    if (answers !== null && (typeof answers !== 'string' || !answers.trim())) {
+      refuse('INVALID_ANSWERS', 'the answers must be non-empty text');
+    }
+    const request = answers === null ? requested : `${requested}\n\n${ANSWERS_HEADING}\n${answers.trim()}`;
     // Point 4b, Owner decision of 2026-08-06: THE CHAT OWNS THE RUN. A caller that opened this
     // run from a conversation hands its id here and the run carries it for life; a caller that
     // did not — every run started from the terminal, which has no conversation by construction
@@ -1259,6 +1275,7 @@ export class WorkspaceActionOrchestrator {
 
     let authoring = { available: false, reason: Author.NO_MODEL_REASON, authored: 0 };
     let authoringEvent = null;
+    let questions = [];
     const authoredContents = new Map();
     let attemptDigest = null;
     // `CE-030` / `15` §5: *"Budget sulla novità, non sullo sforzo: un approccio ripetuto non
@@ -1285,6 +1302,28 @@ export class WorkspaceActionOrchestrator {
       authoringEvent = ['workspace_action.authoring_budget_spent', {
         limit: this.#noveltyBudget, novelUsed: history.novelAttempts, repeatsIgnored: history.repeatsIgnored,
       }];
+    } else if (this.#author?.available && answers === null && namedByModel(provenance) && intent.ambiguities.length > 0) {
+      // The questions a model named, asked BEFORE a byte is written. Until 2026-09-25 they were
+      // produced, recorded, and read by nobody: the product could say what a request leaves out
+      // and then write the file on a guess. HiL-Bench measures exactly that failure, and it is
+      // the one axis where the whole field — frontier models included — scores under half.
+      //
+      // Only a model's questions stop the work. The reference list is ten English words and a
+      // «one long sentence» rule that fires on most Italian requests over 25 words: stopping on
+      // it would be a false alarm in the product's commonest case. And only once: `answers`
+      // present means a person has already been asked (see `answer()`).
+      //
+      // Dormant by default, and it should stay so for now: the namer is off unless
+      // `NOESAR_LOCAL_MODEL_SURFACES=interpret`. Measured 2026-09-25 with Qwen3.6-35B-A3B on twelve
+      // requests labelled before running: it named questions on 6 of 6 CLEAR requests (mostly "what
+      // does this file contain?" — it sees the request, not the repository) and on 6 of 6 vague
+      // ones. Stopping on every request is not asking; the namer needs the code before this is on.
+      questions = [...intent.ambiguities];
+      authoring = {
+        available: true, authored: 0, awaitingAnswers: true,
+        reason: `the model named ${questions.length === 1 ? 'a question' : `${questions.length} questions`} this request leaves open, and nothing is written until a person answers: ${questions.map((question, index) => `(${index + 1}) ${question}`).join(' ')}`,
+      };
+      authoringEvent = ['workspace_action.questions_asked', { questions }];
     } else if (this.#author?.available) {
       try {
         const result = await this.#author.author({
@@ -1426,6 +1465,9 @@ export class WorkspaceActionOrchestrator {
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
       request, projectRules, constraints, mode, policy, commands,
+      // The questions that stopped this run (`[]` when none did), and what a person answered to
+      // the ones that stopped the run before it — `measure()` reads the first, an auditor the second.
+      questions, answers,
       // Stage 9b output. The map belongs to the RUN, not to the caller: `approve()` reads it,
       // and nothing between here and there can add a key the Plan had not settled on.
       authoredContents, authoring,
@@ -1471,7 +1513,7 @@ export class WorkspaceActionOrchestrator {
     // `conversationId` is read off the stored run for the same reason `status` is: a shell that
     // stitches the link it just sent onto the answer would show its own input as the engine's
     // word, and the day the engine declines to keep it the shell would go on displaying it.
-    return { runId, status: this.#runs.get(runId).status, conversationId: this.#runs.get(runId).conversationId, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning, divergence, skillComposition };
+    return { runId, status: this.#runs.get(runId).status, conversationId: this.#runs.get(runId).conversationId, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, questions, reasoning, divergence, skillComposition };
   }
 
   /**
@@ -1558,6 +1600,11 @@ export class WorkspaceActionOrchestrator {
     const remeasuring = run.status === 'MEASURED' && !this.#shadows.has(runId);
     if (run.status !== 'PENDING_APPROVAL' && !remeasuring) {
       refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
+    }
+    // The one refusal that makes a question more than a remark: `approve()` wants a measured run
+    // and `iterate()` measures first, so nothing reaches the real workspace while one is open.
+    if (run.questions?.length > 0) {
+      refuse('QUESTIONS_UNANSWERED', `run \`${runId}\` stopped on ${run.questions.length === 1 ? 'a question' : `${run.questions.length} questions`} nobody has answered yet; answering continues the work as a new run, and this one is never measured`);
     }
 
     // A grant that says what it is for. `authorizePlan` does not read `purpose` — it is carried
@@ -1991,6 +2038,42 @@ export class WorkspaceActionOrchestrator {
     } finally {
       this.#dropShadow(runId);
     }
+  }
+
+  /**
+   * A person's answers to the questions a plan stopped on — the other half of asking.
+   *
+   * The work continues as a NEW run: the same request with the answers appended, planned from
+   * scratch, so the interpretation, the files and the Author all see what was said. The old run
+   * becomes `ANSWERED` and names its successor. Not `REJECTED`: nobody rejected a change — there
+   * was none — and a rejection would enter the review-latency figures as review time spent.
+   *
+   * From the chat it is a `write` tool (`ai-workspace/builtin-tools.mjs`), and every `write` call a
+   * model makes waits for a person's approval before it runs — so a model may propose answers, and
+   * only a person can make them the answers.
+   */
+  async answer({ runId, answers, actor, nowUnix }) {
+    const run = this.#runs.get(runId);
+    if (!run) refuse('NOT_FOUND', `no run \`${runId}\``);
+    if (run.status !== 'PENDING_APPROVAL') refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
+    if (!(run.questions?.length > 0)) refuse('NO_QUESTIONS', `run \`${runId}\` asked nothing, so there is nothing to answer`);
+    if (typeof answers !== 'string' || !answers.trim()) refuse('INVALID_ANSWERS', 'the answers must be non-empty text');
+    const answered = await this.plan({
+      request: run.request,
+      // The caller's files when it named some; none when the repository chose them, so the
+      // grounding runs again on a request that now says more.
+      files: run.grounding ? [] : run.files,
+      projectRules: run.projectRules, constraints: run.constraints, mode: run.mode, policy: run.policy,
+      commands: run.commands, claims: run.claims, conversationId: run.conversationId,
+      actor, nowUnix, answers,
+    });
+    this.#record(runId, run.planEventId, actor, 'workspace_action.answered', { answeredBy: answered.runId }, nowUnix);
+    run.status = 'ANSWERED';
+    run.answeredBy = answered.runId;
+    run.decidedAtUnix = nowUnix;
+    run.decidedBy = actor;
+    this.#saveRun(runId);
+    return answered;
   }
 
   reject({ runId, approverId, reason, nowUnix }) {

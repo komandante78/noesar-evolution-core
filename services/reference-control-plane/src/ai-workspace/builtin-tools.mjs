@@ -79,6 +79,10 @@ export const BUILTIN_TRANSPORT = 'builtin';
  */
 export const EFFECT = Object.freeze({
   'workspace.plan': 'write',
+  // Re-plans with a person's answers. `write` like `plan`, and so, from the chat, it stops the turn
+  // for a person's approval: a model can PROPOSE answers to the questions it relayed, and a person
+  // decides whether those are the answers — the model never answers its own questions alone.
+  'workspace.answer': 'write',
   'workspace.simulate': 'read',
   'workspace.measure': 'write',
   'workspace.approve': 'write',
@@ -148,6 +152,7 @@ export const SCHEMA = Object.freeze({
     policy: { type: 'string', enum: ['restrictive', 'permissive'], description: 'path policy' },
     claims: strings('capability claims to request'),
   }, ['request']),
+  'workspace.answer': object({ runId: str('the run that stopped on questions'), answers: str('the answers, in one text') }, ['runId', 'answers']),
   'workspace.simulate': object({ runId: str('the run to ask about') }, ['runId']),
   'workspace.measure': object({ runId: str('the run to execute in the shadow') }, ['runId']),
   'workspace.approve': object({ runId: str('the MEASURED run to promote') }, ['runId']),

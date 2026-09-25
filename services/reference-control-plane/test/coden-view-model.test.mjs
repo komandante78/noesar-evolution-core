@@ -47,7 +47,8 @@ describe('the view model — what a session looks like, decided once', () => {
   // report authoring as its own OUTCOME, and a list compared only with itself always agrees with
   // itself — the `PANEL_NAMES` lesson this project has already paid for twice.
   test('AUTHORING_COMMANDS is exactly the commands that reach the engine method which authors', () => {
-    const authoring = AGENT_COMMANDS.filter((command) => command.method === 'workspace.plan')
+    // `workspace.answer` re-plans: it authors exactly as `workspace.plan` does.
+    const authoring = AGENT_COMMANDS.filter((command) => ['workspace.plan', 'workspace.answer'].includes(command.method))
       .map((command) => command.name).sort();
     assert.deepEqual([...AUTHORING_COMMANDS].sort(), authoring,
       'a command that authors and is not listed would report its outcome as a bare `— ok`; one listed '

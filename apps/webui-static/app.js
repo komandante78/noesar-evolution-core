@@ -3298,7 +3298,7 @@ function planFiles(){
 // `D-0569`, `CE-008`: MEASURED is the state where the person is looking at the real diff and
 // has not answered yet. A status the map does not know renders as its raw enum name, which is
 // legible but says nothing about what to do next.
-const PLAN_STATUS_LABEL={PENDING_APPROVAL:'pending approval',MEASURED:'measured — nothing changed yet',PROMOTED:'promoted',REFUSED:'refused',REJECTED:'rejected',RESTORED:'restored'};
+const PLAN_STATUS_LABEL={PENDING_APPROVAL:'pending approval',MEASURED:'measured — nothing changed yet',PROMOTED:'promoted',REFUSED:'refused',REJECTED:'rejected',RESTORED:'restored',ANSWERED:'answered — continued as a new run'};
 function provenanceSummary(entries){
   return Array.isArray(entries)&&entries.length?[...new Set(entries.map((entry)=>entry.provider))].join(', '):'—';
 }
@@ -3314,7 +3314,9 @@ function renderPlanActions(){
   // that vanishes teaches nothing, a disabled one with a reason teaches the rule.
   const undecided=status==='PENDING_APPROVAL'||status==='MEASURED';
   $('#planSimulateBtn').classList.toggle('hidden',status!=='PENDING_APPROVAL');
-  $('#planMeasureBtn')?.classList.toggle('hidden',status!=='PENDING_APPROVAL');
+  // A run that stopped on questions refuses `measure` (QUESTIONS_UNANSWERED): no button for it.
+  const asked=(currentWorkspaceRun.questions?.length??0)>0;
+  $('#planMeasureBtn')?.classList.toggle('hidden',status!=='PENDING_APPROVAL'||asked);
   $('#planApproveBtn').classList.toggle('hidden',!undecided);
   $('#planApproveBtn').disabled=status!=='MEASURED';
   $('#planApproveBtn').title=status==='MEASURED'
@@ -3344,6 +3346,8 @@ function renderPlanResult(){
     `confidence: ${typeof run.confidence?.value==='number'?run.confidence.value.toFixed(2):'—'}`,
     `provider: ${provenanceSummary(run.provenance)}`,
     `files: ${files.join(', ')||'—'}`,
+    ...((run.questions?.length??0)>0?['',`questions before anything is written — answer in a terminal: answer ${run.runId} <your answers>`,
+      ...run.questions.map((question,index)=>`  ${index+1}. ${question}`)]:[]),
   ].join('\n');
   renderPlanActions();
 }
@@ -4625,7 +4629,7 @@ const terminals={items:[{id:1,history:[]}],active:1,next:2};
 // no slash, no `plan`, raw JSON — so the same sentence worked in one and not in the next. It
 // now takes the slash or not, plans through the same `workspace.plan` the others send, and
 // shapes its answers through the shared `callResult`.
-const TERMINAL_HELP = 'Commands, with or without /: status | plan <what to do> | measure <runId> | get <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | events <runId> | map [path] | search <query> | simulate <runId> | help\nThe same live session as the workbench and the full terminal: a plan made here is the same run everywhere.';
+const TERMINAL_HELP = 'Commands, with or without /: status | plan <what to do> | answer <runId> <answers> | measure <runId> | get <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | events <runId> | map [path] | search <query> | simulate <runId> | help\nThe same live session as the workbench and the full terminal: a plan made here is the same run everywhere.';
 async function runTerminalCommand(term, line){
   term.history.push({ kind:'command', text:line });
   const [command,...rest]=line.trim().replace(/^\//,'').split(/\s+/);
@@ -4636,6 +4640,7 @@ async function runTerminalCommand(term, line){
     case 'help':term.history.push({kind:'info',text:t(TERMINAL_HELP)});return;
     case 'status':method='status';break;
     case 'plan':method='workspace.plan';params={request:arg,files:[]};break;
+    case 'answer':{const [runId,...answers]=rest;method='workspace.answer';params={runId,answers:answers.join(' ')};break;}
     case 'get':method='workspace.get';params={runId:arg};break;
     case 'events':method='events.correlation';params={correlationId:arg};break;
     case 'map':method='repoMap.scan';params={path:arg||undefined};break;

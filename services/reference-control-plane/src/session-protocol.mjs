@@ -121,6 +121,7 @@ export class ProtocolError extends Error {
  */
 export const SESSION_METHOD_POLICY = Object.freeze({
   'workspace.plan': { permission: 'workspace.write', bridged: true },
+  'workspace.answer': { permission: 'workspace.write', bridged: true },
   'workspace.simulate': { permission: 'workspace.read', bridged: true },
   // `D-0567`, `CE-008`: the same permission as approve — it mints a token and writes into a
   // shadow, and a surface that could measure without being able to approve would be a way to
@@ -318,6 +319,9 @@ export function createSessionDispatch({
       // `null` rather than left to the default so that deleting this line is a visible act.
       conversationId: null,
     })),
+    // The person's answers to the questions a plan stopped on. It re-plans, so it costs what a
+    // plan costs: `workspace.write`, the same permission `workspace.plan` asks.
+    'workspace.answer': ({ params, actor }) => workspaceActions.answer({ runId: params?.runId, answers: params?.answers, actor, nowUnix: nowUnix() }),
     'workspace.simulate': ({ params, actor }) => workspaceActions.simulate({ runId: params?.runId, actor, nowUnix: nowUnix() }),
     // `D-0567`, `CE-008`: the terminal gets `measure` at the same moment the browser does,
     // from the same orchestrator. A shell that could only approve would be a shell that can only

@@ -127,6 +127,7 @@ export const AGENT_COMMANDS = Object.freeze([
   // out of `services/`; derived-by-test rather than copied-and-hoped, which is the difference
   // between this and `PANEL_NAMES` — a list compared only with itself always agrees.
   { name: 'plan', argument: '<goal>', summary: 'Start a plan from a goal — the repository decides which files it may touch', group: 'work', kind: 'call', method: 'workspace.plan', permission: 'workspace.write' },
+  { name: 'answer', argument: '<run> <answers>', summary: 'Answer the questions a plan stopped on — the work continues as a new run', group: 'work', kind: 'call', method: 'workspace.answer', permission: 'workspace.write' },
   { name: 'simulate', argument: '<run>', summary: 'Ask what a pending plan would do, executing nothing', group: 'work', kind: 'call', method: 'workspace.simulate', permission: 'workspace.read' },
   { name: 'measure', argument: '<run>', summary: 'Run a plan in the shadow and show what it does — nothing reaches the workspace', group: 'work', kind: 'call', method: 'workspace.measure', permission: 'workspace.write' },
   { name: 'approve', argument: '<run>', summary: 'Approve a MEASURED plan — promotes the shadow you were shown', group: 'work', kind: 'call', method: 'workspace.approve', permission: 'workspace.write' },
@@ -299,6 +300,10 @@ export const NEXT_STEPS = Object.freeze({
   PROMOTED: Object.freeze(['diff', 'restore']),
   REJECTED: Object.freeze([]),
   RESTORED: Object.freeze([]),
+  ANSWERED: Object.freeze([]),
+  // Not a status: a PENDING_APPROVAL run that stopped on questions refuses `measure` with
+  // QUESTIONS_UNANSWERED, so answering is the only way forward and rejecting the only other one.
+  QUESTIONS: Object.freeze(['answer', 'reject']),
 });
 
 /**
@@ -312,10 +317,12 @@ export const NEXT_STEPS = Object.freeze({
  * NO_AUTHOR every single time, and `CE-029` is about saying that rather than letting somebody
  * discover it by typing.
  */
-export function nextStepsFor(status, { clean = null, authorAvailable = true } = {}) {
+export function nextStepsFor(status, { clean = null, authorAvailable = true, questions = 0 } = {}) {
   const state = String(status ?? '').toUpperCase();
   let names;
-  if (state === 'MEASURED') {
+  if (state === 'PENDING_APPROVAL' && questions > 0) {
+    names = [...NEXT_STEPS.QUESTIONS];
+  } else if (state === 'MEASURED') {
     names = clean === null
       ? [...new Set([...NEXT_STEPS.MEASURED_CLEAN, ...NEXT_STEPS.MEASURED_DIRTY])]
       : [...(clean ? NEXT_STEPS.MEASURED_CLEAN : NEXT_STEPS.MEASURED_DIRTY)];

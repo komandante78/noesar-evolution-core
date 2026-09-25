@@ -629,7 +629,7 @@ export const RUNTIME_ONLY = Object.freeze([
   'Run',
   'type a command — help for the list',
   'Attached to the same live session as the workbench (D-0230\'s session protocol, HTTP bridge). Type `help` below.',
-  'Commands, with or without /: status | plan <what to do> | measure <runId> | get <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | events <runId> | map [path] | search <query> | simulate <runId> | help\nThe same live session as the workbench and the full terminal: a plan made here is the same run everywhere.',
+  'Commands, with or without /: status | plan <what to do> | answer <runId> <answers> | measure <runId> | get <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | events <runId> | map [path] | search <query> | simulate <runId> | help\nThe same live session as the workbench and the full terminal: a plan made here is the same run everywhere.',
   'Unknown command',
   'Tools used',
   'Type `help`.',
@@ -1013,7 +1013,7 @@ const it = {
   'Run': 'Esegui',
   'type a command — help for the list': 'scrivi un comando — help per l’elenco',
   'Attached to the same live session as the workbench (D-0230\'s session protocol, HTTP bridge). Type `help` below.': 'Collegato alla stessa sessione viva del banco (protocollo di sessione D-0230, ponte HTTP). Scrivi `help` qui sotto.',
-  'Commands, with or without /: status | plan <what to do> | measure <runId> | get <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | events <runId> | map [path] | search <query> | simulate <runId> | help\nThe same live session as the workbench and the full terminal: a plan made here is the same run everywhere.': 'Comandi, con o senza /: status | plan <cosa fare> | measure <runId> | get <runId> | approve <runId> | reject <runId> [motivo] | restore <runId> | events <runId> | map [percorso] | search <query> | simulate <runId> | help\nLa stessa sessione viva del banco e del terminale completo: un piano fatto qui è la stessa corsa ovunque.',
+  'Commands, with or without /: status | plan <what to do> | answer <runId> <answers> | measure <runId> | get <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | events <runId> | map [path] | search <query> | simulate <runId> | help\nThe same live session as the workbench and the full terminal: a plan made here is the same run everywhere.': 'Comandi, con o senza /: status | plan <cosa fare> | answer <runId> <risposte> | measure <runId> | get <runId> | approve <runId> | reject <runId> [motivo] | restore <runId> | events <runId> | map [percorso] | search <query> | simulate <runId> | help\nLa stessa sessione viva del banco e del terminale completo: un piano fatto qui è la stessa corsa ovunque.',
   'Unknown command': 'Comando sconosciuto',
   'Tools used': 'Strumenti usati',
   'Type `help`.': 'Scrivi `help`.',
@@ -2126,6 +2126,7 @@ const it = {
   'Ask what a pending plan would do, executing nothing': 'Chiedi che cosa farebbe un piano in attesa, senza eseguire nulla',
   'Run a plan in the shadow and show what it does — nothing reaches the workspace': 'Esegui un piano nell\'ombra e mostra che cosa fa — nulla raggiunge il workspace',
   'Approve a MEASURED plan — promotes the shadow you were shown': 'Approva un piano MISURATO — promuove l\'ombra che ti è stata mostrata',
+  'Answer the questions a plan stopped on — the work continues as a new run': 'Rispondi alle domande su cui un piano si è fermato — il lavoro continua in una run nuova',
   'Reject a pending plan': 'Rifiuta un piano in attesa',
   'Undo a promoted run': 'Annulla un\'esecuzione promossa',
   'Read the measured failure and try again — a new attempt, not the same bytes measured twice': 'Legge il fallimento misurato e ritenta — un nuovo tentativo, non gli stessi byte misurati due volte',
@@ -2174,6 +2175,7 @@ const it = {
   // no entry for `[why]` on its own — no command shows it alone, and an entry matching no screen
   // is a claim of coverage nothing can honour, which the measurement tool refuses by name.
   '<run> [why]': '<esecuzione> [perché]',
+  '<run> <answers>': '<esecuzione> <risposte>',
   '<run> [maxAttempts]': '<esecuzione> [tentativi]',
   // `<token>` describes what to type — the id of a live grant, read off `/grants` or the
   // Authority panel — so it is listed rather than exempted, on the same reading as `<run>`.
