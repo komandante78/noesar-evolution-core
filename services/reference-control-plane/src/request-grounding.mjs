@@ -303,6 +303,25 @@ function isEngineState(workspaceRoot, path) {
 // still created when its folder is given (`src/Button.js`).
 const PRODUCT_NAME = /^[A-Z][a-z0-9]*\.js$|^[^/]*\.[A-Z]{2,}$/;
 
+// Measured 2026-09-25 on the 155-instance localisation set, reference provider, same conditions,
+// `diff.mjs` accepting the pair: the commit before named-path grounding localised 58/155, the
+// commit with it 24/153 — 35 instances lost, 1 gained. A bug report is full of `np.array`,
+// `data.dtype`, `astropy.io`: a dotted expression, not a file name, and NAMED_PATH takes any
+// `name.letters`. Each one that does not exist was planned as a file to CREATE, and ONE was
+// enough: `groundRequest` returns a non-empty named result before the search runs at all, so the
+// phantom replaced the whole localisation. What a person creates from a sentence has an
+// extension a file can carry; `array`, `dtype`, `io` are attributes and modules. An existing
+// file is read whatever it is called — this only stops a NEW one from being invented out of an
+// expression.
+// ponytail: a bare `utils.py` that exists in a subfolder, not at the root, is still read as a
+// new root file. Measured after this rule: see the commit; not guessed at here.
+const CREATABLE_EXTENSIONS = new Set([
+  'py', 'pyi', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'json', 'md', 'txt', 'rst', 'tex', 'yml', 'yaml',
+  'toml', 'ini', 'cfg', 'html', 'htm', 'css', 'scss', 'sh', 'bash', 'ps1', 'bat', 'csv', 'tsv', 'xml',
+  'sql', 'rs', 'go', 'java', 'kt', 'cpp', 'hpp', 'cs', 'rb', 'php', 'swift', 'lua', 'log',
+]);
+const canBeCreated = (path) => CREATABLE_EXTENSIONS.has(path.slice(path.lastIndexOf('.') + 1).toLowerCase());
+
 /** The files the person named, read or marked new; `null` when they named none that may be used. */
 function groundNamedPaths(workspaceRoot, request, maxFileBytes, limit) {
   const named = pathsNamedIn(request);
@@ -315,6 +334,7 @@ function groundNamedPaths(workspaceRoot, request, maxFileBytes, limit) {
     const read = readCandidate(workspaceRoot, path, maxFileBytes, { missing: 'NEW' });
     if (read.skip) { skipped.push(read.skip); continue; }
     if (read.isNew && PRODUCT_NAME.test(path)) { skipped.push({ path, reason: 'PRODUCT_NAME' }); continue; }
+    if (read.isNew && !canBeCreated(path)) { skipped.push({ path, reason: 'NOT_A_FILE_NAME' }); continue; }
     files.push(read.file);
     if (read.isNew) created.push(path);
   }
@@ -332,12 +352,41 @@ function groundNamedPaths(workspaceRoot, request, maxFileBytes, limit) {
   return { files, created, skipped, named, context: [] };
 }
 
+/** The size above which a candidate is not read into a plan: 256 KiB.
+ *
+ *  An installation may move it with `NOESAR_GROUNDING_MAX_FILE_BYTES`. Unset, empty or not a
+ *  positive integer, the answer is the default, so a mistyped value cannot make every plan
+ *  refuse — and no installation changes behaviour until someone chooses to.
+ *
+ *  Why 256 KiB, measured 2026-09-25 on the 155-instance localisation set, reference provider,
+ *  `diff.mjs` accepting each pair: 64 KiB → 256 KiB moved 51/154 to 70/154 (22 gained, 3 lost),
+ *  and 1 MiB gives nothing more, so this is the smallest value that takes the whole gain. Before
+ *  it, 36 of the 93 misses were files the ranking put in position 1-4 and the old 64 KiB
+ *  ceiling then dropped.
+ *
+ *  What it costs, measured on the worst case in the sample (astropy-13236, table.py = 150 715
+ *  bytes): the plan() answer is unchanged (~5 KB, no file contents), the run store on disk goes
+ *  from 113 KB to 481 KB for that run. At most five files are read per plan, so the bound is
+ *  5 x this value per run, not per installation.
+ *
+ *  Why it is a knob and not a constant: The right value depends on what the model behind the installation can be shown
+ *  (the window is chosen by whoever installs it, 4 000 or 128 000 tokens), so it cannot be a
+ *  number chosen once here. What it does NOT govern is who may be read: the guard on
+ *  sensitive paths lives in `repo-map.mjs` and does not look at size. */
+export const DEFAULT_MAX_FILE_BYTES = 256 * 1024;
+export function maxFileBytesFromEnv(env = process.env) {
+  const raw = env?.NOESAR_GROUNDING_MAX_FILE_BYTES;
+  if (raw === undefined || raw === null || String(raw).trim() === '') return DEFAULT_MAX_FILE_BYTES;
+  const value = Number(raw);
+  return Number.isInteger(value) && value > 0 ? value : DEFAULT_MAX_FILE_BYTES;
+}
+
 export function groundRequest({
   workspaceRoot,
   goal,
   request = '',
   limit = 5,
-  maxFileBytes = 64 * 1024,
+  maxFileBytes = maxFileBytesFromEnv(),
   // The seam is the BATCH form, so production and the adversarial tests below exercise one
   // path. A second path kept only for the tests is a branch nobody has checked.
   literalSearchMany = defaultLiteralSearchMany,

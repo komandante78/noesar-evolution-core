@@ -81,3 +81,29 @@ test('a product name is not a file to create — the program is (measured live, 
   assert.deepEqual(ground.grounding.skipped.map((entry) => `${entry.path}:${entry.reason}`),
     ['Node.js:PRODUCT_NAME', 'ASP.NET:PRODUCT_NAME']);
 });
+
+test('an expression in a bug report is not a file to create, and the search still runs (measured 2026-09-25)', () => {
+  // 35 of 155 real SWE-bench reports lost their localisation to exactly this: `np.array` and
+  // `data.dtype` matched as names, did not exist, were planned as new files, and a non-empty named
+  // result returns before the search ever starts.
+  const root = workspace({ 'astropy/table/table.py': '# structured array data dtype handling\n', 'docs/notes.md': 'x\n' });
+  const ground = groundRequest({ workspaceRoot: root, goal: 'structured array',
+    request: 'Converting a structured np.array into a Table changes data.dtype; see astropy.io for the reader' });
+  assert.equal(ground.grounding.derived, true, 'no name survived, so the search answered');
+  assert.ok(ground.files.some((file) => file.path === 'astropy/table/table.py'), 'and it found the file the words point at');
+  assert.ok(ground.files.every((file) => !['np.array', 'data.dtype', 'astropy.io'].includes(file.path)), 'nothing invented');
+});
+
+test('the phantoms are SAID to be skipped, and a real file to create still is one', () => {
+  const root = workspace({ 'a.txt': 'x\n' });
+  const ground = groundRequest({ workspaceRoot: root, goal: 'x', request: 'Create notes/todo.md and mind np.array' });
+  assert.deepEqual(ground.files.map((file) => file.path), ['notes/todo.md']);
+  assert.deepEqual(ground.grounding.created, ['notes/todo.md']);
+  assert.deepEqual(ground.grounding.skipped.map((entry) => `${entry.path}:${entry.reason}`), ['np.array:NOT_A_FILE_NAME']);
+});
+
+test('an EXISTING file is read whatever its extension — the rule only stops inventing a new one', () => {
+  const root = workspace({ 'weird.array': 'real\n' });
+  const ground = groundRequest({ workspaceRoot: root, goal: 'x', request: 'repair weird.array' });
+  assert.deepEqual(ground.files, [{ path: 'weird.array', contents: 'real\n' }]);
+});

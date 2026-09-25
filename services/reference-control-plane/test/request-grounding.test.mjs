@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { groundRequest, searchTermsOf, GroundingRefused, rankingWeight, PROSE_WEIGHT } from '../src/request-grounding.mjs';
+import { groundRequest, searchTermsOf, GroundingRefused, rankingWeight, PROSE_WEIGHT, maxFileBytesFromEnv, DEFAULT_MAX_FILE_BYTES } from '../src/request-grounding.mjs';
 import { literalSearch, literalSearchMany } from '../src/repo-map.mjs';
 
 function workspace(files) {
@@ -120,6 +120,51 @@ describe('grounding a goal in a real repository', () => {
       // A plan reasoning over half a file, with nothing saying so, is worse than a plan that
       // never saw it: the missing half is invisible to whoever approves.
       assert.ok(result.files.every((f) => f.path !== 'big.mjs'));
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('the ceiling moves only when the installation says so, and a bad value cannot break planning', () => {
+    assert.equal(DEFAULT_MAX_FILE_BYTES, 256 * 1024);
+    assert.equal(maxFileBytesFromEnv({}), DEFAULT_MAX_FILE_BYTES, 'unset: unchanged');
+    assert.equal(maxFileBytesFromEnv({ NOESAR_GROUNDING_MAX_FILE_BYTES: '' }), DEFAULT_MAX_FILE_BYTES, 'empty: unchanged');
+    assert.equal(maxFileBytesFromEnv({ NOESAR_GROUNDING_MAX_FILE_BYTES: '262144' }), 262144, 'a positive integer is honoured');
+    for (const bad of ['abc', '0', '-5', '1.5', 'Infinity', 'NaN']) {
+      assert.equal(maxFileBytesFromEnv({ NOESAR_GROUNDING_MAX_FILE_BYTES: bad }), DEFAULT_MAX_FILE_BYTES, `${bad}: falls back, never throws`);
+    }
+  });
+
+  test('a file the default ceiling drops is read when the installation raises it, and the raise is the only difference', () => {
+    const root = workspace({ 'big.mjs': `// session\n${'x'.repeat(2000)}`, 'small.mjs': '// session\n' });
+    const before = process.env.NOESAR_GROUNDING_MAX_FILE_BYTES;
+    try {
+      delete process.env.NOESAR_GROUNDING_MAX_FILE_BYTES;
+      assert.deepEqual(groundRequest({ workspaceRoot: root, goal: 'the session', maxFileBytes: 500 }).files.map((f) => f.path), ['small.mjs']);
+      // Through the environment, with no parameter: the path a real installation takes.
+      process.env.NOESAR_GROUNDING_MAX_FILE_BYTES = '500';
+      const capped = groundRequest({ workspaceRoot: root, goal: 'the session' });
+      assert.deepEqual(capped.files.map((f) => f.path), ['small.mjs'], 'the env value is the ceiling when no parameter is given');
+      process.env.NOESAR_GROUNDING_MAX_FILE_BYTES = '100000';
+      const raised = groundRequest({ workspaceRoot: root, goal: 'the session' });
+      assert.deepEqual(raised.files.map((f) => f.path).sort(), ['big.mjs', 'small.mjs'], 'raised: the big file is now read whole');
+      assert.ok(!raised.grounding.skipped.some((entry) => entry.path === 'big.mjs'), 'and it is no longer reported as skipped');
+    } finally {
+      if (before === undefined) delete process.env.NOESAR_GROUNDING_MAX_FILE_BYTES;
+      else process.env.NOESAR_GROUNDING_MAX_FILE_BYTES = before;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('a raised ceiling does not reopen the 9/09 incident: a huge credential backup is still never a candidate', () => {
+    // The guard on sensitive paths acts in the walk, before any size is looked at. This proves it
+    // stays that way when the ceiling is at its most permissive: a backup far larger than the OLD
+    // ceiling, containing every term the request searches for, must not be read or reported.
+    const backup = 'state/auth.json.bak_pre_mfa_off_20260906T095916Z';
+    const root = workspace({ [backup]: `session token ${'session '.repeat(20000)}`, 'src/session.mjs': '// session\n' });
+    try {
+      const result = groundRequest({ workspaceRoot: root, goal: 'the session', maxFileBytes: 1024 * 1024 });
+      assert.ok(result.files.some((f) => f.path === 'src/session.mjs'), 'the ordinary file is found');
+      assert.ok(result.files.every((f) => !f.path.includes('auth.json')), 'no credential file is read');
+      assert.ok(!(result.grounding.skipped ?? []).some((s) => String(s.path).includes('auth.json') && s.reason === 'TOO_LARGE'), 'and it never even reached the size check');
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
 
