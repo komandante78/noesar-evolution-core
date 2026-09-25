@@ -211,3 +211,16 @@ test('every shell shows the questions and offers only the two ways on', async ()
     s.cleanup();
   }
 });
+
+test('F1c: the product prompt carries the code, within its budget, and leaves the campaign prompt untouched', async () => {
+  const { namerPrompt, namerPromptWithCode, PER_FILE_CHARS } = await import('../src/ambiguity-namer.mjs');
+  const big = 'x'.repeat(PER_FILE_CHARS + 50);
+  const prompt = namerPromptWithCode(REQUEST, [{ path: 'src/config.js', contents: ORIGINAL }, { path: 'src/big.js', contents: big }], PER_FILE_CHARS + 10);
+
+  assert.ok(prompt.includes(REQUEST));
+  assert.ok(prompt.includes('--- src/config.js\n' + ORIGINAL), 'a small file is shown whole');
+  assert.ok(prompt.includes('--- src/big.js (truncated)'), 'a file cut short says so');
+  assert.ok(!prompt.includes('x'.repeat(PER_FILE_CHARS)), 'the budget is respected across files');
+  assert.ok(namerPromptWithCode(REQUEST, []).includes('no file of the repository was found'));
+  assert.ok(!namerPrompt(REQUEST).includes('repository files'), 'the campaign prompt is not the product prompt');
+});

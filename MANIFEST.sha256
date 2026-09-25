@@ -6275,7 +6275,7 @@ b6e4b823b8783fde1d3c96232d6fb9d4d0e63c43bca44b9045773de1dc0c3ab2  ./services/ref
 913636b128b917bba9a6676edc032c704de8631701caa6c57daa92ebda587a76  ./services/reference-control-plane/src/ai-workspace/vision-caption.mjs
 0d188afd02c1614eb30f618337c37a97a58ebfe5f8da724a44608622e7724672  ./services/reference-control-plane/src/ai-workspace/workflow-service.mjs
 a57e5965e74d70508adbb034748338c70d0330f5ab251923003e108c8157ae56  ./services/reference-control-plane/src/ai-workspace/workspace-service.mjs
-6c43ec2221f683149158bb8e820e514db4b610bc1b951fa8b76bea82e37e9407  ./services/reference-control-plane/src/ambiguity-namer.mjs
+5f1d9a8dfb37de0dc5435bd97a63c6b622ef393044c87a20c1e45e52a272e449  ./services/reference-control-plane/src/ambiguity-namer.mjs
 27047e2bd35db0100a21aa05b2578d50b71fb8f47a6d5caf6eaa9ab5819a146a  ./services/reference-control-plane/src/api-target-probe.mjs
 714d3f1ce4ea46e6de6c5c5c3d5aa6408b9d55b648f2e2b2816c3b0796e5e515  ./services/reference-control-plane/src/api-target-registry.mjs
 c5f9e279a16c40fe287cafe17393256dbe7a2eeac9ffd809167ebb2a56accc44  ./services/reference-control-plane/src/approval-queue.mjs
@@ -6459,7 +6459,7 @@ d8898d3ec08689523925f08f651d11ae7bcc3d507205398ff1d10235b1bb127c  ./services/ref
 cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/reference-control-plane/test/coden-address-book.test.mjs
 144b3197052d67a900025439a5442746f4de9f70c9eef48b06ed5e5dc1fe2591  ./services/reference-control-plane/test/coden-address-declaration.test.mjs
 4b1f860853767cea16f226e7b9e3bb2d7c38edae7893a8c9cf56e324c921eade  ./services/reference-control-plane/test/coden-addressable-panels.test.mjs
-398756c6f48255f782612c4837463c66fcb2ffdc33f01367da68fd5ee15b6498  ./services/reference-control-plane/test/coden-asks-before-writing.test.mjs
+ffad75524061fb34b3c0ca57b4193d1d11e6575c556f608fe097a4422535e58b  ./services/reference-control-plane/test/coden-asks-before-writing.test.mjs
 67ba4a154d0548d659e054f49aaae7025579714f063d811e2fccf3a97105c3c7  ./services/reference-control-plane/test/coden-bridge.test.mjs
 933d93a1226554180f80e2ed80b0d12fca7a8c01a9227da8e602f648a8b298f9  ./services/reference-control-plane/test/coden-declared-commands.test.mjs
 3972b353836d12f87c71aa06168536bdf2d33b71648152df4928df3bcd04e92c  ./services/reference-control-plane/test/coden-fullscreen-input-flow.test.mjs
