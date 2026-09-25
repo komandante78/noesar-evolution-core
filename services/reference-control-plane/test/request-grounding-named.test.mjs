@@ -142,3 +142,25 @@ test('the known limit, pinned: a creation request with a code block is not read 
   assert.equal(ground.grounding.derived, true, 'the search answered, not a named path');
   assert.ok((ground.grounding.created ?? []).length === 0, 'nothing is created — name the file in the Plan form instead');
 });
+
+test('informal Italian and plain synonyms still ask for a creation — the verb list is how the Owner actually writes', () => {
+  const asks = [
+    ['fammi un file notes.txt con la lista della spesa', 'notes.txt'],
+    ['prepara un programma somma.py che somma due numeri', 'somma.py'],
+    ['costruisci tools/report.mjs che stampa un riepilogo', 'tools/report.mjs'],
+    ['vorrei un documento piano.md con tre punti', 'piano.md'],
+    ['I need a script called deploy.sh that restarts the service', 'deploy.sh'],
+    ['un file chiamato appunti.txt con due righe', 'appunti.txt'],
+  ];
+  for (const [request, name] of asks) {
+    const ground = groundRequest({ workspaceRoot: workspace({ 'a.txt': 'x\n' }), goal: request, request });
+    assert.deepEqual(ground.grounding.created, [name], `${request} -> should create ${name}`);
+  }
+});
+
+test('and an edit phrased the same informal way is still not a creation', () => {
+  for (const request of ['sistema il bug in models.py', 'fai un controllo su models.py', 'metti un log in models.py']) {
+    const ground = groundRequest({ workspaceRoot: workspace({ 'app/models.py': '# models bug controllo log\n' }), goal: request, request });
+    assert.ok((ground.grounding.created ?? []).length === 0, `${request} must not plan a new models.py`);
+  }
+});

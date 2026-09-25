@@ -337,7 +337,13 @@ const canBeCreated = (path) => CREATABLE_EXTENSIONS.has(path.slice(path.lastInde
 // ponytail: a long creation request (paragraphs, a code block) is no longer read as creating a
 // name; it falls to the search, as before 22/09. Name the file in the Plan form until a real
 // request needs otherwise. Pinned by a test, so it is a decision and not an accident.
-const CREATION_VERB = /\b(create|creating|add|write|make|generate|build|save|crea|creare|aggiungi|scrivi|genera|salva|nuovo|nuova|new)\b/gi;
+// Informal Italian imperatives are in on purpose: the person who wrote "fammi un file notes.txt" is
+// not asking to mention a file. A verb list is a prior about phrasing and will miss some; a miss
+// costs a plan that fell to the search (visible, and the Plan form names a file explicitly), where
+// a false positive costs an empty file proposed for approval (also visible). Neither writes.
+const CREATION_VERB = /\b(create|creating|add|write|make|generate|build|save|produce|compose|draft|prepare|implement|crea|creare|aggiungi|scrivi|genera|salva|nuovo|nuova|new|fai|fammi|fa|prepara|preparami|costruisci|realizza|sviluppa|implementa|produci|inserisci|componi|redigi|voglio|vorrei)\b/gi;
+// The strongest signal of a NEW name needs no verb at all: the request names the thing it wants.
+const NAMING_PHRASE = /\b(named|called|chiamato|chiamata|denominato|denominata|intitolato|intitolata|di nome)\s*$/i;
 const POINTS_AT_EXISTING = /\b(to|into|in|inside|of|from|for|on|within|nel|nella|nello|su|di|da|per)\b/i;
 const isPlainInstruction = (request) => !/```/.test(request) && !/\n\s*\n/.test(request);
 function asksToCreate(request, path) {
@@ -345,6 +351,7 @@ function asksToCreate(request, path) {
   if (!isPlainInstruction(text)) return false;
   for (let at = text.indexOf(path); at >= 0; at = text.indexOf(path, at + 1)) {
     const before = text.slice(Math.max(0, at - 60), at);
+    if (NAMING_PHRASE.test(before)) return true;
     const verbs = [...before.matchAll(CREATION_VERB)];
     if (verbs.length === 0) continue;
     const last = verbs[verbs.length - 1];
