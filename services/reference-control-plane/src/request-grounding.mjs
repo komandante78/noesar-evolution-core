@@ -85,8 +85,21 @@ const STOP_WORDS = new Set([
 ]);
 
 const MAX_TERMS = 12;
+// A token written the way code is written: snake_case, camelCase, or an acronym before a word
+// (`separability_matrix`, `CompoundModel`, `URLValidator`). These are the words a repository actually
+// contains, while a report's first twelve words are its title and its prose. Those names are searched
+// FIRST, up to MAX_IDENTIFIERS of them, and the plain words fill the rest of the MAX_TERMS slots.
+//
+// Measured 2026-09-25 on 155 SWE-bench Verified issues (`BENCH_SWE/gold-rank-ab.mjs`, reference provider,
+// the gold file inside the first five results): 79 with the first twelve words, 101 with this order.
+// 26 instances gained and 4 lost, per instance, and both halves of the sample (by parity of the sorted
+// ids) improve: 43 -> 55 and 36 -> 46. More terms in first-appearance order is WORSE (20 terms: 75), so the
+// gain is the order and not the count. A request with no such name behaves exactly as before.
+const MAX_IDENTIFIERS = 8;
+const CODE_NAME = /_|[a-z][A-Z]|[A-Z]{2,}[a-z]/;
 
-/** The searchable terms of a sentence, in first-appearance order.
+/** The searchable terms of a sentence: the names it writes as code first, then its plain words, each group
+ *  in first-appearance order (see `MAX_IDENTIFIERS`).
  *
  *  Applied to the request and to the interpreted goal alike. With the reference provider the
  *  goal is the request's first sentence quoted verbatim, so the two term sets largely
@@ -94,17 +107,17 @@ const MAX_TERMS = 12;
  *  suite passes with ATOM uninstalled) does not depend on which provider answered. */
 export function searchTermsOf(goal) {
   const seen = new Set();
-  const terms = [];
+  const names = [];
+  const words = [];
   for (const raw of String(goal ?? '').split(/[^A-Za-z0-9_]+/)) {
     const term = raw.toLowerCase();
     if (term.length < 3) continue;
     if (STOP_WORDS.has(term)) continue;
     if (seen.has(term)) continue;
     seen.add(term);
-    terms.push(term);
-    if (terms.length >= MAX_TERMS) break;
+    (CODE_NAME.test(raw) ? names : words).push(term);
   }
-  return terms;
+  return [...names.slice(0, MAX_IDENTIFIERS), ...words].slice(0, MAX_TERMS);
 }
 
 /**
