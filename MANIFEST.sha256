@@ -6379,7 +6379,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 372e40a6fc034cc4f7d376f668de00c6aa169d07078f1f1d85d7236f60667d44  ./services/reference-control-plane/src/watchdog.mjs
 6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  ./services/reference-control-plane/src/webauthn.mjs
 0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  ./services/reference-control-plane/src/websocket.mjs
-74a9fcf64ef4bf5931d6868bf3a91d1afc5b7c53adb9b0636a5e9910a7293bae  ./services/reference-control-plane/src/workspace-actions.mjs
+28057e9b8ae7476a42f871ea6ccee541f7a2a8c36db4b3b147972460069b2da7  ./services/reference-control-plane/src/workspace-actions.mjs
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs
@@ -6465,6 +6465,7 @@ cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/ref
 deb788e4a9b4122aac1423a56bd630dc9698b06b297c054d2e841ad789ee3cd5  ./services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs
 b8c6c8ee8d926b8646435156d6222a84987d6775acf4e8592547f6d22893e2a9  ./services/reference-control-plane/test/coden-path-authorization.test.mjs
 b719feb10da46da61d344399fec56ae640f8507222fdf489aa2432decc2184e6  ./services/reference-control-plane/test/coden-repair-cycle.test.mjs
+e89d12b551ff085a057ebcad421d26edeb57dd408cc3a6280128a83aafb86ae8  ./services/reference-control-plane/test/coden-repair-derived.test.mjs
 f6991e3505bc006bebf6ee39818f95255f7d9e2a4483df90576e0f0121ab3132  ./services/reference-control-plane/test/coden-run-summary.test.mjs
 3070a2fd0045885e242b04486cae154ed2cb7e1aa309a12fbe30b8514c8f125b  ./services/reference-control-plane/test/coden-shell-parity.test.mjs
 e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/reference-control-plane/test/coden-spa-catchall.test.mjs

@@ -1628,7 +1628,19 @@ export class WorkspaceActionOrchestrator {
           args: argv.slice(1),
         });
       }
-      const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: run.expectation, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
+      // A plan whose files the SEARCH chose holds candidates, not a promise that each of them changes.
+      // `expect()` declares every file of the step as one the diff must touch, which is right for files a
+      // person named and false for five candidates: the fix is usually in one of them. Measured 2026-09-26
+      // on SWE-bench Verified: 13 of 14 derived plans ended `exhausted`, the repair brief told the model
+      // «`X` was declared as changed and no change reached it» for every candidate it had rightly left
+      // alone, and in the product `approve()` refuses to promote such a run at all. So a derived plan is
+      // compared against the files the Author actually wrote. Nothing else is relaxed: a write or a
+      // command effect outside them is still `unexpected`, a write that did not land is still absent,
+      // and a run that changed nothing is still refused by `compare()`. Named plans are unchanged.
+      const measuredAgainst = run.grounding?.derived === true && run.authoredContents
+        ? { ...run.expectation, pathsTheDiffMustTouch: [...run.authoredContents.keys()] }
+        : run.expectation;
+      const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: measuredAgainst, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
       const executeEventId = this.#record(runId, measureEventId, actor, 'executor.ran',
         { performed: result.performed, refused: result.refused, ok: result.ok }, nowUnix);
       this.#record(runId, executeEventId, actor, 'shadow.compared',
@@ -1648,7 +1660,7 @@ export class WorkspaceActionOrchestrator {
       run.result = result;
       run.diff = diff;
       run.coverage = coverage;
-      run.measurement = { clean, measuredAtUnix: nowUnix, measuredBy: actor, eventId: measureEventId };
+      run.measurement = { clean, measuredAtUnix: nowUnix, measuredBy: actor, eventId: measureEventId, comparedAgainst: measuredAgainst.pathsTheDiffMustTouch ?? [] };
       this.#shadows.set(runId, shadow);
       kept = true;
       this.#saveRun(runId);
@@ -1753,6 +1765,9 @@ export class WorkspaceActionOrchestrator {
         goal: run.intent?.goal ?? run.goal,
         step: run.plan?.steps?.[0]?.description ?? run.intent?.goal ?? run.goal,
         files,
+        // The request as written, as at plan() time: without it the repair saw only the first sentence
+        // (`goal`), which is the failure `background` was added to plan() for on 11/09.
+        background: run.request ?? '',
         profile: run.divergence?.signals ?? [],
         skills: composedSkills,
         previousAttemptDigests: [
@@ -1772,7 +1787,12 @@ export class WorkspaceActionOrchestrator {
       failures: brief.length, fromAttempt: run.attempt ?? 1, fromPaths: run.authoredPaths ?? [],
     }, nowUnix);
 
-    const authoredContents = new Map();
+    // Starts from what the previous attempt wrote, not from nothing. The repair was SHOWN those bytes
+    // (`files` above), so a file it leaves alone, or one whose edit is refused this time, keeps the
+    // previous version: before this, it silently went back to the ORIGINAL at the next measurement
+    // (`?? file.contents`). Measured 2026-09-26 on astropy-12907: the first pass wrote the file the real
+    // fix is in, the repair did not touch it again, and the final diff did not contain it.
+    const authoredContents = new Map(run.authoredContents ?? []);
     for (const [path, body] of authored.contents) authoredContents.set(path, body);
     run.authoredContents = authoredContents;
     run.attemptDigest = authored.attemptDigest;
