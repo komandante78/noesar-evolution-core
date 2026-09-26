@@ -420,20 +420,62 @@ export function replayAuthoringCall({ fixture, prompt, answer }) {
  * a view the same size as the file would spend a second model call to be refused for the same
  * reason. A caller that gets `null` keeps the refusal it already had, which is the honest end.
  */
-export function excerptAround(contents, words, { radius = 30, keepAtMost = 0.6 } = {}) {
+// The same shape `request-grounding.mjs` calls a code name. Copied, not imported: this module reaches nothing
+// but `node:crypto`, and a dependency on the grounding would bring the filesystem with it.
+const CODE_NAME = /_|[a-z][A-Z]|[A-Z]{2,}[a-z]/;
+
+export function excerptAround(contents, words, { radius = 30, keepAtMost = 0.6, budgetChars = null } = {}) {
   const lines = String(contents ?? '').split('\n');
-  const needles = [...new Set(String(words ?? '').toLowerCase().match(/[a-z_][a-z0-9_]{3,}/g) ?? [])];
+  const tokens = String(words ?? '').match(/[A-Za-z_][A-Za-z0-9_]{3,}/g) ?? [];
+  const named = new Set(tokens.filter((token) => CODE_NAME.test(token)).map((token) => token.toLowerCase()));
+  const needles = [...new Set(tokens.map((token) => token.toLowerCase()))];
   if (!needles.length || lines.length === 0) return null;
 
-  const keep = new Set();
-  lines.forEach((line, index) => {
-    const lower = line.toLowerCase();
-    if (!needles.some((needle) => lower.includes(needle))) return;
-    for (let near = Math.max(0, index - radius); near <= Math.min(lines.length - 1, index + radius); near += 1) {
-      keep.add(near);
+  // A name written as code (`data_is_mixin`, `NdarrayMixin`) before a plain word, as in the grounding that
+  // chose this file; the rarest first inside each group. Rarest alone was measured on the same four files:
+  // every view fitted and none showed a line the real fix changes, because a plain word that happens to
+  // occur once (`consider`) outranked the name of the bug. Names first: 6 of 6 lines on astropy-13236.
+  // Rarest word first, and a word whose neighbourhoods cover most of the file is dropped: it says
+  // nothing about WHERE. Measured 2026-09-26 on four SWE-bench gold files refused for the window
+  // (table.py, query.py, variable.py, latex.py): one such word (`column`, `queryset`, `variable`) used
+  // to push the union over `keepAtMost` and the whole excerpt came back `null`, so the file was never
+  // shown at all, while the name that pins the bug (`NdarrayMixin`) sat in a handful of lines.
+  const lower = lines.map((line) => line.toLowerCase());
+  const covered = (hits) => {
+    let total = 0;
+    let end = -1;
+    for (const hit of hits) {
+      const from = Math.max(hit - radius, end + 1);
+      const to = Math.min(lines.length - 1, hit + radius);
+      if (to >= from) total += to - from + 1;
+      end = Math.max(end, to);
     }
-  });
-  if (!keep.size || keep.size > lines.length * keepAtMost) return null;
+    return total;
+  };
+  const ranked = needles
+    .map((needle) => ({ needle, hits: lower.flatMap((line, index) => (line.includes(needle) ? [index] : [])) }))
+    .filter(({ hits }) => hits.length > 0 && covered(hits) <= lines.length * keepAtMost)
+    .sort((a, b) => (named.has(b.needle) - named.has(a.needle)) || (a.hits.length - b.hits.length));
+
+  const size = lines.reduce((total, line) => total + line.length + 1, 0);
+  const budget = Math.min(budgetChars ?? Infinity, size * keepAtMost);
+  const keep = new Set();
+  let used = 0;
+  for (const { hits } of ranked) {
+    for (const hit of hits) {
+      const region = [];
+      for (let near = Math.max(0, hit - radius); near <= Math.min(lines.length - 1, hit + radius); near += 1) {
+        if (!keep.has(near)) region.push(near);
+      }
+      const cost = region.reduce((total, index) => total + lines[index].length + 1, 0);
+      // The first region is always kept: it is the rarest thing the request names, and a view of
+      // one neighbourhood is the smallest honest view there is.
+      if (keep.size && used + cost > budget) continue;
+      for (const index of region) keep.add(index);
+      used += cost;
+    }
+  }
+  if (!keep.size) return null;
 
   // The gaps are NAMED, with the line numbers they stand for. A view with silent holes would let a
   // model believe it had seen a whole file, and «what is not here» is exactly what it must not
@@ -455,6 +497,25 @@ export function excerptAround(contents, words, { radius = 30, keepAtMost = 0.6 }
   }
   closeGap(lines.length);
   return out.join('\n');
+}
+
+/**
+ * How many characters of a file an excerpt may keep, from the numbers the runtime put in its refusal:
+ * `request (N tokens) exceeds the available context size (C tokens)`. Half the window goes to the file,
+ * the other half to the request, the instructions and the answer. `N` is the whole prompt, not only the
+ * file, so the budget comes out a little smaller than exact, which is the safe side.
+ *
+ * `null` when the refusal carries no numbers (another runtime, or ATOM passing a shorter message):
+ * `excerptAround` then keeps its own ceiling. The window is READ from the runtime, never assumed: it is
+ * the installer who picks the model and its context size.
+ */
+export function excerptBudget(reason, contents) {
+  const match = /request \((\d+) tokens\) exceeds the available context size \((\d+) tokens\)/i.exec(String(reason ?? ''));
+  if (!match) return null;
+  const requested = Number(match[1]);
+  const window = Number(match[2]);
+  if (!(requested > 0 && window > 0)) return null;
+  return Math.floor((String(contents ?? '').length * (window / 2)) / requested);
 }
 
 export function buildAuthoringPrompt({ goal, step, path, contents, profile = [], attempts = [], skills = [], background = '', partialView = false }) {
@@ -655,7 +716,10 @@ export class Author {
           // is the honest end of this file, and shrinking again would be guessing at a window
           // nobody has told us.
           if (error.code !== 'CONTEXT_EXCEEDED' || view.partial) break;
-          const narrowed = excerptAround(file.contents, `${goal ?? ''} ${step ?? ''}`);
+          // The whole request, not only its first sentence: the name that pins the bug is usually below it.
+          const narrowed = excerptAround(file.contents, `${goal ?? ''} ${step ?? ''} ${background ?? ''}`, {
+            budgetChars: excerptBudget(error.reason, file.contents),
+          });
           if (narrowed) views.push({ contents: narrowed, partial: true });
         }
       }
