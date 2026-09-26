@@ -457,7 +457,16 @@ export function groundRequest({
   // either, so refusing on an empty overlap would refuse the good case and the bad one alike.
   // Nothing executes without an approval, and the approval can now be given knowing this.
   const named = groundNamedPaths(workspaceRoot, request, maxFileBytes, limit);
-  if (named && named.files.length > 0) {
+  // In a REPORT (a code block or more than one paragraph) a file it names is evidence, not the whole answer:
+  // it stays in the plan and the search still runs beside it. Measured 2026-09-26 on 155 SWE-bench Verified
+  // issues: all 5 answered by a name were reports, 4 of the 5 names were a test, an example or a doc page,
+  // and the search would have found the file the fix is in (e.g. django-10097 named its test data file
+  // `tests/validators/invalid_urls.txt`; the fix is `django/core/validators.py`). A plain instruction —
+  // «modifica app.js» — still plans exactly the files it names, and so does any request that creates one.
+  const pinned = named && named.files.length > 0 && named.created.length === 0 && !isPlainInstruction(request)
+    ? named.files
+    : [];
+  if (named && named.files.length > 0 && pinned.length === 0) {
     return {
       files: named.files,
       context: named.context,
@@ -478,7 +487,7 @@ export function groundRequest({
   const terms = [...requestTerms];
   for (const term of goalTerms) if (!terms.includes(term)) terms.push(term);
   const goalOverlap = goalTerms.filter((term) => requestTerms.includes(term));
-  if (terms.length === 0) {
+  if (terms.length === 0 && pinned.length === 0) {
     throw new GroundingRefused(
       'NO_TERMS',
       'neither the request nor the interpreted goal carries a term specific enough to look for in this repository; name a file, a symbol or a message',
@@ -525,7 +534,7 @@ export function groundRequest({
       || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
     ));
 
-  if (ranked.length === 0) {
+  if (ranked.length === 0 && pinned.length === 0) {
     throw new GroundingRefused(
       'NO_CANDIDATES',
       `nothing in this workspace mentions ${terms.map((t) => `\`${t}\``).join(', ')} — the request may be about something this project does not contain, or may need a file named explicitly`,
@@ -533,10 +542,11 @@ export function groundRequest({
     );
   }
 
-  const files = [];
+  const files = [...pinned];
   const skipped = [];
   for (const candidate of ranked) {
-    if (files.length >= limit) break;
+    if (files.length >= limit + pinned.length) break;
+    if (pinned.some((file) => file.path === candidate.path)) continue;
     const read = readCandidate(workspaceRoot, candidate.path, maxFileBytes);
     if (read.skip) { skipped.push(read.skip); continue; }
     files.push(read.file);
@@ -569,6 +579,8 @@ export function groundRequest({
       goalRelatedToRequest: goalOverlap.length > 0,
       considered: ranked.length,
       selected: files.map((file) => file.path),
+      // Named by the report and kept in the plan whatever the search ranked them. Empty when nothing was.
+      named: pinned.map((file) => file.path),
       ranking: ranked.slice(0, limit).map(({ path, distinctTerms, matches, terms: hit }) => ({ path, distinctTerms, matches, terms: hit })),
       skipped,
     },
