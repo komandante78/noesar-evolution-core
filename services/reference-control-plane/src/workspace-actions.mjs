@@ -146,6 +146,16 @@ function shadowOf(workspaceRoot, shadowRoot) {
 ///
 /// ponytail: exact names only. A near-miss suggestion ("did you mean `commands`?") is a
 /// second thing to keep true; add it when a person actually asks for it.
+/** How many questions the model must name before a plan stops for a person — measured, not chosen:
+ *  2 is the smallest threshold that met the criterion written before the run (false alarms ≤ 20%
+ *  on SWE-bench Verified issues, detections ≥ 60% on HiL-Bench tasks, with the repository's files;
+ *  `PREVENTIVO_RICEVUTA_20260925`). `NOESAR_ASK_MIN_QUESTIONS` moves it for another model. */
+export const ASK_MIN_QUESTIONS = 2;
+export function askMinQuestionsFromEnv(env = process.env) {
+  const value = Number(env?.NOESAR_ASK_MIN_QUESTIONS);
+  return Number.isInteger(value) && value > 0 ? value : ASK_MIN_QUESTIONS;
+}
+
 /** The line that separates a request from the answers a person gave to its questions. */
 export const ANSWERS_HEADING = 'Answers to the questions asked before starting:';
 
@@ -426,7 +436,11 @@ export class WorkspaceActionOrchestrator {
    * (D-0227's own comment about not re-implementing comparison logic applies here too).
    */
   async #runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy, commands = [] }) {
-    const intent = await provider.interpret(request, projectRules);
+    // F1c: a router that can ask the local model WITH the repository's files does not ask the
+    // text-only question here; it asks once the files are known, below. Any other provider ignores
+    // the third argument.
+    const withCode = typeof provider.questionsWithCode === 'function';
+    let intent = await provider.interpret(request, projectRules, { questions: !withCode });
     // Grounding, and ONLY when the caller named nothing. A caller who named files made a
     // decision, and a step that silently replaced it with a search result would be answering
     // a question nobody asked — the operator would approve a plan about files they did not
@@ -447,6 +461,9 @@ export class WorkspaceActionOrchestrator {
       resolvedFiles = grounded.files;
       grounding = grounded.grounding;
       context = grounded.context ?? [];
+    }
+    if (withCode) {
+      intent = { ...intent, ambiguities: await provider.questionsWithCode(request, [...resolvedFiles, ...context], intent.ambiguities) };
     }
     const hypotheses = await provider.hypothesize(intent, []);
     // `.` is the working directory a command runs in, and capability.mjs refuses to mint a
@@ -1302,7 +1319,7 @@ export class WorkspaceActionOrchestrator {
       authoringEvent = ['workspace_action.authoring_budget_spent', {
         limit: this.#noveltyBudget, novelUsed: history.novelAttempts, repeatsIgnored: history.repeatsIgnored,
       }];
-    } else if (this.#author?.available && answers === null && namedByModel(provenance) && intent.ambiguities.length > 0) {
+    } else if (this.#author?.available && answers === null && namedByModel(provenance) && intent.ambiguities.length >= askMinQuestionsFromEnv(this.#env)) {
       // The questions a model named, asked BEFORE a byte is written. Until 2026-09-25 they were
       // produced, recorded, and read by nobody: the product could say what a request leaves out
       // and then write the file on a guess. HiL-Bench measures exactly that failure, and it is

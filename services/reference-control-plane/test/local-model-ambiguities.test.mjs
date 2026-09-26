@@ -18,7 +18,7 @@ import { randomBytes, createHash } from 'node:crypto';
 
 import { ReasoningRouter, routingFrom, degradationSummary } from '../src/reasoning-router.mjs';
 import { ReasoningRefused } from '../src/reasoning.mjs';
-import { namerPrompt } from '../src/ambiguity-namer.mjs';
+import { namerPrompt, namerPromptWithCode } from '../src/ambiguity-namer.mjs';
 import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
@@ -191,6 +191,7 @@ test('the retention sweep keeps the bytes a reasoning replay needs', async (t) =
   await s.plan();
   const live = s.orchestrator.authoringReplayReferences();
 
-  assert.equal(live.has(digest(namerPrompt(REQUEST))), true);
+  // plan() asks WITH the files it planned on (F1c), so that is the prompt the record keeps.
+  assert.equal(live.has(digest(namerPromptWithCode(REQUEST, [{ path: 'src/config.js', contents: 'export const config = {};\n' }]))), true);
   assert.equal(live.has(digest(NAMED)), true, 'a sweep would delete the answer replay reads — D-0606, again');
 });

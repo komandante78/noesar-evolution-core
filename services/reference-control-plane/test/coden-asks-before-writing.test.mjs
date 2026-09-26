@@ -44,6 +44,10 @@ const NOW = Math.floor(Date.now() / 1000);
  * is what the local model answers each time it is asked to name questions, in order.
  */
 function session(...namer) {
+  return sessionWith({ NOESAR_ASK_MIN_QUESTIONS: '1' }, ...namer);
+}
+
+function sessionWith(orchestratorEnv, ...namer) {
   const workspace = mkdtempSync(join(tmpdir(), 'noesar-ask-ws-'));
   const shadows = mkdtempSync(join(tmpdir(), 'noesar-ask-sh-'));
   const runs = mkdtempSync(join(tmpdir(), 'noesar-ask-runs-'));
@@ -66,7 +70,7 @@ function session(...namer) {
   });
   const orchestrator = new WorkspaceActionOrchestrator({
     workspaceRoot: workspace, shadowsRoot: shadows, minter: new TokenMinter(randomBytes(32)),
-    events: new EventLedger(), runStoreDirectory: runs, author,
+    events: new EventLedger(), runStoreDirectory: runs, author, env: orchestratorEnv,
     reasoningFor: (sessionId, options = {}) => new ReasoningRouter({
       workspaceRoot: workspace, sessionId, env: LOCAL, generateAmbiguities, ...options,
     }),
@@ -80,6 +84,24 @@ function session(...namer) {
     cleanup: () => { for (const directory of [workspace, shadows, runs]) rmSync(directory, { recursive: true, force: true }); },
   };
 }
+
+test('the threshold: fewer questions than NOESAR_ASK_MIN_QUESTIONS do not stop the work', async (t) => {
+  const s = sessionWith({ NOESAR_ASK_MIN_QUESTIONS: '3' }, NAMED);
+  t.after(s.cleanup);
+  const planned = await s.plan();
+  assert.deepEqual(planned.intent.ambiguities, NAMED_LIST, 'the two questions are still named and shown');
+  assert.deepEqual(planned.questions, [], 'two is under the threshold of three: nothing stops');
+  assert.equal(planned.authoring.authored, 1);
+});
+
+test('F1c: plan() asks the model once, WITH the files, not the text-only question', async (t) => {
+  const { namerPromptWithCode } = await import('../src/ambiguity-namer.mjs');
+  const s = session(NAMED);
+  t.after(s.cleanup);
+  await s.plan();
+  assert.equal(s.asked.length, 1, 'one question to the model per plan');
+  assert.equal(s.asked[0], namerPromptWithCode(REQUEST, [{ path: 'src/config.js', contents: ORIGINAL }]));
+});
 
 const refusedAs = (kind) => (error) => error instanceof WorkspaceActionError && error.kind === kind;
 

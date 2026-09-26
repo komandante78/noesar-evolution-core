@@ -32,7 +32,7 @@ import { createHash } from 'node:crypto';
 import { ReferenceReasoningProvider, ReasoningRefused, ReasoningMode } from './reasoning.mjs';
 import { AtomClient, ReasoningUnavailable } from './atom-client.mjs';
 import { openAiChatGenerator } from './author.mjs';
-import { namerPrompt, readNamed } from './ambiguity-namer.mjs';
+import { namerPrompt, namerPromptWithCode, readNamed } from './ambiguity-namer.mjs';
 
 /**
  * The surfaces an external provider is asked for by default.
@@ -386,14 +386,27 @@ export class ReasoningRouter {
     return value;
   }
 
-  async interpret(request, projectRules = []) {
+  // `questions: false` is how `plan()` asks for the intent WITHOUT the text-only question, because it
+  // asks it later with the repository's files (`questionsWithCode`, F1c). Every other caller — the
+  // HiL-Bench harness included — gets exactly what was measured.
+  async interpret(request, projectRules = [], { questions = true } = {}) {
     const intent = this.#routes('interpret')
       ? await this.#external('interpret', { request, projectRules, mapDigest: '' }, () => this.#reference.interpret(request, projectRules))
       : this.#local('interpret', () => this.#reference.interpret(request, projectRules));
-    if (!this.#routing.localModelSurfaces.includes('interpret')) return intent;
+    if (!questions || !this.#routing.localModelSurfaces.includes('interpret')) return intent;
     // One field, asked only once the rest of the intent exists: an empty request has already been
     // refused above, before any model is asked.
-    return { ...intent, ambiguities: await this.#ambiguitiesFromModel(request, intent.ambiguities) };
+    return { ...intent, ambiguities: await this.#ambiguitiesFromModel(namerPrompt(String(request).trim()), intent.ambiguities) };
+  }
+
+  /**
+   * F1c: the same question, asked once the files are known and WITH them — the product's prompt,
+   * `namerPromptWithCode`. Off exactly when `interpret`'s is (`NOESAR_LOCAL_MODEL_SURFACES`), and
+   * recorded, replayed and degraded by the same path.
+   */
+  async questionsWithCode(request, files, fallback) {
+    if (!this.#routing.localModelSurfaces.includes('interpret')) return fallback;
+    return this.#ambiguitiesFromModel(namerPromptWithCode(String(request).trim(), files), fallback);
   }
 
   /**
@@ -404,8 +417,7 @@ export class ReasoningRouter {
    * ponytail: one model call per session (a plan asks `interpret` once), so `D-0312`'s stop at two
    * qualities has nothing to stop here; a second surface routed to the local model would need it.
    */
-  async #ambiguitiesFromModel(request, fallback) {
-    const prompt = namerPrompt(String(request).trim());
+  async #ambiguitiesFromModel(prompt, fallback) {
     const promptDigest = digestOf(prompt);
     let answer = null;
     let reason = null;
