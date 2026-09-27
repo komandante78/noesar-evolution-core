@@ -18,10 +18,10 @@
 [![offline](https://img.shields.io/badge/OFFLINE-NO%20API%20KEY-12C8EC?style=for-the-badge&labelColor=0F1B33)](#offline-by-default)
 [![no proprietary component](https://img.shields.io/badge/CORE%20RUNS-WITH%20NOTHING%20PROPRIETARY-F2318C?style=for-the-badge&labelColor=0F1B33)](docs/ATOM_ABSENT_ACCEPTANCE.md)
 
-[![tests](https://img.shields.io/badge/tests-3352%20passing%20%7C%201%20skipped%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
-[![eslint](https://img.shields.io/badge/eslint-509%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
-[![engine methods](https://img.shields.io/badge/engine%20methods-34-1E3A6E?style=flat-square)](#what-the-model-may-do)
-[![mutative](https://img.shields.io/badge/mutative%20tools-11%20%7C%20approval%20gated-DB8B00?style=flat-square)](#what-the-model-may-do)
+[![tests](https://img.shields.io/badge/tests-3372%20passing%20%7C%2030%20skipped%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![eslint](https://img.shields.io/badge/eslint-515%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![engine methods](https://img.shields.io/badge/engine%20methods-35-1E3A6E?style=flat-square)](#what-the-model-may-do)
+[![mutative](https://img.shields.io/badge/mutative%20tools-12%20%7C%20approval%20gated-DB8B00?style=flat-square)](#what-the-model-may-do)
 [![destroy](https://img.shields.io/badge/destroying%20tools-0%20shipped-2EA043?style=flat-square)](#what-the-model-may-do)
 
 📄 **[Architecture](ARCHITECTURE.md)** · **[Everything it does](FEATURES.md)** · **[Every decision, with its evidence](docs/DECISION_LOG.md)** · **[Security](SECURITY.md)**
@@ -115,7 +115,7 @@ derived from it rather than hand-kept beside it.
 | Effect | Methods | Registered as tools |
 |---|---:|---|
 | `read` | 21 | yes |
-| `write` | 11 | yes — **every call waits for a human approval mid-turn** |
+| `write` | 12 | yes — **every call waits for a human approval mid-turn** |
 | `destroy` | 2 | **no. They do not ship as tools at all.** |
 
 The two destroying methods (`replay.sweep`, `sessions.action`) are classified, schema'd, reachable
@@ -189,18 +189,18 @@ macOS ones, which nobody has ever executed, and it says so there too.
 
 ## Every badge above has a command behind it
 
-Measured on **2026-09-22**, after the demo below was added, on the development host, from this repository, except
+Measured on **2026-09-27**, for `0.3.0`, on the development host, from a clean clone of this repository, except
 where a row says otherwise:
 
 | Claim | Command | Result |
 |---|---|---|
-| Unit suite | `npm test` | 3353 tests, 354 suites — **3352 pass, 0 fail, 1 skip** |
-| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **509 files, 0 errors, 0 warnings** |
-| Verification battery | `sh scripts/test.sh` | **pass=23, fail=0, partial=0, unavailable=0** |
+| Unit suite | `npm test`, in CI (the `gates` workflow) | 3402 tests — **3372 pass, 0 fail, 30 skip**: the skipped ones need `qrencode`, the vendored ATOM binary or the sandbox binary, which the runner does not have |
+| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **515 files, 0 errors, 0 warnings** |
+| Verification battery | `sh scripts/test.sh` | **pass=22, fail=0, partial=0, unavailable=1**: the one is `governance`, whose hooks git does not carry (`.claude/` is ignored), so a clone cannot run it |
 | Installer parity | `node tools/test-cross-platform-installers.mjs` | **140 checks, 0 failures** — Linux and macOS executed, Windows read statically |
-| Engine surface | the `node -e` line under [What the model may do](#what-the-model-may-do) | **34 methods — 21 read, 11 write, 2 destroy**; 32 registered as tools, 0 of them destroying |
+| Engine surface | the `node -e` line under [What the model may do](#what-the-model-may-do) | **35 methods — 21 read, 12 write, 2 destroy**; 33 registered as tools, 0 of them destroying |
 | Rust workspace | `cargo test --workspace --offline` | vendored, no network — **last measured 2026-09-01**, in `rust:1-bookworm`, and not re-run since |
-| Repository manifest | `node tools/generate-manifest.mjs` | 6 764 files |
+| Repository manifest | `node tools/generate-manifest.mjs` | 6 771 files |
 
 A number in this README that a reader cannot reproduce is a defect. If one of the commands above
 disagrees with the badge, the badge is wrong — open an issue.

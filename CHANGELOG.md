@@ -6,6 +6,110 @@ reproduce from the tree is a defect, the same rule `README.md` states for its nu
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-09-27
+
+A minor release, because **CodeN now does something different with a bug report**: it finds the
+file the fix belongs in far more often, it can write a file larger than the model's window, its
+repair loop no longer undoes its own fixes, and it can stop and ask before writing (experimental,
+off by default). Every number below states the conditions it was measured in, and every loss is
+listed beside the gains.
+
+If you are on `0.2.0`, upgrade: `0.2.0` turned every dotted name in a bug report (`np.array`,
+`astropy.modeling`) into a file to create, and one such name was enough to stop the search for the
+real file.
+
+### How it was measured
+
+Two instruments, run on the author's development host. The harness is not in this repository yet:
+these are the author's numbers with their conditions, not a leaderboard submission.
+
+- **Finding the file.** 155 SWE-bench Verified issues; a hit when the file the real fix changes is
+  among the five files the plan proposes. Reference reasoner (no model), so between two runs only
+  the code changes; every pair below was accepted as comparable and is counted issue by issue.
+- **Fixing the bug.** 14 of those issues, the same 14 every time. CodeN plans, writes, measures and
+  repairs (at most 3 attempts); then the issue's own tests decide. Local model
+  `Qwen3.6-35B-A3B-UD-IQ4_XS`, 16 384-token window, one slot, temperature 0, 5 files per plan. The
+  tests only score the result: CodeN never sees them.
+
+| | `0.2.0` | `0.3.0` |
+|---|---|---|
+| Right file among the first five | 24 of 153 (2 issues refused) | **103 of 155**: 80 gained, 1 lost (sympy-15017, pushed out of the first five) |
+| Bugs fixed, of 14 | 1 (scikit-learn-10297) | **3**: astropy-12907 and scikit-learn-10844 gained, none lost |
+
+Read the first row honestly: most of it repairs a defect `0.2.0` itself introduced. Before that
+change the same benchmark found 58 of 155; against that level the gain is **+45 (49 gained, 4
+lost)**.
+
+### Fixed
+
+- **`0.2.0` planned files that do not exist** (`3ea5ec2d`, `4ae52502`, `4fd49e77`). The regression
+  came from `d8be1f04` ("a file the person names is the file the plan touches"): in a bug report
+  `np.array` or `data.dtype` became a file to create, and a named result returned before the search
+  ran. A new name is now planned only if its extension is one a file can carry, and only in a plain
+  instruction (no code block, no blank line) where it is the object of a creation verb or is
+  introduced by name ("a script called deploy.sh", "un file chiamato appunti.txt"). The verbs
+  include the informal Italian a person actually types ("fammi", "prepara", "vorrei"). 0 of 426 real
+  bug reports pass the first condition, so a report never creates a file.
+- **The repair loop** (`60c3ed1f`), three defects in one loop:
+  - a plan found by the search was measured against "every candidate file must change": in the
+    product such a plan could be approved only if the model edited all five candidates. It is now
+    measured against the files the Author actually wrote; a write outside them, a write that did not
+    land and a run that changed nothing are still refused;
+  - a repair sent files the previous attempt had already fixed back to the original;
+  - the repair saw only the first sentence of the request, never the request.
+
+  On the 14 issues, against the same code without this loop and without `8f316b86`: the same 3
+  fixed, 14 of 14 runs end clean instead of 3, 13 at the first attempt instead of 2, the patches
+  touch 31 files instead of 42, and the run takes 1 h 54 instead of 3 h 41.
+
+### Changed
+
+- **The search reads a report the way a developer does** (`1283f8fb`, `8f316b86`, `3ea5ec2d`). The
+  names a report writes as code (`separability_matrix`, `CompoundModel`) are searched before its
+  prose: 79 → 101 of 155, 26 gained, 4 lost. A file a report names stays in the plan as evidence
+  and the search adds up to five more beside it (a plain instruction still plans exactly the files
+  it names): 101 → 103, 2 gained, 0 lost. The largest file the search may read goes from 64 KiB to
+  256 KiB (`NOESAR_GROUNDING_MAX_FILE_BYTES` lowers it); the guard that keeps credentials out acts
+  before any size is read, and a test proves it at a 1 MiB ceiling.
+- **A file too big for the model's window is shown as an excerpt** (`95f0cf05`). When the runtime
+  refuses the whole file, the Author asks once more with the parts around the names the request
+  carries, sized to half of the window the runtime reports: the window is read, never assumed. On
+  the 14 issues this is what fixed astropy-12907 (2 → 3 of 14, none lost): all five files of its plan
+  are now written, so the first measurement is clean and nothing sends the right fix back.
+- **ATOM is never sent a file it cannot return whole** (`16023512`). Above `maxTokens × 2.8` bytes
+  (about 11 KB at the default 4 096-token answer) the file goes to the model underneath, which
+  writes edits. The swap is recorded (which provider was wanted, which answered, why), never silent.
+
+### Added
+
+- **CodeN can stop and ask before it writes**: experimental and **off by default** (`4e635490`,
+  `2bd03d68`, `e6a0e28e`). With `NOESAR_LOCAL_MODEL_SURFACES=interpret` and a local model, once the
+  search has found the files the model is shown them and asked what the request leaves open. If it
+  names at least two questions (`NOESAR_ASK_MIN_QUESTIONS`), nothing is written: the plan shows the
+  questions, `measure` refuses with `QUESTIONS_UNANSWERED`, and `/answer <run> <answers>` re-plans
+  the same request with the answers, once. In every terminal, the TUI and the chat, where
+  `workspace.answer` is a `write` tool: a model can only propose answers a person approves.
+  Measured before wiring, against a criterion written the day before (false alarms at most 20% on
+  clear requests, detections at least 60% on vague ones), same model, 105 requests labelled by
+  others: **false alarms 17% (10 of 60), detections 71% (32 of 45)**. That measurement ran on the
+  code before this release's search changes. Off, it changes nothing: on the 14 issues the tree
+  with it and the tree without it fix the same 3, with the same attempts and the same 31 files.
+- **The effect-receipt demo** (`0750bf59`): `sh examples/effect-receipt-demo/demo.sh` installs two
+  local packages in throw-away copies and prints both receipts, `CLEAN` and `UNDECLARED_EFFECT`. The
+  receipt runner no longer needs root: it ran its container as root, so a non-root operator got
+  `EACCES` on cleanup and no receipt at all; it now runs as the caller's uid:gid.
+- `.github/FUNDING.yml` (GitHub Sponsors).
+
+### Not done yet
+
+- **CodeN's measurement runs no tests.** A clean run means the effects are the ones declared, not
+  that the bug is fixed: in the 11 issues it did not fix, the loop cannot see that its fix is wrong.
+  The next step is a reproduction of the bug, run in the shadow copy.
+- 14 issues is a small sample. These numbers compare two releases in the same conditions, not
+  NOESAR against other tools.
+- A request to create a file that carries a code block or paragraphs is not read as creating it
+  (pinned by a test): name the file in the Plan form.
+
 ## [0.2.0] — 2026-09-22
 
 A minor release, because it adds things you can now do and could not before: **CodeN turns a
