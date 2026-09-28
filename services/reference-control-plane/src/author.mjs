@@ -477,9 +477,15 @@ export function excerptAround(contents, words, { radius = 30, keepAtMost = 0.6, 
   }
   if (!keep.size) return null;
 
-  // The gaps are NAMED, with the line numbers they stand for. A view with silent holes would let a
-  // model believe it had seen a whole file, and «what is not here» is exactly what it must not
-  // assume anything about.
+  return renderKept(lines, keep);
+}
+
+/**
+ * The kept lines verbatim, the gaps NAMED with the line numbers they stand for. A view with silent
+ * holes would let a model believe it had seen a whole file, and «what is not here» is exactly what it
+ * must not assume anything about. One renderer for both ways of choosing what to keep.
+ */
+function renderKept(lines, keep) {
   const out = [];
   let gapFrom = null;
   const closeGap = (until) => {
@@ -497,6 +503,76 @@ export function excerptAround(contents, words, { radius = 30, keepAtMost = 0.6, 
   }
   closeGap(lines.length);
   return out.join('\n');
+}
+
+// A line that opens a definition in the languages this product meets most (Python, JavaScript).
+// ponytail: one regular expression, not a parser per language. A file with no match is one region and
+// `decidedExcerpt` declines it, so the word-based excerpt keeps working exactly as before for it.
+const DEFINITION = /^\s*(?:(?:async\s+)?def\s|class\s|(?:export\s+)?(?:default\s+)?(?:async\s+)?function[\s*(])/;
+
+/** The file cut at every definition line: `[{ start, end }]`, 0-based and inclusive. */
+export function regionsOf(contents) {
+  const lines = String(contents ?? '').split('\n');
+  const starts = [0];
+  for (let index = 1; index < lines.length; index += 1) if (DEFINITION.test(lines[index])) starts.push(index);
+  return starts.map((start, k) => ({ start, end: (starts[k + 1] ?? lines.length) - 1 }));
+}
+
+/**
+ * The excerpt chosen by DECISIONS instead of by words: every region of the file is asked «does this
+ * code contain the bug described in the report?» through the injected `choose` (`decide.mjs`), and the
+ * regions with the highest probability are kept, verbatim, until the budget is spent.
+ *
+ * Why it exists: the word-based excerpt keeps the lines that NAME the request, and a bug usually sits
+ * in code that does not repeat the report's words. Measured 28/09/2026 on 14 SWE-bench Verified
+ * instances (`BENCH_SWE/out/decide-localize-0928.json`): the function the real fix changes came first
+ * in 5 of 9 and in the first five in 8 of 9, among 134-584 candidate functions per instance.
+ *
+ * Safe for the same reason `excerptAround` is: `applyEditBlocks` applies the answer to the REAL file
+ * and refuses an anchor that is not in it exactly once. `null` when the file is a single region or no
+ * region got an answer — the caller then keeps the word-based view.
+ *
+ * ponytail: one decision per region, ~0,5-1 s each on this installation. Past `maxDecisions` regions
+ * the ones that name a word of the request are asked first and the rest are not asked at all; the
+ * ceiling is stated in the returned `decisions` count, never hidden.
+ */
+export async function decidedExcerpt(contents, report, choose, { budgetChars = null, keepAtMost = 0.6, maxRegionChars = 6000, maxDecisions = 150 } = {}) {
+  const lines = String(contents ?? '').split('\n');
+  const regions = regionsOf(contents);
+  if (regions.length < 2) return null;
+  const words = [...new Set((String(report).match(/[A-Za-z_][A-Za-z0-9_]{3,}/g) ?? []).map((word) => word.toLowerCase()))];
+  const textOf = (region) => lines.slice(region.start, region.end + 1).join('\n');
+  const hits = (region) => { const text = textOf(region).toLowerCase(); return words.filter((word) => text.includes(word)).length; };
+  const asked = regions.length <= maxDecisions ? regions
+    : regions.map((region, order) => ({ region, order, hits: hits(region) }))
+      .sort((a, b) => (b.hits - a.hits) || (a.order - b.order)).slice(0, maxDecisions).map(({ region }) => region);
+
+  const scored = [];
+  for (const region of asked) {
+    // The report first, so every question about one file shares a prefix the runtime can cache.
+    const decision = await choose({
+      context: `Bug report:\n${report}\n\nCode:\n${textOf(region).slice(0, maxRegionChars)}`,
+      question: 'Does this code contain the bug described in the report?',
+      options: ['yes', 'no'],
+    });
+    if (!decision.abstained) scored.push({ ...region, probability: decision.probabilities[0] });
+  }
+  if (!scored.length) return null;
+
+  const size = lines.reduce((total, line) => total + line.length + 1, 0);
+  const budget = Math.min(budgetChars ?? Infinity, size * keepAtMost);
+  const keep = new Set();
+  const kept = [];
+  let used = 0;
+  for (const region of scored.sort((a, b) => b.probability - a.probability)) {
+    const cost = textOf(region).length + 1;
+    // The most probable region is always kept: the smallest honest view there is.
+    if (kept.length && used + cost > budget) continue;
+    for (let index = region.start; index <= region.end; index += 1) keep.add(index);
+    kept.push({ fromLine: region.start + 1, toLine: region.end + 1, probability: region.probability });
+    used += cost;
+  }
+  return { view: renderKept(lines, keep), kept, decisions: asked.length, regions: regions.length };
 }
 
 /**
@@ -629,9 +705,15 @@ export class Author {
    * live model is a refusal no test can reach without one. The same seam, for the same reason,
    * that `groundRequest` is in `workspace-actions.mjs`.
    */
-  constructor({ generate = null, model = null } = {}) {
+  // `decide` is the second way out, injected for the same reason: `choose()` from `decide.mjs`, or
+  // `null`. With it, a file refused for the window is shown by the functions a decision picks
+  // (`decidedExcerpt`); without it, by the words of the request, exactly as before.
+  #decide;
+
+  constructor({ generate = null, model = null, decide = null } = {}) {
     this.#generate = generate;
     this.#model = model;
+    this.#decide = typeof decide === 'function' ? decide : null;
   }
 
   get available() { return typeof this.#generate === 'function'; }
@@ -691,6 +773,9 @@ export class Author {
       // call spent on an answer this side then rejects, and that is the same worst case the whole
       // rule set already has.
       const views = [{ contents: file.contents, partial: false }];
+      // How the partial view was chosen, when there is one — carried into this file's fixture, so a
+      // reader of the ledger can tell a view the decisions picked from one the words picked.
+      let excerpt = null;
       let prompt = null;
       let answer;
       let refusedBy = null;
@@ -716,10 +801,30 @@ export class Author {
           // is the honest end of this file, and shrinking again would be guessing at a window
           // nobody has told us.
           if (error.code !== 'CONTEXT_EXCEEDED' || view.partial) break;
+          const budgetChars = excerptBudget(error.reason, file.contents);
+          let narrowed = null;
+          if (this.#decide) {
+            try {
+              // The request as written leads `background` (`plan()` puts it first), and 3000 characters
+              // of it is what the decisions were measured with.
+              const decided = await decidedExcerpt(file.contents, String(background || goal || '').slice(0, 3000), this.#decide, { budgetChars });
+              if (decided) {
+                narrowed = decided.view;
+                excerpt = { selectedBy: 'decisions', decisions: decided.decisions, regions: decided.regions, kept: decided.kept };
+              }
+            } catch (decisionError) {
+              // A model that cannot take decisions is not a model that cannot write: the words decide.
+              if (decisionError?.name !== 'DecisionUnavailable') throw decisionError;
+              excerpt = { selectedBy: 'words', decisionsUnavailable: decisionError.reason };
+            }
+          }
           // The whole request, not only its first sentence: the name that pins the bug is usually below it.
-          const narrowed = excerptAround(file.contents, `${goal ?? ''} ${step ?? ''} ${background ?? ''}`, {
-            budgetChars: excerptBudget(error.reason, file.contents),
-          });
+          if (!narrowed) {
+            narrowed = excerptAround(file.contents, `${goal ?? ''} ${step ?? ''} ${background ?? ''}`, { budgetChars });
+            // Recorded only where decisions were available to be asked: without them the fixture is
+            // byte-identical to before this field existed.
+            if (narrowed && this.#decide) excerpt = { ...(excerpt ?? {}), selectedBy: 'words' };
+          }
           if (narrowed) views.push({ contents: narrowed, partial: true });
         }
       }
@@ -747,6 +852,7 @@ export class Author {
           // record that cannot reproduce its own verdict is not a replayable record.
           beforeDigest: digest(file.contents ?? ''),
           outcome: 'refused', refusal: { code: error.code, reason: error.reason },
+          ...(excerpt ? { excerpt } : {}),
         });
         // The bytes go to the caller, never into the ledger — see `calls` below. A port
         // refusal has no answer, and `null` says so rather than an empty string pretending
@@ -788,6 +894,7 @@ export class Author {
         // `D-0597`, as above: the verdict `unchanged` vs `written` is a comparison against
         // what was there before, so the record carries that side of the comparison too.
         beforeDigest: digest(file.contents ?? ''),
+        ...(excerpt ? { excerpt } : {}),
         // What the provider had to do to produce this. `null` when the port answered with a
         // raw string, which is itself the fact that nothing checked it before this line.
         provenance: structured

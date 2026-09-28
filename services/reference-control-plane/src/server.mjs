@@ -97,6 +97,7 @@ import {
 } from './skill-catalog.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus, refuseUnknownPlanFields } from './workspace-actions.mjs';
 import { Author, openAiChatGenerator, atomAuthoringGenerator, declaredFallbackGenerator } from './author.mjs';
+import { openAiDecider, decideSwitchFromEnv } from './decide.mjs';
 import { profileChange } from './divergence-profile.mjs';
 import { AdapterGrantOrchestrator, AdapterCapabilityError, adapterCapabilityStatus } from './adapter-capability.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
@@ -334,7 +335,10 @@ function buildAuthor() {
     // ±1 from noise at that setting (measured 2026-09-12, ctxfix-resolve-01 vs perfile-cap-resolve-01).
     temperature: Number(process.env.NOESAR_AUTHORING_TEMPERATURE ?? 0.2),
   });
-  if (!atomEndpoint) return new Author({ generate: model, model: modelEndpoint });
+  // Decisions ask the SAME local model the Author writes with — one model, two ways of using it
+  // (`decide.mjs`). Off unless `NOESAR_DECIDE=on`: nothing about an installation changes by default.
+  const decide = decideSwitchFromEnv() ? openAiDecider({ endpoint: modelEndpoint, model: process.env.NOESAR_AUTHORING_MODEL || null }) : null;
+  if (!atomEndpoint) return new Author({ generate: model, model: modelEndpoint, decide });
   const chain = declaredFallbackGenerator({
     primary: atomAuthoringGenerator({ endpoint: atomEndpoint, token: process.env.NOESAR_RUST_REASONING_TOKEN ?? '' }),
     fallback: model,
@@ -347,7 +351,7 @@ function buildAuthor() {
       path: record.path, reason: record.reason, at: record.at,
     }),
   });
-  return new Author({ generate: chain, model: `atom ${atomEndpoint} → ${modelEndpoint}` });
+  return new Author({ generate: chain, model: `atom ${atomEndpoint} → ${modelEndpoint}`, decide });
 }
 const workspaceActions = new WorkspaceActionOrchestrator({
   workspaceRoot: workspace, shadowsRoot,
