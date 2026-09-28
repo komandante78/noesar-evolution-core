@@ -6302,7 +6302,7 @@ d56050a70b981a28c16b58c397cb2fc44b268b367ef348e4cecd4b30fc476bff  ./services/ref
 aac31df88696173d310a10907da12833903f57e8146754151556666692e0b1a2  ./services/reference-control-plane/src/debug-evolution-bridge.mjs
 5775d7587520b8d7caab9b8c48a84c1e53f42ebd9d0cf2790fdb0f40427b2b57  ./services/reference-control-plane/src/debug-evolution-triage.mjs
 623aabe4fcaa3eba9f388fd3bcc74b9dfa10b337a4e6dbb5080f48a76bdd3982  ./services/reference-control-plane/src/debug-mode.mjs
-ad1bb976145a3232175c40ba82f15b33282e914e176f466f7f363ded5faa0d64  ./services/reference-control-plane/src/decide.mjs
+77ed38d271d23c994045444067cf5d1ed80feb383ea28bad1c3c96ff187606a3  ./services/reference-control-plane/src/decide.mjs
 baea1566bb76869a35528b61481de1e35e56d6b69d8c65b8c4ccdcaff83370b2  ./services/reference-control-plane/src/divergence-profile.mjs
 1dfe1400729fd4442058856fce8d1757aaaad08776f5cfe274482fcbf0a75748  ./services/reference-control-plane/src/document-check.mjs
 3ffa4a9a26b943099a085e4142a8034e59266bec59b51960a2ec125c78099da6  ./services/reference-control-plane/src/effect-receipt.mjs
@@ -6493,7 +6493,7 @@ a32080f4ca81b6727962691fd781c9d171793400754def6aede8af78426dcb34  ./services/ref
 ee9e02df8e302ff8cb8b7e16a580d43ea24c04298ae6cfd162679d861e1290ea  ./services/reference-control-plane/test/debug-evolution-triage-one.test.mjs
 6333033fbd3ecf84e2c4b0ce6f0ef29ee30db2625e7ef0a1fda480a7ab753aa7  ./services/reference-control-plane/test/debug-evolution-triage.test.mjs
 5cf20031ec629d2de18ddc037f8873cbf3f1d3d7adeef329e35e7ada1faa6faa  ./services/reference-control-plane/test/debug-mode.test.mjs
-25fe4462a5fe6f2b85ecd23a1bfec475ad5ccd7dfaf99e62ab401103621b772e  ./services/reference-control-plane/test/decide.test.mjs
+472dde584d0a613a8d0b4d93e43b74c6dbe34aad861e9e20d1fc3bb031d35ae7  ./services/reference-control-plane/test/decide.test.mjs
 908a813ff6e39639c6f6a57e5c39f719b652c2ca605e40142c9540a42ee250bb  ./services/reference-control-plane/test/decision-log-references.test.mjs
 6a33e99cb9ff2f2441ba076b558b3b163adae99664c4fae6ba4926520a035c13  ./services/reference-control-plane/test/divergence-connected.test.mjs
 b2c2959017f750b1e487e238e454edb47ceaf50b7bb55fb8a6c2d940e0dd3af0  ./services/reference-control-plane/test/divergence-profile.test.mjs

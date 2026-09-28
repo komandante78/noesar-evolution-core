@@ -50,7 +50,11 @@ test('one token, temperature 0, probabilities asked for, thinking off, context f
   assert.equal(body.logprobs, true);
   assert.equal(body.top_logprobs, 20);
   assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false });
-  assert.equal(body.messages[0].content, 'CTX\n\nQ?\nA) yes\nB) no\nAnswer with one letter.');
+  assert.equal(body.messages[0].content, 'CTX\n\nQ?\nA) yes\nB) no\nReply with exactly one letter, A or B, and nothing else.');
+});
+
+test('the closing line names every offered letter — measured: «Answer with one letter.» let 7 of 14 decisions abstain', () => {
+  assert.match(decisionPrompt({ question: 'Q?', options: ['x', 'y', 'z'] }), /Reply with exactly one letter, A, B or C, and nothing else\.$/);
 });
 
 test('the answer is read off the letters, whatever the tokenizer glued to them', () => {

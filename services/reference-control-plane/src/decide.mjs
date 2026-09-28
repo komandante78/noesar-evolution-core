@@ -47,13 +47,22 @@ export class DecisionUnavailable extends Error {
 
 export const decideSwitchFromEnv = (env = process.env) => String(env?.NOESAR_DECIDE ?? '').toLowerCase() === 'on';
 
-/** The prompt, context FIRST: several questions about one context then share a cacheable prefix. */
+/**
+ * The prompt, context FIRST: several questions about one context then share a cacheable prefix.
+ *
+ * The closing line names the letters and forbids anything else, and that is measured, not style:
+ * with «Answer with one letter.» 7 of 14 regulator decisions over a report and a diff ABSTAINED — the
+ * model's first token was «To» or «The», and the offered letters carried 0.15-0.48 of the probability.
+ * With the line below the letter mass was 0.99-1.00 on all 14 (`BENCH_SWE/out/abstention-probe-0928.log`).
+ */
 export function decisionPrompt({ context = '', question, options }) {
+  const letters = options.map((option, index) => LETTERS[index]);
+  const named = letters.length === 2 ? `${letters[0]} or ${letters[1]}` : `${letters.slice(0, -1).join(', ')} or ${letters.at(-1)}`;
   return [
     ...(String(context).trim() ? [String(context).trim(), ''] : []),
     question,
-    ...options.map((option, index) => `${LETTERS[index]}) ${option}`),
-    'Answer with one letter.',
+    ...options.map((option, index) => `${letters[index]}) ${option}`),
+    `Reply with exactly one letter, ${named}, and nothing else.`,
   ].join('\n');
 }
 
