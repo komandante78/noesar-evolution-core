@@ -143,6 +143,10 @@ export const AGENT_COMMANDS = Object.freeze([
   // accident. `CE-020` is what required this to exist at all — a capability the engine exposes
   // with no keyboard form fails that row, and `research.search` had none.
   { name: 'web', argument: '<text>', summary: 'Search the web through the search instance this operator runs — results come back unverified', group: 'work', kind: 'call', method: 'research.search', permission: 'workspace.read' },
+  // `documents.check` (`document-check.mjs`): every sentence of a document judged against its sources.
+  // «judged», in the summary itself: it is a model's decision, not a recomputation, and the one line
+  // a person reads before running it must not suggest otherwise.
+  { name: 'check', argument: '<document> <source>…', summary: 'Judge every sentence of a document against its sources — flags what no source supports; a judgment, not a recomputation', group: 'work', kind: 'call', method: 'documents.check', permission: 'workspace.read' },
   { name: 'events', argument: '<id>', summary: 'The causal event trail of a piece of work', group: 'work', kind: 'call', method: 'events.correlation', permission: null },
   { name: 'status', argument: '', summary: 'Engine status, authority, shadow', group: 'work', kind: 'call', method: 'status', permission: null },
   // `D-0577`. Two verbs, not one, because listing and withdrawing are two permissions — see

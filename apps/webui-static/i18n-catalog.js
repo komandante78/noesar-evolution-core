@@ -2151,6 +2151,8 @@ const it = {
   'List models present on this installation, or load one by id': 'Elenca i modelli presenti su questa installazione, o caricane uno per id',
   'Search the web through the search instance this operator runs — results come back unverified':
     'Cerca sul web tramite l’istanza di ricerca che gestisci tu — i risultati tornano non verificati',
+  'Judge every sentence of a document against its sources — flags what no source supports; a judgment, not a recomputation':
+    'Giudica ogni frase di un documento rispetto alle sue fonti — segnala ciò che nessuna fonte sostiene; un giudizio, non un ricalcolo',
   'Unload the model from memory — asks for the word `confirm`; chat cannot answer until one is started again':
     'Scarica il modello dalla memoria — chiede la parola `confirm`; la chat non può rispondere finché non se ne avvia un altro',
   'End this session — asks for `logout confirm`': 'Chiudi questa sessione — richiede `logout confirm`',
@@ -2185,6 +2187,7 @@ const it = {
   '<token>': '<token>',
   '[path]': '[percorso]',
   '<text>': '<testo>',
+  '<document> <source>…': '<documento> <fonte>…',
   // `D-0590`. `[scope]` and `<paths>` describe what to type, so they are translated on the same
   // reading as `<run>`. **No entry for `<id>`: one already exists above**, and a second would be
   // dead the moment it was written — the duplicate-entry guard in `ui-language-coverage` caught

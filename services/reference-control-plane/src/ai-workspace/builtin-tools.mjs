@@ -125,6 +125,8 @@ export const EFFECT = Object.freeze({
   'model.deactivate': 'write',
   // Reaches the operator's own search instance and changes nothing on this installation.
   'research.search': 'read',
+  // Reads a document and its sources in the workspace and asks decisions about them; writes nothing.
+  'documents.check': 'read',
 });
 
 /**
@@ -215,6 +217,10 @@ export const SCHEMA = Object.freeze({
     objective: str('what is being looked for'),
     criteria: strings('the specific things the answer must state'),
   }, ['objective']),
+  'documents.check': object({
+    path: str('the document in the workspace'),
+    sources: strings('workspace files the document should be supported by, at most 5'),
+  }, ['path', 'sources']),
 });
 
 /** The four methods no `/` command names, so no summary exists to derive. Written here rather than

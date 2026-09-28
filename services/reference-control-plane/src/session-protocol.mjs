@@ -21,7 +21,12 @@
 
 import { createServer, connect } from 'node:net';
 import { profileChange as defaultProfileChange } from './divergence-profile.mjs';
-import { existsSync, unlinkSync, chmodSync } from 'node:fs';
+import { existsSync, unlinkSync, chmodSync, readFileSync } from 'node:fs';
+import { checkDocument } from './document-check.mjs';
+
+// `documents.check`: a check is one decision per (sentence, source), so both are bounded here.
+const DOCUMENT_CHECK_MAX_SOURCES = 5;
+const DOCUMENT_CHECK_MAX_BYTES = 256 * 1024;
 import { refuseUnknownPlanFields } from './workspace-actions.mjs';
 
 export const PROTOCOL_VERSION = 'noesar-tui/1';
@@ -241,6 +246,9 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // operator's OWN search instance, at an address that is configuration and not code (§16), and
   // the address is checked by the executor's own endpoint validator before anything is sent.
   'research.search': { permission: 'workspace.read', bridged: true },
+  // Every sentence of a workspace document judged against workspace sources (`document-check.mjs`,
+  // `NOESAR_DECIDE=on`). `workspace.read`: it reads files and changes nothing.
+  'documents.check': { permission: 'workspace.read', bridged: true },
 });
 
 /** The methods the HTTP bridge exposes, and what each needs — derived, never re-typed. */
@@ -288,6 +296,8 @@ export function createSessionDispatch({
   activateInstalledModel,
   deactivateInstalledModel,
   searchProvider,
+  // `choose()` from `decide.mjs`, or `null` — the same decider the Author uses (server.mjs).
+  decide = null,
   // Owner, 2026-08-15: `() => { models }` — the SAME catalogue `#/models` reads, filtered to
   // what `/model` with no id can actually answer. See `model.activate` below.
   listInstalledModels,
@@ -604,6 +614,30 @@ export function createSessionDispatch({
         // answered 502" are different things to do next, and one word for both would hide which.
         throw new ProtocolError(error.kind === 'UNCONFIGURED' ? 'UNAVAILABLE' : 'INTERNAL', error.message);
       }
+    },
+    'documents.check': async ({ params }) => {
+      if (typeof decide !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this installation takes no decisions: set NOESAR_DECIDE=on with a local model configured');
+      }
+      const sourcesAsked = Array.isArray(params?.sources) ? params.sources : [];
+      if (!sourcesAsked.length) throw new ProtocolError('INVALID_REQUEST', 'name at least one source to check the document against');
+      if (sourcesAsked.length > DOCUMENT_CHECK_MAX_SOURCES) {
+        throw new ProtocolError('INVALID_REQUEST', `at most ${DOCUMENT_CHECK_MAX_SOURCES} sources per check`);
+      }
+      // Every path through the workspace's own resolver, the one `repoMap.scan` uses: a document
+      // or a source outside the workspace is refused, never read.
+      const read = (path) => {
+        const target = resolveWorkspaceSubpath(workspaceRoot, path);
+        if (!target || !existsSync(target)) throw new ProtocolError('INVALID_PATH', `\`${path}\` is not a file in the workspace`);
+        const contents = readFileSync(target, 'utf8');
+        if (Buffer.byteLength(contents) > DOCUMENT_CHECK_MAX_BYTES) {
+          throw new ProtocolError('INVALID_REQUEST', `\`${path}\` is larger than ${DOCUMENT_CHECK_MAX_BYTES} bytes`);
+        }
+        return contents;
+      };
+      const text = read(params?.path);
+      const sources = sourcesAsked.map((path) => ({ path, contents: read(path) }));
+      return { path: params.path, ...(await checkDocument({ text, sources, decide })) };
     },
     'model.deactivate': async ({ actor }) => {
       if (typeof deactivateInstalledModel !== 'function') {

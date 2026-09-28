@@ -81,6 +81,10 @@ export const RUN = {
   // shells answer `/review` identically — the standing rule this table exists to enforce.
   review: () => ['review.latency', {}],
   web: (argument) => ['research.search', { objective: argument }],
+  check: (argument) => {
+    const [path, ...sources] = String(argument ?? '').trim().split(/\s+/).filter(Boolean);
+    return ['documents.check', { path: path ?? '', sources }];
+  },
   model: (argument) => ['model.activate', { id: argument }],
   // No params: there is one loaded model, and the confirmation the command already carries is
   // what stands between a typed line and the GPU being handed back.

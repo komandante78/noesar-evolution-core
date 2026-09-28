@@ -580,6 +580,8 @@ const sessionDispatch = createSessionDispatch({
     // its own consent, and the report is written from snippets while it is off.
     withPages: researchPagesConsented(),
   }),
+  // `documents.check` asks the same decider; `null` answers UNAVAILABLE with the switch named.
+  decide: decider,
   deactivateInstalledModel: async (actor) => {
     const released = await localModels.release();
     ledger.append({ actor, action: 'model.deactivate', result: 'released', details: released });
