@@ -127,6 +127,12 @@ export function validateCandidate(candidate, index) {
     // shows what a source said about itself and this is the whole source. Bounded here, where
     // every other field of a candidate is bounded, rather than trusted at the length it arrived.
     pageText: candidate.pageText ? String(candidate.pageText).slice(0, MAX_PAGE_TEXT) : null,
+    // A typed decision's probability that the source addresses the question (`NOESAR_DECIDE=on`),
+    // bounded here like every other field. Absent unless a decision produced one, so a report
+    // taken without decisions has exactly the shape it had.
+    ...(Number.isFinite(candidate.relevance) && candidate.relevance >= 0 && candidate.relevance <= 1
+      ? { relevance: Number(candidate.relevance) }
+      : {}),
   };
 }
 

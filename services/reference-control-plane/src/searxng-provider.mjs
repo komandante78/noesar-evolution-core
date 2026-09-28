@@ -402,7 +402,7 @@ export function hitsToReport(hits, objective = '') {
  * addresses, and a "local" tool pointing at the public internet. Reusing it rather than writing
  * a second check here is the difference between one rule and two that agree until they do not.
  */
-export async function searchWith({ endpoint, objective, criteria = [], fetchImpl = fetch, validate, timeoutMs = 20_000, withImages = false, withPages = false }) {
+export async function searchWith({ endpoint, objective, criteria = [], fetchImpl = fetch, validate, timeoutMs = 20_000, withImages = false, withPages = false, decide = null }) {
   if (!endpoint) {
     const error = new Error('No search endpoint is configured for this installation.');
     error.status = 503; error.kind = 'UNCONFIGURED';
@@ -437,14 +437,42 @@ export async function searchWith({ endpoint, objective, criteria = [], fetchImpl
     if (withImages && thumbnail) candidate.image = await inlineThumbnail(thumbnail, { fetchImpl });
     if (withPages) candidate.pageText = await readPage(candidate.url, { fetchImpl });
   }));
-  // Every source is asked, and the ones that ANSWERED fill the six places the write-up has —
-  // in the engine's order, which is still the only ranking anyone here has. See
-  // `MAX_PAGES_READ` for the measurement that put the loop here rather than in the map above.
-  let kept = 0;
-  for (const candidate of report.candidates) {
-    if (!candidate.pageText) continue;
-    if (kept < MAX_PAGES_READ) kept += 1;
-    else delete candidate.pageText;
-  }
+  // `NOESAR_DECIDE=on` (`decide.mjs`): each source is JUDGED, not summarised — «does this source
+  // address the question?» read off one token, kept as `relevance` beside the NOT_VERIFIED label it
+  // already carries. The objection at the top of this file stands: no prose is written here, so no
+  // uncertainty is laundered; a number is added and the source keeps its own words.
+  if (typeof decide === 'function') await scoreRelevance(report.candidates, { objective, criteria, decide });
+  // Every source is asked, and the ones that ANSWERED fill the six places the write-up has — in the
+  // engine's order, or, when the sources were judged, the most relevant first (a stable sort, so
+  // ties and unjudged sources keep the engine's order). See `MAX_PAGES_READ` for the measurement
+  // that put the loop here rather than in the map above.
+  const answered = report.candidates.filter((candidate) => candidate.pageText);
+  const read = typeof decide === 'function'
+    ? [...answered].sort((a, b) => (b.relevance ?? -1) - (a.relevance ?? -1))
+    : answered;
+  const keep = new Set(read.slice(0, MAX_PAGES_READ));
+  for (const candidate of answered) if (!keep.has(candidate)) delete candidate.pageText;
   return report;
+}
+
+/**
+ * One typed decision per source, sequential. A decider that cannot answer stops the scoring and
+ * leaves the rest unjudged — a report without numbers is the report of before, never a failure.
+ */
+export async function scoreRelevance(candidates, { objective, criteria = [], decide }) {
+  const question = ['Question:', String(objective ?? ''), ...(criteria.length ? [`Criteria: ${criteria.join('; ')}`] : [])].join('\n');
+  for (const candidate of candidates) {
+    const text = String(candidate.pageText ?? candidate.evidence?.[0]?.statement ?? '').slice(0, 2000);
+    try {
+      const decision = await decide({
+        context: `${question}\n\nSource: ${candidate.name} — ${candidate.url}\n${text}`,
+        question: 'Does this source address the question above?',
+        options: ['yes', 'no'],
+      });
+      if (!decision.abstained) candidate.relevance = decision.probabilities[0];
+    } catch (error) {
+      if (error?.name !== 'DecisionUnavailable') throw error;
+      return;
+    }
+  }
 }

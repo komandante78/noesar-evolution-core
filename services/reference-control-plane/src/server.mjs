@@ -569,6 +569,8 @@ const sessionDispatch = createSessionDispatch({
   searchProvider: ({ objective, criteria }) => searchWith({
     endpoint: process.env.NOESAR_SEARCH_ENDPOINT ?? null,
     objective, criteria, validate: validateToolEndpoint,
+    // The same decider as the Author's (`decide.mjs`), `null` unless NOESAR_DECIDE=on.
+    decide: decider,
     // Rules 30-32 again, and for the same reason as `modelAcquisitionEgress` beside it: the
     // aggregator is one host this installation consented to, and the sites that keep the
     // pictures are not. Ships off; a report simply has no pictures until somebody says yes.
