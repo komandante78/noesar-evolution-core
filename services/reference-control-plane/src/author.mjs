@@ -510,6 +510,23 @@ function renderKept(lines, keep) {
 // `decidedExcerpt` declines it, so the word-based excerpt keeps working exactly as before for it.
 const DEFINITION = /^\s*(?:(?:async\s+)?def\s|class\s|(?:export\s+)?(?:default\s+)?(?:async\s+)?function[\s*(])/;
 
+/**
+ * A file's table of contents: every definition line, numbered, until `budget` characters. What a
+ * decision about a WHOLE file is shown when the file itself would not fit — its shape, not its bytes.
+ */
+export function outlineOf(contents, { budget = 4000 } = {}) {
+  const out = [];
+  let used = 0;
+  for (const [index, line] of String(contents ?? '').split('\n').entries()) {
+    if (!DEFINITION.test(line)) continue;
+    const entry = `${index + 1}: ${line.trimEnd()}`;
+    if (used + entry.length + 1 > budget) { out.push('… (more definitions not shown)'); break; }
+    out.push(entry);
+    used += entry.length + 1;
+  }
+  return out.join('\n');
+}
+
 /** The file cut at every definition line: `[{ start, end }]`, 0-based and inclusive. */
 export function regionsOf(contents) {
   const lines = String(contents ?? '').split('\n');

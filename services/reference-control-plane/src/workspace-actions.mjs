@@ -60,7 +60,12 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
-import { Author, AuthoringUnavailable, AuthoringRefused } from './author.mjs';
+import { Author, AuthoringUnavailable, AuthoringRefused, outlineOf } from './author.mjs';
+
+// With decisions (`decide.mjs`): how many candidates the search is asked for, and how many a plan keeps.
+// PLAN_FILES is the search's own default `limit`, so without decisions nothing changes.
+const DECISION_POOL = 10;
+const PLAN_FILES = 5;
 import { groundRequest as defaultGroundRequest, GroundingRefused } from './request-grounding.mjs';
 import { profileChange as defaultProfileChange, DivergenceUnavailable } from './divergence-profile.mjs';
 import { ReasoningRouter, routingFrom, degradationSummary, degradationFrequency } from './reasoning-router.mjs';
@@ -532,7 +537,12 @@ export class WorkspaceActionOrchestrator {
       // `request` as well as the goal: a provider that answers something unrelated must not
       // be able to steer this step away from what was actually asked. Measured, not feared —
       // see request-grounding.mjs.
-      const grounded = this.#groundRequest({ workspaceRoot: this.#workspaceRoot, goal: intent.goal, request });
+      // With decisions, the search is asked for a wider pool and decisions keep the plan's five: the
+      // words find candidates, the model judges them (`#chooseByDecision`).
+      const grounded = await this.#chooseByDecision(
+        this.#groundRequest({ workspaceRoot: this.#workspaceRoot, goal: intent.goal, request, ...(this.#decide ? { limit: DECISION_POOL } : {}) }),
+        request,
+      );
       resolvedFiles = grounded.files;
       grounding = grounded.grounding;
       context = grounded.context ?? [];
@@ -1924,6 +1934,55 @@ export class WorkspaceActionOrchestrator {
     }
     run.reproduction = { ...run.reproduction, ...verdict };
     this.#record(runId, causeEventId, actor, 'workspace_action.reproduction_checked', verdict, nowUnix);
+  }
+
+  /**
+   * The search's candidates, judged: each derived candidate is shown to a decision as its path and
+   * its table of contents (`outlineOf`), and the most probable `PLAN_FILES` are kept. Files the
+   * report NAMED stay whatever the decisions say — a person's words are not overruled by a number.
+   *
+   * Why: the search is by words, and on the 0.3.0 resolve-rate sample the file the fix is in was
+   * outside the five it chose in 4 of 14 instances (`BENCH_SWE/out/decide-localize-0928.json`).
+   *
+   * Without a decider, or when it cannot answer, the plan's files are the search's first five —
+   * exactly what they were before this existed. ponytail: one decision per candidate, sequential.
+   */
+  async #chooseByDecision(grounded, request) {
+    if (!this.#decide || grounded?.grounding?.derived !== true) return grounded;
+    const named = new Set(grounded.grounding.named ?? []);
+    const pinned = grounded.files.filter((file) => named.has(file.path));
+    const rest = grounded.files.filter((file) => !named.has(file.path));
+    const room = Math.max(0, PLAN_FILES - pinned.length);
+    if (rest.length <= room) return grounded;
+    const scored = [];
+    try {
+      for (const [order, file] of rest.entries()) {
+        const decision = await this.#decide({
+          context: `Report:\n${String(request ?? '').slice(0, 3000)}\n\nFile: ${file.path}\nDefinitions in it:\n${outlineOf(file.contents) || '(none found)'}`,
+          question: 'Is this the file where the change the report asks for belongs?',
+          options: ['yes', 'no'],
+        });
+        scored.push({ file, order, probability: decision.abstained ? null : decision.probabilities[0] });
+      }
+    } catch (error) {
+      if (error?.name !== 'DecisionUnavailable') throw error;
+      const files = [...pinned, ...rest.slice(0, room)];
+      return { ...grounded, files, grounding: { ...grounded.grounding, selected: files.map((file) => file.path), decisions: { available: false, reason: error.reason } } };
+    }
+    // An abstention ranks below any answer, and ties keep the search's order.
+    const kept = [...scored].sort((a, b) => ((b.probability ?? -1) - (a.probability ?? -1)) || (a.order - b.order)).slice(0, room);
+    const files = [...pinned, ...kept.map((entry) => entry.file)];
+    return {
+      ...grounded,
+      files,
+      grounding: {
+        ...grounded.grounding,
+        selected: files.map((file) => file.path),
+        // Every candidate judged, with its probability and its place in the search — so the record
+        // shows what the words chose and what the decisions changed.
+        decisions: { available: true, judged: scored.map(({ file, order, probability }) => ({ path: file.path, searchRank: order + 1, probability })) },
+      },
+    };
   }
 
   /**
