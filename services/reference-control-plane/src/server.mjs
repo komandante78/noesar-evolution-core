@@ -320,6 +320,12 @@ const shadowsRoot = String(process.env.NOESAR_SHADOWS_ROOT ?? '').trim()
 //   no model configured          the Author is absent; plan() says why, and writes nothing
 //   a model, no ATOM             the model answers; THIS side applies all seven rules (CE-022)
 //   a model and ATOM             the chain; and if ATOM falls, the model answers, DECLARED
+// Decisions ask the SAME local model the Author writes with — one model, two ways of using it
+// (`decide.mjs`) — and ONE decider serves the Author and the orchestrator's regulator. Off unless
+// `NOESAR_DECIDE=on` and a model is configured: nothing about an installation changes by default.
+const decider = decideSwitchFromEnv() && String(process.env.NOESAR_AUTHORING_ENDPOINT ?? '').trim()
+  ? openAiDecider({ endpoint: String(process.env.NOESAR_AUTHORING_ENDPOINT).trim(), model: process.env.NOESAR_AUTHORING_MODEL || null })
+  : null;
 function buildAuthor() {
   const modelEndpoint = String(process.env.NOESAR_AUTHORING_ENDPOINT ?? '').trim();
   const atomEndpoint = String(process.env.NOESAR_RUST_REASONING_ENDPOINT ?? '').trim();
@@ -335,9 +341,7 @@ function buildAuthor() {
     // ±1 from noise at that setting (measured 2026-09-12, ctxfix-resolve-01 vs perfile-cap-resolve-01).
     temperature: Number(process.env.NOESAR_AUTHORING_TEMPERATURE ?? 0.2),
   });
-  // Decisions ask the SAME local model the Author writes with — one model, two ways of using it
-  // (`decide.mjs`). Off unless `NOESAR_DECIDE=on`: nothing about an installation changes by default.
-  const decide = decideSwitchFromEnv() ? openAiDecider({ endpoint: modelEndpoint, model: process.env.NOESAR_AUTHORING_MODEL || null }) : null;
+  const decide = decider;
   if (!atomEndpoint) return new Author({ generate: model, model: modelEndpoint, decide });
   const chain = declaredFallbackGenerator({
     primary: atomAuthoringGenerator({ endpoint: atomEndpoint, token: process.env.NOESAR_RUST_REASONING_TOKEN ?? '' }),
@@ -358,6 +362,7 @@ const workspaceActions = new WorkspaceActionOrchestrator({
   minter: capabilityMinter, events: engineEvents, executeSandbox: executeSandboxConfig,
   privacyStateFor: () => currentPrivacy(null),
   author: buildAuthor(),
+  decide: decider,
   // `D-0345` — the wiring `/skills` declared missing about itself from the day it was built.
   // The registry holds bodies; this hands the Author the ones in scope, and nothing else in
   // the product reads `instructionsFor`. Resolved per call rather than captured once, so a

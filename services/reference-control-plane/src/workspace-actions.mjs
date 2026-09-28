@@ -293,6 +293,43 @@ export function repairBrief(result, { budget = REPAIR_OUTPUT_BUDGET } = {}) {
 }
 
 /**
+ * The measured change, as a model can read it: per file, the lines that differ, with the common
+ * head and tail trimmed. Built from `#diff` entries (`before`/`after` of the shadow), never from what
+ * the Author CLAIMED it wrote. `budget` bounds it, and a cut says so.
+ */
+export function compactDiff(entries, { budget = 6000 } = {}) {
+  const parts = [];
+  for (const entry of entries ?? []) {
+    if (entry.after === null || entry.after === undefined) continue;
+    const before = String(entry.before ?? '').split('\n');
+    const after = String(entry.after).split('\n');
+    let head = 0;
+    while (head < before.length && head < after.length && before[head] === after[head]) head += 1;
+    let tail = 0;
+    while (tail < before.length - head && tail < after.length - head && before[before.length - 1 - tail] === after[after.length - 1 - tail]) tail += 1;
+    parts.push([
+      `--- ${entry.path} (from line ${head + 1})`,
+      ...before.slice(head, before.length - tail).map((line) => `- ${line}`),
+      ...after.slice(head, after.length - tail).map((line) => `+ ${line}`),
+    ].join('\n'));
+  }
+  const text = parts.join('\n');
+  return text.length <= budget ? text : `${text.slice(0, budget)}\n… (the change continues; cut at ${budget} characters)`;
+}
+
+/**
+ * The regulator's first question (`NOESAR_DECIDE=on`): after the shadow has measured a change, how
+ * likely is it that the change fixes what the report describes? A clean measurement says the effects
+ * were the declared ones; it never said the bug was gone — on SWE-bench Verified 14 of 14 runs were
+ * clean and 3 were right (0.3.0). This is the number the person approving sees beside «clean».
+ *
+ * It does not change what the loop does: it is computed, recorded and returned. Whether a low value
+ * should send the run back to the Author is a decision taken only after measuring that the number
+ * separates right changes from wrong ones.
+ */
+export const CONFIDENCE_QUESTION = 'Does the change below fix the problem described in the report, without breaking what the report does not mention?';
+
+/**
  * One orchestrator per server process.
  *
  * `#runs` is the read path and stays a Map — every lookup in this file goes through it. What
@@ -336,7 +373,10 @@ export class WorkspaceActionOrchestrator {
 
   #noveltyBudget;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null, skillsFor = () => [], runRetention = 500, noveltyBudget = 5, recordReview = null }) {
+  // `choose()` from `decide.mjs`, or `null` — the same decider the Author is given (server.mjs).
+  #decide;
+
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null, skillsFor = () => [], runRetention = 500, noveltyBudget = 5, recordReview = null, decide = null }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -421,6 +461,7 @@ export class WorkspaceActionOrchestrator {
     // config that could change mid-run would make "the token's limits were checked against
     // the installed ceiling at mint time" stale by the time execute() spends it.
     this.#executeSandbox = executeSandbox;
+    this.#decide = typeof decide === 'function' ? decide : null;
     // D-0338. Rehydrated here, at construction, so nothing downstream ever has to ask whether
     // the runs it can see are all of them. A damaged file is kept in `#damagedRuns` and
     // reported by `status()` — losing one run to a full disk must not stop the others coming
@@ -1885,6 +1926,35 @@ export class WorkspaceActionOrchestrator {
     this.#record(runId, causeEventId, actor, 'workspace_action.reproduction_checked', verdict, nowUnix);
   }
 
+  /**
+   * «Does this measured change fix what the report describes?» — asked of the diff the SHADOW
+   * observed, recorded with its probability, kept on the run. Never throws for the model: a decider
+   * that cannot answer yields `{ available: false, reason }`, and the run is exactly as measured.
+   */
+  async #assessConfidence(runId, run, actor, nowUnix) {
+    if (!run.diff?.some((entry) => entry.after !== null && entry.after !== undefined)) return null;
+    let confidence;
+    try {
+      const decision = await this.#decide({
+        context: `Report:\n${String(run.request ?? run.goal ?? '').slice(0, 3000)}\n\nChange:\n${compactDiff(run.diff)}`,
+        question: CONFIDENCE_QUESTION,
+        options: ['yes', 'no'],
+      });
+      confidence = {
+        available: true, abstained: decision.abstained,
+        probability: decision.abstained ? null : decision.probabilities[0],
+        promptDigest: decision.record?.promptDigest ?? null,
+      };
+    } catch (error) {
+      if (error?.name !== 'DecisionUnavailable') throw error;
+      confidence = { available: false, reason: error.reason };
+    }
+    run.confidence = confidence;
+    this.#saveRun(runId);
+    this.#record(runId, run.planEventId, actor, 'workspace_action.confidence_assessed', confidence, nowUnix);
+    return confidence;
+  }
+
   /** Drops a kept shadow if there is one. Safe to call when there is not. */
   #dropShadow(runId) {
     const shadow = this.#shadows.get(runId);
@@ -2113,12 +2183,15 @@ export class WorkspaceActionOrchestrator {
     this.#record(runId, run.planEventId, actor, 'workspace_action.iterated', {
       attempts: attempts.length, stopped, clean: stopped === 'clean', maxAttempts,
     }, nowUnix);
+    const confidence = this.#decide ? await this.#assessConfidence(runId, run, actor, nowUnix) : null;
     return {
       runId, status: run.status, clean: stopped === 'clean', stopped, attempts,
       // The last measurement, so a caller that only wants the outcome does not have to reach
       // into `attempts` and re-derive which entry was final.
       result: run.result ?? null, diff: run.diff ?? null, coverage: run.coverage ?? null,
       reproduction: run.reproduction ?? null,
+      // `null` without decisions, so every existing caller reads exactly what it read before.
+      ...(confidence ? { confidence } : {}),
     };
   }
 
