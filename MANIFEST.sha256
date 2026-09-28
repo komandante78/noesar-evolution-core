@@ -6261,7 +6261,7 @@ f370efff5022df4b9bb1683c21a29563612b9f2feb2ed97ca72e5eefd7fa9428  ./services/ref
 e3dbec2389e0a5a82b424ff6d5e017a10dd5da001575fca8ede83d207b327321  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
 cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/reference-control-plane/src/ai-workspace/atomic-store.mjs
 5e138e1c8815845c9199cd3f46526f81d76250398776837e4d76acac6a52667e  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
-e516ee93019edb4303083c2c0e5a1cee881fc59208db3f58de9d92c2a5c93fd1  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
+35a1dd2af6ab666121c70fec58c77193488013e331a71c3ebf345e9d249a16fb  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
 dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/reference-control-plane/src/ai-workspace/context-graph.mjs
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
 6d3c76415622d493f6e21a891b1c797ea2780c7cd6a81ba6d6ef7dc0810dd577  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
@@ -6361,7 +6361,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 e3c7945c91ece3646b03eae9a590a3a8cd35c5ec48bea53d9a00f884f99d2ac7  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-32b5478492136402fdbf96ae61b217e0636064e1e686935c5c91d38636bedf1b  ./services/reference-control-plane/src/server.mjs
+26ccee06ce9deb79b40448c45e2a218a8fdd1e39cc165b0857a044b6710dde68  ./services/reference-control-plane/src/server.mjs
 fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
 98b8e3a26d433e715cba28bc3a0f26a5dc9408f8d93b684be7a3be69ac2dceaf  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
@@ -6457,6 +6457,7 @@ fda65813149624b9bc176c24510afaad0d2138b0edc3ac21a1c0487fadfa6b9a  ./services/ref
 460d3f81a9ada2d82f9eaa5bdd9bad84f3bd6303805c5705ea3a87be3863698b  ./services/reference-control-plane/test/chat-agent-directive.test.mjs
 4842299a8862a9d790d285900ffe89edf2d80a4edf5f612d822b2ce63b6b4bd1  ./services/reference-control-plane/test/chat-send-button-routes-commands.test.mjs
 88416aae6f2182916d70a140303cf57da575810f5a11490bff13404164228810  ./services/reference-control-plane/test/chat-tool-loop.test.mjs
+50157641fdfc1152f263387a874b31488ef3ce72d0e09a1fccbf6c1abe4b0b53  ./services/reference-control-plane/test/chat-tools-narrowed.test.mjs
 d8898d3ec08689523925f08f651d11ae7bcc3d507205398ff1d10235b1bb127c  ./services/reference-control-plane/test/cli-downloads.test.mjs
 cff935e16f913e21a43608325d12c44e6b95f6b868ba318c092a472be2962147  ./services/reference-control-plane/test/coden-address-book.test.mjs
 144b3197052d67a900025439a5442746f4de9f70c9eef48b06ed5e5dc1fe2591  ./services/reference-control-plane/test/coden-address-declaration.test.mjs

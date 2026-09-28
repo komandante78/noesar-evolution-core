@@ -18,6 +18,49 @@ const MAX_TOOL_ROUNDS=4;
  *  ponytail: one value for every tool; make it per-tool if a slow approval ever becomes a real
  *  complaint rather than an imagined one. */
 const APPROVAL_TIMEOUT_MS=5*60_000;
+/**
+ * Which of the engine's tool families this message needs, chosen by ONE typed decision
+ * (`decide.mjs`, `NOESAR_DECIDE=on`) instead of offering every granted tool on every turn — each
+ * schema is paid for in every turn that carries it, and on a 16k local window that is conversation
+ * the model does not get to see.
+ *
+ * It only ever NARROWS: the families are read off the built-in tool names (`engine_<family>_…`), the
+ * two most probable are always kept plus any at ≥ 0.1, and a tool an operator registered is never
+ * touched — it was granted by name and nothing here is entitled to take it away. A decider that
+ * cannot answer, or abstains, leaves every granted tool offered.
+ */
+export const TOOLS_NARROWED_ABOVE = 6;
+const familyOf = (tool) => /^engine_([A-Za-z]+)/.exec(String(tool?.name ?? ''))?.[1] ?? null;
+export async function narrowToolsByDecision(tools, message, decide) {
+  const families = new Map();
+  for (const tool of tools) {
+    const family = familyOf(tool);
+    if (family) families.set(family, [...(families.get(family) ?? []), tool]);
+  }
+  if (families.size < 3) return { tools, narrowed: null };
+  const names = [...families.keys()];
+  let decision;
+  try {
+    decision = await decide({
+      context: `Message:\n${String(message ?? '').slice(0, 2000)}`,
+      question: 'Which kind of engine action does answering this message need?',
+      options: [...names.map((family) => `${family}: ${String(families.get(family)[0].description ?? '').slice(0, 90)}`), 'none of these: it can be answered in words'],
+    });
+  } catch (error) {
+    if (error?.name !== 'DecisionUnavailable') throw error;
+    return { tools, narrowed: { available: false, reason: error.reason } };
+  }
+  if (decision.abstained) return { tools, narrowed: { available: true, abstained: true } };
+  const ranked = names.map((family, index) => ({ family, probability: decision.probabilities[index] }))
+    .sort((a, b) => b.probability - a.probability);
+  const keep = new Set(ranked.filter((entry, index) => index < 2 || entry.probability >= 0.1).map((entry) => entry.family));
+  const kept = tools.filter((tool) => { const family = familyOf(tool); return family === null || keep.has(family); });
+  return {
+    tools: kept,
+    narrowed: { available: true, offered: tools.length, kept: kept.length, families: [...keep], probabilities: Object.fromEntries(ranked.map((entry) => [entry.family, entry.probability])) },
+  };
+}
+
 function dataClassesFor({history,projectInstructions,memoryText,evidence,tools}){
   return ['prompt',history&&'selected messages',projectInstructions&&'project instructions',memoryText&&'selected memory',evidence.length&&'selected sources',tools.length&&'tool schemas'].filter(Boolean);
 }
@@ -32,7 +75,8 @@ export class ChatOrchestrator{
   // array is empty, so no model can emit a call in the first place — but the loop still refuses
   // by name rather than crashing, because "no executor" and "no such tool" must not be the same
   // stack trace.
-  constructor({graph,workspace,providers,store,ledger,agentService=null,installationSnapshot=null,toolExecutor=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.installationSnapshot=installationSnapshot;this.toolExecutor=toolExecutor;this.active=new Map();this.pending=new Map();}
+  // `decide`: `choose()` from `decide.mjs`, or `null` — see `narrowToolsByDecision`.
+  constructor({graph,workspace,providers,store,ledger,agentService=null,installationSnapshot=null,toolExecutor=null,decide=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.installationSnapshot=installationSnapshot;this.toolExecutor=toolExecutor;this.decide=typeof decide==='function'?decide:null;this.active=new Map();this.pending=new Map();}
   // A snapshot that throws must never take the turn down with it: the assistant is worse without
   // its grounding, but it still answers, and an installation fact is not worth a 500.
   #installationFacts(){
@@ -73,7 +117,7 @@ export class ChatOrchestrator{
       signal?.addEventListener('abort',()=>settle(false),{once:true});
     });
   }
-  #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[]}){
+  async #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[]}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??inspection.conversation.mode??'ASK').toUpperCase();
     const projectInstructions=inspection.project?.instructions?`Project instructions:\n${inspection.project.instructions}`:'';
@@ -109,8 +153,15 @@ export class ChatOrchestrator{
     // time it surfaced as a test file that never terminated, because the rejection escaped before
     // the fixture's own HTTP server was closed. Two very different symptoms, one missing guard.
     const requestedToolIds=toolIds.length?toolIds:(inspection.tools??[]).map((item)=>item.id);
-    const scope=enforceToolScope({grantedToolIds:enabledToolIds,requestedToolIds});
-    const granted=this.store.read().tools.filter((item)=>scope.allowedToolIds.includes(item.id));
+    let scope=enforceToolScope({grantedToolIds:enabledToolIds,requestedToolIds});
+    let granted=this.store.read().tools.filter((item)=>scope.allowedToolIds.includes(item.id));
+    // Narrowed BEFORE the system message is composed, so the assistant is told exactly the tools it
+    // is offered, and the scope narrows with it: a tool left out cannot be executed either.
+    if(this.decide&&granted.length>TOOLS_NARROWED_ABOVE){
+      const {tools:offered,narrowed}=await narrowToolsByDecision(granted,content,this.decide);
+      if(narrowed?.families){granted=offered;scope={...scope,allowedToolIds:offered.map((item)=>item.id)};}
+      if(narrowed)this.ledger?.append({actor:'system',action:'chat.tools-narrowed',result:narrowed.families?'narrowed':'unchanged',details:{conversationId,...narrowed}});
+    }
     const tools=granted.map((item)=>({type:'function',function:{name:item.name,description:item.description,parameters:item.inputSchema}}));
     const system=composeSystemPrompt({
       mode:selectedMode,
@@ -233,7 +284,7 @@ export class ChatOrchestrator{
     return outcomes;
   }
   async compare({actorId,conversationId,branchId,content,providerIds,model=null,mode=null,sourceIds=[],toolIds=[]}){
-    const built=this.#buildContext({conversationId,branchId,content,mode,sourceIds,toolIds});
+    const built=await this.#buildContext({conversationId,branchId,content,mode,sourceIds,toolIds});
     const result=await this.providers.compare(providerIds,{actorId,projectId:built.inspection.conversation.projectId,model,messages:built.messages,tools:built.tools,dataClasses:built.dataClasses});
     this.ledger?.append({actor:actorId,action:'models.compared',result:'success',details:{conversationId,providerIds:providerIds.slice(0,8)}});
     return{...result,citations:this.#citations(built.evidence),mode:built.selectedMode};
@@ -254,7 +305,7 @@ export class ChatOrchestrator{
     // answer with a status code any more, and a rejection from here used to escape the
     // request handler entirely and take the process down with it.
     const user=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'user',content,metadata:{mode:selectedMode,sourceIds,toolIds}});
-    const built=this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds});
+    const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds});
     // #buildContext includes the just-persisted user message; remove its duplicate final copy.
     built.messages=built.messages.filter((message,index)=>!(index===built.messages.length-2&&message.role==='user'&&message.content===user.content));
     const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});

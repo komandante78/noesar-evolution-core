@@ -494,7 +494,7 @@ const installationSnapshotForChat = () => {
   if (!profile) return snapshot;
   return { ...snapshot, modelName: profile.defaultModel, providerName: profile.name, providerIsLocal: true };
 };
-const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat, toolExecutor });
+const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat, toolExecutor, decide: decider });
 const hardware = discoverHardware();
 // The bootstrap token is resolved from a 0600 runtime file, not from the
 // environment: an environment variable is visible in `docker inspect` and in
