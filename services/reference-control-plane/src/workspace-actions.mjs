@@ -180,6 +180,40 @@ export function refuseUnknownPlanFields(payload, allowed = PLAN_FIELDS) {
 /// cannot come to different answers about what an outcome is.
 const touchesAFile = (outcome) => outcome.performed && outcome.operation !== 'EXECUTE';
 
+/**
+ * The proof of the bug, run in the shadow (`NOESAR_REPRODUCE=on`, off by default).
+ *
+ * # What was missing, measured before this existed (28/09/2026)
+ *
+ * The cycle could already run a declared command in the shadow and repair on its failure — but on
+ * a bug report nobody declares one, so «clean» meant «the effects are the ones declared», never
+ * «the bug is gone»: on SWE-bench Verified 3 of 14 runs were correct and the loop could not tell
+ * which. So the Author writes a script from the report, the product runs it on the UNCHANGED code
+ * first — it must fail there, or it proves nothing — and only then declares it as a test of the run.
+ *
+ * The path is the product's, never the model's (rule 1 of `author.mjs`), and it sits at the ROOT of
+ * the shadow on purpose: measured inside a SWE-bench image, a script in a subdirectory imports the
+ * package installed from the original tree, i.e. the code the run did NOT change, and its verdict
+ * would say nothing about the change. It is a measuring instrument, not part of the change: it is
+ * never in the diff and never promoted.
+ *
+ * Exit 3 means «bug present», not any non-zero code: a script that crashes also exits non-zero, and
+ * taking that as a reproduction would turn a broken script into a failing test on every attempt.
+ *
+ * ponytail: Python only (a `.py` among the files the plan settled on). Other languages get
+ * `available: false` with the reason; add a command per language when one is measured.
+ */
+export const REPRODUCTION_PATH = 'noesar_reproduce.py';
+export const REPRODUCTION_COMMAND = `python3 -B ${REPRODUCTION_PATH}`;
+export const REPRODUCTION_BUG_EXIT = 3;
+const reproduceFromEnv = (env) => String(env?.NOESAR_REPRODUCE ?? '').toLowerCase() === 'on';
+// Two sentences of this were paid for on the first live run (sympy-12096, 28/09): the script checked
+// that the result had CHANGED, so any edit passed it and the run measured clean while the official
+// tests failed; and it wrapped everything in `except Exception: sys.exit(3)`, which turns a mistake
+// in the script itself into «the bug is there» — a test no correct fix could ever pass.
+const REPRODUCTION_GOAL = `Write a standalone Python script that reproduces the bug described below. It must call sys.exit(${REPRODUCTION_BUG_EXIT}) when the bug is present and exit 0 when it is fixed. Compare against the exact correct result the report states or implies — never merely check that the result differs from the wrong one. If the bug shows as an exception, catch only that exception type and exit ${REPRODUCTION_BUG_EXIT}; never catch Exception broadly — let any other error end the script, which means the script itself is broken. It runs from the repository root: import the project normally, use only the standard library and the project, and do not write any file.`;
+const withoutReproduction = (list) => (list ?? []).filter((item) => item !== REPRODUCTION_PATH && item !== REPRODUCTION_COMMAND);
+
 /** Did a model name this run's ambiguities? Read off the router's own provenance: a degraded
  *  call is recorded under the provider that answered instead, never as `local-model`. */
 const namedByModel = (provenance) => (provenance ?? [])
@@ -435,7 +469,7 @@ export class WorkspaceActionOrchestrator {
    * "two implementations of one rule stop agreeing" failure this project keeps finding
    * (D-0227's own comment about not re-implementing comparison logic applies here too).
    */
-  async #runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy, commands = [] }) {
+  async #runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy, commands: requestedCommands = [], reproduce = false }) {
     // F1c: a router that can ask the local model WITH the repository's files does not ask the
     // text-only question here; it asks once the files are known, below. Any other provider ignores
     // the third argument.
@@ -471,7 +505,13 @@ export class WorkspaceActionOrchestrator {
     // it. It is added ONLY when there is a command: a plan that runs nothing keeps exactly the
     // files it had, and every existing run is byte-identical to before this change.
     const planFiles = resolvedFiles.map((file) => file.path);
-    const stepFiles = commands.length > 0 ? [...planFiles, EXECUTION_DIRECTORY] : planFiles;
+    // The reproduction is DECLARED here, in the plan the Owner approves, like any other command:
+    // a script nobody approved does not get to run. Whether it is then used is measure()'s call.
+    const reproducing = reproduce && planFiles.some((path) => path.endsWith('.py'));
+    const commands = reproducing ? [...requestedCommands, REPRODUCTION_COMMAND] : requestedCommands;
+    const stepFiles = commands.length > 0
+      ? [...planFiles, ...(reproducing ? [REPRODUCTION_PATH] : []), EXECUTION_DIRECTORY]
+      : planFiles;
     const step = {
       id: 'step-1',
       description: hypotheses[0].statement,
@@ -509,7 +549,7 @@ export class WorkspaceActionOrchestrator {
     const expectation = await provider.expect(constrainedPlan);
     return {
       intent, hypotheses, plan: constrainedPlan, risk, confidence, expectation,
-      provenance: provider.provenance(), files: resolvedFiles, grounding, context,
+      provenance: provider.provenance(), files: resolvedFiles, grounding, context, reproducing,
       // The local-model calls this decision made, bytes included, for `plan()` to persist
       // (`CE-006`). A provider that asks no model has none, and says so with an empty list.
       modelCalls: typeof provider.modelCalls === 'function' ? provider.modelCalls() : [],
@@ -1171,9 +1211,19 @@ export class WorkspaceActionOrchestrator {
     // token and touches a real file — kept asking the reference one regardless. The
     // selection was real everywhere it did not matter.
     const provider = this.#reasoningFor(runId);
+    // Asked for, and possible here — each «no» is said on the run, never swallowed. `permissive` is
+    // required and not implied: a step that runs a command is destructive, and the restrictive
+    // default constrains it away (`coden-declared-commands.test.mjs`). The switch does not get to
+    // widen what a caller's policy allows.
+    const reproduceAsked = reproduceFromEnv(this.#env);
+    const reproduceBlocked = !reproduceAsked ? null
+      : !this.#executeSandbox?.enabled ? 'the execution sandbox is off on this installation, so no script can run'
+        : !this.#author?.available ? Author.NO_MODEL_REASON
+          : policy !== 'permissive' ? 'running a script needs `policy: permissive`; the restrictive policy constrains a step that runs a command away'
+            : null;
     let decision;
     try {
-      decision = await this.#runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy, commands });
+      decision = await this.#runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy, commands, reproduce: reproduceAsked && reproduceBlocked === null });
     } catch (error) {
       if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
       // A grounding refusal keeps its own code and its own reason rather than collapsing into
@@ -1430,6 +1480,41 @@ export class WorkspaceActionOrchestrator {
       }
     }
 
+    // The proof of the bug, written from the report alone. `null` when nobody asked for one, so a
+    // run with the switch off stores exactly what it stored before. Its paths are NAMED to the
+    // model, never read to it: the whole files would compete with the change for the window.
+    let reproduction = null;
+    if (reproduceAsked) {
+      const why = reproduceBlocked
+        ?? (!decision.reproducing ? 'no Python file among the files this plan settled on: a reproduction is only written for Python so far' : null)
+        ?? (questions.length > 0 ? 'the run stopped on questions: nothing is written until a person answers' : null)
+        ?? (authoring.exhausted ? authoring.reason : null);
+      reproduction = { path: REPRODUCTION_PATH, command: REPRODUCTION_COMMAND, contents: null, reproduces: null, reason: why };
+      if (why === null) {
+        try {
+          const result = await this.#author.author({
+            goal: REPRODUCTION_GOAL,
+            step: REPRODUCTION_GOAL,
+            background: [request, '', `The code the report is about lives in: ${planFiles.map((file) => file.path).join(', ')}`].join('\n'),
+            files: [{ path: REPRODUCTION_PATH, contents: '' }],
+          });
+          reproduction.contents = result.contents.get(REPRODUCTION_PATH) ?? null;
+          if (reproduction.contents === null) reproduction.reason = result.refusals?.[0]?.reason ?? 'the Author returned no reproduction';
+          try {
+            for (const call of result.calls ?? []) {
+              this.#authoringReplayStore.put(call.prompt ?? '');
+              if (call.answer !== null && call.answer !== undefined) this.#authoringReplayStore.put(call.answer);
+            }
+          } catch (error) {
+            this.#damagedRuns.push({ file: 'authoring-replay', reason: `could not record the reproduction call of ${runId}: ${error.message}` });
+          }
+        } catch (error) {
+          if (!(error instanceof AuthoringUnavailable) && !(error instanceof AuthoringRefused)) throw error;
+          reproduction.reason = error.reason;
+        }
+      }
+    }
+
     const rootEventId = this.#record(runId, null, actor, 'workspace_action.planned', {
       goal: intent.goal, files: planFiles.map((file) => file.path), risk: risk.overall, provenance,
       // In the ledger, not only in the answer. Whether the files were chosen by a person or
@@ -1442,6 +1527,11 @@ export class WorkspaceActionOrchestrator {
     }, nowUnix);
     // Now that the run has a root, the stage-9b line can hang off it with a real causation.
     if (authoringEvent) this.#record(runId, rootEventId, actor, authoringEvent[0], authoringEvent[1], nowUnix);
+    if (reproduction) {
+      this.#record(runId, rootEventId, actor, 'workspace_action.reproduction_authored', {
+        authored: reproduction.contents !== null, reason: reproduction.reason,
+      }, nowUnix);
+    }
     // `D-0312` asks for two things and phase 6 delivered one: the degradation is DECLARED, but
     // «la frequenza delle cadute va misurata» needs it to survive the request that observed it.
     // A run-scoped field answers "did this session degrade"; only a ledger line can answer "how
@@ -1485,6 +1575,8 @@ export class WorkspaceActionOrchestrator {
       // The questions that stopped this run (`[]` when none did), and what a person answered to
       // the ones that stopped the run before it — `measure()` reads the first, an auditor the second.
       questions, answers,
+      // The proof of the bug, or `null` when the switch is off. `measure()` fills `reproduces`.
+      reproduction,
       // Stage 9b output. The map belongs to the RUN, not to the caller: `approve()` reads it,
       // and nothing between here and there can add a key the Plan had not settled on.
       authoredContents, authoring,
@@ -1530,7 +1622,7 @@ export class WorkspaceActionOrchestrator {
     // `conversationId` is read off the stored run for the same reason `status` is: a shell that
     // stitches the link it just sent onto the answer would show its own input as the engine's
     // word, and the day the engine declines to keep it the shell would go on displaying it.
-    return { runId, status: this.#runs.get(runId).status, conversationId: this.#runs.get(runId).conversationId, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, questions, reasoning, divergence, skillComposition };
+    return { runId, status: this.#runs.get(runId).status, conversationId: this.#runs.get(runId).conversationId, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, questions, reasoning, divergence, skillComposition, reproduction };
   }
 
   /**
@@ -1639,10 +1731,16 @@ export class WorkspaceActionOrchestrator {
       { actor, purpose: 'MEASUREMENT' }, nowUnix);
 
     const step = run.plan.steps[0];
+    // Once per run, before the first measurement: does the reproduction fail on the unchanged code?
+    // Only one that does is used; every other outcome leaves the run measured exactly as without it.
+    if (run.reproduction?.contents && run.reproduction.reproduces === null) {
+      this.#checkReproduction(runId, run, authorized, step, grant, measureEventId, actor, nowUnix);
+    }
+    const reproducing = run.reproduction?.reproduces === true;
     // EXECUTE is granted for the MEASUREMENT token only, never for the CHANGE token below
     // that promotes into the real workspace. A declared command runs against the SHADOW and
     // nowhere else — which is what makes running it before the approval safe to do at all.
-    const declaredCommands = step.commands ?? [];
+    const declaredCommands = (step.commands ?? []).filter((command) => command !== REPRODUCTION_COMMAND || reproducing);
     const runsCommands = declaredCommands.length > 0;
     let token;
     try {
@@ -1675,6 +1773,7 @@ export class WorkspaceActionOrchestrator {
     let kept = false;
     try {
       const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: run.authoredContents?.get(file.path) ?? file.contents }));
+      if (reproducing) actions.push({ kind: 'WRITE', path: REPRODUCTION_PATH, contents: run.reproduction.contents });
       // The declared commands, AFTER the writes: a test run before the change under test has
       // been written measures the workspace as it already was, and would report a pass that
       // says nothing about the plan. Order is the property here, not a detail of the loop.
@@ -1701,9 +1800,17 @@ export class WorkspaceActionOrchestrator {
       // compared against the files the Author actually wrote. Nothing else is relaxed: a write or a
       // command effect outside them is still `unexpected`, a write that did not land is still absent,
       // and a run that changed nothing is still refused by `compare()`. Named plans are unchanged.
-      const measuredAgainst = run.grounding?.derived === true && run.authoredContents
+      const expected = run.grounding?.derived === true && run.authoredContents
         ? { ...run.expectation, pathsTheDiffMustTouch: [...run.authoredContents.keys()] }
         : run.expectation;
+      // The reproduction is said here, by this file, whatever a provider's `expect` made of it:
+      // a used one must be written and must pass; an unused one is neither required nor run.
+      const measuredAgainst = !run.reproduction ? expected : {
+        ...expected,
+        pathsTheDiffMustTouch: [...withoutReproduction(expected.pathsTheDiffMustTouch), ...(reproducing ? [REPRODUCTION_PATH] : [])],
+        testsExpectedToPass: [...withoutReproduction(expected.testsExpectedToPass), ...(reproducing ? [REPRODUCTION_COMMAND] : [])],
+        testsExpectedToFail: withoutReproduction(expected.testsExpectedToFail),
+      };
       const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: measuredAgainst, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
       const executeEventId = this.#record(runId, measureEventId, actor, 'executor.ran',
         { performed: result.performed, refused: result.refused, ok: result.ok }, nowUnix);
@@ -1730,12 +1837,52 @@ export class WorkspaceActionOrchestrator {
       this.#saveRun(runId);
       this.#record(runId, executeEventId, actor, 'workspace_action.measured',
         { clean, files: result.outcomes.filter((o) => o.performed).map((o) => o.path) }, nowUnix);
-      return { runId, status: 'MEASURED', result, diff, coverage, clean, promoted: false };
+      return { runId, status: 'MEASURED', result, diff, coverage, clean, promoted: false, reproduction: run.reproduction ?? null };
     } finally {
       // Discarded on any path that did not hand it to `#shadows`, so a throw cannot leave a
       // whole-workspace copy behind.
       if (!kept) shadow.discard();
     }
+  }
+
+  /**
+   * Runs the reproduction on the UNCHANGED code, in a shadow of its own, and records whether it
+   * shows the bug. Its own token, from the same measurement grant: two paths, two uses.
+   */
+  #checkReproduction(runId, run, authorized, step, grant, causeEventId, actor, nowUnix) {
+    let verdict;
+    const shadow = shadowOf(this.#workspaceRoot, join(this.#shadowsRoot, `${runId}-reproduce`));
+    try {
+      const token = this.#minter.mint(authorized, {
+        stepId: step.id, paths: [REPRODUCTION_PATH, EXECUTION_DIRECTORY], operations: ['WRITE', 'EXECUTE'], uses: 2,
+        expiresAtUnix: grant.expiresAtUnix, limits: step.blastRadius?.limits ?? EXECUTION_ENVELOPE,
+      }, nowUnix);
+      const [command, ...args] = REPRODUCTION_COMMAND.split(/\s+/);
+      const result = execute({
+        authorized, minter: this.#minter, tokens: [token], shadow, nowUnix, executeSandbox: this.#executeSandbox,
+        actions: [
+          { kind: 'WRITE', path: REPRODUCTION_PATH, contents: run.reproduction.contents },
+          { kind: 'EXECUTE', path: EXECUTION_DIRECTORY, name: REPRODUCTION_COMMAND, command, args },
+        ],
+        expectation: { pathsTheDiffMustTouch: [REPRODUCTION_PATH], testsExpectedToPass: [], testsExpectedToFail: [REPRODUCTION_COMMAND] },
+      });
+      const ran = result.outcomes.find((outcome) => outcome.operation === 'EXECUTE');
+      const printed = String(ran?.stderr || ran?.stdout || '').trim().slice(-500);
+      verdict = !ran?.performed
+        ? { reproduces: false, exitCode: null, reason: `the reproduction did not run: ${ran?.reason ?? 'no outcome'}` }
+        : ran.exitCode === REPRODUCTION_BUG_EXIT
+          ? { reproduces: true, exitCode: ran.exitCode, reason: null }
+          : ran.exitCode === 0
+            ? { reproduces: false, exitCode: 0, reason: 'the reproduction passed on the unchanged code: it does not show the bug' }
+            : { reproduces: false, exitCode: ran.exitCode, reason: `the reproduction exited ${ran.exitCode}, not ${REPRODUCTION_BUG_EXIT}: the script is broken, not the code${printed ? ` — ${printed}` : ''}` };
+    } catch (error) {
+      if (!(error instanceof CapabilityError) && !(error instanceof ShadowError)) throw error;
+      verdict = { reproduces: false, exitCode: null, reason: `the reproduction could not be checked: ${error.reason ?? error.message}` };
+    } finally {
+      shadow.discard();
+    }
+    run.reproduction = { ...run.reproduction, ...verdict };
+    this.#record(runId, causeEventId, actor, 'workspace_action.reproduction_checked', verdict, nowUnix);
   }
 
   /** Drops a kept shadow if there is one. Safe to call when there is not. */
@@ -1831,7 +1978,11 @@ export class WorkspaceActionOrchestrator {
         files,
         // The request as written, as at plan() time: without it the repair saw only the first sentence
         // (`goal`), which is the failure `background` was added to plan() for on 11/09.
-        background: run.request ?? '',
+        // Plus the reproduction when it is the test that failed: the brief carries what it printed,
+        // and output about a script the model cannot see is half a failure report.
+        background: run.reproduction?.reproduces === true
+          ? `${run.request ?? ''}\n\nThe script that shows the bug, which must exit 0 after the fix (read only, not part of this change):\n--- ${REPRODUCTION_PATH}\n${run.reproduction.contents}`
+          : run.request ?? '',
         profile: run.divergence?.signals ?? [],
         skills: composedSkills,
         previousAttemptDigests: [
@@ -1967,6 +2118,7 @@ export class WorkspaceActionOrchestrator {
       // The last measurement, so a caller that only wants the outcome does not have to reach
       // into `attempts` and re-derive which entry was final.
       result: run.result ?? null, diff: run.diff ?? null, coverage: run.coverage ?? null,
+      reproduction: run.reproduction ?? null,
     };
   }
 
@@ -2118,7 +2270,8 @@ export class WorkspaceActionOrchestrator {
   #diff(shadow, result) {
     const entries = [];
     for (const outcome of result.outcomes) {
-      if (!touchesAFile(outcome)) continue;
+      // The reproduction measured the change; it is not part of it.
+      if (!touchesAFile(outcome) || outcome.path === REPRODUCTION_PATH) continue;
       const before = readTextIfSmall(contained(shadow.source, outcome.path));
       const after = readTextIfSmall(contained(shadow.root, outcome.path));
       entries.push({
@@ -2146,7 +2299,7 @@ export class WorkspaceActionOrchestrator {
   #promote(shadow, result, token, nowUnix) {
     const backups = [];
     for (const outcome of result.outcomes) {
-      if (!touchesAFile(outcome)) continue;
+      if (!touchesAFile(outcome) || outcome.path === REPRODUCTION_PATH) continue;
       this.#minter.spend(token, { path: outcome.path, operation: 'WRITE' }, nowUnix);
       const realPath = contained(this.#workspaceRoot, outcome.path);
       const shadowPath = contained(shadow.root, outcome.path);
