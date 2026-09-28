@@ -66,6 +66,10 @@ import { Author, AuthoringUnavailable, AuthoringRefused, outlineOf } from './aut
 // PLAN_FILES is the search's own default `limit`, so without decisions nothing changes.
 const DECISION_POOL = 10;
 const PLAN_FILES = 5;
+// A named question is set aside only on a confident «yes, it can be done without asking». High on
+// purpose: asking when it was not needed costs a person a minute; not asking when it was costs a wrong
+// change. ponytail: one fixed threshold until a measurement on labelled requests says where it belongs.
+const QUESTIONS_WAIVED_AT = 0.8;
 import { groundRequest as defaultGroundRequest, GroundingRefused } from './request-grounding.mjs';
 import { profileChange as defaultProfileChange, DivergenceUnavailable } from './divergence-profile.mjs';
 import { ReasoningRouter, routingFrom, degradationSummary, degradationFrequency } from './reasoning-router.mjs';
@@ -1408,6 +1412,13 @@ export class WorkspaceActionOrchestrator {
     // control that works on small models" was present, wired to nothing, and reported as
     // working by a field that could not say anything else.
     const history = this.#authoringHistory(conversationId);
+    // The questions a model named, WEIGHED before they stop the work (`NOESAR_DECIDE=on`). Measured
+    // 2026-09-25: the namer asked on 6 of 6 CLEAR requests — it sees the request, not the repository —
+    // which is why the gate ships off. A typed decision sees the request, the files' tables of contents
+    // and the questions, and answers whether the change can be made correctly without asking; only a
+    // confident «yes» (≥ QUESTIONS_WAIVED_AT) lets the work go on, and that is recorded, never silent.
+    const wouldAsk = this.#author?.available && answers === null && namedByModel(provenance) && intent.ambiguities.length >= askMinQuestionsFromEnv(this.#env);
+    const questionsWeighed = wouldAsk && this.#decide ? await this.#weighQuestions(request, planFiles, intent.ambiguities) : null;
     if (this.#author?.available && history.novelAttempts >= this.#noveltyBudget) {
       // Refused BEFORE the call, and it says which budget and why. Small models do not fail by
       // stopping — they fail by repeating themselves with confidence (`15` §5), so the thing
@@ -1420,7 +1431,7 @@ export class WorkspaceActionOrchestrator {
       authoringEvent = ['workspace_action.authoring_budget_spent', {
         limit: this.#noveltyBudget, novelUsed: history.novelAttempts, repeatsIgnored: history.repeatsIgnored,
       }];
-    } else if (this.#author?.available && answers === null && namedByModel(provenance) && intent.ambiguities.length >= askMinQuestionsFromEnv(this.#env)) {
+    } else if (wouldAsk && questionsWeighed?.waived !== true) {
       // The questions a model named, asked BEFORE a byte is written. Until 2026-09-25 they were
       // produced, recorded, and read by nobody: the product could say what a request leaves out
       // and then write the file on a guess. HiL-Bench measures exactly that failure, and it is
@@ -1578,6 +1589,7 @@ export class WorkspaceActionOrchestrator {
     }, nowUnix);
     // Now that the run has a root, the stage-9b line can hang off it with a real causation.
     if (authoringEvent) this.#record(runId, rootEventId, actor, authoringEvent[0], authoringEvent[1], nowUnix);
+    if (questionsWeighed) this.#record(runId, rootEventId, actor, 'workspace_action.questions_weighed', questionsWeighed, nowUnix);
     if (reproduction) {
       this.#record(runId, rootEventId, actor, 'workspace_action.reproduction_authored', {
         authored: reproduction.contents !== null, reason: reproduction.reason,
@@ -1934,6 +1946,30 @@ export class WorkspaceActionOrchestrator {
     }
     run.reproduction = { ...run.reproduction, ...verdict };
     this.#record(runId, causeEventId, actor, 'workspace_action.reproduction_checked', verdict, nowUnix);
+  }
+
+  /**
+   * «Can the change be made correctly from the request and the files alone, without asking?» —
+   * `{ probability, waived, questions }`, or `{ available:false, reason }` when the decider cannot
+   * answer (the questions then stop the work, as they did before).
+   */
+  async #weighQuestions(request, planFiles, questions) {
+    try {
+      const decision = await this.#decide({
+        context: [
+          `Request:\n${String(request ?? '').slice(0, 3000)}`,
+          ...planFiles.slice(0, PLAN_FILES).map((file) => `File ${file.path}:\n${outlineOf(file.contents, { budget: 1000 }) || '(no definitions found)'}`),
+          `Questions a first reading raised:\n${questions.map((question, index) => `${index + 1}. ${question}`).join('\n')}`,
+        ].join('\n\n'),
+        question: 'Can the change be made correctly from the request and the files alone, without asking the person any of these questions?',
+        options: ['yes', 'no'],
+      });
+      const probability = decision.abstained ? null : decision.probabilities[0];
+      return { available: true, probability, waived: probability !== null && probability >= QUESTIONS_WAIVED_AT, questions: questions.length };
+    } catch (error) {
+      if (error?.name !== 'DecisionUnavailable') throw error;
+      return { available: false, reason: error.reason, waived: false, questions: questions.length };
+    }
   }
 
   /**
