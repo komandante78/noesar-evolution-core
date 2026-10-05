@@ -73,6 +73,8 @@ const show = (v) => (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
     verdict.className = 'v bad';
     verdict.replaceChildren(el('b', '', 'NOT VERIFIED'), el('span', '', r.reason + '. Do not trust anything below.'));
   }
+  // A proof that does not verify shows no content until the reader asks for it: a forged page must not read as a record.
+  const showContent = () => {
   let st;
   try { st = r.valid ? r.statement : JSON.parse(new TextDecoder().decode(unb64(data.envelope.payload))); } catch (e) { return; }
   const p = st.predicate || {};
@@ -90,6 +92,9 @@ const show = (v) => (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
     if (!absent && key !== 'fixture') d.open = true;
     root.append(d);
   }
+  };
+  if (r.valid) showContent();
+  else { const b = el('button', '', 'Show the content anyway (NOT verified)'); b.onclick = () => { b.remove(); showContent(); }; document.getElementById('fields').append(b); }
 })();
 `;
 

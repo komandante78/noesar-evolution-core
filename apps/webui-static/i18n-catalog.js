@@ -1286,6 +1286,8 @@ const it = {
   'Promotes exactly the shadow you were shown': 'Promuove esattamente l’ombra che ti è stata mostrata',
   'Reject': 'Respingi',
   'Restore (undo promotion)': 'Ripristina (annulla la promozione)',
+  'Download signed proof': 'Scarica la prova firmata',
+  'One signed page that anyone can open and check offline: what was asked, what was expected, what really happened, and what was not measured': 'Una pagina firmata che chiunque può aprire e controllare offline: cosa è stato chiesto, cosa ci si aspettava, cosa è successo davvero e cosa non è stato misurato',
   'Agent activity': 'Attività dell’agente',
   'Hypothesis and evidence': 'Ipotesi ed evidenza',
   'No hypothesis. Evidence is what was recalculated, not what was asserted.': 'Nessuna ipotesi. L’evidenza è ciò che è stato ricalcolato, non ciò che è stato affermato.',
