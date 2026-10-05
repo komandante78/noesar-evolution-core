@@ -26,7 +26,7 @@ export const SESSION_PROOF_FIELDS = Object.freeze([
 
 const NOT_DECIDED_YET = (run) => `run \`${run.runId}\` is ${run.status}; this field does not exist before approve() decides the run`;
 
-function digest(entries) {
+export function digest(entries) {
   // No cryptographic signature yet (SESS-002/003's replay engine is the natural place to add
   // one, since a signature over a package nothing can re-derive is decoration) — a content
   // digest so two copies of the same proof can be compared byte-for-byte, honestly labelled.

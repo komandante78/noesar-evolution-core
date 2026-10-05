@@ -96,6 +96,8 @@ import {
   AdoptedSkillRegistry, skillCatalogStatus,
 } from './skill-catalog.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus, refuseUnknownPlanFields } from './workspace-actions.mjs';
+import { signSessionProof } from './session-proof-signature.mjs';
+import { renderSessionProofHtml } from './session-proof-html.mjs';
 import { Author, openAiChatGenerator, atomAuthoringGenerator, declaredFallbackGenerator } from './author.mjs';
 import { openAiDecider, decideSwitchFromEnv } from './decide.mjs';
 import { profileChange } from './divergence-profile.mjs';
@@ -1356,6 +1358,18 @@ function loadOrCreateOwnerSigningKey() {
   const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
   writeFileSync(ownerSigningKeyPath, pem, { mode: 0o600 });
   return pem;
+}
+// A Session Proof is signed with a key of its own, never with the publisher key above: that one
+// signs the module catalogue, and a key that signs two kinds of statement lets one kind pass as
+// the other. It lives in `config/`, which is credential material and is left out of every
+// shadow copy, so a command the engine runs in a shadow cannot read it. Created on first use.
+const proofSigningKeyPath = join(workspace, 'config/session-proof-signing.key');
+function loadOrCreateProofSigningKey() {
+  if (existsSync(proofSigningKeyPath)) return createPrivateKey(readFileSync(proofSigningKeyPath, 'utf8'));
+  mkdirSync(join(workspace, 'config'), { recursive: true, mode: 0o700 });
+  const { privateKey } = generateKeyPairSync('ed25519');
+  writeFileSync(proofSigningKeyPath, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+  return privateKey;
 }
 /** Idempotent: registers the `noesar` publisher's key the first time any catalog module
  * is installed, reuses it on every call after. Returns the private key PEM so the caller
@@ -4426,6 +4440,31 @@ const requestListener = async (req, res) => {
       const proof = workspaceActions.sessionProof(workspaceActionMatch[1]);
       if (!proof) return json(res, 404, { error:'not_found' });
       return json(res, 200, proof);
+    }
+    // The same proof, signed (`.signed`) and as one page that verifies itself (`.html`;
+    // `?download=1` makes the browser save it, so it can be sent to someone). Same trust level as
+    // the unsigned route above: a derived view of the same object. The page carries its own
+    // content-security policy in a <meta> (hashes of its one script and one style), so the
+    // policy also survives the file being saved and opened somewhere else.
+    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/session-proof\.(signed|html)$/);
+    if (workspaceActionMatch && req.method === 'GET') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      const proof = workspaceActions.sessionProof(workspaceActionMatch[1]);
+      if (!proof) return json(res, 404, { error:'not_found' });
+      const privateKey = loadOrCreateProofSigningKey();
+      const envelope = signSessionProof(proof, privateKey);
+      const publicKeyPem = createPublicKey(privateKey).export({ type:'spki', format:'pem' });
+      if (workspaceActionMatch[2] === 'signed') return json(res, 200, { envelope, publicKeyPem });
+      const html = renderSessionProofHtml({ envelope, publicKeyPem });
+      const fileName = `noesar-session-proof-${String(proof.runId).replace(/[^a-zA-Z0-9-]/g, '')}.html`;
+      res.writeHead(200, {
+        ...securityHeaders({ secureTransport:secureCookies }),
+        'content-type':'text/html; charset=utf-8',
+        'content-length':Buffer.byteLength(html),
+        'cache-control':'no-store',
+        ...(url.searchParams.get('download') === '1' ? { 'content-disposition':`attachment; filename="${fileName}"` } : {}),
+      });
+      return res.end(html);
     }
     // "What would this do?", asked before anyone approves it. No token is minted, nothing is
     // executed, and the shadow it reads is discarded before the response is written.

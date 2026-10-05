@@ -338,7 +338,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-a292939316c4f8a9cea56683f431325e31c33026cc1d6d4c1d7d3a2d13633b49  ./apps/webui-static/app.js
+fbad01c447bcf789a247c0df45a542ba28f4f093aff001295d326afb0e481bcf  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
@@ -346,7 +346,7 @@ b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-s
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
 98df29f61a5f7b38aa5504299eae74466fa29511d20d811f0804162dc4ae858c  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
-bef6c6d1a72982237447b89b4900ea6ee34ebcef825f1868bdf872786f0dabae  ./apps/webui-static/index.html
+b8acc9e242889867cd990aa13aa85350c0595c05491da3e081cc95464ac44a61  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
@@ -6361,8 +6361,10 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 e3c7945c91ece3646b03eae9a590a3a8cd35c5ec48bea53d9a00f884f99d2ac7  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-26ccee06ce9deb79b40448c45e2a218a8fdd1e39cc165b0857a044b6710dde68  ./services/reference-control-plane/src/server.mjs
-fa810ce7d6b9c455b86e1ef0ed8e7d6e4c5a8f3d359284e590681b439c9aa924  ./services/reference-control-plane/src/session-proof.mjs
+da15a6c3f79adc4b28ff659b7438ff1137b33350e1c70ce7e731fed9259899a9  ./services/reference-control-plane/src/server.mjs
+cdcbb460aee2f6bcaedbc4f029575d0dc33dcac60d2a2a2df793ca7db141c010  ./services/reference-control-plane/src/session-proof-html.mjs
+e96f15965179c45fe86c7b4785f8bb49961fc6cd0b5736c1e86996649bb840c5  ./services/reference-control-plane/src/session-proof-signature.mjs
+c261fdd2ff6ae65e24f2bf6b8f35239c5399b1bfa83d8cb015816ecac23c7049  ./services/reference-control-plane/src/session-proof.mjs
 98b8e3a26d433e715cba28bc3a0f26a5dc9408f8d93b684be7a3be69ac2dceaf  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
@@ -6590,6 +6592,7 @@ b8e3eeef6cab990beba0eeafaab9d575a9e61e992105d510cfdcd55556228137  ./services/ref
 27c9878a89d2d7fcca2be18727d6cdc60209c00be3d19579179596429a04f3e0  ./services/reference-control-plane/test/security.test.mjs
 70912902970dde54bf5ce0ea01bbf620d3e3b40b2b2130af05825b0c1f8ea4b9  ./services/reference-control-plane/test/service-token-http-auth.test.mjs
 e46cef2a310f9e9a5ee681f01b3481f4bd5233f2ec35e4b17b29c5f083961724  ./services/reference-control-plane/test/session-lifecycle.test.mjs
+dbc68b46582ffa2d045ad1ef4feedb96b72bb9989a8314bd141b4964f1dff37a  ./services/reference-control-plane/test/session-proof-signature.test.mjs
 74febd764d39fc61259d24b1f426e35576d80602e2e037e68ff9cd374d66250b  ./services/reference-control-plane/test/session-proof.test.mjs
 613d393da29912b743d2eca80d4fbcb3de676cfac88eefe49be3d2d915cd210f  ./services/reference-control-plane/test/session-protocol.test.mjs
 1bf914819be6aa38736014e6df0e6788b6c06ed4c444bc988e2bb25bb8a1b275  ./services/reference-control-plane/test/session-replay.test.mjs

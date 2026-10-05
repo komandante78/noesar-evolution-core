@@ -3324,6 +3324,27 @@ function renderPlanActions(){
     :'Measure the plan first — an approval without a measured result is what CE-008 forbids';
   $('#planRejectBtn').classList.toggle('hidden',!undecided);
   $('#planRestoreBtn').classList.toggle('hidden',status!=='PROMOTED');
+  // The proof has a `realta` and an `esito` only once the run is decided (session-proof.mjs says so
+  // itself), so the button waits for the decision rather than offering a proof with two holes.
+  $('#planProofBtn')?.classList.toggle('hidden',undecided);
+}
+// One signed, self-verifying page for a decided run. Fetched with the session cookie (a plain link
+// would work too, but a download keeps the page out of the app's own origin and its policy).
+async function downloadSessionProof(){
+  if(!currentWorkspaceRun)return;
+  const runId=currentWorkspaceRun.runId;
+  try{
+    const response=await fetch(`/api/v1/workspace-actions/${encodeURIComponent(runId)}/session-proof.html`,{credentials:'same-origin'});
+    if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.error??'Request failed');}
+    const link=document.createElement('a');
+    link.href=URL.createObjectURL(await response.blob());
+    link.download=`noesar-session-proof-${runId.slice(0,8)}.html`;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(link.href),10000);
+    toast('Signed proof downloaded. Anyone can open it offline and check it.');
+  }catch(error){
+    toast(error.message,{kind:'error'});
+  }
 }
 function renderPlanResult(){
   const result=$('#planResult');const badge=$('#planRunBadge');
@@ -3586,6 +3607,7 @@ function initWorkspaceActions(){
   $('#planApproveBtn')?.addEventListener('click',()=>runWorkspaceAction('approve'));
   $('#planRejectBtn')?.addEventListener('click',()=>runWorkspaceAction('reject'));
   $('#planRestoreBtn')?.addEventListener('click',()=>runWorkspaceAction('restore'));
+  $('#planProofBtn')?.addEventListener('click',downloadSessionProof);
   renderWorkspaceRun();
 }
 
