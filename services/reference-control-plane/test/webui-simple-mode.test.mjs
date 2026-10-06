@@ -423,6 +423,36 @@ describe('the bottom strip counts what waits in the chat', () => {
 // server seeds that account. The first thing on the screen after signing in is then this banner, which
 // was in English only, sent the person to "Settings" (the Sessions list, sixteen sections from the
 // password), and stayed up after the password had been changed, until the next reload.
+// The first screen made four suggestions that the product could not keep: "merge PDF files" and "tidy up a
+// folder" have no tool behind them (the 36 built-in tools plan, measure and apply changes to a repository
+// workspace, read status, search and judge documents; none merges, converts or reorders a person's files),
+// "research a topic" needs a search instance the operator has to run, and the first of them was read as an
+// acting request the moment it was clicked. What a person sees on the first screen has to be something a
+// connected model does today with nothing else installed; the file-work suggestions come back with the tools.
+describe('the welcome suggestions', () => {
+  const chips = [...html.matchAll(/<button type="button" class="secondary" data-simple-prompt>([^<]+)<\/button>/g)].map((m) => m[1]);
+
+  test('there are four, each translated', () => {
+    assert.equal(chips.length, 4);
+    for (const chip of chips) assert.ok(typeof CATALOGS.it[chip] === 'string' && CATALOGS.it[chip] !== chip, `not translated: ${chip}`);
+  });
+
+  test('none promises file work, a search or a folder: nothing behind those exists yet', () => {
+    for (const chip of chips) {
+      for (const text of [chip, CATALOGS.it[chip]]) {
+        assert.ok(!/\b(pdf|folder|cartella|merge|unisci|research|ricerca|cerca|search|files?|convert|converti)\b/i.test(text), `promises what no tool does: ${text}`);
+      }
+    }
+  });
+
+  test('clicking one never starts an acting turn: in the language the box will hold, none reads as an action', () => {
+    for (const chip of chips) {
+      assert.notEqual(inferChatMode(chip), 'ACT', chip);
+      assert.notEqual(inferChatMode(CATALOGS.it[chip]), 'ACT', CATALOGS.it[chip]);
+    }
+  });
+});
+
 describe('the default-password banner, for a person who has just signed in with the installer\'s account', () => {
   const start = app.indexOf("let banner=$('#defaultPasswordBanner');");
   const bannerCode = app.slice(start, app.indexOf('}else if(banner){banner.remove();}', start));

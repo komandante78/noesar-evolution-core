@@ -344,9 +344,9 @@ b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-s
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
 8b59c2471411086681f36b07f2891aa6e8b8ca20ca1c8dfb22605d9f6cc17c69  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-5901db0d5282267e096f937534be3fe2877fc0b1c084df48d25b6609544ce449  ./apps/webui-static/i18n-catalog.js
+dc2cd64ef1dc0835045d0260bcc434e75900ff67428b59d0fb805bcff5279ca0  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
-fe687bddcd799fdb52b5080094e600b7fe79cc326e90a249fd52fb14b72df559  ./apps/webui-static/index.html
+50737f80f058797c5274282d47299dea2b60daea3ddad8e62a0fc66678656a95  ./apps/webui-static/index.html
 fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
@@ -6645,7 +6645,7 @@ b384c620443005442c5c4c3d511e4377c02239cabee32cda9051827d83279374  ./services/ref
 5073ebefb1c1b2da4de352771b77a6084bd376b24368467b33f9914a21dbb86f  ./services/reference-control-plane/test/webui-jump-to-address.test.mjs
 79c79c804d4fd794787b04d03a2612db0c0fbc0beadb4d0ddb1825d303521aee  ./services/reference-control-plane/test/webui-markup-structure.test.mjs
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs
-769bc84ac91e59edd0fea8a6530790afe0bc4149dcf82476411cb77f322a9b53  ./services/reference-control-plane/test/webui-simple-mode.test.mjs
+dd89a5b640dc9b4136eb6b888af1567f50528de69e622fc0f2d42ad106c76979  ./services/reference-control-plane/test/webui-simple-mode.test.mjs
 3a547526f1f9ae1e7a5980efbc4b40d0ee1a406ee49f71ede4241fcc5778f095  ./services/reference-control-plane/test/workflow-engine.test.mjs
 1eb92d39e1c01874e63efee2e89f2ed81500e1f2e4d46766ba227c01ffef09fd  ./services/reference-control-plane/test/workflow-interrupted-step.test.mjs
 6f7c435405b62a334d66d72e490cff1e9931225bdebc09ef6ff7421c284ed92e  ./services/reference-control-plane/test/workspace-actions-http-adversarial.test.mjs
@@ -6708,7 +6708,7 @@ db98b53e39c7c41c7aaa93981499afff66ebbd054e7c46cc4704228073d15cfa  ./tools/benchm
 8c88d945b6b72d4c8f675ae687cedf22b7cb549584e8d90c5d1d87dc5487ba69  ./tools/benchmarks/hilbench/swe-pipeline-check.sh
 fcf262e912884b3d345df9d72490c8b9905ed266b11ad07865df6eccd1aea3a0  ./tools/benchmarks/results-s336.jsonl
 ed02e17a5c5f0f00cdb836e425127206af63fe3da8c16633e0df811750de31a2  ./tools/benchmarks/run-bench.mjs
-0df9548a82c2d64d068cdccb524014cfcac174e282870655bf78b733911dcef0  ./tools/browser-e2e.mjs
+443daad953b22ced242527046a83b86392a81da3c3dd1aed10161c6d82fd750b  ./tools/browser-e2e.mjs
 9fbce73b5894bbb632d552bff4f989b687c576dfe752e3c8748b65d395598b7f  ./tools/cache-cleanup.sh
 565a208458fa387c12020398b80168ed1e66ead5e01f4fa18a0df202566932f7  ./tools/cbom.mjs
 a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-build-reproducibility.mjs

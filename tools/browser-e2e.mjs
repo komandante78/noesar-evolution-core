@@ -4661,7 +4661,7 @@ try {
   const born = chatsAfter.find((item) => item.title === suggestion.chip);
   check('a first message with no conversation open creates one, titled by the message',
     chatsAfter.length === chatsBefore.length + 1 && Boolean(born), JSON.stringify({ before: chatsBefore.length, after: chatsAfter.length, born }));
-  check('and the mode is read from the message — "merge" is an action', born?.mode === 'ACT', JSON.stringify(born));
+  check('and the mode is read from the message — "write" is a creation, never an action the page took by itself', born?.mode === 'CREATE', JSON.stringify(born));
   const answered = await simple.waitForFunction(
     () => document.querySelector('#toastHost .toast-error') || document.querySelector('#messageList .message.assistant'),
     { timeout: 25000 },
