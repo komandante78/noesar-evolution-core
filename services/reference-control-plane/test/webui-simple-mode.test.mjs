@@ -698,6 +698,33 @@ describe('plain words on the first screens', () => {
     assert.ok(!css.includes('[data-copy-message]{display:none}') && !css.includes('[data-retry-message]{display:none}'), 'Copy and Retry stay');
   });
 
+  test('Settings shows four doors in the simple interface: the sections that stay are named, every other one is hidden once, and none is lost', () => {
+    const menu = [...html.matchAll(/<button class="settings-nav[^"]*" type="button" data-section="([a-z-]+)"/g)].map((m) => m[1]);
+    assert.equal(menu.length, 16, 'the full menu still has all sixteen');
+    const kept = ['appearance', 'language', 'security', 'models-hardware'];
+    const hidden = menu.filter((name) => !kept.includes(name));
+    assert.equal(hidden.length, 12);
+    for (const name of hidden) assert.ok(css.includes(`body[data-ui=simple] .settings-nav[data-section=${name}]`), `not hidden in the simple interface: ${name}`);
+    for (const name of kept) assert.ok(!css.includes(`.settings-nav[data-section=${name}]`), `a kept door is hidden by a rule: ${name}`);
+    assert.ok(css.includes('body[data-ui=simple] .settings-menu .settings-group{display:none}'));
+    // the password banner sends people to Security, which therefore has to stay in the menu
+    assert.ok(kept.includes('security') && app.includes("link.href='#settings/security'"));
+  });
+
+  test('a bare settings address lands on a section the simple menu shows, and the full interface lands where it always did', () => {
+    assert.ok(app.includes("const wanted=SETTINGS_SECTIONS.includes(requested)?requested:simpleOn?'appearance':DEFAULT_SECTION;"));
+    assert.ok(app.includes("const DEFAULT_SECTION='sessions';"), 'the full interface default is untouched');
+  });
+
+  test('on a narrow window the open menu is the four destinations with their names, and the history is not squeezed into a row of icons', () => {
+    const narrow = css.slice(css.lastIndexOf('@media(max-width:850px){\n  body[data-ui=simple] #chatNav{display:none}'));
+    assert.ok(narrow.startsWith('@media(max-width:850px){'), 'the block is found');
+    assert.ok(narrow.includes('body[data-ui=simple] #chatNav{display:none}'));
+    assert.ok(narrow.includes('body[data-ui=simple] .nav span:not(.nav-count){position:static;width:auto;height:auto'), 'the labels are drawn');
+    assert.ok(narrow.includes('body[data-ui=simple] .sidebar nav{flex-wrap:wrap}'));
+    assert.ok(!/approv/i.test(narrow), 'and nothing here touches the approval strip');
+  });
+
   test('the stylesheet names the undo button, drops the English badge and keeps the box in reach on a narrow window', () => {
     assert.ok(css.includes('body[data-ui=simple] #undoHead::after{content:attr(title)'));
     assert.ok(css.includes('body[data-ui=simple] .footer-privacy .verified{display:none}'));

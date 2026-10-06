@@ -1865,3 +1865,27 @@ body[data-ui=simple] #sidebar nav #chatNav{order:5}
 body[data-ui=simple] .message.assistant [data-fork-message],
 body[data-ui=simple] [data-exclude-message],
 body[data-ui=simple] .message.assistant [data-edit-message]{display:none}
+/* Settings, for someone who has just started, has four doors: how it looks, the language, the password and the AI.
+   The other twelve (people, storage, audit, logs, modules, remote targets…) are in the full interface, one click
+   away, and every address still opens its section: only the menu is shorter. */
+body[data-ui=simple] .settings-nav[data-section=sessions],
+body[data-ui=simple] .settings-nav[data-section=about],
+body[data-ui=simple] .settings-nav[data-section=licence],
+body[data-ui=simple] .settings-nav[data-section=privacy],
+body[data-ui=simple] .settings-nav[data-section=people],
+body[data-ui=simple] .settings-nav[data-section=storage],
+body[data-ui=simple] .settings-nav[data-section=audit],
+body[data-ui=simple] .settings-nav[data-section=health],
+body[data-ui=simple] .settings-nav[data-section=updates],
+body[data-ui=simple] .settings-nav[data-section=skills],
+body[data-ui=simple] .settings-nav[data-section=modules],
+body[data-ui=simple] .settings-nav[data-section=remote-targets],
+body[data-ui=simple] .settings-menu .settings-group{display:none}
+/* Below 851 px the sidebar becomes a row of bare icons (the labels are visually hidden) and the history was squeezed
+   into it. In the simple interface the open menu is the four destinations, named, one under the other; the history
+   belongs to the full interface on a screen this size. */
+@media(max-width:850px){
+  body[data-ui=simple] #chatNav{display:none}
+  body[data-ui=simple] .nav span:not(.nav-count){position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}
+  body[data-ui=simple] .sidebar nav{flex-wrap:wrap}
+}

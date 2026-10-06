@@ -612,7 +612,9 @@ function activate(view,{updateHash=true,section='',place=''}={}){
 // name falls back to the first, and one this account may not open renders as denied
 // rather than as a section whose every fetch answers 403.
 function activateSection(requested){
-  const wanted=SETTINGS_SECTIONS.includes(requested)?requested:DEFAULT_SECTION;
+  // A bare "#/settings" lands on how the page looks in the simple interface: the first entry of the full menu is the
+  // list of work sessions, which that menu no longer shows.
+  const wanted=SETTINGS_SECTIONS.includes(requested)?requested:simpleOn?'appearance':DEFAULT_SECTION;
   const permitted=maySection(wanted);
   const shown=permitted?wanted:'';
   $$('.settings-section').forEach((node)=>node.classList.toggle('active',node.dataset.section===shown));
