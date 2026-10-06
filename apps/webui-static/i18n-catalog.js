@@ -777,6 +777,9 @@ export const RUNTIME_ONLY = Object.freeze([
   'Copied.',
   'Could not copy. Select the text and copy it by hand.',
   'Retry',
+  'Save this answer',
+  'Saved in Documents.',
+  'No documents yet. When an answer is worth keeping, press Save under it.',
 ]);
 
 const it = {
@@ -2536,6 +2539,9 @@ const it = {
   'Copied.': 'Copiato.',
   'Could not copy. Select the text and copy it by hand.': 'Non sono riuscito a copiare. Seleziona il testo e copialo a mano.',
   'Retry': 'Riprova',
+  'Save this answer': 'Salva questa risposta',
+  'Saved in Documents.': 'Salvato in Documenti.',
+  'No documents yet. When an answer is worth keeping, press Save under it.': 'Nessun documento ancora. Quando una risposta merita di essere tenuta, premi «Salva questa risposta» sotto di essa.',
   'AI': 'IA',
   'Show in chat': 'Mostra nella chat',
   'This account is still using the default password.': 'Questo account usa ancora la password predefinita, uguale per tutti.',

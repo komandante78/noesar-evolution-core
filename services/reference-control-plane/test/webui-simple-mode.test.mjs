@@ -682,7 +682,7 @@ describe('plain words on the first screens', () => {
     assert.ok(app.includes('data-copy-message="${message.id}">Copy</button>'), 'on assistant messages only');
     const renderLine = app.slice(app.indexOf('function renderMessages('), app.indexOf('function renderMessages(') + 2600);
     assert.ok(renderLine.indexOf("message.role==='assistant'?") < renderLine.indexOf('data-copy-message'), 'inside the assistant-only part');
-    const bind = app.slice(app.indexOf('function bindMessageActions('), app.indexOf('function bindMessageActions(') + 900);
+    const bind = app.slice(app.indexOf("$$('[data-copy-message]')"), app.indexOf("$$('[data-copy-message]')") + 900);
     assert.ok(bind.includes("navigator.clipboard.writeText(message?.content??'')"));
     assert.ok(bind.includes("catch{toast(t('Could not copy. Select the text and copy it by hand.'),{kind:'error'});}"), 'a refusal is said, not swallowed');
     for (const phrase of ['Copy', 'Copied.', 'Could not copy. Select the text and copy it by hand.', 'Retry']) {
@@ -723,6 +723,44 @@ describe('plain words on the first screens', () => {
     assert.ok(narrow.includes('body[data-ui=simple] .nav span:not(.nav-count){position:static;width:auto;height:auto'), 'the labels are drawn');
     assert.ok(narrow.includes('body[data-ui=simple] .sidebar nav{flex-wrap:wrap}'));
     assert.ok(!/approv/i.test(narrow), 'and nothing here touches the approval strip');
+  });
+
+  test('an answer can be saved as a document from the chat (simple interface only), titled by what the person asked', () => {
+    assert.ok(app.includes('${simpleOn?`<button data-save-message="${message.id}">Save this answer</button>`:\'\'}'), 'the button is drawn only in the simple interface');
+    const bind = app.slice(app.indexOf('function bindMessageActions('), app.indexOf('function bindMessageActions(') + 1300);
+    assert.ok(bind.includes("await api('/api/v1/artifacts',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId||null,type:'document',title:titleFromMessage(asked?.content??message.content),content:message.content})});"));
+    assert.ok(bind.includes("const asked=messages.slice(0,messages.indexOf(message)).reverse().find((item)=>item.role==='user');"), 'named for the question, from the message before the answer');
+    assert.ok(bind.includes("toast(t('Saved in Documents.'))"));
+    assert.ok(bind.includes("catch(error){toast(error.message,{kind:'error'});}"), 'a refusal is shown, not swallowed');
+    for (const phrase of ['Save this answer', 'Saved in Documents.', 'No documents yet. When an answer is worth keeping, press Save under it.']) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+
+  test('the list of documents has Copy and Edit, says what to do when it is empty, and the full interface keeps its words', () => {
+    const list = app.slice(app.indexOf('function renderArtifacts('), app.indexOf("$('#artifactForm').addEventListener('submit'"));
+    assert.ok(list.includes('<button data-copy-artifact="${item.id}">Copy</button>'), 'the button is drawn on every document');
+    assert.ok(list.includes("$$('[data-copy-artifact]').forEach("), 'and it does something');
+    assert.ok(list.includes("${simpleOn?'Edit':'New version'}"), 'the full interface still says New version');
+    assert.ok(list.includes("(simpleOn?t('No documents yet. When an answer is worth keeping, press Save under it.'):'No documents.')"));
+    assert.ok(list.includes("catch{toast(t('Could not copy. Select the text and copy it by hand.'),{kind:'error'});}"));
+  });
+
+  test('the simple interface hides the document form and the jargon next to the list, and nothing else about the page', () => {
+    assert.ok(css.includes('body[data-ui=simple] #artifactForm{display:none}'));
+    assert.ok(css.includes('body[data-ui=simple] #view-documents .two-col{grid-template-columns:1fr}'));
+    assert.ok(css.includes('body[data-ui=simple] #artifactList small,\nbody[data-ui=simple] #view-documents .panel-title span{display:none}'));
+    assert.ok(html.includes('id="artifactForm"'), 'the form is still in the page: the full interface uses it');
+  });
+
+  test('the project form asks a person for a name, a purpose and the rules; the technical fields stay in the page with their defaults', () => {
+    for (const id of ['projectTags', 'projectKnowledgeMode', 'projectKnowledgeLimit']) {
+      assert.ok(css.includes(`body[data-ui=simple] #projectForm label:has(#${id})`), `not hidden in the simple interface: ${id}`);
+      assert.ok(html.includes(`id="${id}"`), `removed from the page: ${id} (the full interface and the form handler read it)`);
+    }
+    for (const id of ['projectName', 'projectDescription', 'projectInstructions']) assert.ok(!css.includes(`#projectForm label:has(#${id})`), `a field a person needs is hidden: ${id}`);
+    assert.ok(html.includes('<option value="hybrid">Hybrid RAG</option>') && html.includes('id="projectKnowledgeLimit" type="number" min="1" max="50" value="8"'), 'the defaults the hidden fields submit');
   });
 
   test('the stylesheet names the undo button, drops the English badge and keeps the box in reach on a narrow window', () => {

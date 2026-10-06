@@ -1889,3 +1889,16 @@ body[data-ui=simple] .settings-menu .settings-group{display:none}
   body[data-ui=simple] .nav span:not(.nav-count){position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}
   body[data-ui=simple] .sidebar nav{flex-wrap:wrap}
 }
+/* Documents, for a person: the list of what was saved from the chat, with Copy and Edit. The form that asks for a project
+   and a "type" (document, code, table, chart, canvas, application) is the full interface's, and so is the word
+   "Versioned" and the line under each title that names the type and the version. */
+body[data-ui=simple] #artifactForm{display:none}
+body[data-ui=simple] #view-documents .two-col{grid-template-columns:1fr}
+body[data-ui=simple] #artifactList small,
+body[data-ui=simple] #view-documents .panel-title span{display:none}
+/* Projects, for a person: a name, what it is for and the rules to follow. Tags, the "knowledge mode" (hybrid RAG, full
+   context, disabled) and the number of retrieved passages are the full interface's; the form still submits their
+   defaults, because the fields stay in the page. */
+body[data-ui=simple] #projectForm label:has(#projectTags),
+body[data-ui=simple] #projectForm label:has(#projectKnowledgeMode),
+body[data-ui=simple] #projectForm label:has(#projectKnowledgeLimit){display:none}
