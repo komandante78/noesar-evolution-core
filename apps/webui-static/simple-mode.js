@@ -124,6 +124,27 @@ export function argumentLines(args, { max = 6, width = 120 } = {}) {
 }
 
 /**
+ * What the bottom strip says about decisions that wait. A tool waiting in the CHAT is held by the
+ * turn that is running, not by the queue behind `/api/v1/approvals`, so a strip fed by the queue
+ * alone read "Nothing is waiting for a decision" with a card on screen asking for one. The strip
+ * is the one surface whose job is to say that something waits: it is given both, chat first (that
+ * one is on the person's screen, in a turn that is holding its breath).
+ *
+ * `detail` is empty when nothing waits (the caller owns that sentence, which is a catalogue
+ * entry). `inChatOnly` says where the person should go: the queue is empty, so "open the queue"
+ * would lead to nothing.
+ */
+export function approvalStrip({ queueTotal = 0, queueTitles = [], chatTitles = [], chatLabel = 'In this chat:' } = {}) {
+  const total = queueTotal + chatTitles.length;
+  const names = [...chatTitles.map((title) => `${chatLabel} ${title}`), ...queueTitles];
+  return {
+    total,
+    detail: total === 0 ? '' : names.slice(0, 2).join(' · ') + (total > 2 ? ` and ${total - 2} more` : ''),
+    inChatOnly: queueTotal === 0 && chatTitles.length > 0,
+  };
+}
+
+/**
  * The one-time setup token carried in the FRAGMENT of the address the installer opens
  * (`/#setup=<token>`). A fragment is never sent to the server and never reaches an access log,
  * which is why the token may travel in it and not in a query string. Anything that is not a

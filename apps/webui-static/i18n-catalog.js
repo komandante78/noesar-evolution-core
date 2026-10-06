@@ -763,6 +763,8 @@ export const RUNTIME_ONLY = Object.freeze([
   'Before',
   'After',
   '(shortened)',
+  'In this chat:',
+  'Show in chat',
 ]);
 
 const it = {
@@ -2511,6 +2513,8 @@ const it = {
   'Before': 'Prima',
   'After': 'Dopo',
   '(shortened)': '(accorciato)',
+  'In this chat:': 'In questa chat:',
+  'Show in chat': 'Mostra nella chat',
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

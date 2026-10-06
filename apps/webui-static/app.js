@@ -4,7 +4,7 @@ import { PAGE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines } from './simple-mode.js';
+import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines, approvalStrip } from './simple-mode.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
@@ -1513,6 +1513,7 @@ function renderToolApproval(article,data){
   row.querySelector('.tool-activity-state').textContent=t('waiting for your approval');
   const decide=async(approved)=>{
     for(const button of row.querySelectorAll('button'))button.disabled=true;
+    forgetChatWait(row);
     row.querySelector('.tool-activity-state').textContent=approved?t('approved'):t('refused');
     await api('/api/v1/chat/runs/'+data.runId+'/approve',{method:'POST',body:JSON.stringify({callId:data.id,approved})}).catch(()=>{});
   };
@@ -1520,6 +1521,10 @@ function renderToolApproval(article,data){
   const no=document.createElement('button');no.type='button';no.className='secondary';no.textContent=t('Reject');
   yes.addEventListener('click',()=>decide(true));no.addEventListener('click',()=>decide(false));
   row.append(yes,no);
+  // The bottom strip counts this wait: it is held by the running turn, not by the queue the strip reads.
+  const phrase=toolActionTitle(data.name);
+  chatWaiting.set(row,phrase?t(phrase):String(data.name??''));
+  paintApprovalStrip();
   if(simpleOn)void describeApproval(row,data);
   return row;
 }
@@ -1703,6 +1708,7 @@ async function sendChat({signal=null,onDelta=null}={}){
           // region, which is the mechanism that speaks a change without a second announcer.
           resolveToolActivity(toolRow,data);
           // …and the card's own row gets the outcome, so what was decided and how it ended read as one.
+          forgetChatWait(approvalRow);
           if(simpleOn&&approvalRow){approvalRow.classList.remove('awaiting');resolveToolActivity(approvalRow,data);approvalRow=null;}
         }else if(event==='error'){
           throw new Error(data.error);
@@ -1743,6 +1749,8 @@ async function sendChat({signal=null,onDelta=null}={}){
     if(simpleOn){if(!assistantText)$('#chatInput').value=content;toast(/No enabled model provider/i.test(error.message)?t('NOESAR needs a model to answer.'):error.message,{kind:'error'});}
     return assistantText;
   }finally{
+    // A turn that ends — answered, stopped or dropped — has nothing left to wait for.
+    forgetChatWait(approvalRow);
     activeRunId=null;
     $('#stopGeneration').classList.add('hidden');
     $('#sendMessage').disabled=false;
@@ -3969,6 +3977,30 @@ function approvalCard(item){
 // stamped with an incrementing token; only the most recently STARTED call is allowed to
 // touch the DOM, so a slow, stale response is discarded instead of undoing a fresher one.
 let approvalsRefreshToken=0;
+// The queue as last read, and the tools waiting in the chat (row → the phrase the card shows). The
+// strip is painted from both; the queue's own list and nav badge stay the queue's alone, since they
+// lead to the queue and the queue's buttons.
+let lastQueue={total:0,items:[],failed:false};
+const chatWaiting=new Map();
+function forgetChatWait(row){if(row&&chatWaiting.delete(row))paintApprovalStrip();}
+function paintApprovalStrip(){
+  const strip=$('#approvalStripState');
+  const detail=$('#approvalStripDetail');
+  const open=$('#approvalStripOpen');
+  // A failed read keeps its own message until a read succeeds again.
+  if(lastQueue.failed)return;
+  // A card that left the page (another conversation, a reload of the list) can no longer be decided.
+  for(const row of chatWaiting.keys())if(!row.isConnected)chatWaiting.delete(row);
+  const view=approvalStrip({queueTotal:lastQueue.total,queueTitles:lastQueue.items.map((item)=>item.title),chatTitles:[...chatWaiting.values()],chatLabel:t('In this chat:')});
+  if(strip){
+    setChip(strip,'Approvals:','Approvals: —',view.total);
+    strip.className=`approval-strip-state ${view.total>0?'status-warn':'status-good'}`;
+  }
+  if(detail)detail.textContent=view.total===0?'Nothing is waiting for a decision.':view.detail;
+  // With only the chat waiting, "open the queue" would lead to an empty list: go where the card is.
+  if(open){open.dataset.viewLink=view.inChatOnly?'chat':'settings/audit';open.textContent=t(view.inChatOnly?'Show in chat':'Open queue');}
+}
+$('#approvalStripOpen')?.addEventListener('click',()=>{[...chatWaiting.keys()][0]?.scrollIntoView({block:'center'});});
 async function refreshApprovals(){
   const token=++approvalsRefreshToken;
   const strip=$('#approvalStripState');
@@ -3979,15 +4011,8 @@ async function refreshApprovals(){
     if(token!==approvalsRefreshToken)return payload.approvals??[];
     const items=payload.approvals??[];
     const total=payload.counts?.total??items.length;
-    if(strip){
-      setChip(strip,'Approvals:','Approvals: —',total);
-      strip.className=`approval-strip-state ${total>0?'status-warn':'status-good'}`;
-    }
-    if(detail){
-      detail.textContent=total===0
-        ?'Nothing is waiting for a decision.'
-        :items.slice(0,2).map((item)=>item.title).join(' · ')+(total>2?` and ${total-2} more`:'');
-    }
+    lastQueue={total,items,failed:false};
+    paintApprovalStrip();
     if(navCount){navCount.textContent=String(total);navCount.classList.toggle('hidden',total===0);}
     const list=$('#approvalList');
     if(list){
@@ -4002,6 +4027,7 @@ async function refreshApprovals(){
     if(token!==approvalsRefreshToken)throw error;
     // A queue that cannot be read says so. Showing "0 waiting" on a failed fetch would
     // be a false all-clear on the one surface whose job is to raise the alarm.
+    lastQueue={...lastQueue,failed:true};
     if(strip){strip.textContent='Approvals: unavailable';strip.className='approval-strip-state status-bad';}
     if(detail)detail.textContent=error.message;
     if(navCount)navCount.classList.add('hidden');

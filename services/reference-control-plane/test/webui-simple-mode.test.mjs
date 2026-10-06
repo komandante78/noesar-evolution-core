@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   SIMPLE_KEY, SIMPLE_VIEWS, readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash,
-  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines,
+  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines, approvalStrip,
 } from '../../../apps/webui-static/simple-mode.js';
 import { RUNTIME_ONLY, CATALOGS } from '../../../apps/webui-static/i18n-catalog.js';
 
@@ -325,6 +325,96 @@ describe('what a waiting tool is about to do, in plain words', () => {
     assert.match(css, /\.tool-activity-row\.has-change>\.tool-change\{order:5;flex-basis:100%/);
     assert.match(css, /\.tool-activity-row\.has-change>button\{order:6\}/);
     assert.match(css, /\.tool-activity-row\.has-change \.tool-activity-name\{font-family:inherit/, 'the plain title is not set in the technical typeface');
+  });
+});
+
+// The strip at the bottom of the page is where a person is told that something waits. It read the
+// queue behind /api/v1/approvals only, and a tool waiting in the CHAT is held by the running turn,
+// so it said "Nothing is waiting for a decision" with a card on screen asking for one.
+describe('the bottom strip counts what waits in the chat', () => {
+  test('nothing waiting: zero, no detail (the caller owns the sentence), nowhere to send the person', () => {
+    assert.deepEqual(approvalStrip(), { total: 0, detail: '', inChatOnly: false });
+    assert.deepEqual(approvalStrip({ queueTotal: 0, queueTitles: [], chatTitles: [] }), { total: 0, detail: '', inChatOnly: false });
+  });
+
+  test('only the queue: as it always was', () => {
+    assert.deepEqual(approvalStrip({ queueTotal: 2, queueTitles: ['A', 'B'] }), { total: 2, detail: 'A · B', inChatOnly: false });
+    assert.equal(approvalStrip({ queueTotal: 5, queueTitles: ['A', 'B'] }).detail, 'A · B and 3 more');
+  });
+
+  test('only the chat: one waiting tool is one decision, and the strip points at the chat, not an empty queue', () => {
+    assert.deepEqual(approvalStrip({ chatTitles: ['Apply the change to your files'] }), { total: 1, detail: 'In this chat: Apply the change to your files', inChatOnly: true });
+    assert.equal(approvalStrip({ chatTitles: ['x'], chatLabel: 'In questa chat:' }).detail, 'In questa chat: x');
+  });
+
+  test('both: the chat goes first, the count is the sum, and the queue still gets its own button', () => {
+    const both = approvalStrip({ queueTotal: 2, queueTitles: ['A', 'B'], chatTitles: ['X'] });
+    assert.deepEqual(both, { total: 3, detail: 'In this chat: X · A and 1 more', inChatOnly: false });
+  });
+
+  test('two waiting in the chat and none in the queue still point at the chat', () => {
+    const view = approvalStrip({ chatTitles: ['X', 'Y', 'Z'] });
+    assert.equal(view.total, 3);
+    assert.equal(view.inChatOnly, true);
+    assert.equal(view.detail, 'In this chat: X · In this chat: Y and 1 more');
+  });
+
+  const registerCode = app.slice(app.indexOf('function renderToolApproval('), app.indexOf('async function describeApproval('));
+  const refreshCode = app.slice(app.indexOf('async function refreshApprovals('), app.indexOf('function bindApprovalActions('));
+
+  test('a card registers its wait when it is drawn and forgets it the moment it is decided', () => {
+    assert.match(registerCode, /chatWaiting\.set\(row,/);
+    assert.match(registerCode, /paintApprovalStrip\(\);/);
+    const decide = registerCode.slice(registerCode.indexOf('const decide='), registerCode.indexOf('const yes='));
+    assert.match(decide, /forgetChatWait\(row\);/, 'a decided card is not waiting any more');
+    // …and BEFORE the request goes out, so the strip does not say "waiting" about a decision already taken
+    assert.ok(decide.indexOf('forgetChatWait(row)') < decide.indexOf('api('), 'forgotten before the call, not after it');
+  });
+
+  test('a turn that ends, by result or by any other way, leaves nothing waiting', () => {
+    const result = app.slice(app.indexOf("}else if(event==='tool-result'){"), app.indexOf("}else if(event==='error'){"));
+    assert.match(result, /forgetChatWait\(approvalRow\);/);
+    // approvalRow is set to null by the simple branch: forgotten first, or the row would stay counted
+    assert.ok(result.indexOf('forgetChatWait(approvalRow)') < result.indexOf('approvalRow=null'), 'forgotten before the variable is cleared');
+    const finallyBlock = app.slice(app.indexOf('}finally{\n    // A turn that ends'), app.indexOf("$('#sendMessage').addEventListener('click'"));
+    assert.match(finallyBlock, /forgetChatWait\(approvalRow\);/);
+  });
+
+  test('the strip is painted from one place, from both sources, and a failed read still says so', () => {
+    assert.match(refreshCode, /lastQueue=\{total,items,failed:false\};\s*paintApprovalStrip\(\);/);
+    assert.match(refreshCode, /lastQueue=\{\.\.\.lastQueue,failed:true\};/);
+    assert.match(refreshCode, /Approvals: unavailable/, 'an unreadable queue is not shown as "0 waiting"');
+    const paint = app.slice(app.indexOf('function paintApprovalStrip('), app.indexOf("$('#approvalStripOpen')?.addEventListener"));
+    assert.match(paint, /if\(lastQueue\.failed\)return;/, 'the failure message is not painted over by a chat card');
+    assert.match(paint, /approvalStrip\(\{queueTotal:lastQueue\.total,queueTitles:/);
+    assert.match(paint, /chatTitles:\[\.\.\.chatWaiting\.values\(\)\]/);
+  });
+
+  test('the queue\'s own list and nav badge stay the queue\'s alone: they lead to the queue and its buttons', () => {
+    assert.ok(!refreshCode.includes('chatWaiting'), 'a chat wait is not a queue item and has no queue button');
+  });
+
+  test('a card that has left the page is not counted: nobody can decide it', () => {
+    const paint = app.slice(app.indexOf('function paintApprovalStrip('), app.indexOf("$('#approvalStripOpen')?.addEventListener"));
+    assert.match(paint, /if\(!row\.isConnected\)chatWaiting\.delete\(row\)/);
+  });
+
+  test('with only the chat waiting the button says so and goes to the chat; otherwise it is the queue\'s', () => {
+    assert.match(app, /open\.dataset\.viewLink=view\.inChatOnly\?'chat':'settings\/audit'/);
+    assert.match(app, /open\.textContent=t\(view\.inChatOnly\?'Show in chat':'Open queue'\)/);
+    assert.match(html, /id="approvalStripOpen" type="button" data-view-link="settings\/audit">Open queue</, 'the queue stays its default');
+  });
+
+  test('the two new phrases are declared runtime-only and translated', () => {
+    for (const phrase of ['In this chat:', 'Show in chat']) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+
+  test('no simple-mode rule hides the strip or its button (the safety test above covers the stylesheet; this covers the markup)', () => {
+    assert.ok(html.includes('id="approvalStripOpen"'));
+    assert.ok(!/approvalStrip[^>]*\bhidden\b/.test(html), 'the strip is never hidden by the markup');
   });
 });
 
