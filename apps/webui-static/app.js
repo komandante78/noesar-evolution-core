@@ -4,7 +4,7 @@ import { PAGE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines, approvalStrip } from './simple-mode.js';
+import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName } from './simple-mode.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
@@ -232,7 +232,7 @@ function renderMarkdownLite(text){
   return html.replace(/\x00(\d+)\x00/g,(_,i)=>blocks[Number(i)]);
 }
 
-function setStatus(message,error=false){$('#statusMessage').textContent=message;$('#statusMessage').classList.toggle('error',error);}
+function setStatus(message,error=false){$('#statusMessage').textContent=t(message);$('#statusMessage').classList.toggle('error',error);}
 
 // --- user-visible feedback -------------------------------------------------
 // Every action must end in a visible outcome. A silent failure is indistinguishable
@@ -703,7 +703,14 @@ function initSimpleUi(){
   $('#simpleNewChat')?.addEventListener('click',async()=>{await selectConversation(null);$('#chatInput')?.focus();});
   // A chip is a sentence to start from, written into the box rather than sent: it is the
   // person's turn to add the details. The text is the chip's own, already in their language.
-  $$('[data-simple-prompt]').forEach((chip)=>chip.addEventListener('click',()=>{const box=$('#chatInput');if(!box)return;box.value=chip.textContent.trim();box.focus();}));
+  $$('[data-simple-prompt]').forEach((chip)=>chip.addEventListener('click',()=>{
+    const box=$('#chatInput');if(!box)return;
+    // A chip that needs the person's own words (a text to paste, a job to describe) writes the start of the
+    // sentence and leaves the cursor below it: sent as it was, it got "first paste it, then I will go on".
+    const open=chip.dataset.promptText;
+    box.value=open?`${t(open)}\n\n`:chip.textContent.trim();
+    box.focus();box.setSelectionRange(box.value.length,box.value.length);
+  }));
   // Choosing a destination closes the menu again, so the page stays clean.
   if(simpleOn)$$('#sidebar .nav').forEach((item)=>item.addEventListener('click',()=>applySidebarRank('hidden')));
 }
@@ -727,8 +734,8 @@ async function wizardSearch(){
     const list=$('#modelWizardFound');list.replaceChildren();
     for(const server of usable){
       const row=$('#modelFoundTemplate').cloneNode(true);row.removeAttribute('id');row.classList.remove('hidden');
-      row.querySelector('[data-found-name]').textContent=`${server.name} · ${server.host}:${server.port}`;
-      const choose=row.querySelector('select');choose.innerHTML=server.models.map((id)=>`<option>${escapeHtml(id)}</option>`).join('');
+      const found=row.querySelector('[data-found-name]');found.textContent=server.name;found.title=`${server.host}:${server.port}`;
+      const choose=row.querySelector('select');choose.innerHTML=server.models.map((id)=>`<option value="${escapeHtml(id)}">${escapeHtml(friendlyModelName(id))}</option>`).join('');
       row.querySelector('button').addEventListener('click',()=>wizardConnect(server,choose.value));
       list.append(row);
     }
@@ -1318,7 +1325,7 @@ function readChatClearedMap(){try{const parsed=JSON.parse(localStorage.getItem(C
 function chatClearedWatermark(conversationId,branchId){return readChatClearedMap()[`${conversationId}:${branchId}`]??null;}
 function setChatClearedWatermark(conversationId,branchId,createdAt){const map=readChatClearedMap();map[`${conversationId}:${branchId}`]=createdAt;try{localStorage.setItem(CHAT_CLEARED_KEY,JSON.stringify(map));}catch{}}
 async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const watermark=chatClearedWatermark(state.activeConversationId,state.activeBranchId);const visible=watermark?data.messages.filter((message)=>message.createdAt>watermark):data.messages;renderMessages(visible);await inspectContext();}
-function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b translate="no">${escapeHtml(t(message.role))}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body" translate="no">${renderMarkdownLite(message.content)}</div>${message.citations?.length?`<div class="citations" translate="no">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}${message.metadata?.toolCalls?.length?`<div class="citations tool-calls" translate="no">${escapeHtml(t('Tools used'))}: ${message.metadata.toolCalls.map((call)=>`${escapeHtml(call.name)} ${call.ok?'✓':'✗'}`).join(' · ')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
+function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b translate="no">${escapeHtml(t(message.role))}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body" translate="no">${renderMarkdownLite(message.content)}</div>${message.citations?.length?`<div class="citations" translate="no">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}${message.metadata?.toolCalls?.length?`<div class="citations tool-calls" translate="no">${escapeHtml(t('Tools used'))}: ${message.metadata.toolCalls.map((call)=>`${escapeHtml(call.name)} ${call.ok?'✓':'✗'}`).join(' · ')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-copy-message="${message.id}">Copy</button><button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
 /**
  * Every source this conversation has cited, gathered where it stays put.
  *
@@ -1445,7 +1452,13 @@ async function renderUnattachedRuns(){
     ?workRunRows(listing)
     :'<p class="declared-empty">Every run in this session belongs to a chat. Runs started from the terminal appear here.</p>';
 }
-function bindMessageActions(messages){$$('[data-edit-message]').forEach((button)=>button.addEventListener('click',async()=>{const message=messages.find((item)=>item.id===button.dataset.editMessage);const content=await textDialog('Edit message',message.content,{multiline:true});if(content===null)return;await api(`/api/v1/messages/${message.id}`,{method:'PATCH',body:JSON.stringify({branchId:state.activeBranchId,content})});await refreshMessages();}));$$('[data-fork-message]').forEach((button)=>button.addEventListener('click',()=>forkAt(button.dataset.forkMessage)));$$('[data-exclude-message]').forEach((button)=>button.addEventListener('click',async()=>{await api(`/api/v1/messages/${button.dataset.excludeMessage}/exclude`,{method:'POST',body:JSON.stringify({branchId:state.activeBranchId,excluded:true})});await refreshMessages();}));$$('[data-retry-message]').forEach((button)=>button.addEventListener('click',async()=>{const index=messages.findIndex((item)=>item.id===button.dataset.retryMessage);const previous=[...messages.slice(0,index)].reverse().find((item)=>item.role==='user');if(previous){$('#chatInput').value=previous.content;await sendChat();}}));}
+function bindMessageActions(messages){$$('[data-copy-message]').forEach((button)=>button.addEventListener('click',async()=>{
+    // The gesture a drafted email asks for: take it away. Clipboard access can be refused (an insecure address, a
+    // browser setting); then the person is told so and can still select the text by hand.
+    const message=messages.find((item)=>item.id===button.dataset.copyMessage);
+    try{await navigator.clipboard.writeText(message?.content??'');toast(t('Copied.'));}
+    catch{toast(t('Could not copy. Select the text and copy it by hand.'),{kind:'error'});}
+  }));$$('[data-edit-message]').forEach((button)=>button.addEventListener('click',async()=>{const message=messages.find((item)=>item.id===button.dataset.editMessage);const content=await textDialog('Edit message',message.content,{multiline:true});if(content===null)return;await api(`/api/v1/messages/${message.id}`,{method:'PATCH',body:JSON.stringify({branchId:state.activeBranchId,content})});await refreshMessages();}));$$('[data-fork-message]').forEach((button)=>button.addEventListener('click',()=>forkAt(button.dataset.forkMessage)));$$('[data-exclude-message]').forEach((button)=>button.addEventListener('click',async()=>{await api(`/api/v1/messages/${button.dataset.excludeMessage}/exclude`,{method:'POST',body:JSON.stringify({branchId:state.activeBranchId,excluded:true})});await refreshMessages();}));$$('[data-retry-message]').forEach((button)=>button.addEventListener('click',async()=>{const index=messages.findIndex((item)=>item.id===button.dataset.retryMessage);const previous=[...messages.slice(0,index)].reverse().find((item)=>item.role==='user');if(previous){$('#chatInput').value=previous.content;await sendChat();}}));}
 async function forkAt(messageId){const name=await textDialog('Branch name','alternative');if(!name)return;const branch=await api(`/api/v1/conversations/${state.activeConversationId}/fork`,{method:'POST',body:JSON.stringify({fromMessageId:messageId,name})});state.activeBranchId=branch.id;await selectConversation(state.activeConversationId);}
 $('#forkBranch').addEventListener('click',async()=>{const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const head=data.messages.at(-1);if(head)await forkAt(head.id);});
 $('#undoHead').addEventListener('click',async()=>{if(!state.activeBranchId)return;await api(`/api/v1/branches/${state.activeBranchId}/undo`,{method:'POST',body:'{}'});await refreshMessages();});
@@ -1761,7 +1774,7 @@ async function sendChat({signal=null,onDelta=null}={}){
     // strip at the bottom — and must not lose what it wrote when nothing was answered.
     // The server's own sentence for "no model" is English and talks about modes; the person is told
     // in the words the welcome already uses (and the server's sentence stays in the status line).
-    if(simpleOn){if(!assistantText)$('#chatInput').value=content;toast(/No enabled model provider/i.test(error.message)?t('NOESAR needs a model to answer.'):error.message,{kind:'error'});}
+    if(simpleOn){if(!assistantText)$('#chatInput').value=content;toast(/No enabled model provider/i.test(error.message)?t('NOESAR needs an AI to answer.'):error.message,{kind:'error'});}
     return assistantText;
   }finally{
     // A turn that ends — answered, stopped or dropped — has nothing left to wait for.
@@ -4011,11 +4024,15 @@ function paintApprovalStrip(){
   // A card that left the page (another conversation, a reload of the list) can no longer be decided.
   for(const row of chatWaiting.keys())if(!row.isConnected)chatWaiting.delete(row);
   const view=approvalStrip({queueTotal:lastQueue.total,queueTitles:lastQueue.items.map((item)=>item.title),chatTitles:[...chatWaiting.values()],chatLabel:t('In this chat:')});
+  // Simple interface, nothing waiting: one quiet phrase instead of a counter and a sentence about a queue. The
+  // button to the queue stays: the browser suite keeps it as the proof that the strip is on screen, and a
+  // strip a person can always reach is the rule this interface was built on. Anything waiting: the full strip.
+  const calm=simpleOn&&view.total===0;
   if(strip){
-    setChip(strip,'Approvals:','Approvals: —',view.total);
+    if(calm)strip.textContent=t('Nothing to approve');else setChip(strip,'Approvals:','Approvals: —',view.total);
     strip.className=`approval-strip-state ${view.total>0?'status-warn':'status-good'}`;
   }
-  if(detail)detail.textContent=view.total===0?'Nothing is waiting for a decision.':view.detail;
+  if(detail)detail.textContent=view.total===0?(calm?'':'Nothing is waiting for a decision.'):view.detail;
   // With only the chat waiting, "open the queue" would lead to an empty list: go where the card is.
   if(open){open.dataset.viewLink=view.inChatOnly?'chat':'settings/audit';open.textContent=t(view.inChatOnly?'Show in chat':'Open queue');}
 }
@@ -6645,6 +6662,8 @@ function codenChatAnswerMarkup(chat){
  *  full id is in the panel and the title attribute. Falls back to the whole id when it matches
  *  no known shape, because a name this cannot parse is still a name. */
 function shortModelName(id){
+  // The simple interface names it the way a person would; the full one keeps the compact form.
+  if(simpleOn)return friendlyModelName(id);
   const match=String(id).match(/(\d+(?:\.\d+)?b(?:-[a-z]+)?)/i);
   return match?match[1]:String(id);
 }
@@ -6679,7 +6698,7 @@ async function refreshCodenModelChip(){
     // "none" beside a chat that answers is the contradiction a first visit reads as broken.
     write(loaded??(active?.state==='unreachable'?'unreachable'
       :active?.state==='none-served'?'no model served':'none configured'),
-      loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):t('none'));
+      loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):t(simpleOn?'No AI yet':'none'));
   }catch{ write('—','—'); }
 }
 /**

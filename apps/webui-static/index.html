@@ -317,21 +317,21 @@
               <p>Write it in the box below. NOESAR shows you what will change before it changes anything.</p>
               <div class="simple-chips">
                 <button type="button" class="secondary" data-simple-prompt>Write an email to my accountant</button>
-                <button type="button" class="secondary" data-simple-prompt>Summarize a text I paste here</button>
-                <button type="button" class="secondary" data-simple-prompt>Help me plan a task, one step at a time</button>
+                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Summarize this text:">Summarize a text I paste here</button>
+                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Help me plan this task, one step at a time:">Help me plan a task, one step at a time</button>
                 <button type="button" class="secondary" data-simple-prompt>What can you do here, on this computer?</button>
               </div>
             </div>
             <div id="messageList" class="messages empty-state">Create or select a conversation. <button type="button" class="secondary" data-start-conversation>＋ New conversation</button></div>
             <div class="notice hidden" id="simpleNoModel" role="status">
-              <b>NOESAR needs a model to answer.</b>
+              <b>NOESAR needs an AI to answer.</b>
               <p>It can run on this computer, or be a service you choose.</p>
               <div class="model-wizard-actions">
-                <button type="button" class="primary" id="modelWizardOpen">Connect a model</button>
+                <button type="button" class="primary" id="modelWizardOpen">Find an AI on this computer</button>
                 <button type="button" class="text-button" data-view-link="providers">More options</button>
               </div>
               <div class="model-wizard hidden" id="modelWizard">
-                <p class="hidden" data-wizard-state="searching">Looking for a model server on this computer…</p>
+                <p class="hidden" data-wizard-state="searching">Looking for an AI on this computer…</p>
                 <p class="hidden" data-wizard-state="none">I did not find a model server. Start Ollama, LM Studio or llama.cpp on this computer and try again. If NOESAR runs in Docker, the server has to accept connections from outside its container.</p>
                 <p class="hidden" data-wizard-state="empty">I found a model server, but it has no model. Download one in it first, then try again.</p>
                 <div class="hidden" id="modelWizardFound"></div>
@@ -348,7 +348,7 @@
                 <button type="button" class="secondary hidden" id="modelWizardAgain">Search again</button>
                 <div class="model-found hidden" id="modelFoundTemplate">
                   <b data-found-name></b>
-                  <label>Model <select></select></label>
+                  <label>AI <select></select></label>
                   <button type="button" class="primary">Use this one</button>
                 </div>
               </div>

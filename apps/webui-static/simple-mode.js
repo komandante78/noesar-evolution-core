@@ -56,9 +56,14 @@ export function inferChatMode(text) {
   return 'ASK';
 }
 
-/** The title a first message earns: its first line, flattened, cut at a word. */
+/**
+ * The title a first message earns: its first line, flattened, cut at a word. A first line that only opens a
+ * sentence ("Summarize this text:", which is what a suggestion writes) is joined to the line that
+ * finishes it, or every conversation made from that suggestion would be called "Summarize this text:".
+ */
 export function titleFromMessage(text, max = 48) {
-  const first = String(text ?? '').split('\n').map((line) => line.trim()).find(Boolean) ?? '';
+  const lines = String(text ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
+  const first = lines[0]?.endsWith(':') && lines[1] ? `${lines[0]} ${lines[1]}` : lines[0] ?? '';
   const flat = first.replace(/\s+/g, ' ');
   if (!flat) return 'New conversation';
   if (flat.length <= max) return flat;
@@ -121,6 +126,32 @@ export function argumentLines(args, { max = 6, width = 120 } = {}) {
     const text = Array.isArray(value) ? value.join(', ') : typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value);
     return `${key}: ${text.length > width ? `${text.slice(0, width)}…` : text}`;
   });
+}
+
+/**
+ * A model id as a person would say it. Ids arrive as file paths ("/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"),
+ * Ollama tags ("llama3.2:3b") or plain names; the first two are shown to someone who has never seen a
+ * path in this product, and the page used to put the raw id in a drop-down. The path, the extension, the
+ * "-00001-of-00002" part number and the quantisation tag are about the FILE, not the model, so they go;
+ * what is left is spaced, capitalised, with the size in capitals ("Qwen2.5 7B Instruct").
+ * Only ids that look local (a path, a .gguf, a tag, or a size like 7b) are tidied: a hosted model's id
+ * ("gpt-4o") is its name and stays as it is. The value behind the choice is always the raw id.
+ */
+export function friendlyModelName(id) {
+  const raw = String(id ?? '').trim();
+  if (!raw) return '';
+  const local = /[\/]/.test(raw) || /\.gguf$/i.test(raw) || raw.includes(':') || /(?:^|[-_.\s])\d+(?:\.\d+)?b(?:$|[-_.\s:])/i.test(raw);
+  if (!local) return raw;
+  const name = raw.split(/[\/]/).pop()
+    .replace(/\.gguf$/i, '')
+    .replace(/-\d{5}-of-\d{5}$/i, '')
+    .replace(/(?:-ud)?[-_.]i?q\d(?:_[a-z0-9]+)*$/i, '')
+    .replace(/:/g, ' ')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!name) return raw;
+  return name.split(' ').map((word) => (/^\d+(?:\.\d+)?b$/i.test(word) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1))).join(' ');
 }
 
 /**

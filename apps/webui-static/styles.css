@@ -1840,3 +1840,28 @@ body[data-ui=simple] #view-chat[data-empty] #messageList{display:none}
 .tool-change-files{margin:0;padding-inline-start:18px}
 .tool-change-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px}
 .tool-change-pair pre{margin:0;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:calc(var(--text-scale)*12px)}
+
+/* ── plain words and a quiet screen, 2026-10-06 ───────────────────────────────────────────────
+   Measured on a clean installation with a real model: the box carried a bare "↩" that nobody could
+   name, an English "LOCAL ONLY VERIFIED" badge sat in a strip of status words, and on a narrow
+   window (below the width at which the chat fills the screen) the box went below the fold. None of
+   this touches the approval strip's job: its words are calmer when nothing waits (app.js), and it is
+   not hidden by any rule here. */
+body[data-ui=simple] #undoHead::after{content:attr(title);margin-inline-start:.4em;font-size:.85em}
+body[data-ui=simple] #undoHead{width:auto;padding-inline:10px}
+body[data-ui=simple] .footer-privacy .verified{display:none}
+@media(max-width:850px){
+  body[data-ui=simple] .chat-composer{position:sticky;bottom:46px;z-index:6}
+  /* <main> is itself a scroll container, so on a narrow window sticky would stick to ITS box and not to the screen */
+  body[data-ui=simple] .main:has(#view-chat.active){overflow:visible}
+}
+/* the compact form cut the name from its start ("…Instruct"); a person's name for the model fits whole */
+body[data-ui=simple] .model-switch small{max-width:22ch;direction:ltr}
+/* with a long history the menu opened on the history and the other three destinations were 600 px down,
+   below the fold of the bar: the destinations come first, the history after them */
+body[data-ui=simple] #sidebar nav #chatNav{order:5}
+/* under an answer a person wants to Copy it or try again: branching the conversation, taking a message out of
+   the model's context and editing the model's own words are an engineer's gestures */
+body[data-ui=simple] .message.assistant [data-fork-message],
+body[data-ui=simple] [data-exclude-message],
+body[data-ui=simple] .message.assistant [data-edit-message]{display:none}

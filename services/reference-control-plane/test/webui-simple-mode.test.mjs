@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   SIMPLE_KEY, SIMPLE_VIEWS, readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash,
-  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines, approvalStrip,
+  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName,
 } from '../../../apps/webui-static/simple-mode.js';
 import { RUNTIME_ONLY, CATALOGS } from '../../../apps/webui-static/i18n-catalog.js';
 
@@ -114,6 +114,13 @@ describe('the title a first message earns', () => {
     assert.ok(!/\s\S{0,2}…$/.test(title) || title.length > 30, 'it did not cut in the middle of a word');
   });
 
+  test('a first line that only opens a sentence takes the line that finishes it', () => {
+    assert.equal(titleFromMessage('Riassumi questo testo:\n\nLa riunione di condominio si terrà giovedì 14 novembre'), 'Riassumi questo testo: La riunione di…');
+    assert.equal(titleFromMessage('Riassumi questo testo:'), 'Riassumi questo testo:', 'nothing after it: as it stands');
+    assert.equal(titleFromMessage('Fai questo:\nprimo\nsecondo'), 'Fai questo: primo', 'only the next line');
+    assert.equal(titleFromMessage('Una frase normale.\ne poi altro'), 'Una frase normale.', 'a first line that does not end in a colon is alone');
+  });
+
   test('a line with no space is cut at the limit', () => {
     assert.equal(titleFromMessage('x'.repeat(100)), `${'x'.repeat(48)}…`);
   });
@@ -175,7 +182,7 @@ describe('the markup and the stylesheet', () => {
   });
 
   test('the box names the model that answers, not "none", when a connected provider is the one answering', () => {
-    assert.match(app, /loaded\?shortModelName\(loaded\):enabled\[0\]\?\.defaultModel\?shortModelName\(enabled\[0\]\.defaultModel\):t\('none'\)/);
+    assert.match(app, /loaded\?shortModelName\(loaded\):enabled\[0\]\?\.defaultModel\?shortModelName\(enabled\[0\]\.defaultModel\):t\(simpleOn\?'No AI yet':'none'\)/);
     assert.match(app, /label\.textContent=shortModelName\(model\)/, 'and the wizard sets it at once, without waiting for the next refresh');
   });
 
@@ -430,7 +437,7 @@ describe('the bottom strip counts what waits in the chat', () => {
 // acting request the moment it was clicked. What a person sees on the first screen has to be something a
 // connected model does today with nothing else installed; the file-work suggestions come back with the tools.
 describe('the welcome suggestions', () => {
-  const chips = [...html.matchAll(/<button type="button" class="secondary" data-simple-prompt>([^<]+)<\/button>/g)].map((m) => m[1]);
+  const chips = [...html.matchAll(/<button type="button" class="secondary" data-simple-prompt(?: data-prompt-text="[^"]*")?>([^<]+)<\/button>/g)].map((m) => m[1]);
 
   test('there are four, each translated', () => {
     assert.equal(chips.length, 4);
@@ -574,8 +581,8 @@ describe('the wiring in app.js', () => {
   });
 
   test('"no model" is told in the welcome\'s own words, which the catalogue already translates', () => {
-    assert.match(app, /No enabled model provider\/i\.test\(error\.message\)\?t\('NOESAR needs a model to answer\.'\)/);
-    assert.match(html, /<b>NOESAR needs a model to answer\.<\/b>/, 'the sentence exists in the markup, so it is covered by the translation check');
+    assert.match(app, /No enabled model provider\/i\.test\(error\.message\)\?t\('NOESAR needs an AI to answer\.'\)/);
+    assert.match(html, /<b>NOESAR needs an AI to answer\.<\/b>/, 'the sentence exists in the markup, so it is covered by the translation check');
   });
 
   test('the menu button has two states in simple mode and keeps its three in the full interface', () => {
@@ -597,5 +604,109 @@ describe('who the assistant is told it is talking to', () => {
     assert.match(app, /audience:simpleOn\?'everyday':'operator'/);
     const sendChat = app.slice(app.indexOf('async function sendChat('), app.indexOf("$('#sendMessage').addEventListener('click'"));
     assert.ok(sendChat.includes("audience:simpleOn?'everyday':'operator'"), 'inside the one request sendChat makes');
+  });
+});
+
+// Measured on a clean installation with a real model, the first screens spoke in the product's own words:
+// "model server", a raw file path in a drop-down ("/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"),
+// an address and a port, a bare "↩", an English badge, and a suggestion that was SENT before the person had
+// pasted the text it asked for ("first paste it, then I will go on").
+describe('plain words on the first screens', () => {
+  const sampleIds = [
+    ['/models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf', 'Qwen2.5 7B Instruct'],
+    ['Qwen3.6-35B-A3B-UD-IQ4_XS.gguf', 'Qwen3.6 35B A3B'],
+    ['mistral-7b-instruct-v0.3.Q4_K_M.gguf', 'Mistral 7B Instruct V0.3'],
+    ['llama3.2:3b', 'Llama3.2 3B'],
+    ['qwen2.5-7b-instruct', 'Qwen2.5 7B Instruct'],
+    ['fake-llama-3b', 'Fake Llama 3B'],
+  ];
+
+  test('a model id is said the way a person would: path, extension, part number and quantisation go', () => {
+    for (const [id, said] of sampleIds) assert.equal(friendlyModelName(id), said, id);
+  });
+
+  test('a hosted model keeps its own id, and nothing breaks on odd input', () => {
+    for (const id of ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro']) assert.equal(friendlyModelName(id), id);
+    assert.equal(friendlyModelName(''), '');
+    assert.equal(friendlyModelName(null), '');
+    assert.equal(friendlyModelName(undefined), '');
+    assert.equal(friendlyModelName('/models/x.gguf'), 'X');
+    assert.equal(friendlyModelName('/models/.gguf'), '/models/.gguf', 'nothing left after tidying: the id itself, never an empty label');
+  });
+
+  test('the wizard shows the friendly name but sends the raw id, and the address is only a tooltip', () => {
+    const search = app.slice(app.indexOf('async function wizardSearch('), app.indexOf('function wizardFailed('));
+    assert.ok(search.includes('<option value="${escapeHtml(id)}">${escapeHtml(friendlyModelName(id))}</option>'));
+    assert.ok(search.includes('found.textContent=server.name;found.title=`${server.host}:${server.port}`'));
+    assert.ok(!search.includes('textContent=`${server.name} · '), 'no address in the visible text');
+  });
+
+  test('the model button says it the same way in the simple interface, and keeps the compact form in the full one', () => {
+    assert.match(app, /function shortModelName\(id\)\{[^}]*if\(simpleOn\)return friendlyModelName\(id\);/);
+  });
+
+  test("a suggestion that needs the person's words writes the start of the sentence and leaves the cursor below it", () => {
+    // inside the chip handler only: the same call exists elsewhere in the file, so a looser check would pass without it
+    const chipCode = app.slice(app.indexOf("$$('[data-simple-prompt]')"), app.indexOf('// Choosing a destination closes the menu again'));
+    assert.ok(chipCode.length > 100 && chipCode.length < 1200, 'the handler is found, and only the handler');
+    assert.ok(chipCode.includes('const open=chip.dataset.promptText;'));
+    assert.ok(chipCode.includes('box.value=open?`${t(open)}\\n\\n`:chip.textContent.trim();'));
+    assert.ok(chipCode.includes('box.setSelectionRange(box.value.length,box.value.length)'), 'the cursor goes below the sentence');
+    const prompts = [...html.matchAll(/data-prompt-text="([^"]*)"/g)].map((m) => m[1]);
+    assert.equal(prompts.length, 2, "the two that ask for the person's own text");
+    for (const prompt of prompts) {
+      assert.ok(prompt.endsWith(':'), `ends where the person goes on: ${prompt}`);
+      assert.ok(RUNTIME_ONLY.includes(prompt), `not declared runtime-only: ${prompt}`);
+      assert.ok(typeof CATALOGS.it[prompt] === 'string' && CATALOGS.it[prompt] !== prompt, `not translated: ${prompt}`);
+      assert.notEqual(inferChatMode(CATALOGS.it[prompt]), 'ACT', 'and none reads as an action');
+    }
+  });
+
+  test('"no AI", "nothing to approve" and the status line are in the person\'s language', () => {
+    for (const phrase of ['No AI yet', 'Nothing to approve', 'Response completed.', 'Generation stopped.']) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+    assert.ok(app.includes("function setStatus(message,error=false){$('#statusMessage').textContent=t(message);"));
+  });
+
+  test('with nothing waiting the simple strip is one quiet phrase and keeps its button; the moment anything waits it is the full strip', () => {
+    const paint = app.slice(app.indexOf('function paintApprovalStrip('), app.indexOf("$('#approvalStripOpen')?.addEventListener"));
+    assert.ok(paint.includes('const calm=simpleOn&&view.total===0;'), 'only in the simple interface, and only at zero');
+    assert.ok(paint.includes("if(calm)strip.textContent=t('Nothing to approve');else setChip(strip,'Approvals:','Approvals: —',view.total);"));
+    assert.ok(!/classList\.toggle\('hidden'/.test(paint), 'nothing in the strip is hidden by its own state: the browser suite measures the strip by this button');
+    assert.ok(paint.includes("view.total===0?(calm?'':'Nothing is waiting for a decision.'):view.detail"));
+  });
+
+  test('an answer can be copied, and when the browser refuses the person is told how to do it by hand', () => {
+    assert.ok(app.includes('data-copy-message="${message.id}">Copy</button>'), 'on assistant messages only');
+    const renderLine = app.slice(app.indexOf('function renderMessages('), app.indexOf('function renderMessages(') + 2600);
+    assert.ok(renderLine.indexOf("message.role==='assistant'?") < renderLine.indexOf('data-copy-message'), 'inside the assistant-only part');
+    const bind = app.slice(app.indexOf('function bindMessageActions('), app.indexOf('function bindMessageActions(') + 900);
+    assert.ok(bind.includes("navigator.clipboard.writeText(message?.content??'')"));
+    assert.ok(bind.includes("catch{toast(t('Could not copy. Select the text and copy it by hand.'),{kind:'error'});}"), 'a refusal is said, not swallowed');
+    for (const phrase of ['Copy', 'Copied.', 'Could not copy. Select the text and copy it by hand.', 'Retry']) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+
+  test("under an answer the simple interface keeps Copy and Retry and drops the engineer's gestures", () => {
+    assert.ok(css.includes('body[data-ui=simple] .message.assistant [data-fork-message],'));
+    assert.ok(css.includes('body[data-ui=simple] [data-exclude-message],'));
+    assert.ok(css.includes('body[data-ui=simple] .message.assistant [data-edit-message]{display:none}'));
+    assert.ok(!css.includes('[data-copy-message]{display:none}') && !css.includes('[data-retry-message]{display:none}'), 'Copy and Retry stay');
+  });
+
+  test('the stylesheet names the undo button, drops the English badge and keeps the box in reach on a narrow window', () => {
+    assert.ok(css.includes('body[data-ui=simple] #undoHead::after{content:attr(title)'));
+    assert.ok(css.includes('body[data-ui=simple] .footer-privacy .verified{display:none}'));
+    assert.match(css, /@media\(max-width:850px\)\{\s*body\[data-ui=simple\] \.chat-composer\{position:sticky;bottom:46px/);
+    assert.ok(css.includes('body[data-ui=simple] .main:has(#view-chat.active){overflow:visible}'), 'main must not be a scroll container of its own there, or sticky sticks to it');
+    assert.ok(css.includes('body[data-ui=simple] .model-switch small{max-width:22ch;direction:ltr}'), 'the name is not cut from its start');
+    assert.ok(css.includes('body[data-ui=simple] #sidebar nav #chatNav{order:5}'), 'the destinations come before the history');
+    const block = css.slice(css.indexOf('/* ── plain words and a quiet screen'));
+    const rules = block.slice(block.indexOf('*/') + 2);
+    assert.ok(!/approv/i.test(rules), 'no rule in this block mentions approvals: the strip is never hidden or restyled here');
   });
 });
