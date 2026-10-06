@@ -1829,3 +1829,14 @@ body[data-ui=simple] #view-chat[data-empty] #messageList{display:none}
 .model-wizard>button{align-self:flex-start}
 .model-found{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px}
 .model-found select{max-width:240px}
+/* what is about to happen, before the person decides: the card on a waiting tool row. The row wraps,
+   the card takes a line of its own, and the two buttons come last, after what they decide about. */
+.tool-activity-row.superseded{display:none}
+.tool-activity-row.has-change{flex-wrap:wrap}
+.tool-activity-row.has-change>.tool-change{order:5;flex-basis:100%;display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.tool-activity-row.has-change>button{order:6}
+.tool-activity-row.has-change .tool-activity-name{font-family:inherit;font-weight:600}
+.tool-change p{margin:0}
+.tool-change-files{margin:0;padding-inline-start:18px}
+.tool-change-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px}
+.tool-change-pair pre{margin:0;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:calc(var(--text-scale)*12px)}

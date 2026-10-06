@@ -20,7 +20,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   SIMPLE_KEY, SIMPLE_VIEWS, readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash,
+  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines,
 } from '../../../apps/webui-static/simple-mode.js';
+import { RUNTIME_ONLY, CATALOGS } from '../../../apps/webui-static/i18n-catalog.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const STATIC = join(here, '../../../apps/webui-static');
@@ -230,6 +232,102 @@ describe('the markup and the stylesheet', () => {
   });
 });
 
+describe('what a waiting tool is about to do, in plain words', () => {
+  test('the tools that change files have a plain phrase, and nothing else does (no guessing)', () => {
+    assert.equal(toolActionTitle('engine_workspace_approve'), 'Apply the change to your files');
+    assert.equal(toolActionTitle('engine_workspace_restore'), 'Put your files back as they were');
+    for (const name of ['engine_closure_record', 'something_else', '', undefined, 'constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+      assert.equal(toolActionTitle(name), null, String(name));
+    }
+    assert.ok(Object.keys(TOOL_ACTIONS).every((name) => name.startsWith('engine_workspace_')));
+  });
+
+  const entry = (over = {}) => ({ path: 'a.md', status: 'MODIFIED', before: 'one\ntwo\n', after: 'one\nthree\n', diffAvailable: true, ...over });
+
+  test('a measured run becomes files with a kind, the text on each side, and line counts', () => {
+    const out = describeChange({
+      request: 'add a changelog', status: 'MEASURED',
+      diff: [entry(), entry({ path: 'new.md', status: 'CREATED', before: null, after: 'x\n' }), entry({ path: 'gone.md', status: 'DELETED', before: 'bye', after: null }), entry({ path: 'odd.md', status: 'WEIRD' })],
+    });
+    assert.equal(out.request, 'add a changelog');
+    assert.equal(out.status, 'MEASURED');
+    assert.deepEqual(out.files.map((f) => [f.path, f.kind]), [['a.md', 'changed'], ['new.md', 'new'], ['gone.md', 'removed'], ['odd.md', 'unknown']]);
+    assert.deepEqual([out.files[0].beforeLines, out.files[0].afterLines], [2, 2]);
+    assert.deepEqual([out.files[1].before, out.files[1].after, out.files[1].afterLines], [null, 'x\n', 1]);
+  });
+
+  test('a side that could not be read is null, never an empty string; an empty file is an empty string', () => {
+    const [unread, empty] = describeChange({ diff: [entry({ before: null, after: null, diffAvailable: false }), entry({ before: '', after: 'x' })] }).files;
+    assert.deepEqual([unread.before, unread.after, unread.beforeLines], [null, null, null]);
+    assert.deepEqual([empty.before, empty.beforeLines], ['', 0]);
+  });
+
+  test('long text is cut, and the card is told it was', () => {
+    const [file] = describeChange({ diff: [entry({ after: 'y'.repeat(5000) })] }).files;
+    assert.equal(file.after.length, 2000);
+    assert.equal(file.cut, true);
+    assert.equal(describeChange({ diff: [entry()] }).files[0].cut, false);
+  });
+
+  test('no run, no diff, a diff that is not a list, and entries without a path are all an empty card, not an error', () => {
+    for (const run of [null, undefined, {}, { diff: null }, { diff: 'x' }, { diff: [null, {}, { status: 'CREATED' }] }]) {
+      assert.deepEqual(describeChange(run).files, [], JSON.stringify(run));
+    }
+    assert.equal(describeChange({ request: 'q'.repeat(900) }).request.length, 500);
+    assert.equal(describeChange({ request: 5 }).request, null);
+  });
+
+  test('the arguments of a tool with no phrase are shown as short lines, capped in number and width', () => {
+    assert.deepEqual(argumentLines({ name: 'x', list: ['a', 'b'], deep: { k: 1 } }), ['name: x', 'list: a, b', 'deep: {"k":1}']);
+    assert.equal(argumentLines({ long: 'z'.repeat(300) })[0].length, 'long: '.length + 120 + 1);
+    assert.equal(argumentLines(Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`k${i}`, i]))).length, 6);
+    for (const bad of [null, undefined, 'text', 5, ['a']]) assert.deepEqual(argumentLines(bad), []);
+  });
+
+  // exactly the two functions that build the card: from describeApproval up to the function after them
+  const cardStart = app.indexOf('async function describeApproval(');
+  const cardCode = app.slice(cardStart, app.indexOf('function resolveToolActivity('));
+
+  test('the card is only built in the simple interface, and everything on it goes in as text', () => {
+    assert.match(app, /if\(simpleOn\)void describeApproval\(row,data\)/);
+    assert.ok(cardStart > 0 && cardCode.includes('function appendChangedFiles('), 'both functions are in the slice');
+    assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(cardCode), 'a model\'s arguments are not this page\'s markup to trust');
+    assert.match(cardCode, /textContent/);
+  });
+
+  test('the run is read from the engine\'s own route, and the buttons still work when it cannot be read', () => {
+    assert.match(cardCode, /api\(`\/api\/v1\/workspace-actions\/\$\{encodeURIComponent\(runId\)\}`\)\.catch\(\(\)=>null\)/);
+    assert.match(cardCode, /if\(!card\.childElementCount\)return;/);
+  });
+
+  test('every phrase the card says is in RUNTIME_ONLY and translated', () => {
+    const code = cardCode;
+    const said = new Set([...code.matchAll(/\bt\('([^']+)'\)/g)].map((m) => m[1]));
+    for (const phrase of Object.values(TOOL_ACTIONS)) said.add(phrase);
+    // said through a variable or a ternary, which the pattern above cannot see
+    for (const word of ['new file', 'changed', 'removed', 'Before', 'After', 'These files will change:', 'These files will go back to how they were:']) said.add(word);
+    assert.ok(said.size >= 20, `${said.size} phrases found`);
+    for (const phrase of said) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+
+  test('one row per tool in the simple interface: the "running" row is set aside and the card gets the outcome', () => {
+    assert.match(app, /approvalRow=renderToolApproval\(article,data\);/);
+    assert.match(app, /if\(simpleOn&&approvalRow&&toolRow\)toolRow\.classList\.add\('superseded'\)/);
+    assert.match(app, /if\(simpleOn&&approvalRow\)\{approvalRow\.classList\.remove\('awaiting'\);resolveToolActivity\(approvalRow,data\);approvalRow=null;\}/);
+    assert.match(css, /\.tool-activity-row\.superseded\{display:none\}/, 'by a class with a rule of its own: the hidden attribute loses to display:flex');
+  });
+
+  test('the stylesheet gives the card a line of its own, and puts the two buttons after it', () => {
+    assert.match(css, /\.tool-activity-row\.has-change\{flex-wrap:wrap\}/);
+    assert.match(css, /\.tool-activity-row\.has-change>\.tool-change\{order:5;flex-basis:100%/);
+    assert.match(css, /\.tool-activity-row\.has-change>button\{order:6\}/);
+    assert.match(css, /\.tool-activity-row\.has-change \.tool-activity-name\{font-family:inherit/, 'the plain title is not set in the technical typeface');
+  });
+});
+
 describe('connecting a model in plain words', () => {
   const start = app.indexOf('function wizardShow(state)');
   const end = app.indexOf('function initModelWizard()');
@@ -323,6 +421,7 @@ describe('the wiring in app.js', () => {
 
   test('the project a first message creates is named through t(), which RUNTIME_ONLY declares', () => {
     assert.match(app, /name:t\('My things'\)/);
-    assert.match(read('i18n-catalog.js'), /'My things',\n\]\);/);
+    assert.ok(RUNTIME_ONLY.includes('My things'), 'declared runtime-only');
+    assert.equal(CATALOGS.it['My things'], 'Le mie cose', 'and translated');
   });
 });

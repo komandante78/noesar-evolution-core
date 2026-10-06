@@ -4,7 +4,7 @@ import { PAGE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash } from './simple-mode.js';
+import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines } from './simple-mode.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
@@ -1520,7 +1520,73 @@ function renderToolApproval(article,data){
   const no=document.createElement('button');no.type='button';no.className='secondary';no.textContent=t('Reject');
   yes.addEventListener('click',()=>decide(true));no.addEventListener('click',()=>decide(false));
   row.append(yes,no);
+  if(simpleOn)void describeApproval(row,data);
   return row;
+}
+// What is about to happen, before the person decides (simple interface). The server has always sent
+// the arguments with the wait (`tool-approval`), and this page showed only the tool's name: a person
+// approved "engine_workspace_approve" without being told which files it would change. The card puts
+// the plain phrase where the name was, and — for the steps that touch files — the engine's own
+// measured before and after, read from the run, never re-derived here. Everything comes from a tool
+// record, a model's arguments or a run, so every character goes in with `textContent`.
+async function describeApproval(row,data){
+  const title=toolActionTitle(data.name);
+  const nameNode=row.querySelector('.tool-activity-name');
+  if(title&&nameNode){nameNode.title=data.name;nameNode.textContent=t(title);}
+  const card=document.createElement('div');card.className='tool-change';
+  const line=(text)=>{const p=document.createElement('p');p.textContent=text;card.append(p);};
+  const args=data.arguments&&typeof data.arguments==='object'&&!Array.isArray(data.arguments)?data.arguments:{};
+  const runId=typeof args.runId==='string'?args.runId:null;
+  const run=runId?await api(`/api/v1/workspace-actions/${encodeURIComponent(runId)}`).catch(()=>null):null;
+  const change=describeChange(run);
+  const request=typeof args.request==='string'?args.request.slice(0,500):change.request;
+  if(request)line(`${t('What you asked:')} ${request}`);
+  switch(data.name){
+    case 'engine_workspace_plan':
+      line(Array.isArray(args.files)&&args.files.length?`${t('Files it may touch:')} ${args.files.slice(0,12).join(', ')}`:t('NOESAR will decide which files.'));
+      line(t('Nothing in your files changes yet.'));
+      break;
+    case 'engine_workspace_measure':case 'engine_workspace_repair':case 'engine_workspace_iterate':
+      line(t('It is tried on a copy of your files first.'));line(t('Nothing in your files changes yet.'));
+      break;
+    case 'engine_workspace_approve':case 'engine_workspace_restore':
+      line(t(data.name==='engine_workspace_approve'?'These files will change:':'These files will go back to how they were:'));
+      appendChangedFiles(card,change.files);
+      break;
+    case 'engine_workspace_reject':case 'engine_workspace_answer':
+      break;
+    default:
+      if(!title)for(const text of argumentLines(args))line(text);
+  }
+  if(!card.childElementCount)return;
+  row.classList.add('has-change');row.append(card);
+}
+// One line per file, and — where the engine could read both sides — a fold-out with the two texts
+// side by side. A side it could not read is left out rather than shown as empty.
+function appendChangedFiles(card,files){
+  const list=document.createElement('ul');list.className='tool-change-files';
+  for(const file of files.slice(0,20)){
+    const item=document.createElement('li');
+    const label={new:'new file',changed:'changed',removed:'removed'}[file.kind];
+    item.textContent=label?`${file.path} — ${t(label)}`:file.path;
+    if(file.before!==null||file.after!==null){
+      const more=document.createElement('details');
+      const summary=document.createElement('summary');summary.textContent=t('Show before and after');
+      const pair=document.createElement('div');pair.className='tool-change-pair';
+      for(const [word,text] of [['Before',file.before],['After',file.after]]){
+        if(text===null)continue;
+        const side=document.createElement('div');
+        const head=document.createElement('b');head.textContent=t(word);
+        const body=document.createElement('pre');body.textContent=text===''?'∅':text;
+        side.append(head,body);pair.append(side);
+      }
+      more.append(summary,pair);
+      if(file.cut){const note=document.createElement('small');note.textContent=t('(shortened)');more.append(note);}
+      item.append(more);
+    }
+    list.append(item);
+  }
+  if(list.childElementCount)card.append(list);
 }
 
 function resolveToolActivity(row,data){
@@ -1565,6 +1631,7 @@ async function sendChat({signal=null,onDelta=null}={}){
   let article=null;
   let agentCreatedName=null;
   let toolRow=null;
+  let approvalRow=null;
   try{
     const response=await fetch('/api/v1/chat/stream',{
       method:'POST',
@@ -1624,13 +1691,19 @@ async function sendChat({signal=null,onDelta=null}={}){
         }else if(event==='tool-approval'){
           // A mutative tool has stopped the turn and is waiting for this person. Rendered into
           // the same list a running tool uses, so the wait appears where the work appears.
-          renderToolApproval(article,data);
+          approvalRow=renderToolApproval(article,data);
+          // The simple interface shows ONE row per tool: the card. The "running" row the call itself
+          // made would sit above it saying "in corso" with the technical name, while the card says
+          // what is waiting; it is hidden, and still resolved below so nothing reads it as stuck.
+          if(simpleOn&&approvalRow&&toolRow)toolRow.classList.add('superseded');
         }else if(event==='tool-result'){
           // Resolved in place, and deliberately NOT announced from here. UI-043 forbids the
           // streaming branch from announcing, and its own test caught this line: announcing
           // per-event is how the answer gets read aloud twice. The row lives in a `role="status"`
           // region, which is the mechanism that speaks a change without a second announcer.
           resolveToolActivity(toolRow,data);
+          // …and the card's own row gets the outcome, so what was decided and how it ended read as one.
+          if(simpleOn&&approvalRow){approvalRow.classList.remove('awaiting');resolveToolActivity(approvalRow,data);approvalRow=null;}
         }else if(event==='error'){
           throw new Error(data.error);
         }else if(event==='stopped'){

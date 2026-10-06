@@ -738,6 +738,31 @@ export const RUNTIME_ONLY = Object.freeze([
   // The simple interface (Owner, 2026-10-06): the project a first message creates when there is
   // none is named by `ensureConversation()` in app.js, so the name appears in no markup.
   'My things',
+  // The card on a waiting tool (Owner, 2026-10-06, `describeApproval()` in app.js): what is about to
+  // happen, in plain words, before the person decides. Written by script from a tool record, a
+  // model's arguments and a run, so none of it is in the markup.
+  'Prepare a change to your files',
+  'Try the change on a copy of your files',
+  'Apply the change to your files',
+  'Discard the change',
+  'Put your files back as they were',
+  'Fix the change and try it again',
+  'Try the change, fix it, and try again',
+  'Send your answers to the plan',
+  'What you asked:',
+  'Files it may touch:',
+  'NOESAR will decide which files.',
+  'Nothing in your files changes yet.',
+  'It is tried on a copy of your files first.',
+  'These files will change:',
+  'These files will go back to how they were:',
+  'new file',
+  'changed',
+  'removed',
+  'Show before and after',
+  'Before',
+  'After',
+  '(shortened)',
 ]);
 
 const it = {
@@ -2463,6 +2488,29 @@ const it = {
   'It did not work:': 'Non ha funzionato:',
   'Search again': 'Cerca di nuovo',
   'Use this one': 'Usa questo',
+  // The card on a waiting tool.
+  'Prepare a change to your files': 'Prepara una modifica ai tuoi file',
+  'Try the change on a copy of your files': 'Prova la modifica su una copia dei tuoi file',
+  'Apply the change to your files': 'Applica la modifica ai tuoi file',
+  'Discard the change': 'Scarta la modifica',
+  'Put your files back as they were': 'Rimetti i tuoi file come erano',
+  'Fix the change and try it again': 'Correggi la modifica e riprovala',
+  'Try the change, fix it, and try again': 'Prova la modifica, correggila e riprova',
+  'Send your answers to the plan': 'Manda le tue risposte al piano',
+  'What you asked:': 'Cosa hai chiesto:',
+  'Files it may touch:': 'File che può toccare:',
+  'NOESAR will decide which files.': 'NOESAR deciderà quali file.',
+  'Nothing in your files changes yet.': 'Per ora nei tuoi file non cambia niente.',
+  'It is tried on a copy of your files first.': 'Prima viene provata su una copia dei tuoi file.',
+  'These files will change:': 'Questi file cambieranno:',
+  'These files will go back to how they were:': 'Questi file torneranno come erano:',
+  'new file': 'file nuovo',
+  'changed': 'modificato',
+  'removed': 'rimosso',
+  'Show before and after': 'Mostra prima e dopo',
+  'Before': 'Prima',
+  'After': 'Dopo',
+  '(shortened)': '(accorciato)',
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

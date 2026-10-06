@@ -68,6 +68,62 @@ export function titleFromMessage(text, max = 48) {
 }
 
 /**
+ * What a tool that changes files is, in words a person can decide on. The technical names stay as a
+ * tooltip; these are the sentences on the card. A tool not named here has no plain phrase, and the
+ * card then says so by showing its own name — never a guess at what it does.
+ */
+export const TOOL_ACTIONS = Object.freeze({
+  engine_workspace_plan: 'Prepare a change to your files',
+  engine_workspace_measure: 'Try the change on a copy of your files',
+  engine_workspace_approve: 'Apply the change to your files',
+  engine_workspace_reject: 'Discard the change',
+  engine_workspace_restore: 'Put your files back as they were',
+  engine_workspace_repair: 'Fix the change and try it again',
+  engine_workspace_iterate: 'Try the change, fix it, and try again',
+  engine_workspace_answer: 'Send your answers to the plan',
+});
+
+export function toolActionTitle(name) {
+  return Object.hasOwn(TOOL_ACTIONS, name) ? TOOL_ACTIONS[name] : null;
+}
+
+const CHANGE_KINDS = Object.freeze({ CREATED: 'new', MODIFIED: 'changed', DELETED: 'removed' });
+const PREVIEW_CHARS = 2000;
+const countLines = (text) => (text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0));
+
+/**
+ * The before and after of a measured run, as the card shows them. The run is the engine's own
+ * record (`GET /api/v1/workspace-actions/:id`): each `diff` entry has a path, a status the shadow
+ * observed (CREATED, MODIFIED, DELETED) and the text before and after when the file was small
+ * enough to read. A side that was not read is `null`, never an empty string: "empty file" and "could
+ * not read it" are different things to tell a person. Long text is cut, and the card says it was.
+ */
+export function describeChange(run) {
+  const clip = (text) => (typeof text === 'string' ? text.slice(0, PREVIEW_CHARS) : null);
+  const files = (Array.isArray(run?.diff) ? run.diff : [])
+    .filter((entry) => entry && typeof entry.path === 'string')
+    .map((entry) => ({
+      path: entry.path,
+      kind: CHANGE_KINDS[entry.status] ?? 'unknown',
+      before: clip(entry.before),
+      after: clip(entry.after),
+      beforeLines: typeof entry.before === 'string' ? countLines(entry.before) : null,
+      afterLines: typeof entry.after === 'string' ? countLines(entry.after) : null,
+      cut: (typeof entry.before === 'string' && entry.before.length > PREVIEW_CHARS) || (typeof entry.after === 'string' && entry.after.length > PREVIEW_CHARS),
+    }));
+  return { request: typeof run?.request === 'string' ? run.request.slice(0, 500) : null, status: run?.status ?? null, files };
+}
+
+/** The arguments of a tool this module has no sentence for, as short `key: value` lines. */
+export function argumentLines(args, { max = 6, width = 120 } = {}) {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return [];
+  return Object.entries(args).slice(0, max).map(([key, value]) => {
+    const text = Array.isArray(value) ? value.join(', ') : typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value);
+    return `${key}: ${text.length > width ? `${text.slice(0, width)}…` : text}`;
+  });
+}
+
+/**
  * The one-time setup token carried in the FRAGMENT of the address the installer opens
  * (`/#setup=<token>`). A fragment is never sent to the server and never reaches an access log,
  * which is why the token may travel in it and not in a query string. Anything that is not a
