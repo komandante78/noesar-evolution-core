@@ -91,7 +91,7 @@ LABEL org.noesar.authority-protocol="reference-hmac-v1.1"
 LABEL org.noesar.data-plane="postgresql"
 LABEL org.noesar.postgres-baseline="0.5.0"
 LABEL org.noesar.postgresql.version="18.4-1.pgdg12+1"
-LABEL org.noesar.pgvector.version="0.8.5-1.pgdg12+1"
+LABEL org.noesar.pgvector.version="0.8.7-1.pgdg12+1"
 LABEL org.noesar.exposure.default="loopback"
 LABEL org.noesar.arch-001="complete-3-of-3-peers"
 LABEL org.noesar.arch-005="six-adapters-audited-individually"
@@ -136,7 +136,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
       postgresql-18=18.4-1.pgdg12+1 \
       postgresql-client-18=18.4-1.pgdg12+1 \
-      postgresql-18-pgvector=0.8.5-1.pgdg12+1; \
+      postgresql-18-pgvector=0.8.7-1.pgdg12+1; \
     rm -rf /var/lib/apt/lists/*; \
     /usr/lib/postgresql/18/bin/postgres --version; \
     test -f /usr/share/postgresql/18/extension/vector.control

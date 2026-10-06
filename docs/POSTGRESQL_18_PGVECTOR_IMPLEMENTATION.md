@@ -54,7 +54,7 @@ Development Group archive is added. Every part of that is pinned and reviewable:
 | Signing key | `oci/keys/apt.postgresql.org.asc`, **public**, shipped in-tree rather than fetched at build time, sha256 `0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76` |
 | `postgresql-18` | `18.4-1.pgdg12+1` (exact version pin) |
 | `postgresql-client-18` | `18.4-1.pgdg12+1` |
-| `postgresql-18-pgvector` | `0.8.5-1.pgdg12+1` |
+| `postgresql-18-pgvector` | `0.8.7-1.pgdg12+1` |
 
 The key's checksum was confirmed from two independent fetches before it was committed.
 Shipping it in-tree rather than downloading it during the build means the trust anchor is
