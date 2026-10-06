@@ -107,7 +107,8 @@ import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
 import { ContextGraph } from './ai-workspace/context-graph.mjs';
 import { CredentialVault } from './ai-workspace/credential-vault.mjs';
-import { ProviderGateway } from './ai-workspace/provider-gateway.mjs';
+import { ProviderGateway, validateBaseUrl } from './ai-workspace/provider-gateway.mjs';
+import { discoverModelServers, discoveryHosts } from './model-discovery.mjs';
 import { WorkspaceService } from './ai-workspace/workspace-service.mjs';
 import { AgentService } from './ai-workspace/agent-service.mjs';
 import { WorkflowService } from './ai-workspace/workflow-service.mjs';
@@ -5071,6 +5072,17 @@ const requestListener = async (req, res) => {
     match=url.pathname.match(/^\/api\/v1\/providers\/([^/]+)\/consent$/);
     if(match&&req.method==='PUT'){
       const authenticated=requireSession(req,res,'provider.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;const consent=providerGateway.grantConsent(match[1],await body(req));ledger.append({actor:authenticated.user.id,action:'provider.consent',result:consent.consent.granted?'granted':'revoked',details:{providerId:match[1],dataClasses:consent.consent.dataClasses}});return json(res,200,consent);
+    }
+    // Finding the model server a person already runs (model-discovery.mjs). A POST because it makes
+    // outbound connections and so is not something a link can trigger, and for the people who may
+    // manage providers because it is the first half of connecting one. It reads NO request body:
+    // the hosts come from the installation, never from the caller.
+    if(req.method==='POST'&&url.pathname==='/api/v1/models/discover'){
+      const authenticated=requireSession(req,res,'provider.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      let routeText=null;try{routeText=readFileSync('/proc/net/route','utf8');}catch{/* not Linux */}
+      const servers=await discoverModelServers({hosts:discoveryHosts({env:process.env,routeText}),validate:(baseUrl)=>validateBaseUrl(baseUrl,false)});
+      ledger.append({actor:authenticated.user.id,action:'models.discover',result:'success',details:{found:servers.map((item)=>`${item.name} ${item.host}:${item.port}`)}});
+      return json(res,200,{servers});
     }
     if(req.method==='POST'&&url.pathname==='/api/v1/models/compare'){
       const authenticated=requireSession(req,res,'provider.use');if(!authenticated||!requireCsrf(req,res,authenticated))return;

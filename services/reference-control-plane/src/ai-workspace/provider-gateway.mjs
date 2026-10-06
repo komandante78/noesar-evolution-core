@@ -91,7 +91,8 @@ function isPrivateIpv4(host) {
   const parts = host.split('.').map(Number); if (parts.length !== 4 || parts.some(Number.isNaN)) return false;
   return parts[0] === 10 || parts[0] === 127 || (parts[0] === 192 && parts[1] === 168) || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31);
 }
-function validateBaseUrl(value, external) {
+// Exported so that model discovery proposes only addresses this check would accept.
+export function validateBaseUrl(value, external) {
   let url; try { url = new URL(String(value)); } catch { throw statusError('Invalid provider baseUrl.'); }
   if (url.username || url.password || url.search || url.hash) throw statusError('Provider baseUrl cannot contain credentials, query or fragment.');
   const host = url.hostname.toLowerCase();

@@ -4674,6 +4674,27 @@ try {
   check('when nothing can answer, the message comes back to the box and the error is an alert',
     answered && (outcome.replies > 0 || (outcome.boxBack.length > 0 && outcome.alerts.length > 0)), JSON.stringify(outcome));
 
+  // Connecting a model: for the people who may manage providers. This run ends on a restricted
+  // account, so the property that can be driven here is the refusal — at the route, and in words.
+  const discoverStatus = await simple.evaluate(async () => {
+    const csrf = decodeURIComponent((document.cookie.split('; ').find((entry) => entry.startsWith('noesar_csrf=')) ?? '').slice('noesar_csrf='.length));
+    const response = await fetch('/api/v1/models/discover', {
+      method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', 'x-noesar-csrf': csrf }, body: '{}',
+    });
+    return response.status;
+  });
+  check('looking for a model server is refused to an account that may not manage providers', discoverStatus === 403, String(discoverStatus));
+  const wizardDenied = await simple.evaluate(async () => {
+    document.querySelector('#modelWizardOpen').click();
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const sentence = document.querySelector('#modelWizard [data-wizard-state="denied"]');
+      if (sentence && !sentence.classList.contains('hidden')) return sentence.textContent.trim();
+    }
+    return null;
+  });
+  check('and the "connect a model" button says so in words instead of an error', /owner or administrator/.test(wizardDenied ?? ''), String(wizardDenied));
+
   // The other way: the full interface is one button away and brings every destination back.
   await simple.evaluate(() => { document.querySelector('#sidebarRank').click(); });
   await Promise.all([

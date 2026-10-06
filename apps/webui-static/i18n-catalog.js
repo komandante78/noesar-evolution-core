@@ -2448,6 +2448,21 @@ const it = {
   'The installer prints this token. It is also in the file config/first-owner-setup.token inside your data folder.': 'L’installatore mostra questo token. Lo trovi anche nel file config/first-owner-setup.token dentro la cartella dei dati.',
   'Open any authenticator app, choose Add, then scan this code.': 'Apri un’app di autenticazione qualsiasi, scegli Aggiungi e inquadra questo codice.',
   'My things': 'Le mie cose',
+  // Connecting a model in plain words (Owner, 2026-10-06).
+  'More options': 'Altre opzioni',
+  'Looking for a model server on this computer…': 'Cerco un server di modelli su questo computer…',
+  'I did not find a model server. Start Ollama, LM Studio or llama.cpp on this computer and try again. If NOESAR runs in Docker, the server has to accept connections from outside its container.': 'Non ho trovato nessun server di modelli. Avvia Ollama, LM Studio o llama.cpp su questo computer e riprova. Se NOESAR gira in Docker, il server deve accettare connessioni dall’esterno del contenitore.',
+  'I found a model server, but it has no model. Download one in it first, then try again.': 'Ho trovato un server di modelli, ma non ha nessun modello. Scaricane uno lì e riprova.',
+  'Connecting…': 'Collego…',
+  'Connected. NOESAR can answer now.': 'Collegato. Ora NOESAR può rispondere.',
+  'It can use tools.': 'Sa usare gli strumenti.',
+  'It answers, but it cannot use tools: some actions will not be possible.': 'Risponde, ma non sa usare gli strumenti: alcune azioni non saranno possibili.',
+  'I could not check whether it can use tools.': 'Non ho potuto controllare se sa usare gli strumenti.',
+  'Only an owner or administrator can connect a model.': 'Solo un proprietario o un amministratore può collegare un modello.',
+  'I could not reach the model server. Check that it is still running, then search again.': 'Non riesco a raggiungere il server dei modelli. Controlla che sia ancora acceso, poi cerca di nuovo.',
+  'It did not work:': 'Non ha funzionato:',
+  'Search again': 'Cerca di nuovo',
+  'Use this one': 'Usa questo',
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

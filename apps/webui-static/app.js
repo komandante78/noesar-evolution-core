@@ -697,6 +697,7 @@ function initRouter(){
 // `body[data-ui]`; nothing here hides a control by script, so a test can read the rules.
 function setUi(simple){writeSimple(localStorage,simple);location.reload();}
 function initSimpleUi(){
+  initModelWizard();
   $('#simpleToFull')?.addEventListener('click',()=>setUi(false));
   $('#fullToSimple')?.addEventListener('click',()=>setUi(true));
   $('#simpleNewChat')?.addEventListener('click',async()=>{await selectConversation(null);$('#chatInput')?.focus();});
@@ -705,6 +706,72 @@ function initSimpleUi(){
   $$('[data-simple-prompt]').forEach((chip)=>chip.addEventListener('click',()=>{const box=$('#chatInput');if(!box)return;box.value=chip.textContent.trim();box.focus();}));
   // Choosing a destination closes the menu again, so the page stays clean.
   if(simpleOn)$$('#sidebar .nav').forEach((item)=>item.addEventListener('click',()=>applySidebarRank('hidden')));
+}
+// --- connecting a model, in plain words (model-discovery.mjs) -------------------
+// The notice above the box leads here: look for a model server on this computer, offer what was
+// found, connect it. The result is the same provider profile the Providers page would have made by
+// hand — one create, one enable — so this is not a second way to be wrong. Every sentence it says
+// is in the markup; this only switches them on and off. No address is ever typed or sent: the
+// server asks the ports it knows, and the browser only picks from what came back.
+function wizardShow(state){
+  $$('#modelWizard [data-wizard-state]').forEach((node)=>node.classList.toggle('hidden',node.dataset.wizardState!==state));
+  $('#modelWizardFound').classList.toggle('hidden',state!=='found');
+  $('#modelWizardAgain').classList.toggle('hidden',['searching','connecting','connected'].includes(state));
+}
+async function wizardSearch(){
+  $('#modelWizard').classList.remove('hidden');wizardShow('searching');
+  try{
+    const {servers}=await api('/api/v1/models/discover',{method:'POST',body:'{}'});
+    const usable=servers.filter((server)=>server.models.length);
+    if(!usable.length){wizardShow(servers.length?'empty':'none');return;}
+    const list=$('#modelWizardFound');list.replaceChildren();
+    for(const server of usable){
+      const row=$('#modelFoundTemplate').cloneNode(true);row.removeAttribute('id');row.classList.remove('hidden');
+      row.querySelector('[data-found-name]').textContent=`${server.name} · ${server.host}:${server.port}`;
+      const choose=row.querySelector('select');choose.innerHTML=server.models.map((id)=>`<option>${escapeHtml(id)}</option>`).join('');
+      row.querySelector('button').addEventListener('click',()=>wizardConnect(server,choose.value));
+      list.append(row);
+    }
+    wizardShow('found');
+  }catch(error){
+    if(error.status===403){wizardShow('denied');return;}
+    wizardFailed(error);
+  }
+}
+// A server error, or no answer at all, is "could not reach it" in plain words; the server's own
+// sentence for that case ("Internal request failure") says nothing to the person it is shown to.
+// Anything the server explained (a refused address, a bad value) is shown as it explained it.
+function wizardFailed(error){
+  if(!(error.status<500)){wizardShow('unreachable');return;}
+  $('#modelWizardReason').textContent=error.message;wizardShow('failed');
+}
+async function wizardConnect(server,model){
+  wizardShow('connecting');
+  let profile=null;
+  try{
+    const {providers}=await api('/api/v1/providers');
+    profile=providers.find((item)=>!item.external&&item.type==='local-openai-compatible'&&item.baseUrl===server.baseUrl)
+      ??await api('/api/v1/providers',{method:'POST',body:JSON.stringify({type:'local-openai-compatible',name:`${server.name} (${server.host}:${server.port})`,baseUrl:server.baseUrl,priority:10})});
+    const path=`/api/v1/providers/${encodeURIComponent(profile.id)}`;
+    await api(path,{method:'PATCH',body:JSON.stringify({defaultModel:model,models:server.models,enabled:true})});
+    // The health check is the proof it answers, and it also asks whether the model can use tools:
+    // true, false, or null when it could not be asked — null is shown as "could not check", never as "no".
+    const health=await api(`${path}/health`);
+    const tools=health.toolCalling?.supported;
+    $$('#modelWizard [data-wizard-tools]').forEach((node)=>node.classList.toggle('hidden',node.dataset.wizardTools!==(tools===true?'yes':tools===false?'no':'unknown')));
+    wizardShow('connected');
+    const label=$('#chatModelLabel');if(label)label.textContent=shortModelName(model);
+    $('#chatInput')?.focus();
+  }catch(error){
+    // A profile left enabled that does not answer would catch every message from now on and fail
+    // it; switch it off again, and say what went wrong.
+    if(profile)await api(`/api/v1/providers/${encodeURIComponent(profile.id)}`,{method:'PATCH',body:JSON.stringify({enabled:false})}).catch(()=>{});
+    wizardFailed(error);
+  }
+}
+function initModelWizard(){
+  $('#modelWizardOpen')?.addEventListener('click',wizardSearch);
+  $('#modelWizardAgain')?.addEventListener('click',wizardSearch);
 }
 // --- rank of the sidebar: full · icons · away -------------------------------
 // `[` collapses one step and `]` expands one step. The choice is remembered, and a visible
@@ -1579,6 +1646,8 @@ async function sendChat({signal=null,onDelta=null}={}){
     }
     await refreshWorkspace();
     setStatus(agentCreatedName?`Created the agent "${agentCreatedName}".`:'Response completed.');
+    // An answer is the proof that something answers: the "no model" notice has done its work.
+    $('#simpleNoModel')?.classList.add('hidden');
     // One summary, once, when the event is over.
     announceEvent(`Reply complete, ${assistantText.length} characters`);
     // …and the reply itself, if the person asked for it. Here for the same reason the live
@@ -6483,10 +6552,16 @@ async function refreshCodenModelChip(){
     const loaded=active?.state==='loaded'?(active.id||'loaded'):null;
     // The simple interface says so plainly, above the box, for as long as nothing can answer: no
     // model, no reply, and a chat that never explains why is where a first visit ends.
-    $('#simpleNoModel')?.classList.toggle('hidden',Boolean(loaded)||!simpleOn);
+    // "No model" is: no running model AND no enabled provider. A provider connected from the welcome
+    // (or from Providers) answers through the route whatever this chip says.
+    const enabled=simpleOn&&!loaded?(await api('/api/v1/providers')).providers.filter((item)=>item.enabled).sort((a,b)=>(a.priority??100)-(b.priority??100)):[];
+    const answers=Boolean(loaded)||enabled.length>0;
+    $('#simpleNoModel')?.classList.toggle('hidden',answers||!simpleOn);
+    // The box says which model answers: the running one, or else the one the route would use first.
+    // "none" beside a chat that answers is the contradiction a first visit reads as broken.
     write(loaded??(active?.state==='unreachable'?'unreachable'
       :active?.state==='none-served'?'no model served':'none configured'),
-      loaded?shortModelName(loaded):t('none'));
+      loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):t('none'));
   }catch{ write('—','—'); }
 }
 /**

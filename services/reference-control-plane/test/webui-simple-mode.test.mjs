@@ -164,7 +164,17 @@ describe('the markup and the stylesheet', () => {
     const welcomeEnd = html.indexOf('id="messageList"');
     const composer = html.indexOf('<div class="composer chat-composer">');
     assert.ok(notice > welcomeEnd && notice < composer);
-    assert.match(app, /classList\.toggle\('hidden',Boolean\(loaded\)\|\|!simpleOn\)/);
+    assert.match(app, /classList\.toggle\('hidden',answers\|\|!simpleOn\)/);
+  });
+
+  test('"no model" means no running model AND no enabled provider — a provider the person connected answers through the route', () => {
+    assert.match(app, /const enabled=simpleOn&&!loaded\?\(await api\('\/api\/v1\/providers'\)\)\.providers\.filter\(\(item\)=>item\.enabled\)/);
+    assert.match(app, /const answers=Boolean\(loaded\)\|\|enabled\.length>0/);
+  });
+
+  test('the box names the model that answers, not "none", when a connected provider is the one answering', () => {
+    assert.match(app, /loaded\?shortModelName\(loaded\):enabled\[0\]\?\.defaultModel\?shortModelName\(enabled\[0\]\.defaultModel\):t\('none'\)/);
+    assert.match(app, /label\.textContent=shortModelName\(model\)/, 'and the wizard sets it at once, without waiting for the next refresh');
   });
 
   test('the notice that no model is connected starts hidden, and leads to where one is connected', () => {
@@ -217,6 +227,59 @@ describe('the markup and the stylesheet', () => {
       if (part === '#messageList') continue;
       assert.ok(!hidden.includes(part), `${part} must stay`);
     }
+  });
+});
+
+describe('connecting a model in plain words', () => {
+  const start = app.indexOf('function wizardShow(state)');
+  const end = app.indexOf('function initModelWizard()');
+  const wizard = app.slice(start, end);
+
+  test('the code exists, between the two functions that frame it', () => {
+    assert.ok(start > 0 && end > start);
+    assert.match(app, /\$\('#modelWizardOpen'\)\?\.addEventListener\('click',wizardSearch\)/);
+  });
+
+  test('every state the code can show has its sentence in the markup, and every sentence is used', () => {
+    // every quoted word inside a call to wizardShow(…), so that a state chosen by a ternary counts too
+    const used = new Set([...wizard.matchAll(/wizardShow\(([^)]*)\)/g)].flatMap((call) => [...call[1].matchAll(/'([a-z]+)'/g)].map((m) => m[1])));
+    used.delete('found'); // the list of what was found is a container, not a sentence
+    const inMarkup = new Set([...html.matchAll(/data-wizard-state="([a-z]+)"/g)].map((m) => m[1]));
+    assert.deepEqual([...used].sort(), [...inMarkup].sort());
+    assert.match(html, /id="modelWizardFound"/);
+  });
+
+  test('the three answers about tools are in the markup, and "could not check" is not shown as "no"', () => {
+    for (const kind of ['yes', 'no', 'unknown']) assert.match(html, new RegExp(`data-wizard-tools="${kind}"`));
+    assert.match(wizard, /tools===true\?'yes':tools===false\?'no':'unknown'/);
+  });
+
+  test('no address is typed or sent from the page: the search sends an empty body and a connection uses what the server found', () => {
+    assert.match(wizard, /api\('\/api\/v1\/models\/discover',\{method:'POST',body:'\{\}'\}\)/);
+    assert.ok(!/<input/.test(html.slice(html.indexOf('id="modelWizard"'), html.indexOf('id="modelFoundTemplate"'))), 'no text box in the wizard');
+    assert.match(wizard, /baseUrl:server\.baseUrl/);
+    assert.ok(!/\.baseUrl\s*=[^=]|baseUrl:\$\(/.test(wizard), 'the base URL is never read from a field');
+  });
+
+  test('it makes the same profile the Providers page would, and switches it off again if it does not answer', () => {
+    assert.match(wizard, /type:'local-openai-compatible'/);
+    assert.match(wizard, /enabled:true/);
+    assert.match(wizard, /\/health`\)/, 'the proof that it answers is the health check');
+    assert.match(wizard, /catch\(error\)\{[\s\S]*enabled:false/, 'a profile that does not answer is not left enabled');
+  });
+
+  test('a person who may not manage providers is told so instead of seeing an error', () => {
+    assert.match(wizard, /error\.status===403\)\{wizardShow\('denied'\)/);
+  });
+
+  test('the notice offers the wizard and, beside it, the Providers page for everything else', () => {
+    const notice = html.slice(html.indexOf('id="simpleNoModel"'), html.indexOf('id="modelWizard"'));
+    assert.match(notice, /id="modelWizardOpen"/);
+    assert.match(notice, /data-view-link="providers"/);
+  });
+
+  test('an answer hides the notice for good', () => {
+    assert.match(app, /Response completed\.'\);[\s\S]{0,260}\$\('#simpleNoModel'\)\?\.classList\.add\('hidden'\)/);
   });
 });
 

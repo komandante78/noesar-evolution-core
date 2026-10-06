@@ -1822,3 +1822,10 @@ body[data-ui=simple] #view-chat[data-empty] #messageList{display:none}
 .simple-welcome p{margin:0;color:var(--muted)}
 .simple-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:640px}
 .simple-welcome .notice{max-width:480px;text-align:start}
+/* connecting a model, in plain words: the notice above the box and what it opens */
+.model-wizard-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.model-wizard{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.model-wizard p{margin:0}
+.model-wizard>button{align-self:flex-start}
+.model-found{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px}
+.model-found select{max-width:240px}

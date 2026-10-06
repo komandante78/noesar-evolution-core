@@ -326,7 +326,32 @@
             <div class="notice hidden" id="simpleNoModel" role="status">
               <b>NOESAR needs a model to answer.</b>
               <p>It can run on this computer, or be a service you choose.</p>
-              <button type="button" class="primary" data-view-link="providers">Connect a model</button>
+              <div class="model-wizard-actions">
+                <button type="button" class="primary" id="modelWizardOpen">Connect a model</button>
+                <button type="button" class="text-button" data-view-link="providers">More options</button>
+              </div>
+              <div class="model-wizard hidden" id="modelWizard">
+                <p class="hidden" data-wizard-state="searching">Looking for a model server on this computer…</p>
+                <p class="hidden" data-wizard-state="none">I did not find a model server. Start Ollama, LM Studio or llama.cpp on this computer and try again. If NOESAR runs in Docker, the server has to accept connections from outside its container.</p>
+                <p class="hidden" data-wizard-state="empty">I found a model server, but it has no model. Download one in it first, then try again.</p>
+                <div class="hidden" id="modelWizardFound"></div>
+                <p class="hidden" data-wizard-state="connecting">Connecting…</p>
+                <div class="hidden" data-wizard-state="connected">
+                  <p>Connected. NOESAR can answer now.</p>
+                  <p class="hidden" data-wizard-tools="yes">It can use tools.</p>
+                  <p class="hidden" data-wizard-tools="no">It answers, but it cannot use tools: some actions will not be possible.</p>
+                  <p class="hidden" data-wizard-tools="unknown">I could not check whether it can use tools.</p>
+                </div>
+                <p class="hidden" data-wizard-state="denied">Only an owner or administrator can connect a model.</p>
+                <p class="hidden" data-wizard-state="unreachable">I could not reach the model server. Check that it is still running, then search again.</p>
+                <p class="hidden" data-wizard-state="failed">It did not work: <span id="modelWizardReason"></span></p>
+                <button type="button" class="secondary hidden" id="modelWizardAgain">Search again</button>
+                <div class="model-found hidden" id="modelFoundTemplate">
+                  <b data-found-name></b>
+                  <label>Model <select></select></label>
+                  <button type="button" class="primary">Use this one</button>
+                </div>
+              </div>
             </div>
             <div class="composer chat-composer">
               <div class="composer-commands hidden" id="chatCommands" role="listbox" aria-label="Slash commands"></div>
