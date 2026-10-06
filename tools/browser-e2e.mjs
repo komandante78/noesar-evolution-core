@@ -3895,7 +3895,11 @@ try {
         // button — reading the shell's while claiming to read the section's would be a check
         // that passes while measuring something else.
         const active = document.querySelector('.settings-section.active') ?? document.querySelector('.view.active');
-        const button = active?.querySelector(':scope > .section-header > .help-button, :scope > .hero > .help-button');
+        // …and the way the page itself decides where the button goes (installHelpButtonsUnsafely): a page may
+        // name its own anchor, owned by THIS section, and then the button is there and not in the header —
+        // Security's sits beside the authenticator card's badge since 2026-09-06.
+        const anchor = active ? [...active.querySelectorAll('[data-help-anchor]')].find((node) => node.closest('.view,.settings-section,.settings-sub') === active) : null;
+        const button = anchor ? anchor.querySelector('.help-button') : active?.querySelector(':scope > .section-header > .help-button, :scope > .hero > .help-button');
         if (!button) return { present: false, text: '', opened: false, expanded: false, visible: false, installError: document.body.dataset.helpError ?? null };
         button.click();
         const panel = document.querySelector('#pageHelp');
