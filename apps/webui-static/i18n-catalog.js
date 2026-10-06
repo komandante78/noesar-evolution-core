@@ -765,6 +765,8 @@ export const RUNTIME_ONLY = Object.freeze([
   '(shortened)',
   'In this chat:',
   'Show in chat',
+  'This account is still using the default password.',
+  'Change it now',
 ]);
 
 const it = {
@@ -2515,6 +2517,8 @@ const it = {
   '(shortened)': '(accorciato)',
   'In this chat:': 'In questa chat:',
   'Show in chat': 'Mostra nella chat',
+  'This account is still using the default password.': 'Questo account usa ancora la password predefinita, uguale per tutti.',
+  'Change it now': 'Cambiala ora',
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

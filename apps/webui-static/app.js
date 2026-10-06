@@ -956,7 +956,16 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // non cambia password nelle impostazioni".
   let banner=$('#defaultPasswordBanner');
   if(currentUser?.mustChangePassword){
-    if(!banner){banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.setAttribute('role','alert');banner.style.cssText='position:sticky;top:0;z-index:9999;background:#b45309;color:#fff;padding:.6rem 1rem;text-align:center;font-weight:600;';banner.innerHTML='This account is still using the default password. <a href="#settings">Change it in Settings</a> now.';banner.querySelector('a').style.cssText='color:#fff;text-decoration:underline;';document.body.prepend(banner);}
+    if(!banner){
+      banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.setAttribute('role','alert');
+      banner.style.cssText='position:sticky;top:0;z-index:9999;background:#b45309;color:#fff;padding:.6rem 1rem;text-align:center;font-weight:600;';
+      // The first thing a person sees after the installer's own sign-in, so in their language, and the link goes to
+      // the form: "#settings" alone opened Sessions, sixteen sections away from the password.
+      const link=document.createElement('a');link.href='#settings/security';link.textContent=t('Change it now');
+      link.style.cssText='color:#fff;text-decoration:underline;';
+      banner.append(`${t('This account is still using the default password.')} `,link);
+      document.body.prepend(banner);
+    }
   }else if(banner){banner.remove();}
   // The router runs at boot, before the role is known, so every gated route resolved to
   // access-denied on a cold deep link — including for the Owner. Re-apply the nav and
@@ -2812,6 +2821,10 @@ $('#securityPasswordForm').addEventListener('submit',(event)=>{
         newPassword:$('#secNewPassword').value,revokeOtherSessions:$('#secRevokeOthers').checked,
       })});
       form.reset();$('#secRevokeOthers').checked=true;
+      // The server cleared "must change password" with this very call: the banner that says otherwise goes
+      // now, not at the next reload.
+      if(currentUser)currentUser.mustChangePassword=false;
+      $('#defaultPasswordBanner')?.remove();
       toast(`Password changed. ${result.revokedSessions??0} other session(s) signed out.`,{kind:'success'});
       await loadSecurity();
     }catch(error){reportError(error,'Change password');}

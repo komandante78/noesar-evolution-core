@@ -418,6 +418,50 @@ describe('the bottom strip counts what waits in the chat', () => {
   });
 });
 
+// A stranger who installs from the sources meets root/noesar, not a setup token: oci/Dockerfile, the
+// file deployment/docker/build.sh builds, does not set NOESAR_SETUP_TOKEN_FILE, and with no token the
+// server seeds that account. The first thing on the screen after signing in is then this banner, which
+// was in English only, sent the person to "Settings" (the Sessions list, sixteen sections from the
+// password), and stayed up after the password had been changed, until the next reload.
+describe('the default-password banner, for a person who has just signed in with the installer\'s account', () => {
+  const start = app.indexOf("let banner=$('#defaultPasswordBanner');");
+  const bannerCode = app.slice(start, app.indexOf('}else if(banner){banner.remove();}', start));
+  const changeCode = app.slice(app.indexOf("$('#securityPasswordForm').addEventListener('submit'"), app.indexOf('function renderMfaEnrolment('));
+
+  test('the banner code is found, and it builds its text and link with the DOM, not with markup', () => {
+    assert.ok(start > 0 && bannerCode.includes("banner.id='defaultPasswordBanner'"));
+    assert.ok(!/innerHTML/.test(bannerCode));
+  });
+
+  test('it says it in the person\'s language and links straight to the form that changes the password', () => {
+    assert.match(bannerCode, /t\('This account is still using the default password\.'\)/);
+    assert.match(bannerCode, /link\.href='#settings\/security'/);
+    assert.match(bannerCode, /link\.textContent=t\('Change it now'\)/);
+    assert.match(app, /security:'settings\/security'/, 'and that address is a route that exists');
+    assert.ok(html.includes('id="securityPasswordForm"'), 'with the form on that page');
+  });
+
+  test('a successful change takes the banner away at once, and the page stops believing the flag', () => {
+    assert.match(changeCode, /currentUser\.mustChangePassword=false;/);
+    assert.match(changeCode, /\$\('#defaultPasswordBanner'\)\?\.remove\(\);/);
+    assert.ok(changeCode.indexOf("#defaultPasswordBanner'")  > changeCode.indexOf('await api(') , 'only after the server said yes');
+    assert.ok(changeCode.indexOf("#defaultPasswordBanner'") < changeCode.indexOf("toast(`Password changed."), 'before the toast, so a failing toast cannot leave it up');
+  });
+
+  test('a failed change leaves the banner where it is (the removal is inside the try, after the call)', () => {
+    const tryStart = changeCode.indexOf('try{');
+    assert.ok(changeCode.indexOf("#defaultPasswordBanner'") > tryStart);
+    assert.ok(changeCode.indexOf('}catch(error){reportError(') > changeCode.indexOf("#defaultPasswordBanner'"));
+  });
+
+  test('the two phrases are declared runtime-only and translated', () => {
+    for (const phrase of ['This account is still using the default password.', 'Change it now']) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+});
+
 describe('connecting a model in plain words', () => {
   const start = app.indexOf('function wizardShow(state)');
   const end = app.indexOf('function initModelWizard()');
