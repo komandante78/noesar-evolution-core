@@ -4,6 +4,7 @@ import { PAGE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
+import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash } from './simple-mode.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
@@ -186,6 +187,11 @@ function readCsrfCookie(){
   return entry?decodeURIComponent(entry.slice('noesar_csrf='.length)):'';
 }
 let csrfToken=readCsrfCookie();let currentUser=null;let setupChallenge='';let loginChallenge='';let codenMode='NORMAL';let currentPathPlan=null;let activeRunId=null;let currentMode='ASK';
+// The simple interface is the default (simple-mode.js); the person can switch to the full one.
+const simpleOn=readSimple(localStorage);document.body.dataset.ui=simpleOn?'simple':'full';
+// A setup token carried in the fragment of the link the installer opens (`/#setup=…`) is taken out
+// of the address at once, before the router reads the hash as if it were a route.
+const setupLinkToken=setupTokenFromHash(location.hash);if(setupLinkToken)history.replaceState(null,'',location.pathname+location.search);
 // Reported by the server for this account's role, never derived here — restating the
 // permission matrix in the browser is one refactor away from disagreeing with the
 // server that enforces it.
@@ -458,7 +464,7 @@ function maySection(section){return allows(SECTION_ACCESS[section]);}
 function routeFromHash(){
   const raw=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
   const [first='',second='',third='']=raw.split('/').filter(Boolean);
-  if(!first)return{view:'home',section:'',place:''};
+  if(!first)return{view:simpleOn?'chat':'home',section:'',place:''};
   const legacy=LEGACY_ROUTES[first];
   if(legacy){const [lv,ls='']=legacy.split('/');return{view:lv,section:ls,place:'',redirected:true};}
   return{view:first,section:second,place:third};
@@ -682,8 +688,23 @@ function initRouter(){
   window.addEventListener('hashchange',goToHash);
   goToHash();
   initSidebarRank();
+  initSimpleUi();
   initContextPanelRank();
   initSettingsMenu();
+}
+// --- the simple interface (simple-mode.js) -----------------------------------
+// What the welcome chips and the two switches do. Everything visual is CSS keyed on
+// `body[data-ui]`; nothing here hides a control by script, so a test can read the rules.
+function setUi(simple){writeSimple(localStorage,simple);location.reload();}
+function initSimpleUi(){
+  $('#simpleToFull')?.addEventListener('click',()=>setUi(false));
+  $('#fullToSimple')?.addEventListener('click',()=>setUi(true));
+  $('#simpleNewChat')?.addEventListener('click',async()=>{await selectConversation(null);$('#chatInput')?.focus();});
+  // A chip is a sentence to start from, written into the box rather than sent: it is the
+  // person's turn to add the details. The text is the chip's own, already in their language.
+  $$('[data-simple-prompt]').forEach((chip)=>chip.addEventListener('click',()=>{const box=$('#chatInput');if(!box)return;box.value=chip.textContent.trim();box.focus();}));
+  // Choosing a destination closes the menu again, so the page stays clean.
+  if(simpleOn)$$('#sidebar .nav').forEach((item)=>item.addEventListener('click',()=>applySidebarRank('hidden')));
 }
 // --- rank of the sidebar: full · icons · away -------------------------------
 // `[` collapses one step and `]` expands one step. The choice is remembered, and a visible
@@ -693,7 +714,8 @@ function initRouter(){
 const SIDEBAR_RANKS=['hidden','icons','full'];
 const SIDEBAR_KEY='noesar.sidebar.rank';
 function readSidebarRank(){
-  try{const stored=localStorage.getItem(SIDEBAR_KEY);return SIDEBAR_RANKS.includes(stored)?stored:'full';}catch{return 'full';}
+  const fallback=simpleOn?'hidden':'full';
+  try{const stored=localStorage.getItem(SIDEBAR_KEY);return SIDEBAR_RANKS.includes(stored)?stored:fallback;}catch{return fallback;}
 }
 function applySidebarRank(rank){
   const shell=$('#appShell');if(!shell)return;
@@ -723,7 +745,9 @@ function initSidebarRank(){
   applySidebarRank(readSidebarRank());
   $('#sidebarRank')?.addEventListener('click',()=>{
     const current=$('#appShell')?.dataset.sidebar??'full';
-    applySidebarRank(SIDEBAR_RANKS[(SIDEBAR_RANKS.indexOf(current)+1)%SIDEBAR_RANKS.length]);
+    // The simple interface has one menu button with two states, open and closed; the three-step
+    // cycle (hidden, icons, full) stays for the full interface.
+    applySidebarRank(simpleOn?(current==='full'?'hidden':'full'):SIDEBAR_RANKS[(SIDEBAR_RANKS.indexOf(current)+1)%SIDEBAR_RANKS.length]);
   });
   window.addEventListener('keydown',(event)=>{
     if(event.ctrlKey||event.metaKey||event.altKey||isTyping(event.target))return;
@@ -858,7 +882,7 @@ function optionList(items,{empty='None',label=(item)=>item.name,value=(item)=>it
 // guessed from the page alone -- `location.protocol` would be right here only by coincidence,
 // and wrong the moment TLS is terminated in front of the product.
 function showTransportWarning(status){const box=$('#authTransportWarning');if(!box)return;if(status?.browserSignInPossible===false){box.classList.remove('hidden');const link=$('#authSecureLink');if(link&&status.secureAddress){link.href=status.secureAddress;link.textContent=status.secureAddress;link.classList.remove('hidden');}}else{box.classList.add('hidden');}}
-async function initializeAuth(){const status=await api('/api/v1/auth/status');showTransportWarning(status);if(!status.initialized){showOnly('#setupForm');$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
+async function initializeAuth(){const status=await api('/api/v1/auth/status');showTransportWarning(status);if(!status.initialized){showOnly('#setupForm');if(setupLinkToken)$('#setupToken').value=setupLinkToken;$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
 async function enterApplication(){$('#authGate').classList.add('hidden');$('#userAvatar').textContent=(currentUser?.displayName??currentUser?.username??'U').slice(0,1).toUpperCase();if(currentUser?.role!=='owner'){const bypass=$('[data-mode="OWNER_BYPASS"]');bypass.disabled=true;}
   // ponytail: fixed a persistent banner (not a dismissible toast) until the default
   // password is changed in Settings - the Owner's own words were "avviso fisso finche
@@ -1139,7 +1163,7 @@ $('#chatConversation').addEventListener('change',async(event)=>selectConversatio
 // forwards to `#newConversation` rather than repeating what it does, for the same reason.
 const EMPTY_CHAT_HTML=$('#messageList')?.innerHTML??'Create or select a conversation.';
 document.addEventListener('click',(event)=>{if(event.target.closest('[data-start-conversation]'))$('#newConversation')?.click();});
-async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#messageList').innerHTML=EMPTY_CHAT_HTML;return;}state.activeConversationId=id;const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?` · ${t('external')}`:` · ${t('local')}`}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();
+async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#view-chat')?.setAttribute('data-empty','');$('#messageList').innerHTML=EMPTY_CHAT_HTML;return;}state.activeConversationId=id;$('#view-chat')?.removeAttribute('data-empty');const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?` · ${t('external')}`:` · ${t('local')}`}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();
 // Point 4b: BEFORE `refreshMessages()`, deliberately — that call can throw, and everything
 // after it would then never run. The same ordering, for the same reason, that `loadChatNav()`
 // is given in `refreshWorkspace` (`D-0329`); the test asserts the order, not the presence.
@@ -1442,8 +1466,28 @@ function resolveToolActivity(row,data){
   row.querySelector('.tool-activity-state').textContent=data.ok?t('done'):`${t('not run')} — ${data.detail??t('failed')}`;
 }
 
+// Simple interface: typing is the whole gesture. A first message with no conversation open makes
+// the project (if there is none) and the conversation (titled by the message) by itself — the
+// "create or select a conversation" step that used to stand in front of the first word.
+async function ensureConversation(){
+  const first=$('#chatInput').value.trim();
+  if(!first)return false;
+  try{
+    if(!state.activeProjectId){
+      if(state.projects.length)state.activeProjectId=state.projects[0].id;
+      else{
+        const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:t('My things'),description:'',instructions:'',tags:[],knowledgePolicy:{mode:'hybrid',limit:8,maxCharacters:60000}})});
+        state.activeProjectId=project.id;
+      }
+    }
+    const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title:titleFromMessage(first),mode:inferChatMode(first),providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});
+    state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;
+    await refreshWorkspace();
+    return Boolean(state.activeConversationId);
+  }catch(error){setStatus(error.message,true);return false;}
+}
 async function sendChat({signal=null,onDelta=null}={}){
-  if(!state.activeConversationId){setStatus('Create a conversation first.',true);return '';}
+  if(!state.activeConversationId&&!(simpleOn&&await ensureConversation())){setStatus('Create a conversation first.',true);return '';}
   const content=$('#chatInput').value.trim();
   if(!content)return '';
   const providerId=$('#chatProvider').value||null;
@@ -1466,7 +1510,7 @@ async function sendChat({signal=null,onDelta=null}={}){
         content,
         providerId,
         model:$('#chatModel').value.trim(),
-        mode:currentMode
+        mode:simpleOn?inferChatMode(content):currentMode
       })
     });
     if(!response.ok){
@@ -1550,6 +1594,11 @@ async function sendChat({signal=null,onDelta=null}={}){
       throw error;
     }
     setStatus(error.message,true);
+    // Simple interface: a first visit has to SEE that it failed — the status line is a thin
+    // strip at the bottom — and must not lose what it wrote when nothing was answered.
+    // The server's own sentence for "no model" is English and talks about modes; the person is told
+    // in the words the welcome already uses (and the server's sentence stays in the status line).
+    if(simpleOn){if(!assistantText)$('#chatInput').value=content;toast(/No enabled model provider/i.test(error.message)?t('NOESAR needs a model to answer.'):error.message,{kind:'error'});}
     return assistantText;
   }finally{
     activeRunId=null;
@@ -6432,6 +6481,9 @@ async function refreshCodenModelChip(){
   try{
     const active=await api('/api/v1/models/active');
     const loaded=active?.state==='loaded'?(active.id||'loaded'):null;
+    // The simple interface says so plainly, above the box, for as long as nothing can answer: no
+    // model, no reply, and a chat that never explains why is where a first visit ends.
+    $('#simpleNoModel')?.classList.toggle('hidden',Boolean(loaded)||!simpleOn);
     write(loaded??(active?.state==='unreachable'?'unreachable'
       :active?.state==='none-served'?'no model served':'none configured'),
       loaded?shortModelName(loaded):t('none'));

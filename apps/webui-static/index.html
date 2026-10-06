@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/vendor/xterm/xterm.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body data-ui="simple">
   <div class="auth-gate" id="authGate">
     <section class="auth-card" aria-labelledby="authTitle">
       <div class="auth-brand"><span class="brand-mark">N</span><b>NOESAR Evolution</b></div>
@@ -27,6 +27,7 @@
       </div>
       <form id="setupForm" class="auth-form hidden">
         <label>One-time setup token<input id="setupToken" type="password" autocomplete="one-time-code" required></label>
+        <p class="hint">The installer prints this token. It is also in the file config/first-owner-setup.token inside your data folder.</p>
         <label>Owner username<input id="setupUsername" autocomplete="username" value="owner" required></label>
         <label>Display name<input id="setupDisplayName" value="Owner" required></label>
         <label>Strong passphrase<input id="setupPassword" type="password" autocomplete="new-password" minlength="16" required></label>
@@ -39,6 +40,7 @@
              mid-setup: «non mostra nessun qrcode». -->
         <div class="notice">
           <b>Scan this with your authenticator app</b>
+          <p>Open any authenticator app, choose Add, then scan this code.</p>
           <div id="setupQr"></div>
           <p>No camera on this device? Type this secret into the app by hand instead:</p>
           <code id="setupTotpSecret" translate="no"></code>
@@ -107,7 +109,7 @@
   <div class="app-shell" id="appShell" data-sidebar="full" data-panel="hidden">
     <header class="topbar">
       <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong><span>Evolution</span></div>
-      <button class="chip rank-control" id="sidebarRank" type="button" aria-controls="sidebar" aria-expanded="true" title="Sidebar: full · icons · hidden — [ collapses, ] expands">☰ <span id="sidebarRankLabel">Sidebar: full</span></button>
+      <button class="chip rank-control" id="sidebarRank" type="button" aria-controls="sidebar" aria-expanded="true" title="Sidebar: full · icons · hidden — [ collapses, ] expands">☰ <span id="sidebarRankLabel">Sidebar: full</span><span class="simple-only">Menu</span></button>
       <!-- One box, two answers: an address to go to, and what the search finds inside the
            addresses. `/` and Ctrl K both open it. The overlay palette this replaces would
            have been a second navigation widget standing beside a box that already existed,
@@ -173,6 +175,10 @@
         <button class="nav" data-view="settings">⚙ <span>Settings</span><span class="nav-count hidden" id="navApprovalCount">0</span></button>
         <div id="navModules"></div>
       </nav>
+      <div class="sidebar-foot">
+        <button type="button" class="text-button simple-only" id="simpleToFull">Full interface</button>
+        <button type="button" class="text-button advanced-only" id="fullToSimple">Simple view</button>
+      </div>
     </aside>
 
     <main class="main" id="mainContent" tabindex="-1">
@@ -258,7 +264,7 @@
         </div>
       </section>
 
-      <section class="view" id="view-chat">
+      <section class="view" id="view-chat" data-empty>
         <div class="section-header compact"><h1 class="visually-hidden">AI Workspace</h1></div>
         <!-- §4#3, OWNER_REVIEW_2026-08-21, REOPENED by the Owner 2026-08-24: «un menu per
              software per bambini». The previous answer (`D-0641`) kept all ten controls on
@@ -287,6 +293,7 @@
             <label class="chat-chip"><span class="visually-hidden">Branch</span><select id="chatBranch" title="Branches let you try an approach without changing the conversation everyone else sees"></select></label>
             <label class="chat-chip"><span class="visually-hidden">Provider / route</span><select id="chatProvider" title="Which external or local AI service answers this conversation"></select></label>
           </div>
+          <button type="button" class="secondary simple-only" id="simpleNewChat">＋ New conversation</button>
           <div class="chat-more">
             <button id="chatMore" class="secondary" type="button" aria-expanded="false" aria-controls="chatMoreMenu" aria-label="More conversation actions" title="More conversation actions">⋯</button>
             <div class="chat-more-menu hidden" id="chatMoreMenu" role="group" aria-labelledby="chatMore">
@@ -305,7 +312,22 @@
         </div>
         <div class="chat-grid">
           <section class="panel chat-panel">
+            <div class="simple-welcome" id="simpleWelcome">
+              <h2>What do you want to do?</h2>
+              <p>Write it in the box below. NOESAR shows you what will change before it changes anything.</p>
+              <div class="simple-chips">
+                <button type="button" class="secondary" data-simple-prompt>Merge PDF files into one</button>
+                <button type="button" class="secondary" data-simple-prompt>Summarize a document</button>
+                <button type="button" class="secondary" data-simple-prompt>Research a topic and write a short brief</button>
+                <button type="button" class="secondary" data-simple-prompt>Tidy up a folder</button>
+              </div>
+            </div>
             <div id="messageList" class="messages empty-state">Create or select a conversation. <button type="button" class="secondary" data-start-conversation>＋ New conversation</button></div>
+            <div class="notice hidden" id="simpleNoModel" role="status">
+              <b>NOESAR needs a model to answer.</b>
+              <p>It can run on this computer, or be a service you choose.</p>
+              <button type="button" class="primary" data-view-link="providers">Connect a model</button>
+            </div>
             <div class="composer chat-composer">
               <div class="composer-commands hidden" id="chatCommands" role="listbox" aria-label="Slash commands"></div>
               <textarea id="chatInput" placeholder="Ask, or type / for commands…" aria-describedby="chatCommands"></textarea>

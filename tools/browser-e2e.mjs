@@ -237,6 +237,11 @@ const page = await browser.newPage();
 // and can land the click on the sticky top bar instead, which presents as a button that
 // silently does nothing — indistinguishable from the defect this suite hunts.
 await page.setViewport({ width: 1440, height: 900 });
+// The simple interface is the default for a first visit (simple-mode.js), so this page holds
+// itself on the full one: every step below was written against the controls the full interface
+// shows. The simple interface has a section of its own at the end, on a page that starts as a
+// first visit does, with nothing stored.
+await page.evaluateOnNewDocument(() => { try { localStorage.setItem('noesar.ui.simple', '0'); } catch { /* none */ } });
 
 // Everything the page complains about is collected. A console error or a failed request
 // is a finding even when the visible outcome looked correct.
@@ -628,9 +633,18 @@ const openLiveTerminal = async () => {
 try {
   at('bootstrap');
   // --- bootstrap the throwaway Owner through the real forms ----------------
-  await gotoIdle(BASE);
+  // The installer opens the address with the token in the FRAGMENT (`/#setup=…`): it has to fill
+  // the field and leave the address, so that nothing sensitive stays in the bar or the history.
+  await gotoIdle(`${BASE}/#setup=${SETUP_TOKEN}`);
   await page.waitForSelector('#setupForm:not(.hidden)', { timeout: 20000 });
-  await page.type('#setupToken', SETUP_TOKEN);
+  const linked = await page.evaluate(() => ({
+    length: document.querySelector('#setupToken').value.length,
+    hash: location.hash,
+    hint: Boolean(document.querySelector('#setupForm .hint')),
+  }));
+  check('a setup token in the link fragment fills its field and leaves the address',
+    linked.length === SETUP_TOKEN.length && linked.hash === '' && linked.hint, JSON.stringify(linked));
+  if (linked.length !== SETUP_TOKEN.length) await page.type('#setupToken', SETUP_TOKEN);
   await page.$eval('#setupUsername', (node) => { node.value = ''; });
   await page.type('#setupUsername', USERNAME);
   await page.$eval('#setupDisplayName', (node) => { node.value = ''; });
@@ -4540,6 +4554,143 @@ try {
   }));
   check('an allowed page still works for a restricted role',
     restrictedSecurity.rendered && /user/.test(restrictedSecurity.role));
+
+  at('simple interface');
+  // --- the simple interface (simple-mode.js): what a first visit sees --------------------
+  // Measured on a clean installation on 2026-10-06: twelve destinations, about twenty controls in
+  // the chat, a mode to pick by hand, and a chat that took no word until a conversation had been
+  // created and titled. A second page, in the same signed-in browser, that starts as a first visit
+  // does — nothing stored. (Signed in as the restricted account the run ends on: a first visit
+  // must work for a person who can only chat, not only for the owner.)
+  const simple = await browser.newPage();
+  await simple.setViewport({ width: 1440, height: 900 });
+  const simpleErrors = [];
+  simple.on('pageerror', (error) => simpleErrors.push(error.message));
+  // Everything stored is cleared, once per page — not once per document: the switch to the full
+  // interface reloads, and an init script that cleared the choice on every load would undo it.
+  // All of it, not only the interface choice: the pages above left the sidebar open and a
+  // conversation selected, and a first visit has neither.
+  await simple.evaluateOnNewDocument(() => {
+    try {
+      if (!sessionStorage.getItem('e2e-simple-init')) {
+        localStorage.clear();
+        sessionStorage.setItem('e2e-simple-init', '1');
+      }
+    } catch { /* none */ }
+  });
+  await simple.goto(`${BASE}/`, { waitUntil: 'networkidle2' });
+  await simple.waitForSelector('#authGate.hidden', { timeout: 25000 });
+  // A first visit has no conversation; this run does (the steps above made several, and the page
+  // resumes one). Starting a new one is the same screen a first visit lands on.
+  await simple.evaluate(() => { document.querySelector('#simpleNewChat').click(); });
+  await simple.waitForFunction(() => document.querySelector('#view-chat').hasAttribute('data-empty'), { timeout: 10000 });
+  const firstVisit = await simple.evaluate(() => {
+    const shown = (sel) => {
+      const node = document.querySelector(sel);
+      if (!node) return false;
+      const box = node.getBoundingClientRect();
+      return getComputedStyle(node).display !== 'none' && box.width > 0 && box.height > 0;
+    };
+    return {
+      ui: document.body.dataset.ui,
+      view: document.querySelector('.view.active')?.id,
+      sidebar: document.querySelector('#appShell').dataset.sidebar,
+      menu: shown('#sidebarRank') && /Menu/.test(document.querySelector('#sidebarRank').innerText),
+      welcome: shown('#simpleWelcome'),
+      chips: document.querySelectorAll('[data-simple-prompt]').length,
+      stillShown: ['.topbar .command', '#timezoneChip', '#projectChip', '#modelChip', '#coverageChip', '#panelRank',
+        '.language-picker', '#chatModes', '#view-chat .chat-crumb', '#view-chat .chat-chips', '#view-chat .chat-more',
+        '#chatWorkPanel', '#chatContextSummary'].filter(shown),
+      kept: {
+        input: shown('#chatInput'), send: shown('#sendMessage'), approvals: shown('#approvalStripOpen'),
+        signOut: shown('#logoutButton'), newChat: shown('#simpleNewChat'),
+      },
+    };
+  });
+  check('a first visit opens the simple interface, on the chat',
+    firstVisit.ui === 'simple' && firstVisit.view === 'view-chat', JSON.stringify(firstVisit));
+  check('the menu is one button and the sidebar starts closed',
+    firstVisit.menu && firstVisit.sidebar === 'hidden', JSON.stringify(firstVisit));
+  check('the chat opens on a welcome with suggestions', firstVisit.welcome && firstVisit.chips >= 3, JSON.stringify(firstVisit));
+  check('nothing a first visit does not need is on screen', firstVisit.stillShown.length === 0, firstVisit.stillShown.join(', '));
+  check('what a person needs stays on screen: the box, send, the approval strip, sign out, a new conversation',
+    Object.values(firstVisit.kept).every(Boolean), JSON.stringify(firstVisit.kept));
+
+  // The menu: one button, and it keeps to the four destinations — fewer for a role that may not
+  // open them all — and closes again once one is chosen.
+  await simple.evaluate(() => { document.querySelector('#sidebarRank').click(); });
+  const menuOpen = await simple.evaluate(() => ({
+    rank: document.querySelector('#appShell').dataset.sidebar,
+    destinations: [...document.querySelectorAll('#sidebar .nav')]
+      .filter((node) => getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().height > 0)
+      .map((node) => node.dataset.view),
+    fullSwitch: getComputedStyle(document.querySelector('#simpleToFull')).display !== 'none',
+  }));
+  check('the menu opens on the destinations a first visit needs, and offers the full interface',
+    menuOpen.rank === 'full' && menuOpen.destinations.includes('chat')
+      && menuOpen.destinations.every((view) => ['chat', 'projects', 'documents', 'settings'].includes(view))
+      && menuOpen.fullSwitch, JSON.stringify(menuOpen));
+  await simple.evaluate(() => { document.querySelector('#sidebar .nav[data-view="settings"]').click(); });
+  const afterChoice = await simple.evaluate(() => ({
+    rank: document.querySelector('#appShell').dataset.sidebar,
+    view: document.querySelector('.view.active')?.id,
+  }));
+  check('choosing a destination closes the menu again', afterChoice.rank === 'hidden' && afterChoice.view !== 'view-chat',
+    JSON.stringify(afterChoice));
+
+  // The first word: no conversation to create, none to title.
+  await simple.evaluate(() => { location.hash = '#/chat'; });
+  await simple.waitForFunction(() => document.querySelector('.view.active')?.id === 'view-chat', { timeout: 10000 });
+  await simple.evaluate(() => { document.querySelector('#simpleNewChat').click(); });
+  await simple.waitForFunction(() => document.querySelector('#view-chat').hasAttribute('data-empty'), { timeout: 10000 });
+  const suggestion = await simple.evaluate(() => {
+    const chip = document.querySelector('[data-simple-prompt]');
+    chip.click();
+    return { chip: chip.textContent.trim(), box: document.querySelector('#chatInput').value, focused: document.activeElement?.id };
+  });
+  check('a suggestion is written into the box, and the box takes the focus',
+    suggestion.box === suggestion.chip && suggestion.focused === 'chatInput', JSON.stringify(suggestion));
+  const countChats = () => simple.evaluate(async () => {
+    const response = await fetch('/api/v1/sessions?place=active', { credentials: 'same-origin' });
+    return (await response.json()).items.map((item) => ({ title: item.title, mode: item.mode }));
+  });
+  const chatsBefore = await countChats();
+  await simple.evaluate(() => { document.querySelector('#sendMessage').click(); });
+  await simple.waitForFunction(() => !document.querySelector('#view-chat').hasAttribute('data-empty'), { timeout: 20000 });
+  const chatsAfter = await countChats();
+  const born = chatsAfter.find((item) => item.title === suggestion.chip);
+  check('a first message with no conversation open creates one, titled by the message',
+    chatsAfter.length === chatsBefore.length + 1 && Boolean(born), JSON.stringify({ before: chatsBefore.length, after: chatsAfter.length, born }));
+  check('and the mode is read from the message — "merge" is an action', born?.mode === 'ACT', JSON.stringify(born));
+  const answered = await simple.waitForFunction(
+    () => document.querySelector('#toastHost .toast-error') || document.querySelector('#messageList .message.assistant'),
+    { timeout: 25000 },
+  ).then(() => true, () => false);
+  const outcome = await simple.evaluate(() => ({
+    boxBack: document.querySelector('#chatInput').value,
+    alerts: [...document.querySelectorAll('#toastHost .toast-error')].map((node) => node.textContent.trim()),
+    replies: document.querySelectorAll('#messageList .message.assistant').length,
+  }));
+  check('when nothing can answer, the message comes back to the box and the error is an alert',
+    answered && (outcome.replies > 0 || (outcome.boxBack.length > 0 && outcome.alerts.length > 0)), JSON.stringify(outcome));
+
+  // The other way: the full interface is one button away and brings every destination back.
+  await simple.evaluate(() => { document.querySelector('#sidebarRank').click(); });
+  await Promise.all([
+    simple.waitForNavigation({ waitUntil: 'networkidle2' }),
+    simple.evaluate(() => { document.querySelector('#simpleToFull').click(); }),
+  ]);
+  await simple.waitForSelector('#authGate.hidden', { timeout: 25000 });
+  const fullAgain = await simple.evaluate(() => ({
+    ui: document.body.dataset.ui,
+    destinations: [...document.querySelectorAll('#sidebar .nav')]
+      .filter((node) => getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().height > 0).length,
+    switchBack: getComputedStyle(document.querySelector('#fullToSimple')).display !== 'none',
+  }));
+  check('the full interface is one button away and keeps every destination',
+    fullAgain.ui === 'full' && fullAgain.destinations > 4 && fullAgain.switchBack, JSON.stringify(fullAgain));
+  check('the simple interface raised no script error', simpleErrors.length === 0, simpleErrors.slice(0, 3).join(' | '));
+  await simple.close();
 } catch (error) {
   let context = '';
   try {

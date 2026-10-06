@@ -735,6 +735,9 @@ export const RUNTIME_ONLY = Object.freeze([
   'unhealthy',
   'degraded',
   'safe-mode',
+  // The simple interface (Owner, 2026-10-06): the project a first message creates when there is
+  // none is named by `ensureConversation()` in app.js, so the name appears in no markup.
+  'My things',
 ]);
 
 const it = {
@@ -2430,6 +2433,21 @@ const it = {
   'not worked out for this model': 'non calcolato per questo modello',
   'Saved. It takes effect the next time this model starts.': 'Salvato. Ha effetto al prossimo avvio di questo modello.',
   'This placement could not be saved:': 'Questa collocazione non è stata salvata:',
+  // The simple interface (Owner, 2026-10-06).
+  'What do you want to do?': 'Cosa vuoi fare?',
+  'Write it in the box below. NOESAR shows you what will change before it changes anything.': 'Scrivilo nella casella qui sotto. NOESAR ti mostra cosa cambierà prima di cambiare qualsiasi cosa.',
+  'Merge PDF files into one': 'Unisci dei file PDF in uno solo',
+  'Summarize a document': 'Riassumi un documento',
+  'Research a topic and write a short brief': 'Cerca informazioni su un argomento e scrivi una scheda breve',
+  'Tidy up a folder': 'Riordina una cartella',
+  'NOESAR needs a model to answer.': 'A NOESAR serve un modello per rispondere.',
+  'It can run on this computer, or be a service you choose.': 'Può girare su questo computer, oppure essere un servizio che scegli tu.',
+  'Connect a model': 'Collega un modello',
+  'Full interface': 'Interfaccia completa',
+  'Simple view': 'Vista semplice',
+  'The installer prints this token. It is also in the file config/first-owner-setup.token inside your data folder.': 'L’installatore mostra questo token. Lo trovi anche nel file config/first-owner-setup.token dentro la cartella dei dati.',
+  'Open any authenticator app, choose Add, then scan this code.': 'Apri un’app di autenticazione qualsiasi, scegli Aggiungi e inquadra questo codice.',
+  'My things': 'Le mie cose',
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

@@ -1783,3 +1783,42 @@ button.armed{border-color:var(--red);color:var(--red)}
 /* La riga di attesa mentre un modello si carica: minuti, non un istante. Distinta dalla nota di
    rifiuto che le sta accanto, perche "sto lavorando" e "ho fallito" non devono somigliarsi. */
 .model-row-waiting{color:var(--text-strong);font-size:calc(var(--text-scale)*13px);font-weight:600;margin:6px 0 0;padding:6px 10px;background:var(--accent-wash);border-radius:6px}
+
+/* ── The simple interface (simple-mode.js), 2026-10-06 ─────────────────────────────────────
+   Keyed on body[data-ui]. Simple is the default; the full interface is one button away, at the
+   foot of the sidebar. Everything hidden here is hidden by a rule a test can read — and the
+   approval strip is NOT among them: someone who has never used an AI is the person who most
+   needs to see that something is waiting for their decision. */
+.simple-only{display:none}
+body[data-ui=simple] .simple-only{display:revert}
+body[data-ui=simple] .advanced-only{display:none}
+/* the top bar keeps a menu button, the name, the privacy state and the account */
+body[data-ui=simple] .topbar .command,
+body[data-ui=simple] .top-actions .language-picker,
+body[data-ui=simple] #timezoneChip,
+body[data-ui=simple] #projectChip,
+body[data-ui=simple] #modelChip,
+body[data-ui=simple] #coverageChip,
+body[data-ui=simple] #panelRank,
+body[data-ui=simple] #sidebarRankLabel{display:none}
+/* the sidebar keeps the four destinations a first visit needs; the rest is the full interface */
+body[data-ui=simple] #sidebar .nav:not([data-view=chat]):not([data-view=projects]):not([data-view=documents]):not([data-view=settings]),
+body[data-ui=simple] #navModules{display:none}
+.sidebar-foot{padding:10px 12px}
+/* the chat: no project, conversation, mode, branch or route to choose before the first word */
+body[data-ui=simple] #view-chat .chat-crumb,
+body[data-ui=simple] #chatModes,
+body[data-ui=simple] #view-chat .chat-chips,
+body[data-ui=simple] #view-chat .chat-more,
+body[data-ui=simple] #chatContextSummary,
+body[data-ui=simple] #inspectContext,
+body[data-ui=simple] #chatWorkPanel{display:none}
+body[data-ui=simple] #view-chat .chat-grid{grid-template-columns:minmax(0,1fr)}
+body[data-ui=simple] #view-chat .chat-toolbar>#simpleNewChat{margin-inline-start:auto}
+.simple-welcome{display:none}
+body[data-ui=simple] #view-chat[data-empty] .simple-welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:48px 16px;flex:1}
+body[data-ui=simple] #view-chat[data-empty] #messageList{display:none}
+.simple-welcome h2{margin:0;font-size:calc(var(--text-scale)*26px)}
+.simple-welcome p{margin:0;color:var(--muted)}
+.simple-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:640px}
+.simple-welcome .notice{max-width:480px;text-align:start}
