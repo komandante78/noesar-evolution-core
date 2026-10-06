@@ -1658,7 +1658,13 @@ async function sendChat({signal=null,onDelta=null}={}){
         content,
         providerId,
         model:$('#chatModel').value.trim(),
-        mode:simpleOn?inferChatMode(content):currentMode
+        mode:simpleOn?inferChatMode(content):currentMode,
+        // The register follows the interface the person chose: the simple one speaks to someone who is
+        // not an engineer, the full one keeps the engineer's.
+        audience:simpleOn?'everyday':'operator',
+        // What the page is shown in, so a small model is told the language instead of guessing it
+        // from one short message (a 7B answered an Italian request in Chinese).
+        language:document.documentElement.lang||''
       })
     });
     if(!response.ok){

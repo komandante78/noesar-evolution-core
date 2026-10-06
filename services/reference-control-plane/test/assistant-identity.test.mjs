@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:http';
 import {
   composeSystemPrompt, describeInstallation, describeCapabilities, instructionForMode,
-  installationFromState, CONVERSATION_STYLE,
+  installationFromState, CONVERSATION_STYLE, everydayStyle, languageLine,
 } from '../src/ai-workspace/assistant-identity.mjs';
 import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
 import { ContextGraph } from '../src/ai-workspace/context-graph.mjs';
@@ -21,6 +21,7 @@ import { WorkspaceService } from '../src/ai-workspace/workspace-service.mjs';
 import { ProviderGateway } from '../src/ai-workspace/provider-gateway.mjs';
 import { CredentialVault } from '../src/ai-workspace/credential-vault.mjs';
 import { ChatOrchestrator } from '../src/ai-workspace/chat-orchestrator.mjs';
+import { AGENT_DIRECTIVE_INSTRUCTION } from '../src/ai-workspace/agent-directive.mjs';
 import { freshTempDir } from './support/workspace.mjs';
 
 test('the assistant is told what product it is inside, not left to guess', () => {
@@ -258,4 +259,178 @@ test('the composed identity actually reaches the provider, and reflects live sta
   assert.match(system, /model phi-4 via Local, running inside this installation/);
   assert.match(system, /You have no tools enabled/, 'this fixture registers no tools');
   assert.doesNotMatch(system, /source:/, 'no evidence was retrieved, so nothing should ask for citations');
+});
+
+/* ---- the register for a person who is not an engineer (the simple interface), 2026-10-06 ----
+ *
+ * Measured against a real 7B model, asked the four things the welcome screen suggests, with the
+ * engineer's register: "what can you do here?" came back as a developer tool ("scan the workspace
+ * for programming languages, entry points and symbols"), and "write an email to my accountant" came
+ * back as "I do not have the ability to write emails, can you give me the details?". The register
+ * is chosen by the page (`audience`), and the operator's own register is what every request that
+ * names no audience still gets, byte for byte.
+ */
+test('the engineer register is what a request that names no audience gets, unchanged', () => {
+  const args = { installation: { productName: 'NOESAR Evolution' }, tools: [{ name: 'engine_status', description: 'x' }] };
+  const none = composeSystemPrompt(args);
+  assert.equal(composeSystemPrompt({ ...args, audience: 'operator' }), none);
+  assert.ok(none.includes(CONVERSATION_STYLE), 'the whole engineer style block, as it always was');
+  assert.match(none, /as an engineer speaks to another engineer/);
+  assert.doesNotMatch(none, /not a programmer/);
+});
+
+test('for an everyday person the engineer line is replaced, not stacked on, and the common rules stay', () => {
+  const prompt = composeSystemPrompt({ installation: {}, tools: [{ name: 'engine_status', description: 'x' }], audience: 'everyday' });
+  assert.doesNotMatch(prompt, /engineer speaks to another engineer/, 'two audiences named in one prompt is how a small model writes for the wrong one');
+  assert.match(prompt, /not a programmer and may never have used an AI/);
+  assert.match(prompt, /Reply in the language the person used/, 'the shared rules are still there');
+  assert.match(prompt, /never invent a file, a setting, a command, a path or a result/i);
+});
+
+test('it is told to write the draft, not to interview the person, and not to recite tool names', () => {
+  const style = everydayStyle({ tools: [] });
+  assert.match(style, /write a complete first draft right away/);
+  assert.match(style, /ask at most one short question/);
+  assert.match(style, /Never answer "I cannot write that"/);
+  assert.match(style, /Never recite the names of your tools/);
+  assert.match(style, /Keep answers short/);
+});
+
+test('what the product cannot do is DERIVED from the tools offered: the sentence goes away when a file tool exists', () => {
+  const without = everydayStyle({ tools: [{ name: 'engine_status' }, { name: 'engine_workspace_plan' }] });
+  assert.match(without, /cannot yet join PDFs, convert files from one format to another, or sort and move/);
+  assert.match(everydayStyle(), /cannot yet join PDFs/, 'no tools at all is the same case');
+  const withFiles = everydayStyle({ tools: [{ name: 'engine_files_merge' }] });
+  assert.doesNotMatch(withFiles, /cannot yet join PDFs/);
+  // a tool that merely mentions files in its name elsewhere is not a file tool
+  assert.match(everydayStyle({ tools: [{ name: 'engine_workspace_files' }] }), /cannot yet join PDFs/);
+});
+
+test('on the wire: the page asks for the everyday register, anything else gets the operator one', async () => {
+  const upstream = await scriptedUpstream();
+  const dir = freshTempDir('noesar-audience-');
+  const store = new AtomicJsonStore(join(dir, 'state.json'));
+  const graph = new ContextGraph(store);
+  const workspace = new WorkspaceService({ store, graph });
+  const vault = new CredentialVault({ keyPath: join(dir, 'p.key') });
+  const ledger = { entries: [], append(entry) { this.entries.push(entry); } };
+  const providers = new ProviderGateway({ store, vault, ledger });
+  const orchestrator = new ChatOrchestrator({ graph, workspace, providers, store, ledger, installationSnapshot: () => ({ productName: 'NOESAR Evolution' }) });
+  const project = graph.createProject({ name: 'P', instructions: '' });
+  const { conversation } = graph.createConversation({ projectId: project.id, title: 'c', mode: 'ASK' });
+  const profile = providers.create({ type: 'custom-openai-compatible', name: 'scripted', external: false, apiStyle: 'openai-chat', baseUrl: `http://127.0.0.1:${upstream.port}/v1`, defaultModel: 'x' });
+  providers.update(profile.id, { enabled: true });
+  const ask = (extra) => orchestrator.streamToResponse({ res: fakeResponse(), actorId: 'u', conversationId: conversation.id, content: 'ciao', providerId: profile.id, ...extra });
+
+  await ask({ audience: 'everyday' });
+  await ask({});
+  await ask({ audience: 'wizard' });
+  await ask({ audience: ['everyday'] });
+  upstream.server.close();
+
+  const systems = upstream.seen.map((request) => request.messages.find((m) => m.role === 'system').content);
+  assert.equal(systems.length, 4);
+  assert.match(systems[0], /not a programmer/);
+  assert.doesNotMatch(systems[0], /engineer speaks to another engineer/);
+  for (const operator of systems.slice(1)) {
+    assert.match(operator, /engineer speaks to another engineer/, 'no audience, an unknown one, or a non-string all get the operator register');
+    assert.doesNotMatch(operator, /not a programmer/);
+  }
+});
+
+/* ---- the language, said out loud; and no tool schemas for someone who only asked to write ---- */
+
+test('the interface language becomes a sentence that names it, and only a plain language tag does', () => {
+  assert.match(languageLine('it'), /The person's interface is set to Italian\. Reply in Italian unless/);
+  assert.match(languageLine('it-IT'), /set to Italian/);
+  assert.match(languageLine('pt-BR'), /set to (Brazilian )?Portuguese/, 'the regional name, whichever way ICU spells it');
+  assert.match(languageLine('en'), /set to English/);
+  assert.match(languageLine('it'), /never switch language in the middle of an answer/);
+  // plain tags only: a longer tag Intl would happily describe ("Italian (Latin, Italy)") is ignored, not echoed
+  assert.equal(languageLine('it-Latn-IT'), '');
+  // it comes from the client: markup, numbers, names and tags Intl cannot name produce nothing at all
+  for (const bad of ['', ' ', '<script>', 'italiano', 'it;rm -rf', 'i', 'xx', 123, null, undefined, ['it'], { lang: 'it' }]) {
+    assert.equal(languageLine(bad), '', JSON.stringify(bad));
+  }
+});
+
+test('the language sentence is in the prompt when given, and the prompt is unchanged when it is not', () => {
+  const base = { installation: { productName: 'NOESAR Evolution' } };
+  assert.equal(composeSystemPrompt({ ...base, language: '' }), composeSystemPrompt(base));
+  assert.equal(composeSystemPrompt({ ...base, language: '<b>' }), composeSystemPrompt(base));
+  const withIt = composeSystemPrompt({ ...base, language: 'it', audience: 'everyday' });
+  assert.match(withIt, /Reply in Italian/);
+  assert.ok(withIt.indexOf('Reply in Italian') > withIt.indexOf('Who you are talking to'), 'after the register, so it is the last word on how to answer');
+});
+
+test('on the wire: the language reaches the model, and an everyday request that asks for no action carries no tool schemas', async () => {
+  const upstream = await scriptedUpstream();
+  const dir = freshTempDir('noesar-quiet-');
+  const store = new AtomicJsonStore(join(dir, 'state.json'));
+  const graph = new ContextGraph(store);
+  const workspace = new WorkspaceService({ store, graph });
+  const vault = new CredentialVault({ keyPath: join(dir, 'p.key') });
+  const ledger = { entries: [], append(entry) { this.entries.push(entry); } };
+  const providers = new ProviderGateway({ store, vault, ledger });
+  const record = { id: 'tool-listProjects', name: 'listProjects', description: 'List projects', inputSchema: { type: 'object' }, disabled: false, external: false, transport: 'http', endpoint: 'http://127.0.0.1:1/', timeoutMs: 5000 };
+  store.transact((state) => { state.tools.push(record); return {}; });
+  const project = graph.createProject({ name: 'P', instructions: '', toolIds: [record.id] });
+  const { conversation } = graph.createConversation({ projectId: project.id, title: 'c', mode: 'ASK' });
+  const profile = providers.create({ type: 'custom-openai-compatible', name: 'scripted', external: false, apiStyle: 'openai-chat', baseUrl: `http://127.0.0.1:${upstream.port}/v1`, defaultModel: 'x' });
+  providers.update(profile.id, { enabled: true });
+  const orchestrator = new ChatOrchestrator({ graph, workspace, providers, store, ledger, installationSnapshot: () => ({ productName: 'NOESAR Evolution' }) });
+  const ask = (extra) => orchestrator.streamToResponse({ res: fakeResponse(), actorId: 'u', conversationId: conversation.id, content: 'ciao', providerId: profile.id, ...extra });
+
+  await ask({ audience: 'everyday', mode: 'CREATE', language: 'it' });   // 0: asked to write
+  await ask({ audience: 'everyday', mode: 'ASK', language: 'it' });      // 1: asked a question
+  await ask({ audience: 'everyday', mode: 'ACT', language: 'it' });      // 2: asked for an action
+  await ask({ mode: 'ASK' });                                            // 3: the operator, no audience
+  await ask({ audience: 'everyday', mode: 'CREATE', language: ['it'] }); // 4: a language that is not a string
+  upstream.server.close();
+
+  const [write, question, act, operator, odd] = upstream.seen;
+  const system = (request) => request.messages.find((m) => m.role === 'system').content;
+  const toolCount = (request) => (request.tools ?? []).length;
+  assert.equal(upstream.seen.length, 5);
+
+  assert.equal(toolCount(write), 0, 'asked to write: no tool schemas');
+  assert.equal(toolCount(question), 0, 'asked a question: none either');
+  assert.match(system(write), /You have no tools enabled/, 'and the prompt says so, so it does not promise to look anything up');
+  assert.match(system(write), /Reply in Italian/);
+  assert.doesNotMatch(system(write), /listProjects/, 'the tool is not named to someone who is not offered it');
+
+  assert.equal(toolCount(act), 1, 'asked for an action: the tool is offered');
+  assert.match(system(act), /listProjects/);
+
+  assert.equal(toolCount(operator), 1, 'the operator register keeps offering them, as before');
+  assert.doesNotMatch(system(operator), /interface is set to/);
+
+  assert.doesNotMatch(system(odd), /interface is set to/, 'a language that is not a string is ignored, not stringified');
+});
+
+test('on the wire: the agent-creation directive is not offered to someone who only asked to write or ask', async () => {
+  const upstream = await scriptedUpstream();
+  const dir = freshTempDir('noesar-agentdir-');
+  const store = new AtomicJsonStore(join(dir, 'state.json'));
+  const graph = new ContextGraph(store);
+  const workspace = new WorkspaceService({ store, graph });
+  const vault = new CredentialVault({ keyPath: join(dir, 'p.key') });
+  const ledger = { entries: [], append(entry) { this.entries.push(entry); } };
+  const providers = new ProviderGateway({ store, vault, ledger });
+  const project = graph.createProject({ name: 'P', instructions: '' });
+  const { conversation } = graph.createConversation({ projectId: project.id, title: 'c', mode: 'ASK' });
+  const profile = providers.create({ type: 'custom-openai-compatible', name: 'scripted', external: false, apiStyle: 'openai-chat', baseUrl: `http://127.0.0.1:${upstream.port}/v1`, defaultModel: 'x' });
+  providers.update(profile.id, { enabled: true });
+  // a real 7B, given this directive, answered "what can you do here?" with "I can also create a personalised agent for you"
+  const orchestrator = new ChatOrchestrator({ graph, workspace, providers, store, ledger, agentService: {}, installationSnapshot: () => ({ productName: 'NOESAR Evolution' }) });
+  const ask = (extra) => orchestrator.streamToResponse({ res: fakeResponse(), actorId: 'u', conversationId: conversation.id, content: 'ciao', providerId: profile.id, ...extra });
+  await ask({ audience: 'everyday', mode: 'ASK' });
+  await ask({ audience: 'everyday', mode: 'ACT' });
+  await ask({ mode: 'ASK' });
+  upstream.server.close();
+  const has = (request) => request.messages.find((m) => m.role === 'system').content.includes(AGENT_DIRECTIVE_INSTRUCTION);
+  assert.equal(upstream.seen.length, 3);
+  assert.equal(has(upstream.seen[0]), false, 'everyday, asked a question: not offered');
+  assert.equal(has(upstream.seen[1]), true, 'everyday, asked for an action: offered');
+  assert.equal(has(upstream.seen[2]), true, 'the operator register keeps it, as before');
 });

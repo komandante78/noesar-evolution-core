@@ -141,7 +141,7 @@ export function describeCapabilities(tools = []) {
 /** The register. This is the part that turns a general-purpose completion into a chat someone
  *  wants to keep talking to, and every line of it was written against a specific failure seen in
  *  the live message log rather than as generic prompt-craft. */
-export const CONVERSATION_STYLE = [
+const STYLE_COMMON = [
   'How to answer:',
   '- Answer the question that was actually asked, in your first sentence. No preamble, no restating the question back, no "great question".',
   '- Reply in the language the person used. If they write Italian, answer in Italian.',
@@ -150,8 +150,59 @@ export const CONVERSATION_STYLE = [
   '- Never invent a file, a setting, a command, a path or a result — and never invent a product name, a model number, a version or a price either. If you did not read it or run it, say so.',
   '- When you answer from a search, name the addresses you used and say that they are not verified: this installation does not vouch for what it fetched, and neither do you.',
   '- Match the length to the question. A one-line question gets a one-line answer.',
-  '- You are talking to the person who owns and runs this installation. Speak to them as an engineer speaks to another engineer, not as a manual speaks to a stranger.',
-].join('\n');
+];
+const ENGINEER_LINE = '- You are talking to the person who owns and runs this installation. Speak to them as an engineer speaks to another engineer, not as a manual speaks to a stranger.';
+export const CONVERSATION_STYLE = [...STYLE_COMMON, ENGINEER_LINE].join('\n');
+
+/**
+ * The language the page is shown in, as a sentence the model cannot read two ways.
+ *
+ * Measured on 2026-10-06 with a real 7B model: asked in Italian to write an email, with a system
+ * message written in English, it answered in CHINESE. "Reply in the language the person used" is
+ * true and was not enough, because to a small model a short Italian message is weak evidence next
+ * to a long English prompt. Naming the language, from what the page is actually set to, is.
+ *
+ * The code comes from the client, so it is never trusted as text: only a plain language tag
+ * (`it`, `pt-BR`) that `Intl.DisplayNames` can turn into an English name produces a sentence;
+ * anything else — markup, a number, an empty string, a tag it cannot name — produces nothing and
+ * the prompt is exactly what it was.
+ */
+export function languageLine(code) {
+  const tag = typeof code === 'string' ? code.trim() : '';
+  if (!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/i.test(tag)) return '';
+  let name = '';
+  try { name = new Intl.DisplayNames(['en'], { type: 'language' }).of(tag) ?? ''; } catch { return ''; }
+  if (!name || name.toLowerCase() === tag.toLowerCase()) return '';
+  return `The person's interface is set to ${name}. Reply in ${name} unless their message is clearly written in another language, and never switch language in the middle of an answer.`;
+}
+
+/**
+ * The register for a person who is not an engineer — the one the simple interface asks for.
+ *
+ * Measured on 2026-10-06 against a real 7B model, asked the four questions the welcome screen
+ * suggests: "what can you do here?" was answered as a developer tool ("scan the workspace for
+ * programming languages, entry points and symbols"), because the engineer line above told it who
+ * it was talking to and the tool list above that gave it the vocabulary; "write an email to my
+ * accountant" was answered "I do not have the ability to write emails, can you give me the
+ * details?", which is the opposite of what the person asked for. Nothing here is a new capability:
+ * it is who the assistant is told it is talking to, and the instruction to act on a request
+ * instead of interviewing the person about it.
+ *
+ * The one line that names something the product cannot do is DERIVED, not asserted — the module's
+ * own rule. It is present while no tool whose name starts `engine_files_` is offered, so the day
+ * a file tool ships under that prefix the sentence goes away by itself.
+ */
+export function everydayStyle({ tools = [] } = {}) {
+  const hasFileTools = tools.some((tool) => /^engine_files_/.test(String(tool?.name ?? '')));
+  return [
+    'Who you are talking to:',
+    '- The person is not a programmer and may never have used an AI before. Use everyday words. Do not use technical terms (workspace, repository, tool, API, prompt, model, token) unless they used them first; if one cannot be avoided, explain it in half a sentence.',
+    '- Never recite the names of your tools or internal functions. Say what you can do in terms of what the person gets: write and improve texts, summarise what they paste, explain things simply, plan a job step by step, answer questions.',
+    '- Act on what they asked. When they ask you to write something (an email, a letter, a message, a text), write a complete first draft right away, in their language, with [square brackets] where a detail is missing, and then ask at most one short question about what to change. Never answer "I cannot write that", and never ask for details before giving a first draft.',
+    '- Keep answers short: a few sentences, no headings, no long lists, unless they ask for more.',
+    hasFileTools ? '' : '- You cannot yet join PDFs, convert files from one format to another, or sort and move a person\'s files. If they ask for that, say so in one plain sentence and offer what you can do instead, for example explain how to do it themselves.',
+  ].filter(Boolean).join('\n');
+}
 
 /**
  * The snapshot, derived from the workspace state and the environment.
@@ -199,6 +250,8 @@ export function composeSystemPrompt({
   projectInstructions = '',
   memoryText = '',
   extraInstructions = [],
+  audience = 'operator',
+  language = '',
 } = {}) {
   const sections = [];
   sections.push([
@@ -209,7 +262,10 @@ export function composeSystemPrompt({
   sections.push(['This installation:', ...describeInstallation(installation).map((line) => `- ${line}`)].join('\n'));
   sections.push(describeCapabilities(tools).join('\n'));
   sections.push(instructionForMode(String(mode ?? 'ASK').toUpperCase(), { hasEvidence }));
-  sections.push(CONVERSATION_STYLE);
+  // `everyday` replaces the engineer line, it does not stack on it: two lines naming two audiences is
+  // how a small model ends up writing for the wrong one.
+  sections.push(audience === 'everyday' ? [...STYLE_COMMON, everydayStyle({ tools })].join('\n') : CONVERSATION_STYLE);
+  sections.push(languageLine(language));
 
   for (const extra of extraInstructions) if (extra) sections.push(String(extra));
   if (projectInstructions) sections.push(String(projectInstructions));

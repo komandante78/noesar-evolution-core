@@ -117,7 +117,7 @@ export class ChatOrchestrator{
       signal?.addEventListener('abort',()=>settle(false),{once:true});
     });
   }
-  async #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[]}){
+  async #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[],audience='operator',language=''}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??inspection.conversation.mode??'ASK').toUpperCase();
     const projectInstructions=inspection.project?.instructions?`Project instructions:\n${inspection.project.instructions}`:'';
@@ -155,6 +155,14 @@ export class ChatOrchestrator{
     const requestedToolIds=toolIds.length?toolIds:(inspection.tools??[]).map((item)=>item.id);
     let scope=enforceToolScope({grantedToolIds:enabledToolIds,requestedToolIds});
     let granted=this.store.read().tools.filter((item)=>scope.allowedToolIds.includes(item.id));
+    // A person who asked to write, explain or plan has not asked for anything to be DONE to the
+    // installation, and the engineer's tool schemas (about 4,600 tokens on a stock install) only crowd a
+    // small model, which then drifts: measured 2026-10-06 on a 7B, another language in the middle of a
+    // sentence and "I can also create an agent for you". They are offered when the person asks for an
+    // action (ACT), and the prompt then says plainly that none are on offer. The operator's register is
+    // untouched.
+    const quiet=audience==='everyday'&&selectedMode!=='ACT';
+    if(quiet){granted=[];scope={...scope,allowedToolIds:[]};}
     // Narrowed BEFORE the system message is composed, so the assistant is told exactly the tools it
     // is offered, and the scope narrows with it: a tool left out cannot be executed either.
     if(this.decide&&granted.length>TOOLS_NARROWED_ABOVE){
@@ -181,7 +189,8 @@ export class ChatOrchestrator{
       // with no sources.
       hasEvidence:evidence.length>0,
       projectInstructions,memoryText,
-      extraInstructions:[this.agentService&&AGENT_DIRECTIVE_INSTRUCTION],
+      extraInstructions:[this.agentService&&!quiet&&AGENT_DIRECTIVE_INSTRUCTION],
+      audience,language,
     });
     const messages=[
       {role:'system',content:system},
@@ -289,7 +298,10 @@ export class ChatOrchestrator{
     this.ledger?.append({actor:actorId,action:'models.compared',result:'success',details:{conversationId,providerIds:providerIds.slice(0,8)}});
     return{...result,citations:this.#citations(built.evidence),mode:built.selectedMode};
   }
-  async streamToResponse({res,actorId,can=null,conversationId,branchId,content,providerId=null,model=null,mode=null,sourceIds=[],toolIds=[]}){
+  async streamToResponse({res,actorId,can=null,conversationId,branchId,content,providerId=null,model=null,mode=null,sourceIds=[],toolIds=[],audience=null,language=null}){
+    // The register the page asks for. Anything but the one known value is the operator's, so a client
+    // cannot invent a third audience and a request that names none behaves exactly as before.
+    const speakTo=audience==='everyday'?'everyday':'operator';
     const initial=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??initial.conversation.mode??'ASK').toUpperCase();
     // The two are passed apart, not collapsed with `??`. `providerId` is THIS caller naming a
@@ -305,7 +317,7 @@ export class ChatOrchestrator{
     // answer with a status code any more, and a rejection from here used to escape the
     // request handler entirely and take the process down with it.
     const user=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'user',content,metadata:{mode:selectedMode,sourceIds,toolIds}});
-    const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds});
+    const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds,audience:speakTo,language:typeof language==='string'?language:''});
     // #buildContext includes the just-persisted user message; remove its duplicate final copy.
     built.messages=built.messages.filter((message,index)=>!(index===built.messages.length-2&&message.role==='user'&&message.content===user.content));
     const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});

@@ -589,3 +589,13 @@ describe('the wiring in app.js', () => {
     assert.equal(CATALOGS.it['My things'], 'Le mie cose', 'and translated');
   });
 });
+
+// The register the assistant speaks in follows the interface the person chose; see
+// assistant-identity.test.mjs for what the server does with it.
+describe('who the assistant is told it is talking to', () => {
+  test('a message from the simple interface says so, and one from the full interface says that', () => {
+    assert.match(app, /audience:simpleOn\?'everyday':'operator'/);
+    const sendChat = app.slice(app.indexOf('async function sendChat('), app.indexOf("$('#sendMessage').addEventListener('click'"));
+    assert.ok(sendChat.includes("audience:simpleOn?'everyday':'operator'"), 'inside the one request sendChat makes');
+  });
+});
