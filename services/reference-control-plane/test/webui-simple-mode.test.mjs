@@ -21,8 +21,10 @@ import { dirname, join } from 'node:path';
 import {
   SIMPLE_KEY, SIMPLE_VIEWS, readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash,
   TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer,
+  SCHEME_KEY, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer,
 } from '../../../apps/webui-static/simple-mode.js';
 import { RUNTIME_ONLY, CATALOGS } from '../../../apps/webui-static/i18n-catalog.js';
+import { PAGE_HELP, SIMPLE_HELP } from '../../../apps/webui-static/page-help.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const STATIC = join(here, '../../../apps/webui-static');
@@ -30,6 +32,7 @@ const read = (name) => readFileSync(join(STATIC, name), 'utf8');
 const html = read('index.html');
 const css = read('styles.css');
 const app = read('app.js');
+const simpleCss = read('simple.css');
 
 describe('the preference', () => {
   test('simple is the default: nothing stored, an unreadable store, or no store at all', () => {
@@ -437,25 +440,38 @@ describe('the bottom strip counts what waits in the chat', () => {
 // acting request the moment it was clicked. What a person sees on the first screen has to be something a
 // connected model does today with nothing else installed; the file-work suggestions come back with the tools.
 describe('the welcome suggestions', () => {
-  const chips = [...html.matchAll(/<button type="button" class="secondary" data-simple-prompt(?: data-prompt-text="[^"]*")?>([^<]+)<\/button>/g)].map((m) => m[1]);
+  const cards = [...html.matchAll(/<button type="button" class="secondary" data-simple-prompt( data-prompt-complete)? data-prompt-text="([^"]*)"><strong>([^<]+)<\/strong><span>([^<]+)<\/span><\/button>/g)]
+    .map((m) => ({ complete: Boolean(m[1]), prompt: m[2], title: m[3], hint: m[4] }));
 
-  test('there are four, each translated', () => {
-    assert.equal(chips.length, 4);
-    for (const chip of chips) assert.ok(typeof CATALOGS.it[chip] === 'string' && CATALOGS.it[chip] !== chip, `not translated: ${chip}`);
+  test('there are four cards, each with a title and a line under it, all translated', () => {
+    assert.equal(cards.length, 4);
+    for (const card of cards) {
+      for (const text of [card.title, card.hint]) assert.ok(typeof CATALOGS.it[text] === 'string' && CATALOGS.it[text] !== text, `not translated: ${text}`);
+    }
+  });
+
+  test('what a card writes into the box is declared runtime-only and translated; three ask for the person\'s words, one is a whole question', () => {
+    for (const card of cards) {
+      assert.ok(RUNTIME_ONLY.includes(card.prompt), `not declared runtime-only: ${card.prompt}`);
+      assert.ok(typeof CATALOGS.it[card.prompt] === 'string' && CATALOGS.it[card.prompt] !== card.prompt, `not translated: ${card.prompt}`);
+    }
+    assert.deepEqual(cards.map((card) => card.complete), [false, false, false, true]);
+    for (const card of cards.filter((item) => !item.complete)) assert.ok(card.prompt.endsWith(':'), `ends where the person goes on: ${card.prompt}`);
+    assert.ok(cards[3].prompt.endsWith('?'), 'the whole question');
   });
 
   test('none promises file work, a search or a folder: nothing behind those exists yet', () => {
-    for (const chip of chips) {
-      for (const text of [chip, CATALOGS.it[chip]]) {
+    for (const card of cards) {
+      for (const text of [card.title, card.hint, card.prompt, CATALOGS.it[card.title], CATALOGS.it[card.hint], CATALOGS.it[card.prompt]]) {
         assert.ok(!/\b(pdf|folder|cartella|merge|unisci|research|ricerca|cerca|search|files?|convert|converti)\b/i.test(text), `promises what no tool does: ${text}`);
       }
     }
   });
 
   test('clicking one never starts an acting turn: in the language the box will hold, none reads as an action', () => {
-    for (const chip of chips) {
-      assert.notEqual(inferChatMode(chip), 'ACT', chip);
-      assert.notEqual(inferChatMode(CATALOGS.it[chip]), 'ACT', CATALOGS.it[chip]);
+    for (const card of cards) {
+      assert.notEqual(inferChatMode(card.prompt), 'ACT', card.prompt);
+      assert.notEqual(inferChatMode(CATALOGS.it[card.prompt]), 'ACT', CATALOGS.it[card.prompt]);
     }
   });
 });
@@ -650,11 +666,11 @@ describe('plain words on the first screens', () => {
     const chipCode = app.slice(app.indexOf("$$('[data-simple-prompt]')"), app.indexOf('// Choosing a destination closes the menu again'));
     assert.ok(chipCode.length > 100 && chipCode.length < 1200, 'the handler is found, and only the handler');
     assert.ok(chipCode.includes('const open=chip.dataset.promptText;'));
-    assert.ok(chipCode.includes('box.value=open?`${t(open)}\\n\\n`:chip.textContent.trim();'));
+    assert.ok(chipCode.includes("box.value=chip.hasAttribute('data-prompt-complete')?t(open):`${t(open)}\\n\\n`;"), 'a card that is a whole question writes it as it is; the others leave the cursor below');
     assert.ok(chipCode.includes('box.setSelectionRange(box.value.length,box.value.length)'), 'the cursor goes below the sentence');
     const prompts = [...html.matchAll(/data-prompt-text="([^"]*)"/g)].map((m) => m[1]);
-    assert.equal(prompts.length, 2, "the two that ask for the person's own text");
-    for (const prompt of prompts) {
+    assert.equal(prompts.length, 4, 'one for each card');
+    for (const prompt of prompts.filter((item) => !item.endsWith('?'))) {
       assert.ok(prompt.endsWith(':'), `ends where the person goes on: ${prompt}`);
       assert.ok(RUNTIME_ONLY.includes(prompt), `not declared runtime-only: ${prompt}`);
       assert.ok(typeof CATALOGS.it[prompt] === 'string' && CATALOGS.it[prompt] !== prompt, `not translated: ${prompt}`);
@@ -804,7 +820,7 @@ describe('the time a person reads, when the server cannot know their zone', () =
   test('the offer is drawn only in the simple interface, by a button the person presses, with the same PUT as Settings', () => {
     assert.ok(wiring.includes('paintZoneOffer(settings);'), 'every load of the zone repaints the offer');
     assert.ok(wiring.includes("const zone=simpleOn?zoneOffer(settings):'';"), 'simple interface only, and only what zoneOffer returns');
-    assert.ok(wiring.includes("if(!zone){bar?.remove();return;}"), 'the line goes away once it no longer applies');
+    assert.ok(wiring.includes("if(!zone||$('#defaultPasswordBanner')){bar?.remove();return;}"), 'the line goes away once it no longer applies, and never stands beside the default-password notice');
     assert.ok(wiring.includes("await api('/api/v1/settings/timezone',{method:'PUT',body:JSON.stringify({timezone:zone})});"), 'the person\'s own choice, audited by the server like any other');
     assert.ok(wiring.includes('await loadEffectiveZone();await refreshWorkspace();'), 'and the times on the page change at once');
     assert.ok(!/innerHTML/.test(wiring.slice(wiring.indexOf('function paintZoneOffer('))), 'built with the DOM: the zone name comes from the browser');
@@ -842,3 +858,374 @@ describe('small print in the simple interface', () => {
     for (const m of block.matchAll(/font-size:([^;}]+)/g)) assert.ok(/--text-scale|1em/.test(m[1]), `bare size: ${m[1]}`);
   });
 });
+
+describe('the page is light or dark by the computer, unless the person chose', () => {
+  const store = (initial) => { const data = new Map(Object.entries(initial)); return { getItem: (k) => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, v), data }; };
+
+  test('"auto" follows the computer: dark computer, midnight; anything else, daylight', () => {
+    assert.equal(themeForScheme('auto', true), 'midnight');
+    assert.equal(themeForScheme('auto', false), 'daylight');
+    assert.equal(themeForScheme(undefined, false), 'daylight');
+  });
+
+  test('a choice beats the computer, in both directions', () => {
+    assert.equal(themeForScheme('light', true), 'daylight');
+    assert.equal(themeForScheme('dark', false), 'midnight');
+  });
+
+  test('the preference is "auto" unless it says light or dark, and a refused storage is "auto"', () => {
+    assert.equal(readScheme(store({})), 'auto');
+    assert.equal(readScheme(store({ [SCHEME_KEY]: 'dark' })), 'dark');
+    assert.equal(readScheme(store({ [SCHEME_KEY]: 'light' })), 'light');
+    assert.equal(readScheme(store({ [SCHEME_KEY]: 'midnight' })), 'auto');
+    assert.equal(readScheme({ getItem() { throw new Error('private window'); } }), 'auto');
+    assert.equal(readScheme(null), 'auto');
+  });
+
+  test('writing keeps only the three values, and a refused storage does not throw', () => {
+    const s = store({});
+    writeScheme(s, 'dark'); assert.equal(s.data.get(SCHEME_KEY), 'dark');
+    writeScheme(s, 'auto'); assert.equal(s.data.get(SCHEME_KEY), 'auto');
+    writeScheme(s, 'nonsense'); assert.equal(s.data.get(SCHEME_KEY), 'auto');
+    assert.doesNotThrow(() => writeScheme({ setItem() { throw new Error('private window'); } }, 'dark'));
+  });
+
+  test('the simple interface picks its own theme and never writes the full interface\'s choice', () => {
+    const start = app.indexOf("const darkQuery=matchMedia('(prefers-color-scheme: dark)');");
+    const code = app.slice(start, app.indexOf('\n', app.indexOf('darkQuery.addEventListener', start)));
+    assert.ok(start > 0 && code.includes("function applySchemeTheme(){document.documentElement.dataset.theme=themeForScheme(readScheme(localStorage),darkQuery.matches);}"));
+    assert.ok(code.includes('if(simpleOn){applySchemeTheme();darkQuery.addEventListener?.(\'change\',applySchemeTheme);}'), 'only in the simple interface, and it follows the computer while the page is open');
+    assert.ok(!code.includes('THEME_KEY') && !code.includes('applyTheme('), 'the nine themes of the full interface are not touched');
+  });
+
+  test('Settings offers the three choices, each pressed state kept in aria-pressed', () => {
+    for (const choice of ['auto', 'light', 'dark']) assert.ok(html.includes(`data-scheme="${choice}" aria-pressed="false"`), choice);
+    assert.ok(app.includes("choice.setAttribute('aria-pressed',String(choice.dataset.scheme===chosen))"));
+    assert.ok(app.includes("writeScheme(localStorage,choice.dataset.scheme);applySchemeTheme();paintSchemeChoices();"));
+    for (const phrase of ['Light or dark', 'Like this computer', 'Light', 'Dark']) assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+  });
+});
+
+describe('a time a person can read', () => {
+  const now = new Date('2026-10-08T04:40:00Z');
+  const rome = { now, zone: 'Europe/Rome', lang: 'it' };
+
+  test('today and yesterday are words, with the time, in the language of the page', () => {
+    assert.equal(friendlyWhen('2026-10-08T02:36:00Z', rome), 'Oggi, 04:36');
+    assert.equal(friendlyWhen('2026-10-07T14:52:00Z', rome), 'Ieri, 16:52');
+    assert.equal(friendlyWhen('2026-10-08T02:36:00Z', { ...rome, lang: 'en-GB' }), 'Today, 04:36');
+    assert.equal(friendlyWhen('2026-10-07T14:52:00Z', { ...rome, lang: 'en-GB' }), 'Yesterday, 16:52');
+  });
+
+  test('older times give the day and month, and the year only when it is not this one', () => {
+    assert.equal(friendlyWhen('2026-10-06T14:52:00Z', rome), '6 ott, 16:52');
+    assert.equal(friendlyWhen('2025-12-30T10:00:00Z', rome), '30 dic 2025, 11:00');
+  });
+
+  test('"today" is today in the person\'s zone, not in UTC', () => {
+    // 22:30 UTC on the 7th is 00:30 on the 8th in Rome
+    assert.equal(friendlyWhen('2026-10-07T22:30:00Z', rome), 'Oggi, 00:30');
+    assert.equal(friendlyWhen('2026-10-07T22:30:00Z', { ...rome, zone: 'UTC' }), 'Ieri, 22:30');
+  });
+
+  test('the zone is named only when asked for', () => {
+    assert.equal(friendlyWhen('2026-10-08T02:36:00Z', rome), 'Oggi, 04:36');
+    assert.equal(friendlyWhen('2026-10-08T02:36:00Z', { ...rome, showZone: true }), 'Oggi, 04:36 · Europe/Rome');
+  });
+
+  test('a time that is not one is a dash, and an unknown zone does not throw', () => {
+    assert.equal(friendlyWhen('not a time', rome), '—');
+    assert.equal(friendlyWhen(undefined, rome), '—');
+    assert.doesNotThrow(() => friendlyWhen('2026-10-08T02:36:00Z', { ...rome, zone: 'Not/AZone' }));
+    assert.ok(!friendlyWhen('2026-10-08T02:36:00Z', { ...rome, zone: 'Not/AZone', showZone: true }).includes('Not/AZone'), 'a zone that does not exist is not named');
+  });
+
+  test('the page uses it in the simple interface only, naming the zone only where it is not the computer\'s own', () => {
+    const code = app.slice(app.indexOf('function formatInstant('), app.indexOf('function instantHtml('));
+    assert.ok(code.includes("if(simpleOn)return friendlyWhen(date,{zone,lang:document.documentElement.lang||undefined,showZone:withZone&&zone!==Intl.DateTimeFormat().resolvedOptions().timeZone});"));
+    const full = code.slice(code.indexOf('if(simpleOn)'));
+    assert.ok(full.includes('const text=new Intl.DateTimeFormat('), 'the full interface keeps its own format');
+  });
+
+  test('the list of chats says when, not how many messages, and not in English', () => {
+    const row = app.slice(app.indexOf('function chatNavRowHtml('), app.indexOf('function renderChatNav('));
+    assert.ok(row.includes("<small>${simpleOn?'':`${item.messageCount} message${item.messageCount===1?'':'s'} · `}${when}</small>"));
+  });
+});
+
+describe('the computer, in plain words', () => {
+  test('processor, memory and graphics card, as the machine reported them', () => {
+    const report = { cpu: { model: 'AMD Ryzen 5 5600X 6-Core Processor', logicalCores: 12 }, memory: { totalBytes: 33585311744 }, accelerators: [] };
+    assert.deepEqual(describeComputer(report), [['Processor', 'AMD Ryzen 5 5600X 6-Core Processor'], ['Memory', '31 GB'], ['Graphics card', '']]);
+  });
+
+  test('a graphics card is named when the report names it, and "Yes" when it only says one is there', () => {
+    assert.equal(describeComputer({ accelerators: [{ name: 'NVIDIA GeForce RTX 3060' }] })[2][1], 'NVIDIA GeForce RTX 3060');
+    assert.equal(describeComputer({ accelerators: [{ model: 'A' }, { vendor: 'B' }] })[2][1], 'A, B');
+    assert.equal(describeComputer({ accelerators: [{}] })[2][1], 'Yes');
+  });
+
+  test('a report with nothing in it, or none, gives empty values and does not throw', () => {
+    assert.deepEqual(describeComputer(undefined), [['Processor', ''], ['Memory', ''], ['Graphics card', '']]);
+    assert.deepEqual(describeComputer({ memory: { totalBytes: 'many' } })[1], ['Memory', '']);
+  });
+
+  test('the labels are strings of the interface, translated', () => {
+    for (const label of ['Processor', 'Memory', 'Graphics card', 'None found']) assert.ok(typeof CATALOGS.it[label] === 'string', label);
+  });
+});
+
+describe('what the pages say in plain words (2026-10-08)', () => {
+  test('the sign-in window says what to type and calls the password a password', () => {
+    assert.ok(html.includes('<label>Password<input id="loginPassword"'));
+    assert.ok(!html.includes('Passphrase'), 'no jargon on the one screen everybody passes');
+    assert.ok(html.includes('id="loginHint"'));
+    assert.ok(html.includes('<p id="authDescription">Use your NOESAR name and password.</p>'), 'the sub-title does not repeat the title, "Sign in"');
+    for (const phrase of ['Use your NOESAR name and password.', 'Password', 'If you have just installed NOESAR, you find them at the end of the installation.']) {
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase || phrase === 'Password', `not translated: ${phrase}`);
+    }
+    assert.ok(!('Passphrase' in CATALOGS.it), 'a stale entry');
+  });
+
+  test('the three words in the bar say where your words go, as a person says it, from the server\'s own verdict', () => {
+    const chips = app.slice(app.indexOf('function setPrivacyChips('), app.indexOf('// The eight elements'));
+    assert.ok(chips.includes("if(runtime&&simpleOn){\n    runtime.textContent=unconfirmed?'Not confirmed':(external?'External service':'Private');"), 'only in the simple interface');
+    const privacy = app.slice(app.indexOf('async function refreshPrivacy('), app.indexOf('function setPrivacyChips('));
+    assert.ok(privacy.includes("simpleOn?(banner.external?'An outside AI service is in use.':'Everything stays on this computer.'):banner.headline"), 'from banner.external, never invented');
+    assert.ok(privacy.includes("simpleOn?(banner.external?'Your words are sent to it because you chose it.':'Nothing you write is sent to anyone else.'):banner.detail"));
+    for (const phrase of ['Private', 'External service', 'Not confirmed', 'Everything stays on this computer.', 'Nothing you write is sent to anyone else.', 'An outside AI service is in use.', 'Your words are sent to it because you chose it.', 'NOESAR could not check where your words go.', 'What you write stays on this computer.']) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+
+  test('the box says what to write, painted by t() because the translator would put a changed placeholder back', () => {
+    const code = app.slice(app.indexOf("if(simpleOn){\n    const box=$('#chatInput');"), app.indexOf('// Settings, for a person'));
+    assert.ok(code.includes("box.setAttribute('translate','no');"));
+    assert.ok(code.includes("box.setAttribute('placeholder',t('Write here what you need…'))"));
+    assert.ok(code.includes("$('#languageSelect')?.addEventListener('change',()=>setTimeout(paint,0));"), 'and repainted when the language changes');
+    assert.ok(RUNTIME_ONLY.includes('Write here what you need…') && CATALOGS.it['Write here what you need…'] === 'Scrivi qui cosa ti serve…');
+  });
+
+  test('the default-password notice is a class, not inline style, and a message beside a button', () => {
+    const start = app.indexOf("let banner=$('#defaultPasswordBanner');");
+    const code = app.slice(start, app.indexOf('}else if(banner){banner.remove();}', start));
+    assert.ok(code.includes("banner.className='top-notice'"));
+    assert.ok(!/style\.cssText/.test(code), 'the looks are in the stylesheets');
+    assert.ok(code.includes('banner.append(message,link);'));
+    assert.ok(/\.top-notice\{/.test(read('styles.css')) && /\.top-notice,/.test(simpleCss), 'both interfaces draw it');
+  });
+
+  test('Settings has a plain page for each door: light or dark, language, password, and the AI with the computer', () => {
+    for (const id of ['simpleAppearance', 'schemeChoices', 'simpleLanguage', 'simpleLanguageSelect', 'simpleAi', 'simpleAiNow', 'simpleAiSearch', 'simpleComputer']) assert.ok(html.includes(`id="${id}"`), `missing: ${id}`);
+    assert.ok(html.includes('<span class="advanced-only">Security and compliance</span><span class="simple-only">Password and security</span>'));
+    assert.ok(html.includes('<span class="advanced-only">Models and hardware</span><span class="simple-only">The AI and this computer</span>'));
+    for (const phrase of ['Password and security', 'The AI and this computer', 'Language of the screens', 'The AI that answers you', 'Look for an AI on this computer', 'This computer']) {
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+
+  test('"Look for an AI" opens the same wizard as the chat does, with only the part that is needed', () => {
+    assert.ok(app.includes("$('#simpleAiSearch')?.addEventListener('click',()=>{\n    navigate('chat');\n    const notice=$('#simpleNoModel');notice?.classList.remove('hidden');notice?.classList.add('wizard-only');\n    $('#modelWizardOpen')?.click();"));
+    assert.ok(simpleCss.includes('#simpleNoModel.wizard-only>b'));
+  });
+
+  test('the language of the screens is the top bar\'s own select, so there is one setting', () => {
+    assert.ok(app.includes("main.value=event.target.value;main.dispatchEvent(new Event('change',{bubbles:true}));"));
+    assert.ok(app.includes('mine.innerHTML=main.innerHTML;mine.value=main.value;'));
+    assert.ok(app.includes("$$('#simpleLanguageSelect,#menuLanguageSelect').forEach((choice)=>choice.addEventListener('change'"), 'the one in Settings and the one in the menu both drive it');
+  });
+
+  test('the strip at the bottom and the menu use words a person knows', () => {
+    assert.equal(CATALOGS.it['Open queue'], 'Vedi l’elenco');
+    assert.equal(CATALOGS.it['Full interface'], 'Opzioni avanzate');
+  });
+});
+
+describe('simple.css: the rules that make the simple interface readable by everyone', () => {
+  const rules = [...simpleCss.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].trim(), body: m[2] }));
+
+  test('it is loaded after styles.css, so that it wins at equal weight', () => {
+    assert.ok(html.indexOf('href="/styles.css"') > 0 && html.indexOf('href="/simple.css"') > html.indexOf('href="/styles.css"'));
+  });
+
+  test('every rule is for the simple interface only', () => {
+    for (const rule of rules) {
+      if (/^(0%|100%|from|to)$/.test(rule.selector)) continue;
+      for (const part of rule.selector.split(',').map((p) => p.trim()).filter(Boolean)) {
+        assert.ok(/body\[data-ui=simple\]/.test(part), `touches the full interface: ${part}`);
+      }
+    }
+  });
+
+  test('no font size is a bare pixel size: all follow --text-scale, so the size setting still works', () => {
+    for (const m of simpleCss.matchAll(/font-size:([^;}]+)/g)) {
+      assert.ok(/--text-scale|^0$|^1em$|^\.85em$/.test(m[1].trim()), `bare size: ${m[1]}`);
+    }
+  });
+
+  test('nothing a person reads is set under 14px at the default size', () => {
+    for (const m of simpleCss.matchAll(/font-size:calc\(var\(--text-scale\)\*([\d.]+)px\)/g)) {
+      assert.ok(Number(m[1]) >= 14, `under 14px: ${m[0]}`);
+    }
+  });
+
+  test('messages are 18px, the box is 18px, and the answer is held to a readable line', () => {
+    assert.ok(/\.message-body\{[^}]*font-size:calc\(var\(--text-scale\)\*18px\)/.test(simpleCss));
+    assert.ok(/\.composer textarea\{[^}]*font-size:calc\(var\(--text-scale\)\*18px\)/.test(simpleCss));
+    assert.ok(/\.message\.assistant \.message-body\{max-width:64ch\}/.test(simpleCss));
+  });
+
+  test('buttons, fields and menu entries are at least 44px tall', () => {
+    for (const selector of ['body[data-ui=simple] button,\nbody[data-ui=simple] .primary,\nbody[data-ui=simple] .secondary{min-height:44px', 'body[data-ui=simple] .nav{min-height:54px', 'body[data-ui=simple] .chat-nav-open{display:block;width:100%;min-height:56px', 'body[data-ui=simple] input,\nbody[data-ui=simple] select,\nbody[data-ui=simple] textarea{min-height:48px']) {
+      assert.ok(simpleCss.includes(selector), selector);
+    }
+  });
+
+  test('the two colour schemes and the high-contrast one define the same tokens', () => {
+    const tokens = (block) => [...block.matchAll(/(--g-[a-z-]+):/g)].map((m) => m[1]).filter((name) => name !== '--g-font').sort();
+    const blocks = [...simpleCss.matchAll(/(body\[data-ui=simple\]|:root\[data-theme=daylight\] body\[data-ui=simple\]|:root\[data-theme=contrast\] body\[data-ui=simple\])\{([^}]*--g-bg:[^}]*)\}/g)];
+    assert.equal(blocks.length, 3, 'dark, light and high contrast');
+    const [dark, light, contrast] = blocks.map((m) => new Set(tokens(m[2])));
+    for (const token of dark) { assert.ok(light.has(token), `light is missing ${token}`); assert.ok(contrast.has(token), `high contrast is missing ${token}`); }
+  });
+
+  test('text and the surface it sits on keep a contrast of 4.5:1 in the dark and the light scheme', () => {
+    const channel = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    const luminance = (hex) => { const n = parseInt(hex.slice(1), 16); return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255); };
+    const ratio = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const pick = (selector) => Object.fromEntries([...simpleCss.slice(simpleCss.indexOf(selector)).match(/\{([^}]*)\}/)[1].matchAll(/(--g-[a-z-]+):(#[0-9a-f]{6})/g)].map((m) => [m[1], m[2]]));
+    for (const [name, t] of [['dark', pick('body[data-ui=simple]{\n  --g-bg')], ['light', pick(':root[data-theme=daylight] body[data-ui=simple]{')]]) {
+      for (const [fg, bg] of [['--g-ink', '--g-bg'], ['--g-ink', '--g-surface'], ['--g-muted', '--g-bg'], ['--g-muted', '--g-surface'], ['--g-on-accent', '--g-accent'], ['--g-accent-ink', '--g-surface'], ['--g-accent-ink', '--g-accent-soft'], ['--g-ink', '--g-accent-soft'], ['--g-warm-ink', '--g-warm-bg'], ['--g-ok', '--g-ok-bg'], ['--g-bad', '--g-surface']]) {
+        assert.ok(ratio(t[fg], t[bg]) >= 4.5, `${name}: ${fg} on ${bg} is ${ratio(t[fg], t[bg]).toFixed(2)}:1`);
+      }
+      assert.ok(ratio(t['--g-edge'], t['--g-surface']) >= 3, `${name}: the edge of a control is ${ratio(t['--g-edge'], t['--g-surface']).toFixed(2)}:1, under 3:1`);
+    }
+  });
+
+  test('nothing here hides the strip that shows what waits for a decision, except while the sign-in window itself covers the page', () => {
+    for (const rule of rules) {
+      if (!/approval|statusbar/i.test(rule.selector)) continue;
+      assert.ok(!/display:\s*none|visibility:\s*hidden|opacity:\s*0\b|height:\s*0\b/.test(rule.body), `hides the strip: ${rule.selector}`);
+    }
+    const hiders = rules.filter((rule) => /\.app-shell/.test(rule.selector) && /visibility:\s*hidden/.test(rule.body));
+    assert.equal(hiders.length, 1);
+    assert.ok(hiders[0].selector.includes(':has(.auth-gate:not(.hidden))'), 'only while the sign-in window is up');
+  });
+
+  test('the chat keeps its box in view: the conversation scrolls, the page does not', () => {
+    assert.ok(simpleCss.includes('body[data-ui=simple] #view-chat .chat-grid{display:flex;flex-direction:column;flex:1 1 0;min-height:0}'));
+    assert.ok(simpleCss.includes('body[data-ui=simple] #view-chat .chat-panel{flex:1 1 0;min-height:0}'));
+  });
+
+  test('the cards, lists and notice have no inline style, and a banner above the shell does not push the shell off the screen', () => {
+    assert.ok(simpleCss.includes('body[data-ui=simple]{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}'));
+    assert.ok(simpleCss.includes('body[data-ui=simple] .app-shell{position:relative;flex:1 1 0;min-height:0;height:auto;'));
+  });
+});
+
+describe('the "i" of the four pages, in plain words', () => {
+  // Gulpease: 89 + (300 * sentences - 10 * letters) / words. 80 is easy for a primary-school leaver, 60 for lower secondary.
+  const gulpease = (text) => {
+    const words = text.split(/\s+/).filter(Boolean);
+    const letters = (text.match(/\p{L}/gu) || []).length;
+    const sentences = (text.match(/[.!?:]+(\s|$)/g) || []).length || 1;
+    return 89 + (300 * sentences - 10 * letters) / words.length;
+  };
+  const entries = Object.entries(SIMPLE_HELP).flatMap(([address, entry]) => [[address, 'what', entry.what], [address, 'howto', entry.howto]]);
+
+  test('only for the pages the simple interface has, and each of them also has its entry for the full interface', () => {
+    assert.deepEqual(Object.keys(SIMPLE_HELP).sort(), ['chat', 'documents', 'projects', 'settings']);
+    for (const address of Object.keys(SIMPLE_HELP)) assert.ok(PAGE_HELP[address], address);
+  });
+
+  test('short, and without the words of the full interface', () => {
+    for (const [address, part, text] of entries) {
+      assert.ok(text.split(/\s+/).length <= 30, `${address}.${part} is long: ${text.split(/\s+/).length} words`);
+      assert.ok(!/\b(artifacts?|context|graph|branch(es)?|retrieval|knowledge|tokens?|plan|approve|runtime|provider|MCP|schema|API|versions?)\b/i.test(text), `${address}.${part} says something from the full interface: ${text}`);
+    }
+  });
+
+  test('translated, and easy to read in Italian (Gulpease at least 60: lower secondary school)', () => {
+    for (const [address, part, text] of [...entries, ['heading', 'what', 'What you can do here']]) {
+      assert.ok(RUNTIME_ONLY.includes(text), `not declared runtime-only: ${text}`);
+      assert.ok(typeof CATALOGS.it[text] === 'string' && CATALOGS.it[text] !== text, `not translated: ${text}`);
+      if (address !== 'heading') assert.ok(gulpease(CATALOGS.it[text]) >= 60, `${address}.${part} is hard to read: Gulpease ${gulpease(CATALOGS.it[text]).toFixed(0)} — ${CATALOGS.it[text]}`);
+    }
+  });
+
+  test('what they tell a person to press is what the page has, in both languages', () => {
+    assert.ok(SIMPLE_HELP.documents.howto.includes('"Save this answer"') && CATALOGS.it[SIMPLE_HELP.documents.howto].includes(`«${CATALOGS.it['Save this answer']}»`));
+    assert.ok(SIMPLE_HELP.projects.howto.includes('"Use project"') && CATALOGS.it[SIMPLE_HELP.projects.howto].includes(`«${CATALOGS.it['Use project']}»`));
+  });
+
+  test('the simple interface shows them and the full interface keeps its own', () => {
+    const code = app.slice(app.indexOf('function openHelp('), app.indexOf('function installHelpButtons('));
+    assert.ok(code.includes('const plain=simpleOn?SIMPLE_HELP[address]:null;') && code.includes('const entry=plain??PAGE_HELP[address];'));
+    assert.ok(code.includes("t(plain?'What you can do here':'What is worth doing here')"));
+  });
+});
+
+describe('simple.css: the two states the first screen can be in', () => {
+  test('with no AI connected, the notice is the next step and the examples step aside', () => {
+    assert.ok(simpleCss.includes('body[data-ui=simple] .chat-panel:has(#simpleNoModel:not(.hidden)) .simple-chips,\nbody[data-ui=simple] .chat-panel:has(#simpleNoModel:not(.hidden)) .simple-welcome>p{display:none}'));
+  });
+
+  test('the panel behind the "i" has plain headings', () => {
+    assert.ok(simpleCss.includes('body[data-ui=simple] .help-panel h3{text-transform:none;letter-spacing:0;'));
+  });
+});
+
+describe('the line under the title of the sign-in window says what this step is', () => {
+  const block = app.slice(app.indexOf('const AUTH_DESCRIPTIONS={'), app.indexOf('function authError('));
+  const forms = ['#setupForm', '#setupMfaForm', '#loginForm', '#loginMfaForm', '#recoveryStartForm', '#recoveryFinishForm'];
+  const descriptions = Object.fromEntries([...block.matchAll(/'(#\w+)':'([^']+)'/g)].map((m) => [m[1], m[2]]));
+
+  test('every one of the six steps has its own sentence, and showOnly writes it', () => {
+    for (const form of forms) assert.ok(descriptions[form], `no sentence for ${form}`);
+    assert.ok(block.includes("const description=AUTH_DESCRIPTIONS[form];\n  if(description)$('#authDescription').textContent=description;"));
+  });
+
+  test('the sign-in step does not speak on the first-setup screen, and the first-setup step does not speak on the sign-in one', () => {
+    assert.notEqual(descriptions['#setupForm'], descriptions['#loginForm']);
+    assert.ok(!/password/i.test(descriptions['#setupMfaForm']) && !/password/i.test(descriptions['#recoveryStartForm']));
+    assert.equal(html.match(/<p id="authDescription">([^<]+)<\/p>/)[1], descriptions['#loginForm'], 'what the page shows before the script runs is the sign-in sentence');
+  });
+
+  test('each is short enough to stay on one line of the card (a second line pushes the button of the QR step below a 900px window)', () => {
+    for (const [form, text] of Object.entries(descriptions)) assert.ok(text.length <= 50, `${form}: ${text.length} characters`);
+  });
+
+  test('each is translated, and the four set from code are declared runtime-only', () => {
+    for (const [form, text] of Object.entries(descriptions)) {
+      assert.ok(typeof CATALOGS.it[text] === 'string' && CATALOGS.it[text] !== text, `not translated: ${text}`);
+      if (form !== '#loginForm') assert.ok(RUNTIME_ONLY.includes(text), `not declared runtime-only: ${text}`);
+    }
+  });
+});
+
+describe('the language can be changed from the simple interface', () => {
+  const rule = (selector) => { const at = simpleCss.indexOf(selector); return at < 0 ? '' : simpleCss.slice(at, simpleCss.indexOf('}', at) + 1); };
+
+  test('on a computer the picker is in the top bar, as in the full interface, and big enough to press', () => {
+    assert.ok(rule('body[data-ui=simple] .top-actions .language-picker{').includes('display:flex'));
+    assert.ok(rule('body[data-ui=simple] .top-actions .language-picker select{').includes('min-height:44px'));
+  });
+
+  test('on a phone it is in the menu, where the person already goes, and the top bar does not get it twice', () => {
+    assert.match(simpleCss, /@media\(max-width:850px\)\{\s*body\[data-ui=simple\] \.top-actions \.language-picker\{display:none\}\s*\}/);
+    assert.match(simpleCss, /@media\(min-width:851px\)\{\s*body\[data-ui=simple\] \.sidebar-language\{display:none\}\s*\}/);
+    assert.ok(html.includes('<label class="sidebar-language simple-only">Language<select id="menuLanguageSelect"></select></label>'));
+  });
+
+  test('on a phone the foot of the open menu stays in view while the chats scroll above it', () => {
+    assert.ok(simpleCss.includes('body[data-ui=simple] .app-shell[data-sidebar=full] .sidebar nav{flex:1 1 0;min-height:0;overflow-y:auto;padding:14px}'));
+    assert.ok(simpleCss.includes('body[data-ui=simple] .app-shell[data-sidebar=full] .sidebar-foot{flex:0 0 auto;'));
+  });
+
+  test('the three places are one setting: the top bar select is the one the translator listens to', () => {
+    assert.ok(html.includes('<select id="languageSelect">'));
+    assert.ok(app.includes("for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}"));
+  });
+});
+

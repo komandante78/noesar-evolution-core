@@ -1,0 +1,339 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+
+   NOESAR for everyone — the look of the simple interface (body[data-ui=simple]), 2026-10-08.
+
+   Loaded after styles.css, so a rule here wins over an equal one there. Nothing in this file applies to the full interface.
+
+   Why this file exists. The simple interface used to be the full one with things hidden. Measured the same day on a clean
+   installation, as a stranger (16 screens, computer and phone): median text 13px, answer lines of 139 characters, English
+   sentences inside the Italian page, a block of JSON on the Models page, and on a phone an orange bar over a tenth of the
+   screen and the writing box covering the last text. The rules below are written from the research in
+   GRAFICA_PER_TUTTI/01_RICERCA_E_ANALISI.md: plain words, big text (messages 18px, nothing under 14px), big targets
+   (44px), one column of 70-80 characters, contrast 4.5:1, one notice at a time, and a screen that says where to start.
+
+   Design read: an assistant for the general public (every age, little digital habit, Italian), trust first, accessibility
+   critical, calm. Variance low, motion none, density low. Native CSS, system fonts: this is a self-hosted product and
+   cannot assume a font or a network (CSP style-src 'self').
+
+   Every size is a multiple of --text-scale, so the size setting in Appearance multiplies all of it. */
+
+/* ── colour and type ─────────────────────────────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple]{
+  --g-bg:#0e131a;--g-surface:#161e29;--g-sunken:#0b1016;
+  --g-ink:#edf1f6;--g-muted:#aab5c4;
+  --g-line:#2c3747;--g-edge:#6f7e93;
+  --g-accent:#8fb2ff;--g-on-accent:#0a1226;--g-accent-soft:#1c2a47;--g-accent-ink:#b9ceff;
+  --g-warm-bg:#3a2c07;--g-warm-edge:#b88a12;--g-warm-ink:#ffe3a3;
+  --g-ok:#7fd3a1;--g-ok-bg:#12301f;--g-bad:#ff8a93;
+  --g-shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.28);
+  --g-font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+}
+:root[data-theme=daylight] body[data-ui=simple]{
+  --g-bg:#f3f5f8;--g-surface:#ffffff;--g-sunken:#e9edf3;
+  --g-ink:#14202b;--g-muted:#4a5666;
+  --g-line:#cdd5df;--g-edge:#74829a;
+  --g-accent:#1f4fd6;--g-on-accent:#ffffff;--g-accent-soft:#e6edff;--g-accent-ink:#1b3fae;
+  --g-warm-bg:#fff3d6;--g-warm-edge:#d9a420;--g-warm-ink:#5a3a00;
+  --g-ok:#14663f;--g-ok-bg:#e4f4ea;--g-bad:#a31621;
+  --g-shadow:0 1px 2px rgba(20,32,43,.08),0 6px 20px rgba(20,32,43,.06);
+}
+:root[data-theme=contrast] body[data-ui=simple]{
+  --g-bg:#000;--g-surface:#000;--g-sunken:#000;--g-ink:#fff;--g-muted:#f0f0f0;--g-line:#fff;--g-edge:#fff;
+  --g-accent:#ffd400;--g-on-accent:#000;--g-accent-soft:#1a1a1a;--g-accent-ink:#ffd400;
+  --g-warm-bg:#000;--g-warm-edge:#ffd400;--g-warm-ink:#ffd400;--g-ok:#7dff9b;--g-ok-bg:#000;--g-bad:#ff9aa0;--g-shadow:none;
+}
+/* the old tokens, pointed at the new ones, so that every part of the page that has no rule of its own here still agrees */
+body[data-ui=simple]{
+  --surface-root:var(--g-bg);--surface-glow:transparent;--surface-card:var(--g-surface);--surface-raised:var(--g-surface);
+  --surface-elevated:var(--g-surface);--surface-field:var(--g-surface);--surface-button:var(--g-surface);--surface-code:var(--g-sunken);
+  --surface-topbar:var(--g-surface);--surface-sidebar:var(--g-surface);--surface-statusbar:var(--g-surface);
+  --surface-composer:var(--g-surface);--surface-message-own:var(--g-accent-soft);--surface-auth:var(--g-surface);--scrim:var(--g-bg);
+  --surface-popover:var(--g-surface);--surface-inset:var(--g-sunken);--surface-tile:var(--g-surface);--surface-selected:var(--g-accent);
+  --text-primary:var(--g-ink);--text-body:var(--g-ink);--text-card:var(--g-ink);--text-button:var(--g-ink);--text-field:var(--g-ink);
+  --text-nav:var(--g-ink);--text-chip:var(--g-ink);--text-label:var(--g-ink);--text-list:var(--g-ink);--text-strong:var(--g-ink);
+  --text-bright:var(--g-ink);--text-soft:var(--g-ink);--text-popover:var(--g-ink);--text-tile:var(--g-ink);
+  --text-statusbar:var(--g-muted);--text-placeholder:var(--g-muted);--text-faint:var(--g-muted);--muted:var(--g-muted);
+  --text-on-accent:var(--g-on-accent);--line:var(--g-line);--line-auth:var(--g-edge);--border-composer:var(--g-edge);
+  --blue:var(--g-accent);--accent-link:var(--g-accent-ink);--accent-brand:var(--g-accent-ink);--accent-eyebrow:var(--g-muted);
+  --accent-fill-from:var(--g-accent);--accent-fill-to:var(--g-accent);--focus-ring:var(--g-accent);
+  --green:var(--g-ok);--red:var(--g-bad);--amber:var(--g-warm-ink);
+  font-family:var(--g-font);font-size:calc(var(--text-scale)*16px);line-height:1.55;color:var(--g-ink);background:var(--g-bg);
+  -webkit-font-smoothing:antialiased;
+}
+body[data-ui=simple] button,
+body[data-ui=simple] input,
+body[data-ui=simple] select,
+body[data-ui=simple] textarea{font-family:inherit}
+body[data-ui=simple] :focus-visible{outline:3px solid var(--g-accent);outline-offset:2px}
+/* a banner above the shell must not push the shell past the screen: the shell takes what is left */
+body[data-ui=simple]{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+body[data-ui=simple] .app-shell{position:relative;flex:1 1 0;min-height:0;height:auto;grid-template-rows:64px minmax(0,1fr) auto}
+
+/* ── buttons and fields ──────────────────────────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple] button,
+body[data-ui=simple] .primary,
+body[data-ui=simple] .secondary{min-height:44px;padding:0 18px;border:1.5px solid var(--g-edge);border-radius:12px;background:var(--g-surface);color:var(--g-ink);font-size:calc(var(--text-scale)*16px);font-weight:600;line-height:1.2}
+body[data-ui=simple] .primary{border-color:var(--g-accent);background:var(--g-accent);color:var(--g-on-accent)}
+body[data-ui=simple] .text-button{min-height:44px;border:0;background:transparent;color:var(--g-accent-ink);text-decoration:underline;font-weight:600}
+body[data-ui=simple] button:hover{border-color:var(--g-accent)}
+body[data-ui=simple] .primary:hover{filter:brightness(1.06)}
+body[data-ui=simple] input,
+body[data-ui=simple] select,
+body[data-ui=simple] textarea{min-height:48px;padding:10px 14px;border:1.5px solid var(--g-edge);border-radius:12px;background:var(--g-surface);color:var(--g-ink);font-size:calc(var(--text-scale)*17px)}
+body[data-ui=simple] label{font-size:calc(var(--text-scale)*16px);font-weight:600;color:var(--g-ink)}
+body[data-ui=simple] .hint{font-size:calc(var(--text-scale)*15px);color:var(--g-muted)}
+body[data-ui=simple] .eyebrow{display:none}
+
+/* ── the top bar ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple] .topbar{height:64px;padding:0 20px;gap:14px;background:var(--g-surface);border-bottom:1px solid var(--g-line);flex-wrap:nowrap}
+body[data-ui=simple] .brand{min-width:0;gap:10px}
+body[data-ui=simple] .brand-mark{width:38px;height:38px;border-radius:11px;background:var(--g-accent);color:var(--g-on-accent);box-shadow:none;font-weight:800}
+body[data-ui=simple] .brand strong{font-size:calc(var(--text-scale)*20px);font-weight:800;letter-spacing:0;color:var(--g-ink)}
+body[data-ui=simple] .brand span:last-child{font-size:calc(var(--text-scale)*20px);font-weight:500;color:var(--g-muted)}
+body[data-ui=simple] #sidebarRank{min-height:44px;padding:0 18px;border:1.5px solid var(--g-edge);border-radius:12px;background:var(--g-surface);color:var(--g-ink);font-size:calc(var(--text-scale)*17px);font-weight:700}
+body[data-ui=simple] .top-actions{margin-inline-start:auto;gap:12px;font-size:calc(var(--text-scale)*15px);color:var(--g-muted)}
+body[data-ui=simple] #runtimeState{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border:1.5px solid var(--g-line);border-radius:999px;background:var(--g-ok-bg);color:var(--g-ok);font-weight:700}
+body[data-ui=simple] #userAvatar{width:42px;height:42px;background:var(--g-accent);color:var(--g-on-accent);font-weight:800;box-shadow:none}
+
+/* ── one notice at a time, calm ─────────────────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple] .top-notice,
+body[data-ui=simple] #zoneBanner{position:static;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 16px;padding:10px 20px;border:0;border-bottom:1px solid var(--g-warm-edge);background:var(--g-warm-bg);color:var(--g-warm-ink);font-size:calc(var(--text-scale)*16px);font-weight:500;text-align:start;line-height:1.35}
+body[data-ui=simple] #zoneBanner{border-bottom-color:var(--g-line);background:var(--g-accent-soft);color:var(--g-ink)}
+body[data-ui=simple] .top-notice a,
+body[data-ui=simple] .top-notice button,
+body[data-ui=simple] #zoneBanner button{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:0;border-radius:10px;background:var(--g-warm-ink);color:var(--g-warm-bg);font-weight:700;text-decoration:none}
+body[data-ui=simple] #zoneBanner button{background:var(--g-accent);color:var(--g-on-accent)}
+
+/* ── the menu ────────────────────────────────────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple] .app-shell[data-sidebar=full]{--col-side:288px}
+body[data-ui=simple] .sidebar{padding:16px 14px;overflow-x:hidden;background:var(--g-surface);border-inline-end:1px solid var(--g-line)}
+body[data-ui=simple] .sidebar nav,
+body[data-ui=simple] .chat-nav,
+body[data-ui=simple] .chat-nav-body,
+body[data-ui=simple] .chat-nav-list,
+body[data-ui=simple] .chat-nav-row{min-width:0}
+body[data-ui=simple] .chat-nav-row{display:block}
+body[data-ui=simple] .sidebar nav{gap:6px}
+/* the little symbols in front of the names are fonts a machine may not have; the names are enough */
+body[data-ui=simple] .nav{min-height:54px;width:100%;padding:0 18px;border-radius:12px;font-size:0;color:var(--g-ink);background:transparent;border:0}
+body[data-ui=simple] .nav span:not(.nav-count){font-size:calc(var(--text-scale)*19px);font-weight:700}
+body[data-ui=simple] .nav:hover{background:var(--g-sunken);box-shadow:none}
+body[data-ui=simple] .nav.active{background:var(--g-accent-soft);color:var(--g-accent-ink);box-shadow:inset 5px 0 var(--g-accent)}
+body[data-ui=simple] .chat-nav{margin-top:10px;padding-top:10px;border-top:1px solid var(--g-line)}
+body[data-ui=simple] .chat-nav-toggle{min-height:44px;border:0;background:transparent;color:var(--g-muted);font-size:calc(var(--text-scale)*16px);font-weight:700;padding:0 8px;text-transform:none;letter-spacing:0}
+body[data-ui=simple] .chat-nav-row{border-radius:12px}
+body[data-ui=simple] .chat-nav-open{display:block;width:100%;min-height:56px;padding:8px 12px;border:0;border-radius:12px;background:transparent;text-align:start}
+body[data-ui=simple] .chat-nav-row.current .chat-nav-open{background:var(--g-accent-soft)}
+body[data-ui=simple] .chat-nav-open:hover{background:var(--g-sunken)}
+body[data-ui=simple] .chat-nav-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(var(--text-scale)*16px);font-weight:700;color:var(--g-ink)}
+body[data-ui=simple] .chat-nav-open small{display:block;font-size:calc(var(--text-scale)*14px);font-weight:500;color:var(--g-muted)}
+body[data-ui=simple] .chat-nav-actions,
+body[data-ui=simple] .chat-nav-more,
+body[data-ui=simple] .chat-nav-archive,
+body[data-ui=simple] .chat-nav-count{display:none}
+body[data-ui=simple] .sidebar-foot{padding:14px 8px 0}
+
+/* ── the chat ────────────────────────────────────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple] .main{padding:0 24px;background:var(--g-bg)}
+body[data-ui=simple] .main:has(#view-chat.active){padding:0 24px}
+body[data-ui=simple] #view-chat.active{display:flex;flex-direction:column;flex:1 1 0;min-height:0;width:100%;max-width:820px;margin-inline:auto}
+/* the box stays in view and only the conversation scrolls, on a phone as on a computer */
+body[data-ui=simple] #view-chat .chat-grid{display:flex;flex-direction:column;flex:1 1 0;min-height:0}
+body[data-ui=simple] #view-chat .chat-panel{flex:1 1 0;min-height:0}
+body[data-ui=simple] #view-chat .chat-toolbar{justify-content:flex-end;margin:12px 0 4px}
+body[data-ui=simple] #view-chat .section-header{display:none}
+body[data-ui=simple] #view-chat .chat-panel{border:0;border-radius:0;background:transparent;box-shadow:none;padding:0}
+body[data-ui=simple] .chat-grid{gap:0}
+/* the start screen: a greeting and four big things to press */
+body[data-ui=simple] #view-chat[data-empty] .simple-welcome{justify-content:center;gap:18px;padding:24px 0 32px;min-height:0;overflow:auto}
+body[data-ui=simple] .simple-welcome h2{margin:0;font-size:calc(var(--text-scale)*34px);line-height:1.15;font-weight:800;color:var(--g-ink)}
+body[data-ui=simple] .simple-welcome>p{max-width:30em;font-size:calc(var(--text-scale)*19px);line-height:1.5;color:var(--g-muted)}
+body[data-ui=simple] .simple-chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;width:100%;max-width:780px}
+body[data-ui=simple] .simple-chips button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;min-height:92px;padding:16px 20px;border:1.5px solid var(--g-line);border-radius:16px;background:var(--g-surface);box-shadow:var(--g-shadow);text-align:start;color:var(--g-ink)}
+body[data-ui=simple] .simple-chips button:hover{border-color:var(--g-accent)}
+body[data-ui=simple] .simple-chips strong{font-size:calc(var(--text-scale)*20px);font-weight:800}
+body[data-ui=simple] .simple-chips span{font-size:calc(var(--text-scale)*16px);font-weight:400;color:var(--g-muted)}
+body[data-ui=simple] .simple-welcome .notice,
+body[data-ui=simple] #simpleNoModel{max-width:640px;padding:18px 20px;border:1.5px solid var(--g-warm-edge);border-radius:16px;background:var(--g-warm-bg);color:var(--g-warm-ink);font-size:calc(var(--text-scale)*17px);text-align:start}
+body[data-ui=simple] #simpleNoModel b{font-size:calc(var(--text-scale)*19px)}
+/* messages: yours on the right in a soft bubble, the answer on the page in big text */
+body[data-ui=simple] .messages{padding:8px 0 20px}
+body[data-ui=simple] .message{max-width:100%;margin:22px 0;padding:0;border:0;border-radius:0;background:transparent}
+body[data-ui=simple] .message.user{max-width:86%;margin-inline-start:auto;padding:14px 20px;border-radius:22px 22px 6px 22px;background:var(--g-accent-soft)}
+body[data-ui=simple] .message-head{margin-bottom:6px;justify-content:flex-start;gap:8px;font-size:calc(var(--text-scale)*14px)}
+body[data-ui=simple] .message-head b{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body[data-ui=simple] .message-head small{font-size:calc(var(--text-scale)*14px);color:var(--g-muted)}
+body[data-ui=simple] .message-body{font-size:calc(var(--text-scale)*18px);line-height:1.65;color:var(--g-ink)}
+body[data-ui=simple] .message.assistant .message-body{max-width:64ch}
+body[data-ui=simple] .message-body p{margin:0 0 .8em}
+body[data-ui=simple] .message-body ul,
+body[data-ui=simple] .message-body ol{margin:.2em 0 .9em;padding-inline-start:1.4em}
+body[data-ui=simple] .message-body li{margin:.25em 0}
+body[data-ui=simple] .message-body h3,
+body[data-ui=simple] .message-body h4,
+body[data-ui=simple] .message-body h5{margin:1em 0 .4em;font-size:calc(var(--text-scale)*19px);line-height:1.3}
+body[data-ui=simple] .message-body hr{margin:1.1em 0;border:0;border-top:1.5px solid var(--g-line)}
+body[data-ui=simple] .message-actions{gap:10px;margin-top:12px}
+body[data-ui=simple] .message-actions button{min-height:44px;padding:0 18px;border:1.5px solid var(--g-edge);border-radius:12px;background:var(--g-surface);font-size:calc(var(--text-scale)*16px);font-weight:600;color:var(--g-ink)}
+/* the box: big, one thing to press */
+body[data-ui=simple] .composer{margin:8px 0 0;padding:12px 14px;border:1.5px solid var(--g-edge);border-radius:22px;background:var(--g-surface);box-shadow:var(--g-shadow)}
+body[data-ui=simple] .composer:focus-within{border-color:var(--g-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--g-accent) 30%,transparent)}
+body[data-ui=simple] .composer textarea{min-height:56px;padding:8px 6px;border:0;border-radius:0;background:transparent;font-size:calc(var(--text-scale)*18px);line-height:1.5}
+body[data-ui=simple] .composer textarea:focus-visible{outline:none}
+body[data-ui=simple] .composer-row{flex-wrap:wrap;justify-content:space-between;gap:8px 12px;font-size:calc(var(--text-scale)*15px)}
+body[data-ui=simple] #chatContextSummary,
+body[data-ui=simple] #inspectContext,
+body[data-ui=simple] #undoHead{display:none}
+body[data-ui=simple] #chatModelPickerOpen{order:1;min-height:44px;padding:0 12px;border:0;background:transparent;font-size:0;font-weight:500;color:var(--g-muted)}
+body[data-ui=simple] #chatModelPickerOpen small{font-size:calc(var(--text-scale)*15px);color:var(--g-muted);max-width:26ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body[data-ui=simple] #chatModelPickerOpen small::after{content:" ▾"}
+body[data-ui=simple] #sendMessage{order:2;margin-inline-start:auto;min-width:112px;min-height:50px;width:auto;height:auto;padding:0 22px;border:0;border-radius:14px;background:var(--g-accent);color:var(--g-on-accent);font-size:0}
+body[data-ui=simple] #sendMessage::after{content:attr(title);font-size:calc(var(--text-scale)*18px);font-weight:700}
+body[data-ui=simple] .chat-disclaimer{margin:10px 0 14px;text-align:center;font-size:calc(var(--text-scale)*14px);color:var(--g-muted)}
+
+/* ── the strip at the bottom: always there, quiet when nothing waits ─────────────────────────────────────────────── */
+body[data-ui=simple] .statusbar{flex-wrap:wrap;gap:4px 14px;min-height:48px;padding:6px 20px;border-top:1px solid var(--g-line);background:var(--g-surface);font-size:calc(var(--text-scale)*15px);color:var(--g-muted)}
+body[data-ui=simple] .approval-strip-state{border-radius:999px;font-size:calc(var(--text-scale)*15px)}
+body[data-ui=simple] #approvalStripOpen{min-height:44px}
+
+/* ── the sign-in window ──────────────────────────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple] .auth-gate{background:var(--g-bg);align-items:start;padding:8vh 20px 24px;overflow:auto}
+body[data-ui=simple] .auth-card{width:min(520px,100%);padding:32px;border:1.5px solid var(--g-line);border-radius:22px;background:var(--g-surface);box-shadow:var(--g-shadow)}
+body[data-ui=simple] .auth-brand{gap:12px;font-size:calc(var(--text-scale)*20px)}
+body[data-ui=simple] #authTitle{margin:18px 0 8px;font-size:calc(var(--text-scale)*32px);line-height:1.15;font-weight:800}
+body[data-ui=simple] #authDescription{font-size:calc(var(--text-scale)*18px);color:var(--g-muted)}
+body[data-ui=simple] .auth-form{gap:18px}
+body[data-ui=simple] .auth-form label{display:grid;gap:8px}
+body[data-ui=simple] .auth-form .primary{min-height:54px;font-size:calc(var(--text-scale)*18px)}
+
+/* ── the other pages: one calm column, plain headings, big targets ─────────────────────────────────────────────── */
+body[data-ui=simple] .view:not(#view-chat){width:100%;max-width:860px;margin-inline:auto;padding:24px 0 48px}
+body[data-ui=simple] .view:not(#view-chat) .panel,
+body[data-ui=simple] .entity-card{padding:20px;border:1.5px solid var(--g-line);border-radius:18px;background:var(--g-surface);box-shadow:none}
+body[data-ui=simple] .view:not(#view-chat) .panel h2,
+body[data-ui=simple] .view:not(#view-chat) .panel h3,
+body[data-ui=simple] .page-title{font-size:calc(var(--text-scale)*24px);line-height:1.2;font-weight:800;color:var(--g-ink)}
+body[data-ui=simple] .entity-card h3{font-size:calc(var(--text-scale)*20px)}
+body[data-ui=simple] .entity-card p,
+body[data-ui=simple] .entity-card pre{font-size:calc(var(--text-scale)*17px);line-height:1.6}
+body[data-ui=simple] pre{font-family:var(--g-font);white-space:pre-wrap}
+body[data-ui=simple] .settings-layout{gap:20px}
+body[data-ui=simple] .settings-nav{display:block;width:100%;min-height:52px;margin-bottom:6px;border:0;border-radius:12px;background:transparent;text-align:start;font-size:calc(var(--text-scale)*18px);font-weight:700}
+body[data-ui=simple] .settings-nav.active{background:var(--g-accent-soft);color:var(--g-accent-ink);box-shadow:inset 5px 0 var(--g-accent)}
+
+/* ── a phone, and any window narrower than a tablet ─────────────────────────────────────────────────────────────── */
+@media(max-width:850px){
+  body[data-ui=simple] .app-shell{display:flex;flex-direction:column;grid-template-rows:none}
+  body[data-ui=simple] .topbar{height:60px;padding:0 12px;gap:8px}
+  body[data-ui=simple] .brand span:last-child{display:none}
+  body[data-ui=simple] .brand strong{font-size:calc(var(--text-scale)*18px)}
+  body[data-ui=simple] .top-actions{gap:8px}
+  body[data-ui=simple] #runtimeState{display:none}
+  body[data-ui=simple] .main,
+  body[data-ui=simple] .main:has(#view-chat.active){flex:1 1 0;min-height:0;padding:0 14px;overflow:auto}
+  body[data-ui=simple] .main:has(#view-chat.active){display:flex;flex-direction:column;overflow:hidden}
+  /* the open menu is a sheet over the page, the four places and the chats under them */
+  body[data-ui=simple] .app-shell[data-sidebar=full] .sidebar{position:absolute;inset:60px 0 0 0;z-index:50;display:block;padding:14px;overflow:auto;background:var(--g-surface)}
+  body[data-ui=simple] .sidebar nav{display:flex;flex-direction:column;flex-wrap:nowrap}
+  body[data-ui=simple] #chatNav{display:block}
+  body[data-ui=simple] .simple-chips{grid-template-columns:1fr}
+  body[data-ui=simple] .simple-welcome h2{font-size:calc(var(--text-scale)*28px)}
+  body[data-ui=simple] .message.user{max-width:92%}
+  body[data-ui=simple] .composer{position:static;margin-bottom:0}
+  body[data-ui=simple] .chat-composer{bottom:auto}
+  body[data-ui=simple] .statusbar{padding:6px 12px}
+  body[data-ui=simple] .auth-gate{padding:20px 14px}
+  body[data-ui=simple] .auth-card{padding:24px}
+  body[data-ui=simple] .top-notice,
+  body[data-ui=simple] #zoneBanner{justify-content:space-between;gap:8px 12px;padding:8px 14px;font-size:calc(var(--text-scale)*15px)}
+  body[data-ui=simple] .top-notice>:first-child,
+  body[data-ui=simple] #zoneBanner>:first-child{flex:1 1 180px}
+  body[data-ui=simple] .top-notice a,
+  body[data-ui=simple] #zoneBanner button{flex:0 0 auto;white-space:nowrap}
+  body[data-ui=simple] #view-chat[data-empty] .simple-welcome{gap:12px;padding:8px 0 12px}
+  body[data-ui=simple] .simple-welcome h2{font-size:calc(var(--text-scale)*26px)}
+  body[data-ui=simple] .simple-welcome>p{display:none}
+  body[data-ui=simple] .simple-chips{gap:10px}
+  body[data-ui=simple] .simple-chips button{min-height:68px;padding:10px 16px}
+  body[data-ui=simple] .simple-chips strong{font-size:calc(var(--text-scale)*18px)}
+  body[data-ui=simple] .simple-chips span{font-size:calc(var(--text-scale)*15px)}
+}
+@media(prefers-reduced-motion:reduce){body[data-ui=simple] *{transition:none!important;animation:none!important}}
+
+/* ── small things that were left as an engineer made them ───────────────────────────────────────────────────────── */
+body[data-ui=simple] .help-button{width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;font-size:calc(var(--text-scale)*16px)}
+body[data-ui=simple] #simpleNoModel.wizard-only>b,
+body[data-ui=simple] #simpleNoModel.wizard-only>p:first-of-type{display:none}
+
+/* ── Settings: four doors, each a plain page ─────────────────────────────────────────────────────────────────────── */
+body[data-ui=simple] .settings-layout{display:grid;grid-template-columns:230px minmax(0,1fr);align-items:start;gap:28px}
+body[data-ui=simple] .settings-section .section-header p{display:none}
+body[data-ui=simple] .settings-section .section-header{margin:0 0 16px}
+body[data-ui=simple] .settings-section>.panel,
+body[data-ui=simple] .settings-section>.two-col>.panel{margin-bottom:16px}
+body[data-ui=simple] .choice-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+body[data-ui=simple] .choice-row button{min-height:56px;padding:0 22px;font-size:calc(var(--text-scale)*18px)}
+body[data-ui=simple] .choice-row button[aria-pressed=true]{border-color:var(--g-accent);background:var(--g-accent-soft);color:var(--g-accent-ink);box-shadow:inset 0 0 0 1.5px var(--g-accent)}
+body[data-ui=simple] .choice-row button[aria-pressed=true]::before{content:"✓ "}
+body[data-ui=simple] .plain-list{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;font-size:calc(var(--text-scale)*17px)}
+body[data-ui=simple] .plain-list b{display:inline-block;min-width:8.5em}
+/* Appearance: the light/dark choice and the text size; the nine themes, the colour picker, the contrast readouts and the legend are the full interface's */
+body[data-ui=simple] #section-appearance>.panel:not(#simpleAppearance):not(:has(#textSizeGroup)){display:none}
+body[data-ui=simple] #section-appearance .panel:has(#textSizeGroup)>.panel-title,
+body[data-ui=simple] #section-appearance .panel:has(#textSizeGroup) .hint,
+body[data-ui=simple] #section-appearance .panel:has(#textSizeGroup) fieldset:not(:has(#textSizeGroup)){display:none}
+body[data-ui=simple] .step-group{display:flex;flex-wrap:wrap;gap:12px}
+body[data-ui=simple] .step-group button[aria-pressed=true]{border-color:var(--g-accent);background:var(--g-accent-soft);color:var(--g-accent-ink);box-shadow:inset 0 0 0 1.5px var(--g-accent)}
+body[data-ui=simple] fieldset{border:0;padding:0;margin:0}
+body[data-ui=simple] legend{padding:0;margin-bottom:6px;font-size:calc(var(--text-scale)*20px);font-weight:800}
+/* Language and time: the language, the time zone with its one save button; the summaries, the locale code and the server default are the full interface's */
+body[data-ui=simple] #section-language .two-col{display:block}
+body[data-ui=simple] #section-language .two-col>.panel:nth-child(2),
+body[data-ui=simple] #section-language pre,
+body[data-ui=simple] #section-language .hint,
+body[data-ui=simple] #section-language #settingsTimezoneClear,
+body[data-ui=simple] #section-language #settingsServerRow,
+body[data-ui=simple] #section-language .badge{display:none}
+/* Security: change the password. The overview, the authenticator and the sessions are the full interface's */
+body[data-ui=simple] #view-security>.panel,
+body[data-ui=simple] #view-security #mfaPanel{display:none}
+body[data-ui=simple] #view-security .two-col{display:block}
+/* The AI: which one answers, one button to look for another, and what this computer is. The raw hardware report and the runtime recommendation are the full interface's */
+body[data-ui=simple] #view-hardware>.section-header,
+body[data-ui=simple] #view-hardware .hardware-grid{display:none}
+@media(max-width:850px){
+  body[data-ui=simple] .settings-layout{grid-template-columns:1fr;gap:12px}
+  body[data-ui=simple] .settings-menu{display:flex;flex-wrap:wrap;gap:8px}
+  body[data-ui=simple] .settings-nav{width:auto;margin:0;border:1.5px solid var(--g-line)}
+}
+/* the "i" of a section repeats the one of the page */
+body[data-ui=simple] .settings-section .help-button{display:none}
+
+/* while the sign-in window is up, the page behind it is out of reach: not read by a screen reader, not reached by Tab */
+body[data-ui=simple]:has(.auth-gate:not(.hidden)) .app-shell{visibility:hidden}
+
+/* When nothing can answer yet, the one next step is the notice: the examples would lead nowhere, so they step aside */
+body[data-ui=simple] .chat-panel:has(#simpleNoModel:not(.hidden)) .simple-chips,
+body[data-ui=simple] .chat-panel:has(#simpleNoModel:not(.hidden)) .simple-welcome>p{display:none}
+/* the panel behind the "i": plain headings, not small capitals */
+body[data-ui=simple] .help-panel h3{text-transform:none;letter-spacing:0;font-size:calc(var(--text-scale)*18px);color:var(--g-ink)}
+
+/* The language is visible here too, as in the full interface. Opened in a browser whose language the person does not read, the
+   page used to be in that language with the only way to change it hidden: on a computer it is in the top bar, on a phone in the menu. */
+body[data-ui=simple] .top-actions .language-picker{display:flex;align-items:center;gap:8px;font-size:calc(var(--text-scale)*15px);font-weight:600;color:var(--g-muted)}
+body[data-ui=simple] .top-actions .language-picker select{width:auto;min-height:44px;padding:0 12px;font-size:calc(var(--text-scale)*16px);color:var(--g-ink)}
+body[data-ui=simple] .sidebar-language{display:grid;gap:6px;padding:12px 8px 0}
+body[data-ui=simple] .sidebar-language select{width:100%}
+@media(max-width:850px){
+  body[data-ui=simple] .top-actions .language-picker{display:none}
+}
+@media(min-width:851px){
+  body[data-ui=simple] .sidebar-language{display:none}
+}
+/* On a phone the open menu keeps its foot (language, advanced options) in view: the chats scroll above it, they do not push it away */
+@media(max-width:850px){
+  body[data-ui=simple] .app-shell[data-sidebar=full] .sidebar{display:flex;flex-direction:column;overflow:hidden;padding:0}
+  body[data-ui=simple] .app-shell[data-sidebar=full] .sidebar nav{flex:1 1 0;min-height:0;overflow-y:auto;padding:14px}
+  body[data-ui=simple] .app-shell[data-sidebar=full] .sidebar-foot{flex:0 0 auto;padding:10px 14px 14px;border-top:1px solid var(--g-line);background:var(--g-surface)}
+}
+

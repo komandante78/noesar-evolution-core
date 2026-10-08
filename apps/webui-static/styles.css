@@ -1912,3 +1912,14 @@ body[data-ui=simple] .top-actions,
 body[data-ui=simple] .statusbar{font-size:calc(var(--text-scale)*12.5px)}
 body[data-ui=simple] .footer-privacy small{font-size:1em}
 body[data-ui=simple] .model-switch small{font-size:calc(var(--text-scale)*12.5px)}
+/* The notice above everything (default password): the full interface's look; the simple interface's is in simple.css. */
+.top-notice{position:sticky;top:0;z-index:9999;padding:.6rem 1rem;text-align:center;font-weight:600;color:var(--state-warn-text);background:linear-gradient(var(--surface-warn-wash),var(--surface-warn-wash)),var(--surface-root);border-bottom:1px solid var(--border-warn-strong)}
+.top-notice a{color:inherit;text-decoration:underline}
+/* An answer drawn from markdown: paragraphs, headings and rules. */
+.message-body p{margin:0 0 .65em}
+.message-body p:last-child,.message-body li:last-child{margin-bottom:0}
+.message-body hr{margin:.9em 0;border:0;border-top:1px solid var(--line)}
+.message-body h3,.message-body h4,.message-body h5{margin:.9em 0 .35em;font-size:1em}
+/* A list whose markup starts as "empty" and whose renderer never says it stopped being: its cards inherited the empty state's centred text and padding. Seen on Documents and Projects. */
+.empty-state:has(>.entity-card){padding:0;text-align:start;color:inherit}
+

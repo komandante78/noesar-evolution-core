@@ -7,13 +7,14 @@
   <title>NOESAR Evolution</title>
   <link rel="stylesheet" href="/vendor/xterm/xterm.css">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/simple.css">
 </head>
 <body data-ui="simple">
   <div class="auth-gate" id="authGate">
     <section class="auth-card" aria-labelledby="authTitle">
       <div class="auth-brand"><span class="brand-mark">N</span><b>NOESAR Evolution</b></div>
       <h1 id="authTitle">Secure initialization</h1>
-      <p id="authDescription">Authenticate to access the local AI workspace.</p>
+      <p id="authDescription">Use your NOESAR name and password.</p>
       <!-- Shown only when the server says a browser cannot complete a sign-in on the address
            this page was loaded from. The sentence lives here rather than being taken from the
            server's reply so that the existing translation mechanism covers it; the reply only
@@ -49,8 +50,9 @@
         <button class="primary" type="submit">Confirm Owner and sign in</button>
       </form>
       <form id="loginForm" class="auth-form hidden">
+        <p class="hint" id="loginHint">If you have just installed NOESAR, you find them at the end of the installation.</p>
         <label>Username<input id="loginUsername" autocomplete="username" required></label>
-        <label>Passphrase<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
         <button class="primary" type="submit">Continue</button>
         <button class="text-button" type="button" id="forgotCredentials">I cannot sign in</button>
       </form>
@@ -176,6 +178,7 @@
         <div id="navModules"></div>
       </nav>
       <div class="sidebar-foot">
+        <label class="sidebar-language simple-only">Language<select id="menuLanguageSelect"></select></label>
         <button type="button" class="text-button simple-only" id="simpleToFull">Full interface</button>
         <button type="button" class="text-button advanced-only" id="fullToSimple">Simple view</button>
       </div>
@@ -313,13 +316,13 @@
         <div class="chat-grid">
           <section class="panel chat-panel">
             <div class="simple-welcome" id="simpleWelcome">
-              <h2>What do you want to do?</h2>
-              <p>Write it in the box below. NOESAR shows you what will change before it changes anything.</p>
+              <h2>How can I help you today?</h2>
+              <p>Write in the box below, or start from an example. NOESAR shows you what will change before it changes anything.</p>
               <div class="simple-chips">
-                <button type="button" class="secondary" data-simple-prompt>Write an email to my accountant</button>
-                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Summarize this text:">Summarize a text I paste here</button>
-                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Help me plan this task, one step at a time:">Help me plan a task, one step at a time</button>
-                <button type="button" class="secondary" data-simple-prompt>What can you do here, on this computer?</button>
+                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Help me write a text. This is what I need:"><strong>Write something</strong><span>An email, a letter, a message</span></button>
+                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Summarize this text:"><strong>Summarize a text</strong><span>Paste it and I will make it shorter</span></button>
+                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Help me plan this task, one step at a time:"><strong>Plan a task</strong><span>One step at a time</span></button>
+                <button type="button" class="secondary" data-simple-prompt data-prompt-complete data-prompt-text="What can you do here, on this computer?"><strong>See what I can do</strong><span>On this computer, for you</span></button>
               </div>
             </div>
             <div id="messageList" class="messages empty-state">Create or select a conversation. <button type="button" class="secondary" data-start-conversation>＋ New conversation</button></div>
@@ -376,7 +379,8 @@
                 <p class="model-picker-foot"><button type="button" class="text-button" data-view-link="models">All models, and how to get more</button></p>
               </div>
             </div>
-            <p class="hint chat-disclaimer">NOESAR EVOLUTION is an AI and can make mistakes.</p>
+            <p class="hint chat-disclaimer advanced-only">NOESAR EVOLUTION is an AI and can make mistakes.</p>
+            <p class="hint chat-disclaimer simple-only">NOESAR is an AI and can be wrong. Check what matters.</p>
           </section>
           <!-- The work beside the conversation, s326 (Owner's point 4b: a chat that unites
                work and research). The column already existed and held one thing — a JSON dump
@@ -1125,9 +1129,9 @@
           <button class="settings-nav" type="button" data-section="licence">Licence</button>
           <button class="settings-nav" type="button" data-section="privacy">Privacy and connectors</button>
           <button class="settings-nav" type="button" data-section="people">People and access</button>
-          <button class="settings-nav" type="button" data-section="security">Security and compliance</button>
+          <button class="settings-nav" type="button" data-section="security"><span class="advanced-only">Security and compliance</span><span class="simple-only">Password and security</span></button>
           <p class="settings-group">THE SYSTEM</p>
-          <button class="settings-nav" type="button" data-section="models-hardware">Models and hardware</button>
+          <button class="settings-nav" type="button" data-section="models-hardware"><span class="advanced-only">Models and hardware</span><span class="simple-only">The AI and this computer</span></button>
           <button class="settings-nav" type="button" data-section="storage">Storage and backup</button>
           <button class="settings-nav" type="button" data-section="audit">Audit and evidence</button>
           <button class="settings-nav" type="button" data-section="health">Health and logs</button>
@@ -1209,6 +1213,15 @@
       </section>
       <section class="settings-section" id="section-appearance" data-section="appearance">
         <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Appearance</h2><p>Nine themes, and any accent colour you like — with the contrast measured while you choose it, not afterwards.</p></div></div>
+        <section class="panel simple-only" id="simpleAppearance">
+          <h3>Light or dark</h3>
+          <p class="hint">Pick what is easiest on your eyes. "Like this computer" follows your computer.</p>
+          <div class="choice-row" id="schemeChoices" role="group" aria-label="Light or dark">
+            <button type="button" data-scheme="auto" aria-pressed="false">Like this computer</button>
+            <button type="button" data-scheme="light" aria-pressed="false">Light</button>
+            <button type="button" data-scheme="dark" aria-pressed="false">Dark</button>
+          </div>
+        </section>
         <section class="panel">
           <div class="panel-title"><h3>Theme</h3><span class="badge badge-off" id="themeCurrent">—</span></div>
           <p class="hint">A theme is a remapping of the interface's colour tokens, not a second stylesheet. Meaning never moves with it: the seven states below keep their glyph and their word in every theme.</p>
@@ -1267,6 +1280,10 @@
       </section>
       <section class="settings-section" id="section-language" data-section="language">
         <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Language and time</h2><p>Time, language and locale. The server default applies wherever you have set no preference of your own.</p></div></div>
+        <section class="panel form-stack simple-only" id="simpleLanguage">
+          <h3>Language</h3>
+          <label>Language of the screens<select id="simpleLanguageSelect"></select></label>
+        </section>
         <div class="two-col">
           <section class="panel form-stack">
             <div class="panel-title"><h2>Time zone</h2><span id="settingsTimezoneTier" class="badge badge-off">—</span></div>
@@ -1366,6 +1383,13 @@
         <section class="panel"><div class="panel-title"><h2>Active sessions</h2><button class="text-button" id="revokeOthers" type="button">Sign out every other session</button></div><div id="sessionList" class="card-list empty-state">Loading…</div></section>
       </section>
       <section class="settings-section" id="section-models-hardware" data-section="models-hardware">
+        <section class="panel simple-only" id="simpleAi">
+          <h3>The AI that answers you</h3>
+          <p id="simpleAiNow" translate="no"></p>
+          <button type="button" class="primary" id="simpleAiSearch">Look for an AI on this computer</button>
+          <h3>This computer</h3>
+          <ul class="plain-list" id="simpleComputer" translate="no"></ul>
+        </section>
         <section class="settings-sub" id="view-hardware">
         <div class="section-header"><div><p class="eyebrow">COMPUTE ORCHESTRATION</p><h2 class="page-title">Compute & Hardware</h2><p>Automatic discovery and explainable runtime selection.</p></div><button class="primary" id="refreshHardware">Refresh probe</button></div>
         <div class="hardware-grid"><section class="panel"><h2>Detected hardware</h2><pre id="hardwareOutput">Loading…</pre></section><section class="panel"><h2>Runtime recommendation</h2><div class="form-grid"><label>Model size<input id="modelSize" type="number" value="7" min="1"> B</label><label>Quantization<select id="quantBits"><option value="4">4-bit</option><option value="8">8-bit</option><option value="16">16-bit</option></select></label></div><button class="primary" id="recommendRuntime">Recommend</button><pre id="runtimeOutput">No recommendation generated.</pre></section></div>

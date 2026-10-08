@@ -17,6 +17,7 @@ import puppeteer from 'puppeteer';
 // Resolved relative to this file, so the harness does not depend on where the
 // repository happens to be mounted inside the runner container.
 import { totpCode } from '../services/reference-control-plane/src/auth-crypto.mjs';
+import { titleFromMessage, inferChatMode } from '../apps/webui-static/simple-mode.js';
 // `D-0569`. The command count below was a literal — 17 — and it has now been wrong twice:
 // `D-0448` corrected it once, and adding `measure` for `CE-008` broke it again. A number that
 // describes another file belongs to that file, so it is derived from the registry both shells
@@ -4603,11 +4604,11 @@ try {
       welcome: shown('#simpleWelcome'),
       chips: document.querySelectorAll('[data-simple-prompt]').length,
       stillShown: ['.topbar .command', '#timezoneChip', '#projectChip', '#modelChip', '#coverageChip', '#panelRank',
-        '.language-picker', '#chatModes', '#view-chat .chat-crumb', '#view-chat .chat-chips', '#view-chat .chat-more',
+        '#chatModes', '#view-chat .chat-crumb', '#view-chat .chat-chips', '#view-chat .chat-more',
         '#chatWorkPanel', '#chatContextSummary'].filter(shown),
       kept: {
         input: shown('#chatInput'), send: shown('#sendMessage'), approvals: shown('#approvalStripOpen'),
-        signOut: shown('#logoutButton'), newChat: shown('#simpleNewChat'),
+        signOut: shown('#logoutButton'), newChat: shown('#simpleNewChat'), language: shown('.top-actions .language-picker'),
       },
     };
   });
@@ -4632,11 +4633,26 @@ try {
       const style = getComputedStyle(el);
       if (box.width === 0 || box.height === 0 || style.visibility === 'hidden' || style.display === 'none') continue;
       const size = parseFloat(style.fontSize);
-      if (size < 12) seen.push(`${text.slice(0, 24)}@${size.toFixed(1)}`);
+      if (size > 0 && size < 14) seen.push(`${text.slice(0, 24)}@${size.toFixed(1)}`);
     }
     return seen;
   });
-  check('nothing a person reads on the first screen is under 12px', smallPrint.length === 0, smallPrint.slice(0, 6).join(' | '));
+  check('nothing a person reads on the first screen is under 14px', smallPrint.length === 0, smallPrint.slice(0, 6).join(' | '));
+  // The same rule for what a person presses, and for the colour scheme: measured on the page, because a rule can say 44px and lose to a more specific one.
+  const smallTargets = await simple.evaluate(() => [...document.querySelectorAll('button, a[href], select, input:not([type=hidden]), textarea, summary')]
+    .map((el) => ({ el, box: el.getBoundingClientRect(), style: getComputedStyle(el) }))
+    .filter(({ box, style }) => box.width > 1 && box.height > 1 && style.visibility !== 'hidden' && style.display !== 'none')
+    .filter(({ box }) => box.height < 44 || box.width < 44)
+    .map(({ el, box }) => `${(el.innerText || el.getAttribute('aria-label') || el.id || el.tagName).trim().slice(0, 20)} ${Math.round(box.width)}x${Math.round(box.height)}`));
+  check('nothing a person presses on the first screen is under 44px', smallTargets.length === 0, smallTargets.slice(0, 6).join(' | '));
+  // the page hears the browser's own change event, which arrives after the emulation call returns
+  await simple.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await simple.waitForFunction(() => document.documentElement.dataset.theme === 'midnight', { timeout: 5000 }).catch(() => {});
+  const darkTheme = await simple.evaluate(() => document.documentElement.dataset.theme);
+  await simple.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  await simple.waitForFunction(() => document.documentElement.dataset.theme === 'daylight', { timeout: 5000 }).catch(() => {});
+  const lightTheme = await simple.evaluate(() => document.documentElement.dataset.theme);
+  check('the simple interface is light or dark as the computer says, while the page is open', darkTheme === 'midnight' && lightTheme === 'daylight', `${darkTheme} / ${lightTheme}`);
 
   // The menu: one button, and it keeps to the four destinations — fewer for a role that may not
   // open them all — and closes again once one is chosen.
@@ -4665,13 +4681,22 @@ try {
   await simple.waitForFunction(() => document.querySelector('.view.active')?.id === 'view-chat', { timeout: 10000 });
   await simple.evaluate(() => { document.querySelector('#simpleNewChat').click(); });
   await simple.waitForFunction(() => document.querySelector('#view-chat').hasAttribute('data-empty'), { timeout: 10000 });
+  // The first card asks for the person's own words: it writes the start of a sentence and leaves the cursor below it.
   const suggestion = await simple.evaluate(() => {
-    const chip = document.querySelector('[data-simple-prompt]');
-    chip.click();
-    return { chip: chip.textContent.trim(), box: document.querySelector('#chatInput').value, focused: document.activeElement?.id };
+    const card = document.querySelector('[data-simple-prompt]:not([data-prompt-complete])');
+    card.click();
+    return { card: card.querySelector('strong')?.textContent.trim(), box: document.querySelector('#chatInput').value, focused: document.activeElement?.id };
   });
   check('a suggestion is written into the box, and the box takes the focus',
-    suggestion.box === suggestion.chip && suggestion.focused === 'chatInput', JSON.stringify(suggestion));
+    /:\n\n$/.test(suggestion.box) && suggestion.box.length > 10 && suggestion.focused === 'chatInput', JSON.stringify(suggestion));
+  // ...and the person goes on in their own words
+  await simple.evaluate(() => {
+    const box = document.querySelector('#chatInput');
+    box.value += 'a thank-you letter to my neighbour';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const message = await simple.evaluate(() => document.querySelector('#chatInput').value);
+  suggestion.chip = titleFromMessage(message);
   const countChats = () => simple.evaluate(async () => {
     const response = await fetch('/api/v1/sessions?place=active', { credentials: 'same-origin' });
     return (await response.json()).items.map((item) => ({ title: item.title, mode: item.mode }));
@@ -4683,7 +4708,7 @@ try {
   const born = chatsAfter.find((item) => item.title === suggestion.chip);
   check('a first message with no conversation open creates one, titled by the message',
     chatsAfter.length === chatsBefore.length + 1 && Boolean(born), JSON.stringify({ before: chatsBefore.length, after: chatsAfter.length, born }));
-  check('and the mode is read from the message — "write" is a creation, never an action the page took by itself', born?.mode === 'CREATE', JSON.stringify(born));
+  check('and the mode is read from the message — "write" is a creation, never an action the page took by itself', born?.mode === 'CREATE' && inferChatMode(message) === 'CREATE', JSON.stringify(born));
   const answered = await simple.waitForFunction(
     () => document.querySelector('#toastHost .toast-error') || document.querySelector('#messageList .message.assistant'),
     { timeout: 25000 },

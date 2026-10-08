@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { initI18n, t } from './i18n.js';
-import { PAGE_HELP } from './page-help.js';
+import { PAGE_HELP, SIMPLE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer } from './simple-mode.js';
+import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer } from './simple-mode.js';
+import { renderMarkdownLite as renderMarkdown } from './markdown-lite.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
@@ -189,6 +190,11 @@ function readCsrfCookie(){
 let csrfToken=readCsrfCookie();let currentUser=null;let setupChallenge='';let loginChallenge='';let codenMode='NORMAL';let currentPathPlan=null;let activeRunId=null;let currentMode='ASK';
 // The simple interface is the default (simple-mode.js); the person can switch to the full one.
 const simpleOn=readSimple(localStorage);document.body.dataset.ui=simpleOn?'simple':'full';
+// The simple interface is light or dark by the computer's own setting unless the person chose (Settings › Appearance).
+// It does not write THEME_KEY: that is the full interface's choice among nine themes.
+const darkQuery=matchMedia('(prefers-color-scheme: dark)');
+function applySchemeTheme(){document.documentElement.dataset.theme=themeForScheme(readScheme(localStorage),darkQuery.matches);}
+if(simpleOn){applySchemeTheme();darkQuery.addEventListener?.('change',applySchemeTheme);}
 // A setup token carried in the fragment of the link the installer opens (`/#setup=…`) is taken out
 // of the address at once, before the router reads the hash as if it were a route.
 const setupLinkToken=setupTokenFromHash(location.hash);if(setupLinkToken)history.replaceState(null,'',location.pathname+location.search);
@@ -207,30 +213,7 @@ const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,(char)=>({'&':'&a
 // elsewhere in this project already went the zero-dependency way. Runs AFTER escapeHtml, so
 // the tags it inserts are the only markup in the result — nothing in the model's own text is
 // left unescaped for it to inject through.
-function renderMarkdownLite(text){
-  const blocks=[];
-  let html=escapeHtml(text).replace(/```[^\n]*\n?([\s\S]*?)```/g,(_,code)=>{blocks.push(`<pre><code>${code}</code></pre>`);return `\x00${blocks.length-1}\x00`;});
-  html=html.replace(/`([^`\n]+?)`/g,'<code>$1</code>');
-  html=html.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>');
-  html=html.replace(/(?<![*\w])\*([^*\n]+?)\*(?!\w)/g,'<em>$1</em>');
-  html=html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  const lines=html.split('\n');
-  const out=[];
-  let inList=false;
-  for(const line of lines){
-    const item=line.match(/^[-*] (.+)$/);
-    if(item){
-      if(!inList){out.push('<ul>');inList=true;}
-      out.push(`<li>${item[1]}</li>`);
-    }else{
-      if(inList){out.push('</ul>');inList=false;}
-      out.push(line);
-    }
-  }
-  if(inList)out.push('</ul>');
-  html=out.join('<br>').replaceAll('<br><ul>','<ul>').replaceAll('</ul><br>','</ul>').replaceAll('<br><li>','<li>').replaceAll('</li><br>','</li>');
-  return html.replace(/\x00(\d+)\x00/g,(_,i)=>blocks[Number(i)]);
-}
+function renderMarkdownLite(text){return renderMarkdown(text,escapeHtml);}
 
 function setStatus(message,error=false){$('#statusMessage').textContent=t(message);$('#statusMessage').classList.toggle('error',error);}
 
@@ -317,10 +300,22 @@ const AUTH_TITLES={
   '#recoveryStartForm':'Recover access',
   '#recoveryFinishForm':'Recover access',
 };
+// One sentence per step. It used to be a single static line, which said what the sign-in step wants on the first-setup
+// screen and on the recovery screen too; and a two-line one pushes the confirm button of the QR step below a small window.
+const AUTH_DESCRIPTIONS={
+  '#setupForm':'Create the account that will manage NOESAR.',
+  '#setupMfaForm':'One more step: set up an authenticator app.',
+  '#loginForm':'Use your NOESAR name and password.',
+  '#loginMfaForm':'Type the code from your authenticator app.',
+  '#recoveryStartForm':'Recover access to your account.',
+  '#recoveryFinishForm':'Recover access to your account.',
+};
 function showOnly(form){
   ['#setupForm','#setupMfaForm','#loginForm','#loginMfaForm','#recoveryStartForm','#recoveryFinishForm'].forEach((selector)=>$(selector).classList.toggle('hidden',selector!==form));
   const title=AUTH_TITLES[form];
   if(title)$('#authTitle').textContent=title;
+  const description=AUTH_DESCRIPTIONS[form];
+  if(description)$('#authDescription').textContent=description;
 }
 function authError(message=''){$('#authError').textContent=message;}
 // --- routing ---------------------------------------------------------------
@@ -703,6 +698,31 @@ function initSimpleUi(){
   $('#simpleToFull')?.addEventListener('click',()=>setUi(false));
   $('#fullToSimple')?.addEventListener('click',()=>setUi(true));
   $('#simpleNewChat')?.addEventListener('click',async()=>{await selectConversation(null);$('#chatInput')?.focus();});
+  // The box says what to do in a person's words; the full interface keeps its hint about slash commands.
+  // The translator keeps the first value an attribute had and repaints from it, so a placeholder changed from here would be
+  // put back. The box is the person's own text field: it is excluded from translation and painted with t() instead.
+  if(simpleOn){
+    const box=$('#chatInput');
+    if(box){
+      box.setAttribute('translate','no');
+      const paint=()=>box.setAttribute('placeholder',t('Write here what you need…'));
+      paint();
+      $('#languageSelect')?.addEventListener('change',()=>setTimeout(paint,0));
+    }
+  }
+  // Settings, for a person: light or dark, the language of the screens, and looking for an AI.
+  paintSchemeChoices();
+  $$('#schemeChoices [data-scheme]').forEach((choice)=>choice.addEventListener('click',()=>{writeScheme(localStorage,choice.dataset.scheme);applySchemeTheme();paintSchemeChoices();}));
+  syncSimpleLanguage();
+  $$('#simpleLanguageSelect,#menuLanguageSelect').forEach((choice)=>choice.addEventListener('change',(event)=>{
+    const main=$('#languageSelect');if(!main)return;
+    main.value=event.target.value;main.dispatchEvent(new Event('change',{bubbles:true}));setTimeout(syncSimpleLanguage,80);
+  }));
+  $('#simpleAiSearch')?.addEventListener('click',()=>{
+    navigate('chat');
+    const notice=$('#simpleNoModel');notice?.classList.remove('hidden');notice?.classList.add('wizard-only');
+    $('#modelWizardOpen')?.click();
+  });
   // A chip is a sentence to start from, written into the box rather than sent: it is the
   // person's turn to add the details. The text is the chip's own, already in their language.
   $$('[data-simple-prompt]').forEach((chip)=>chip.addEventListener('click',()=>{
@@ -710,11 +730,30 @@ function initSimpleUi(){
     // A chip that needs the person's own words (a text to paste, a job to describe) writes the start of the
     // sentence and leaves the cursor below it: sent as it was, it got "first paste it, then I will go on".
     const open=chip.dataset.promptText;
-    box.value=open?`${t(open)}\n\n`:chip.textContent.trim();
+    box.value=chip.hasAttribute('data-prompt-complete')?t(open):`${t(open)}\n\n`;
     box.focus();box.setSelectionRange(box.value.length,box.value.length);
   }));
   // Choosing a destination closes the menu again, so the page stays clean.
   if(simpleOn)$$('#sidebar .nav').forEach((item)=>item.addEventListener('click',()=>applySidebarRank('hidden')));
+}
+function paintSchemeChoices(){
+  const chosen=readScheme(localStorage);
+  $$('#schemeChoices [data-scheme]').forEach((choice)=>choice.setAttribute('aria-pressed',String(choice.dataset.scheme===chosen)));
+}
+// The language select of the top bar is hidden in the simple interface; this one drives it, so there is one setting.
+function syncSimpleLanguage(){
+  const main=$('#languageSelect');
+  if(!main)return;
+  for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}
+}
+// The AI that answers, and the machine, in plain words (Settings › Models and hardware).
+function paintSimpleAi(name){
+  const line=$('#simpleAiNow');if(!line)return;
+  line.textContent=name?`${t('Answering you now:')} ${name}`:t('No AI is connected yet.');
+}
+function paintSimpleComputer(report){
+  const host=$('#simpleComputer');if(!host)return;
+  host.innerHTML=describeComputer(report).map(([label,value])=>`<li><b>${escapeHtml(t(label))}</b> ${escapeHtml(value==='Yes'?t('Yes'):(value||t('None found')))}</li>`).join('');
 }
 // --- connecting a model, in plain words (model-discovery.mjs) -------------------
 // The notice above the box leads here: look for a model server on this computer, offer what was
@@ -966,13 +1005,12 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   let banner=$('#defaultPasswordBanner');
   if(currentUser?.mustChangePassword){
     if(!banner){
-      banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.setAttribute('role','alert');
-      banner.style.cssText='position:sticky;top:0;z-index:9999;background:#b45309;color:#fff;padding:.6rem 1rem;text-align:center;font-weight:600;';
+      banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.className='top-notice';banner.setAttribute('role','alert');
       // The first thing a person sees after the installer's own sign-in, so in their language, and the link goes to
       // the form: "#settings" alone opened Sessions, sixteen sections away from the password.
       const link=document.createElement('a');link.href='#settings/security';link.textContent=t('Change it now');
-      link.style.cssText='color:#fff;text-decoration:underline;';
-      banner.append(`${t('This account is still using the default password.')} `,link);
+      const message=document.createElement('span');message.textContent=t('This account is still using the default password.');
+      banner.append(message,link);
       document.body.prepend(banner);
     }
   }else if(banner){banner.remove();}
@@ -1083,8 +1121,9 @@ async function refreshPrivacy(){
   box.querySelector('.verified')?.setAttribute('translate','no');
   try{
     const {banner,state:privacyState,disclosures,telemetry}=await api('/api/v1/privacy');
-    box.querySelector('strong').textContent=banner.headline;
-    box.querySelector('small').textContent=banner.detail;
+    // Same verdict (banner.external), said the way a person says it. The server's own sentences stay in the full interface.
+    box.querySelector('strong').textContent=simpleOn?(banner.external?'An outside AI service is in use.':'Everything stays on this computer.'):banner.headline;
+    box.querySelector('small').textContent=simpleOn?(banner.external?'Your words are sent to it because you chose it.':'Nothing you write is sent to anyone else.'):banner.detail;
     box.querySelector('.verified').textContent=privacyState.replaceAll('_',' ');
     // banner.external is the server's own verdict. Comparing the state string here
     // would be a second, silently drifting copy of that rule — and the first attempt
@@ -1101,8 +1140,8 @@ async function refreshPrivacy(){
   }catch(error){
     box.classList.add('external');
     box.classList.remove('status-good');
-    box.querySelector('strong').textContent='Privacy state could not be confirmed.';
-    box.querySelector('small').textContent='The server did not answer the privacy check, so this notice is not reporting a verified state.';
+    box.querySelector('strong').textContent=simpleOn?'NOESAR could not check where your words go.':'Privacy state could not be confirmed.';
+    box.querySelector('small').textContent=simpleOn?'':'The server did not answer the privacy check, so this notice is not reporting a verified state.';
     box.querySelector('.verified').textContent='UNVERIFIED';
     // Same rule for the chips: an unanswered check is not a local-only guarantee.
     setPrivacyChips(false,true);
@@ -1113,7 +1152,11 @@ async function refreshPrivacy(){
 
 function setPrivacyChips(external,unconfirmed=false){
   const runtime=$('#runtimeState');
-  if(runtime)runtime.textContent=unconfirmed?'● Privacy state not confirmed':(external?'● External by consent':'● Local-first');
+  // The words are English sources on purpose: the translator keeps them, so a change of language repaints them.
+  if(runtime&&simpleOn){
+    runtime.textContent=unconfirmed?'Not confirmed':(external?'External service':'Private');
+    runtime.title=unconfirmed?'NOESAR could not confirm where your words go.':(external?'You chose to use an AI service outside this computer.':'What you write stays on this computer.');
+  }else if(runtime)runtime.textContent=unconfirmed?'● Privacy state not confirmed':(external?'● External by consent':'● Local-first');
   const egress=$('#egressMetric');
   if(egress){egress.textContent=unconfirmed?'Unknown':(external?'Available by consent':'Blocked');egress.className=external||unconfirmed?'amber':'';}
 }
@@ -1767,7 +1810,7 @@ async function sendChat({signal=null,onDelta=null}={}){
     await refreshWorkspace();
     setStatus(agentCreatedName?`Created the agent "${agentCreatedName}".`:'Response completed.');
     // An answer is the proof that something answers: the "no model" notice has done its work.
-    $('#simpleNoModel')?.classList.add('hidden');
+    $('#simpleNoModel')?.classList.add('hidden');$('#simpleNoModel')?.classList.remove('wizard-only');
     // One summary, once, when the event is over.
     announceEvent(`Reply complete, ${assistantText.length} characters`);
     // …and the reply itself, if the person asked for it. Here for the same reason the live
@@ -2638,7 +2681,7 @@ document.addEventListener('keydown',(event)=>{
   // box — which the placeholder has advertised all along — and ` / ` now belongs to the prompt
   // on every destination, including the terminal that lives in one.
 });
-async function refreshHardware(){$('#hardwareOutput').textContent='Running read-only discovery…';try{$('#hardwareOutput').textContent=JSON.stringify(await api('/api/v1/hardware'),null,2);}catch(error){$('#hardwareOutput').textContent=error.message;}}
+async function refreshHardware(){$('#hardwareOutput').textContent='Running read-only discovery…';try{const report=await api('/api/v1/hardware');$('#hardwareOutput').textContent=JSON.stringify(report,null,2);paintSimpleComputer(report);}catch(error){$('#hardwareOutput').textContent=error.message;}}
 $('#refreshHardware').addEventListener('click',refreshHardware);$('#recommendRuntime').addEventListener('click',async()=>{try{$('#runtimeOutput').textContent=JSON.stringify(await api('/api/v1/runtime/recommendation',{method:'POST',body:JSON.stringify({modelBillions:Number($('#modelSize').value),quantizationBits:Number($('#quantBits').value),profile:'Automatic'})}),null,2);}catch(error){setStatus(error.message,true);}});
 $$('[data-mode]').forEach((button)=>button.addEventListener('click',()=>{if(button.disabled)return;codenMode=button.dataset.mode;$$('[data-mode]').forEach((item)=>item.classList.toggle('selected',item===button));$('#modeLabel').textContent=`${codenMode.replace('_',' ')} MODE`;$('#ownerReauth').classList.toggle('hidden',codenMode!=='OWNER_BYPASS');}));
 $('#analyzePath').addEventListener('click',async()=>{try{currentPathPlan=await api('/api/v1/coden/path-plan',{method:'POST',body:JSON.stringify({path:$('#pathInput').value,operation:$('#operation').value,recursive:$('#recursive').checked,mode:codenMode,dependencies:[],commands:[]})});$('#pathResult').textContent=JSON.stringify(currentPathPlan,null,2);$('#approvalControls').classList.remove('hidden');}catch(error){$('#pathResult').textContent=JSON.stringify(error.value??{error:error.message},null,2);}});
@@ -2857,6 +2900,7 @@ $('#securityPasswordForm').addEventListener('submit',(event)=>{
       // now, not at the next reload.
       if(currentUser)currentUser.mustChangePassword=false;
       $('#defaultPasswordBanner')?.remove();
+      loadEffectiveZone();
       toast(`Password changed. ${result.revokedSessions??0} other session(s) signed out.`,{kind:'success'});
       await loadSecurity();
     }catch(error){reportError(error,'Change password');}
@@ -4299,6 +4343,8 @@ function formatInstant(value,{withZone=true}={}){
   const date=value instanceof Date?value:new Date(value);
   if(Number.isNaN(date.getTime()))return '—';
   const zone=zoneName();
+  // A person says "today, 04:36", not "8 Oct 2026, 04:36 · Europe/Rome"; the zone is named only where it is not their own.
+  if(simpleOn)return friendlyWhen(date,{zone,lang:document.documentElement.lang||undefined,showZone:withZone&&zone!==Intl.DateTimeFormat().resolvedOptions().timeZone});
   const text=new Intl.DateTimeFormat(document.documentElement.lang||undefined,
     {dateStyle:'medium',timeStyle:'short',timeZone:zone}).format(date);
   return withZone?`${text} · ${zone}`:text;
@@ -4325,7 +4371,8 @@ async function loadEffectiveZone(){
 function paintZoneOffer(settings){
   let bar=$('#zoneBanner');
   const zone=simpleOn?zoneOffer(settings):'';
-  if(!zone){bar?.remove();return;}
+  // One notice at a time: the default password comes first, and the hour is offered once it is gone.
+  if(!zone||$('#defaultPasswordBanner')){bar?.remove();return;}
   if(bar)return;
   bar=document.createElement('div');bar.id='zoneBanner';bar.setAttribute('role','status');
   const use=document.createElement('button');use.type='button';use.textContent=t('Use the time on my computer');
@@ -4335,7 +4382,8 @@ function paintZoneOffer(settings){
       await loadEffectiveZone();await refreshWorkspace();
     }catch(error){reportError(error,'Save time zone');}
   }));
-  bar.append(`${t('Times are shown in UTC.')} ${t('Your computer is in')} ${zone}. `,use);
+  const message=document.createElement('span');message.textContent=`${t('Times are shown in UTC.')} ${t('Your computer is in')} ${zone}.`;
+  bar.append(message,use);
   document.body.prepend(bar);
 }
 
@@ -4605,7 +4653,7 @@ function chatNavRowHtml(item){
   return `<div class="chat-nav-row${current?' current':''}" data-chat-nav-id="${item.id}">
     <button class="chat-nav-open" type="button" data-chat-open="${item.id}" ${current?'aria-current="true"':''}>
       <span class="chat-nav-title">${escapeHtml(item.title)}</span>
-      <small>${item.messageCount} message${item.messageCount===1?'':'s'} · ${when}</small>
+      <small>${simpleOn?'':`${item.messageCount} message${item.messageCount===1?'':'s'} · `}${when}</small>
     </button>
     <span class="chat-nav-actions">
       <button type="button" title="Archive" aria-label="Archive ${escapeHtml(item.title)}" data-session-archive="${item.id}">⊟</button>
@@ -6732,6 +6780,7 @@ async function refreshCodenModelChip(){
     write(loaded??(active?.state==='unreachable'?'unreachable'
       :active?.state==='none-served'?'no model served':'none configured'),
       loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):t(simpleOn?'No AI yet':'none'));
+    paintSimpleAi(loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):'');
   }catch{ write('—','—'); }
 }
 /**
@@ -7010,13 +7059,15 @@ function closeHelp(){
   $$('.help-button[aria-expanded="true"]').forEach((node)=>node.setAttribute('aria-expanded','false'));
 }
 function openHelp(button,address){
-  const entry=PAGE_HELP[address];
+  // The simple interface has its own words for the four pages it has; any other page uses the entry it always had.
+  const plain=simpleOn?SIMPLE_HELP[address]:null;
+  const entry=plain??PAGE_HELP[address];
   const panel=$('#pageHelp');
   if(!panel)return;
   // A page with no entry says so rather than opening an empty box. An empty explanation reads
   // as "there is nothing to know here", which is a claim, and a false one.
   panel.innerHTML=entry
-    ?`<h3>${escapeHtml(t('What this is'))}</h3><p>${escapeHtml(t(entry.what))}</p><h3>${escapeHtml(t('What is worth doing here'))}</h3><p>${escapeHtml(t(entry.howto))}</p><p class="hint">${escapeHtml(t('Press Escape to close.'))}</p>`
+    ?`<h3>${escapeHtml(t('What this is'))}</h3><p>${escapeHtml(t(entry.what))}</p><h3>${escapeHtml(t(plain?'What you can do here':'What is worth doing here'))}</h3><p>${escapeHtml(t(entry.howto))}</p><p class="hint">${escapeHtml(t('Press Escape to close.'))}</p>`
     :`<p>${escapeHtml(t('No help has been written for this page yet.'))}</p>`;
   panel.setAttribute('translate','no');
   panel.classList.remove('hidden');

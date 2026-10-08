@@ -176,3 +176,32 @@ export const PAGE_HELP = Object.freeze({
     howto: 'The message names the role that is required and the one you are signed in as. An administrator can change it in Settings › People and access.',
   },
 });
+
+/**
+ * The same four pages, for a person who has never used an AI (the simple interface), 2026-10-08.
+ *
+ * The entries above were written for the full interface, from the census of what each page does, and they say
+ * "context graph", "artifacts", "knowledge mode", "Plan then Approve". Under the `i` button of the page a person has
+ * just opened, those are the words that make it the one button they will not press twice. These say what the page is
+ * for, in the words the page itself uses, and nothing it cannot do. Only the pages the simple interface has are here;
+ * a page that is not here falls back to its entry above.
+ */
+export const SIMPLE_HELP = Object.freeze({
+  chat: {
+    what: 'Here you talk to NOESAR: you write what you need and it answers.',
+    howto: 'Write in the box or start from an example. Under an answer you can copy it, save it or ask again. NOESAR can be wrong, so check what matters.',
+  },
+  projects: {
+    what: 'A project is a place for one subject, with its own chats and its own rules.',
+    howto: 'Give it a name, say what it is for and write the rules to follow every time. Then press "Use project" and talk inside it.',
+  },
+  documents: {
+    what: 'The answers you decided to keep.',
+    howto: 'In a chat, press "Save this answer" under it. Here you can copy it again or change it.',
+  },
+  settings: {
+    what: 'Light or dark, the language, your password and the AI that answers you.',
+    howto: 'Choose a section from the list.',
+  },
+});
+

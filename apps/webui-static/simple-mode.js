@@ -199,3 +199,75 @@ export function setupTokenFromHash(hash) {
   const match = /^#setup=([A-Za-z0-9_-]{16,128})$/.exec(String(hash ?? ''));
   return match ? match[1] : '';
 }
+
+// ── light or dark, a time a person can read, and the computer in plain words — 2026-10-08 ─────────────────────────────
+
+export const SCHEME_KEY = 'noesar.ui.scheme';
+
+/** 'auto' (follow the computer), 'light' or 'dark'. Anything else, or a refused storage, is 'auto'. */
+export function readScheme(storage) {
+  try {
+    const value = storage?.getItem(SCHEME_KEY);
+    return value === 'light' || value === 'dark' ? value : 'auto';
+  } catch { return 'auto'; }
+}
+
+export function writeScheme(storage, preference) {
+  try { storage?.setItem(SCHEME_KEY, preference === 'light' || preference === 'dark' ? preference : 'auto'); } catch { /* the choice lasts until the page is reloaded */ }
+}
+
+/**
+ * The page's own theme for a preference. The simple interface has two looks, the light one (the
+ * theme called daylight) and the dark one (midnight, the product's original); the nine themes of the
+ * full interface are a different choice and are not touched.
+ */
+export function themeForScheme(preference, prefersDark) {
+  const dark = preference === 'dark' || (preference !== 'light' && Boolean(prefersDark));
+  return dark ? 'midnight' : 'daylight';
+}
+
+/**
+ * A time the way a person says it: "today, 04:36", "yesterday, 16:52", "6 Oct, 16:52", and with the
+ * year when it is not this one. No zone name unless `showZone` asks for one: "Europe/Rome" after every
+ * message answers a question nobody asked. `showZone` is for when the zone shown is not the one the
+ * person's own computer is in, which is the one case where hiding it would mislead.
+ *
+ * "Today" and "yesterday" come from Intl.RelativeTimeFormat, so they are in the page's language
+ * without a catalogue entry.
+ */
+export function friendlyWhen(value, { now = new Date(), zone, lang, showZone = false } = {}) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const make = (zoneName) => {
+    const dayKey = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: zoneName, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const time = new Intl.DateTimeFormat(lang, { timeZone: zoneName, hour: '2-digit', minute: '2-digit' }).format(date);
+    const days = Math.round((Date.parse(dayKey(now)) - Date.parse(dayKey(date))) / 86400000);
+    if (days === 0 || days === 1) {
+      const word = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(-days, 'day');
+      return `${word.charAt(0).toUpperCase()}${word.slice(1)}, ${time}`;
+    }
+    const sameYear = dayKey(now).slice(0, 4) === dayKey(date).slice(0, 4);
+    const day = new Intl.DateTimeFormat(lang, { timeZone: zoneName, day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) }).format(date);
+    return `${day}, ${time}`;
+  };
+  let text;
+  let used = zone;
+  try { text = make(zone || undefined); } catch { used = undefined; text = make(undefined); }
+  return showZone && used ? `${text} · ${used}` : text;
+}
+
+/**
+ * What the machine is, from the hardware report, as three plain lines: [label, value]. The labels are
+ * interface strings (translated by the caller); the value for a missing graphics card is '' so that the
+ * caller says "none found" in the person's language.
+ */
+export function describeComputer(report) {
+  const gigabytes = (bytes) => (Number.isFinite(bytes) && bytes > 0 ? `${Math.round(bytes / 1024 ** 3)} GB` : '');
+  const cards = Array.isArray(report?.accelerators) ? report.accelerators : [];
+  const names = cards.map((card) => String(card?.name ?? card?.model ?? card?.vendor ?? '').trim()).filter(Boolean);
+  return [
+    ['Processor', String(report?.cpu?.model ?? '').trim()],
+    ['Memory', gigabytes(report?.memory?.totalBytes)],
+    ['Graphics card', names.length ? names.join(', ') : (cards.length ? 'Yes' : '')],
+  ];
+}
