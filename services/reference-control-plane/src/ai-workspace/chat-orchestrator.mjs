@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { scriptGrammar } from './output-guard.mjs';
 import { randomUUID } from 'node:crypto';
 import { wrapUntrusted, enforceToolScope } from './untrusted-content.mjs';
 import { AGENT_DIRECTIVE_INSTRUCTION, extractAgentDirective } from './agent-directive.mjs';
@@ -320,6 +321,9 @@ export class ChatOrchestrator{
     const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds,audience:speakTo,language:typeof language==='string'?language:''});
     // #buildContext includes the just-persisted user message; remove its duplicate final copy.
     built.messages=built.messages.filter((message,index)=>!(index===built.messages.length-2&&message.role==='user'&&message.content===user.content));
+    // No stray Chinese in an Italian draft: only for a person (the everyday register), only when the turn offers no tool, only for a
+    // language written in Latin letters, and only when they did not ask for those characters (output-guard.mjs).
+    const outputGrammar=speakTo==='everyday'?scriptGrammar({language:typeof language==='string'?language:'',userText:String(content),hasTools:(built.tools??[]).length>0}):'';
     const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});
     res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});
     sse(res,'run',{runId,status:'started',providerRoute});
@@ -340,7 +344,7 @@ export class ChatOrchestrator{
         // `usage` is only ever populated on the frame that carries it (see provider-gateway's
         // usageFrom()) — most deltas in a stream have none, so the running value is kept
         // rather than overwritten with a null on every ordinary text chunk.
-        for await(const event of this.providers.streamWithFallback(providerRoute,{actorId,projectId:built.inspection.conversation.projectId,model,messages:conversation,tools:built.tools,dataClasses:built.dataClasses},{signal:controller.signal})){
+        for await(const event of this.providers.streamWithFallback(providerRoute,{actorId,projectId:built.inspection.conversation.projectId,model,messages:conversation,tools:built.tools,dataClasses:built.dataClasses,outputGrammar:outputGrammar||undefined},{signal:controller.signal})){
           selectedProvider=event.providerId;
           if(event.delta){roundText+=event.delta;answer+=event.delta;sse(res,'delta',{runId,providerId:event.providerId,text:event.delta});}
           if(event.usage)usage=event.usage;

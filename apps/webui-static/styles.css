@@ -1922,4 +1922,10 @@ body[data-ui=simple] .model-switch small{font-size:calc(var(--text-scale)*12.5px
 .message-body h3,.message-body h4,.message-body h5{margin:.9em 0 .35em;font-size:1em}
 /* A list whose markup starts as "empty" and whose renderer never says it stopped being: its cards inherited the empty state's centred text and padding. Seen on Documents and Projects. */
 .empty-state:has(>.entity-card){padding:0;text-align:start;color:inherit}
+/* The language choice on the sign-in window. */
+.auth-language{display:grid;gap:6px;margin-top:18px;color:var(--muted);font-size:calc(var(--text-scale)*12px)}
+.auth-language select{width:100%}
+/* A sign-in card taller than the window (the QR step, with the language choice under it) is reached by scrolling the window, not cut off: the
+   gate used to be a fixed grid that clipped what did not fit. `safe` keeps the top of a tall card from sliding out of reach when it is centred. */
+.auth-gate{overflow-y:auto;align-items:safe center}
 

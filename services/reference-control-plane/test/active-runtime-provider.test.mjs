@@ -357,3 +357,35 @@ test('the local runtime is asked NOT to think, and an external provider is never
       'a provider that is not the local runtime must not receive this field');
   } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
 });
+
+// A grammar that forbids Chinese characters keeps a stray word out of an Italian draft (output-guard.mjs). llama.cpp takes it; any
+// other endpoint may answer an unknown field with a 400, so it goes only to the product's own runtime and to a server the person
+// connected under the name the discovery gave it.
+test('the output grammar goes to a llama.cpp server only, and only when one was asked for', async () => {
+  const { server, port } = await upstream();
+  const f = fixture(serving(port));
+  const grammar = 'root ::= [^x]*';
+  const ask = (profileId, extra = {}) => f.gateway.complete(profileId, { messages: [{ role: 'user', content: 'hello' }], actorId: 'tester', ...extra });
+  const connect = (name, type = 'local-openai-compatible') => {
+    const profile = f.gateway.create({ type, name, external: false, apiStyle: 'openai-chat', baseUrl: `http://127.0.0.1:${port}/v1`, defaultModel: 'm' });
+    f.gateway.update(profile.id, { enabled: true });
+    return profile;
+  };
+  try {
+    await ask(LOCAL_RUNTIME_PROFILE_ID, { outputGrammar: grammar });
+    assert.equal(server.lastPayload.grammar, grammar, 'the product\'s own runtime takes it');
+    await ask(LOCAL_RUNTIME_PROFILE_ID);
+    assert.equal(server.lastPayload.grammar, undefined, 'and nothing is sent when none was asked for');
+
+    await ask(connect('llama.cpp (172.24.0.251:8080)').id, { outputGrammar: grammar });
+    assert.equal(server.lastPayload.grammar, grammar, 'a llama.cpp server the person connected from the welcome');
+
+    for (const name of ['Ollama (host.docker.internal:11434)', 'LM Studio (host.docker.internal:1234)', 'my llama.cpp box']) {
+      await ask(connect(name).id, { outputGrammar: grammar });
+      assert.equal(server.lastPayload.grammar, undefined, `not to ${name}`);
+    }
+    await ask(connect('llama.cpp (custom)', 'custom-openai-compatible').id, { outputGrammar: grammar });
+    assert.equal(server.lastPayload.grammar, grammar, 'the name is what decides, not the type');
+  } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
+});
+

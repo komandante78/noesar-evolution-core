@@ -714,7 +714,7 @@ function initSimpleUi(){
   paintSchemeChoices();
   $$('#schemeChoices [data-scheme]').forEach((choice)=>choice.addEventListener('click',()=>{writeScheme(localStorage,choice.dataset.scheme);applySchemeTheme();paintSchemeChoices();}));
   syncSimpleLanguage();
-  $$('#simpleLanguageSelect,#menuLanguageSelect').forEach((choice)=>choice.addEventListener('change',(event)=>{
+  $$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect').forEach((choice)=>choice.addEventListener('change',(event)=>{
     const main=$('#languageSelect');if(!main)return;
     main.value=event.target.value;main.dispatchEvent(new Event('change',{bubbles:true}));setTimeout(syncSimpleLanguage,80);
   }));
@@ -744,7 +744,7 @@ function paintSchemeChoices(){
 function syncSimpleLanguage(){
   const main=$('#languageSelect');
   if(!main)return;
-  for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}
+  for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}
 }
 // The AI that answers, and the machine, in plain words (Settings › Models and hardware).
 function paintSimpleAi(name){
@@ -7235,6 +7235,8 @@ $('#modelScoutRun')?.addEventListener('click',()=>void runModelScout());
 // second time — one picker, one `wire()` call, two ways in.
 $('#codenPromptModelOpen')?.addEventListener('click',()=>$('#codenModelPickerOpen')?.click());
 initI18n();
+// the three copies of the language choice are filled from the top bar's own select, once the translator has named "Auto"
+syncSimpleLanguage();
 installHelpButtons();
 initAppearance();
 // Reading preferences are applied BEFORE the router paints anything: applying them after

@@ -434,3 +434,70 @@ test('on the wire: the agent-creation directive is not offered to someone who on
   assert.equal(has(upstream.seen[1]), true, 'everyday, asked for an action: offered');
   assert.equal(has(upstream.seen[2]), true, 'the operator register keeps it, as before');
 });
+
+test('on the wire: a person gets the output grammar for a language written in Latin letters, unless they asked for other characters or the turn offers tools', async () => {
+  const upstream = await scriptedUpstream();
+  const dir = freshTempDir('noesar-grammar-');
+  const store = new AtomicJsonStore(join(dir, 'state.json'));
+  const graph = new ContextGraph(store);
+  const workspace = new WorkspaceService({ store, graph });
+  const vault = new CredentialVault({ keyPath: join(dir, 'p.key') });
+  const ledger = { entries: [], append(entry) { this.entries.push(entry); } };
+  const providers = new ProviderGateway({ store, vault, ledger });
+  const record = { id: 'tool-listProjects', name: 'listProjects', description: 'List projects', inputSchema: { type: 'object' }, disabled: false, external: false, transport: 'http', endpoint: 'http://127.0.0.1:1/', timeoutMs: 5000 };
+  store.transact((state) => { state.tools.push(record); return {}; });
+  const project = graph.createProject({ name: 'P', instructions: '', toolIds: [record.id] });
+  const { conversation } = graph.createConversation({ projectId: project.id, title: 'c', mode: 'ASK' });
+  const profile = providers.create({ type: 'custom-openai-compatible', name: 'scripted', external: false, apiStyle: 'openai-chat', baseUrl: `http://127.0.0.1:${upstream.port}/v1`, defaultModel: 'x' });
+  providers.update(profile.id, { enabled: true });
+  const orchestrator = new ChatOrchestrator({ graph, workspace, providers, store, ledger, installationSnapshot: () => ({ productName: 'NOESAR Evolution' }) });
+  const sent = [];
+  const original = providers.streamWithFallback.bind(providers);
+  providers.streamWithFallback = (route, request, options) => { sent.push(request); return original(route, request, options); };
+  const ask = (extra) => orchestrator.streamToResponse({ res: fakeResponse(), actorId: 'u', conversationId: conversation.id, content: 'ciao', providerId: profile.id, ...extra });
+
+  await ask({ audience: 'everyday', mode: 'CREATE', language: 'it' });                                          // 0: a person writing in Italian
+  await ask({ audience: 'everyday', mode: 'CREATE', language: 'zh' });                                          // 1: a page in Chinese
+  await ask({ audience: 'everyday', mode: 'CREATE', language: 'it', content: 'traduci in cinese: ciao' });      // 2: asks for Chinese
+  await ask({ audience: 'everyday', mode: 'ACT', language: 'it' });                                             // 3: an action, the tool is offered
+  await ask({ mode: 'ASK', language: 'it' });                                                                   // 4: the operator
+  await ask({ audience: 'everyday', mode: 'ASK' });                                                             // 5: no language named
+  upstream.server.close();
+
+  assert.equal(sent.length, 6);
+  assert.match(sent[0].outputGrammar, /^root ::= \[\^.+\]\*$/, 'a person writing in Italian: the grammar is asked for');
+  assert.equal(sent[1].outputGrammar, undefined, 'a page in Chinese: Chinese is what it should write');
+  assert.equal(sent[2].outputGrammar, undefined, 'asked for Chinese: the one request that needs those characters');
+  assert.equal(sent[3].outputGrammar, undefined, 'a turn with tools: a tool call has its own grammar');
+  assert.equal(sent[4].outputGrammar, undefined, 'the operator register is untouched');
+  assert.equal(sent[5].outputGrammar, undefined, 'no language named: no opinion');
+});
+
+test('on the wire: the operator register never carries the output grammar, even when no tool is in the way; a person in the same installation does', async () => {
+  const upstream = await scriptedUpstream();
+  const dir = freshTempDir('noesar-grammar-bare-');
+  const store = new AtomicJsonStore(join(dir, 'state.json'));
+  const graph = new ContextGraph(store);
+  const workspace = new WorkspaceService({ store, graph });
+  const vault = new CredentialVault({ keyPath: join(dir, 'p.key') });
+  const ledger = { entries: [], append(entry) { this.entries.push(entry); } };
+  const providers = new ProviderGateway({ store, vault, ledger });
+  const project = graph.createProject({ name: 'P', instructions: '', toolIds: [] });
+  const { conversation } = graph.createConversation({ projectId: project.id, title: 'c', mode: 'ASK' });
+  const profile = providers.create({ type: 'custom-openai-compatible', name: 'scripted', external: false, apiStyle: 'openai-chat', baseUrl: `http://127.0.0.1:${upstream.port}/v1`, defaultModel: 'x' });
+  providers.update(profile.id, { enabled: true });
+  const orchestrator = new ChatOrchestrator({ graph, workspace, providers, store, ledger, installationSnapshot: () => ({ productName: 'NOESAR Evolution' }) });
+  const sent = [];
+  const original = providers.streamWithFallback.bind(providers);
+  providers.streamWithFallback = (route, request, options) => { sent.push(request); return original(route, request, options); };
+  const ask = (extra) => orchestrator.streamToResponse({ res: fakeResponse(), actorId: 'u', conversationId: conversation.id, content: 'ciao', providerId: profile.id, ...extra });
+
+  await ask({ mode: 'ASK', language: 'it' });                              // 0: the operator
+  await ask({ audience: 'everyday', mode: 'ASK', language: 'it' });        // 1: a person
+  upstream.server.close();
+
+  assert.equal((sent[0].tools ?? []).length, 0, 'the premise: nothing to blame but the register');
+  assert.equal(sent[0].outputGrammar, undefined, 'the operator register: none');
+  assert.match(sent[1].outputGrammar, /^root ::= \[\^.+\]\*$/, 'a person: the grammar');
+});
+

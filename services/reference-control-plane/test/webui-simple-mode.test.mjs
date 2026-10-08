@@ -1033,7 +1033,7 @@ describe('what the pages say in plain words (2026-10-08)', () => {
   test('the language of the screens is the top bar\'s own select, so there is one setting', () => {
     assert.ok(app.includes("main.value=event.target.value;main.dispatchEvent(new Event('change',{bubbles:true}));"));
     assert.ok(app.includes('mine.innerHTML=main.innerHTML;mine.value=main.value;'));
-    assert.ok(app.includes("$$('#simpleLanguageSelect,#menuLanguageSelect').forEach((choice)=>choice.addEventListener('change'"), 'the one in Settings and the one in the menu both drive it');
+    assert.ok(app.includes("$$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect').forEach((choice)=>choice.addEventListener('change'"), 'the one in Settings and the one in the menu both drive it');
   });
 
   test('the strip at the bottom and the menu use words a person knows', () => {
@@ -1223,9 +1223,21 @@ describe('the language can be changed from the simple interface', () => {
     assert.ok(simpleCss.includes('body[data-ui=simple] .app-shell[data-sidebar=full] .sidebar-foot{flex:0 0 auto;'));
   });
 
+  test('the sign-in window offers it too, because that is the one screen a person who cannot read the page\'s language still has to pass', () => {
+    assert.ok(html.includes('<label class="auth-language">Language<select id="authLanguageSelect"></select></label>'));
+    assert.ok(html.indexOf('id="authLanguageSelect"') < html.indexOf('</section>', html.indexOf('id="authError"')), 'inside the card');
+    assert.ok(app.includes("$$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect').forEach((choice)=>choice.addEventListener('change'"));
+    assert.ok(app.includes('\ninitI18n();\n// the three copies of the language choice are filled from the top bar\'s own select, once the translator has named "Auto"\nsyncSimpleLanguage();\n'), 'filled again once the translator has named "Auto"');
+    assert.ok(simpleCss.includes('body[data-ui=simple] .auth-language{'));
+  });
+
+  test('a sign-in card taller than the window is reached by scrolling it, in both interfaces', () => {
+    assert.ok(read('styles.css').includes('.auth-gate{overflow-y:auto;align-items:safe center}'));
+  });
+
   test('the three places are one setting: the top bar select is the one the translator listens to', () => {
     assert.ok(html.includes('<select id="languageSelect">'));
-    assert.ok(app.includes("for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}"));
+    assert.ok(app.includes("for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}"));
   });
 });
 

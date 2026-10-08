@@ -4,6 +4,9 @@ import { isIP } from 'node:net';
 import { redactMessages } from './privacy-redaction.mjs';
 import { resolvePublicAddresses } from './address-guard.mjs';
 import { localRuntimeProfileFrom, LOCAL_RUNTIME_PROFILE_ID } from './active-runtime-provider.mjs';
+
+// A server the person connected from the welcome is named for what the discovery found; this is the one that takes a grammar.
+const LLAMA_CPP_NAME = /^llama\.cpp\b/i;
 import { newToolCallState, observeToolCallFrame, finishToolCalls } from './tool-call-stream.mjs';
 
 const STYLES = new Set(['openai-responses','openai-chat','anthropic-messages']);
@@ -408,7 +411,7 @@ export class ProviderGateway {
     if (profile.credentialRequired === true && !credential) throw statusError('Provider credential is not configured.',409);
     return credential;
   }
-  #request(profile, { model, messages, tools=[], temperature, maxOutputTokens, stream }) {
+  #request(profile, { model, messages, tools=[], temperature, maxOutputTokens, stream, outputGrammar }) {
     const selectedModel = model || profile.defaultModel;
     if (!selectedModel) throw statusError('A model must be selected.',400);
     if (profile.apiStyle === 'openai-responses') return {
@@ -428,7 +431,9 @@ export class ProviderGateway {
     // being discarded (`extractOpenAiChat` reads `content`, the stream reads `delta.content`):
     // it was generated and paid for in seconds, then thrown away. Local runtime ONLY — an
     // external provider rejects an unknown field.
-    return { url:`${profile.baseUrl}/chat/completions`, body:{ model:selectedModel, messages:mapOpenAiMessages(messages), tools:tools.length ? tools : undefined, temperature, max_tokens:maxOutputTokens, stream, stream_options:stream ? { include_usage:true } : undefined, ...(profile.id === LOCAL_RUNTIME_PROFILE_ID ? { chat_template_kwargs:{ enable_thinking:false } } : {}) } };
+    return { url:`${profile.baseUrl}/chat/completions`, body:{ model:selectedModel, messages:mapOpenAiMessages(messages), tools:tools.length ? tools : undefined, temperature, max_tokens:maxOutputTokens, stream, stream_options:stream ? { include_usage:true } : undefined, ...(profile.id === LOCAL_RUNTIME_PROFILE_ID ? { chat_template_kwargs:{ enable_thinking:false } } : {}),
+      // ponytail: tied to the server's name; llama.cpp is the one that takes a grammar, and any other endpoint may refuse an unknown field. A `kind` on the profile when the wizard stores it, if the name ever misleads.
+      ...(outputGrammar && (profile.id === LOCAL_RUNTIME_PROFILE_ID || LLAMA_CPP_NAME.test(String(profile.name ?? ''))) ? { grammar:outputGrammar } : {}) } };
   }
   #headers(profile, credential) {
     const headers = { 'content-type':'application/json', 'user-agent':'NOESAR-Evolution/1.0', ...profile.headers };
