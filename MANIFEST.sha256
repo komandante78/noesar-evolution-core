@@ -344,9 +344,13 @@ b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-s
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
 8b59c2471411086681f36b07f2891aa6e8b8ca20ca1c8dfb22605d9f6cc17c69  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-4968182dabb18417726514d8eb90591fd783f745d288e18df0e72592bd913973  ./apps/webui-static/i18n-catalog.js
+c52ab0f060cf6bb77143d896743def7772dd2f1372d1471af5e9dbeecde2c55d  ./apps/webui-static/i18n-catalog-de.js
+4b0b9711910af9196caa91bea0a8434334a67b2379cedf51bca9725dd10fc658  ./apps/webui-static/i18n-catalog-es.js
+395b603d704d639f5aeda0d4e5a4282a0f0364fe6a7e27449d8121a9f6fa1719  ./apps/webui-static/i18n-catalog-fr.js
+1653778b07ecbd9c61030badc36f554b885569381d7133cd11d6afb6922b6394  ./apps/webui-static/i18n-catalog-pt.js
+f5ee54ba304a30e02623eb83988165cea2a91aaa9f2993d19bb152094ac9c0fa  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
-98f67fca36a119a37a4cfeaaa53722829d314350f5cbbc3bb5b39f7db1190a0d  ./apps/webui-static/index.html
+218328238b55ec470ea0328bc3ae3de223dbf25606aa6730a82b9ac93d3dbe71  ./apps/webui-static/index.html
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 7803af889a0aa7d693f3da8b2d7ff6194c1cf299afffa955b4f57dd8092172d1  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
@@ -6268,7 +6272,7 @@ cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/ref
 dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/reference-control-plane/src/ai-workspace/context-graph.mjs
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
 6d3c76415622d493f6e21a891b1c797ea2780c7cd6a81ba6d6ef7dc0810dd577  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
-d6e6d9971f2217581f47a24fe3bb734f3d57c8c1cacef1b104119fe82749e29b  ./services/reference-control-plane/src/ai-workspace/output-guard.mjs
+30ce8ad08fdbb22e9ced505451681adeb5e7c7de62e0ef20e8a7d9778fef0bc2  ./services/reference-control-plane/src/ai-workspace/output-guard.mjs
 baeffcf7725541c141f60d2b86e8af1ab3f6ad96513610f89e3ff0e598ce426b  ./services/reference-control-plane/src/ai-workspace/pii-redaction.mjs
 67352913c3a689d429dc29c01dff598ab5e84d557582de830999eddf42707b5f  ./services/reference-control-plane/src/ai-workspace/privacy-redaction.mjs
 4119998ce66fafbcf3c8d110ad4478158d1dcf42ca5f46ac7e4c452e325a7144  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
@@ -6358,7 +6362,7 @@ b15660c6ce2fa40e70cb61aed809c12a7bc4d92de4d8fb62ae2d0a4e0cd4d84e  ./services/ref
 3710ba63a287fb84c20024dcdf0a159160d8fdc632ef8f7208ebf6a84451a680  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
-dc33222447a9d4d1aca861a85e7440066a5b38609031d6c3be67f09dbd5862b0  ./services/reference-control-plane/src/research.mjs
+76695abfe366ef3e66e02f0c10ed2cf92eb22ec0583ddc843fa142400d22e291  ./services/reference-control-plane/src/research.mjs
 fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/reference-control-plane/src/review-latency.mjs
 54c1ca7109ba9abb1a8cad335ff9ea5cb8e87ce4ead67a12361af15bd1a7ebd7  ./services/reference-control-plane/src/run-store.mjs
 2793de6a4561fa732db0f3c4a83f7654a5b6da1507ab2fb69a7ad2b22813e652  ./services/reference-control-plane/src/sandbox-runner.mjs
@@ -6548,7 +6552,7 @@ b902ff4b44c5b19d7fb7a819f9406a44691c41e1498be9bf4843b8c37525f475  ./services/ref
 090e25ad2b95cfd620e18203a410a415c6996e334618918eed90c7789bd12cd3  ./services/reference-control-plane/test/modules-settings-http.test.mjs
 c5863ec1459d9b27318a77b6bea8dd600582e5594a259de6f0963b994b30e012  ./services/reference-control-plane/test/observability-http.test.mjs
 e3aa1d4c445c620892aee4d330ac2a4255593592536de0516276bc474184e855  ./services/reference-control-plane/test/oidc.test.mjs
-15680035b31092275b9364cd37fcd2639645a6f2c1dabcf7b9be7d4cfe6e4582  ./services/reference-control-plane/test/output-guard.test.mjs
+6c22c924749712671fb8da05d7c2a05735b5e224ac837b88656a44cae8b0d072  ./services/reference-control-plane/test/output-guard.test.mjs
 c62174e643e3c21da9bce654f321c2fccac21aa2068ede2415cd48d82708bad9  ./services/reference-control-plane/test/owner-recovery.test.mjs
 c67e99d481e2fa4f8012c44dad1d1585b228ebf6cd65ba9c1afa40406764c0c2  ./services/reference-control-plane/test/page-help.test.mjs
 5f2432ca62d5e1d0d4f54e4401093304389cd2fac149943ca2bbfe6bbab5de5f  ./services/reference-control-plane/test/page-liveness.test.mjs
@@ -6585,7 +6589,7 @@ e47320f311ac4408658045949f210983724e18bb5f3d5bf792b5cecbcc143d9e  ./services/ref
 7158e01074d7a4405e94b84859ce830e8e3f44460afe30cac45dd83a2d47c17e  ./services/reference-control-plane/test/research-decide.test.mjs
 977ef559f66f651cf18773923463e3e83611115c6fa421c2ad33492634f4cda1  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs
 e5c01db43905e4d5851037a2a3c3bc24cd775520066db77e619714071ffb768f  ./services/reference-control-plane/test/research-gate.test.mjs
-69c38ffaf0e0ee735dca0c11e5c95f9c28ffc2d7088f6991fb85c80f9e22f672  ./services/reference-control-plane/test/research.test.mjs
+da5577b7ae866b0e248ff190db40c47ac00cfaa74832426232ce1bb0238b135e  ./services/reference-control-plane/test/research.test.mjs
 797a453da8ef85e29682f7d92e55240fd33a888bb3b9ffc545b7c23d27d68954  ./services/reference-control-plane/test/review-latency.test.mjs
 ae917fff2735ed6569d0ef9689e48648302b900d2c0f4e6089634e260aa47b36  ./services/reference-control-plane/test/role-permissions-surface.test.mjs
 4532b78d59ecfbade04dddf13a0c49380df704f6388f0d8ffab90e0f8f99f6c3  ./services/reference-control-plane/test/run-retention.test.mjs
@@ -6630,7 +6634,7 @@ fb563aba09baf5e9506afa3bc76100d453f633c91a61782d7ccfd4f96eb97b14  ./services/ref
 e5173932822e336e97804f868649e2b274dd52b1ce24e8996a37a9c4fb7a8ef0  ./services/reference-control-plane/test/tui-import-closure.test.mjs
 99e062768ca7191e1281d4620f9c8f7f3d7e10e784b15b01c7b542f7ff378f72  ./services/reference-control-plane/test/tui-screen-layout.test.mjs
 84963d56b2a04ea10981cb7bdb9799bf8c16ab663507f0625f6b0019e232c3d1  ./services/reference-control-plane/test/two-shells-parity.test.mjs
-305afeeeb530ea882ff279372a5c332f7e8bde30bd685deaffa2b12d8576934a  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
+bab0f426e5598e9ceba94029735d64f0faffdee5d28785dc62ef4ba3df25c1c6  ./services/reference-control-plane/test/ui-language-coverage.test.mjs
 8d57f04b38e657a89196f51f705e815a3e47d5afa6d88537b1873b7f14639e88  ./services/reference-control-plane/test/update-manager.test.mjs
 66f1525b9946e61f2932df27cee921067f6de3c85e5aeecf3577eb87223d210c  ./services/reference-control-plane/test/updates-channel-key-http.test.mjs
 f6fe51051f4d1e9546140dedc4ad8b8b485179f894261fc77c01343d639e2964  ./services/reference-control-plane/test/user-directory.test.mjs
@@ -6713,7 +6717,7 @@ db98b53e39c7c41c7aaa93981499afff66ebbd054e7c46cc4704228073d15cfa  ./tools/benchm
 8c88d945b6b72d4c8f675ae687cedf22b7cb549584e8d90c5d1d87dc5487ba69  ./tools/benchmarks/hilbench/swe-pipeline-check.sh
 fcf262e912884b3d345df9d72490c8b9905ed266b11ad07865df6eccd1aea3a0  ./tools/benchmarks/results-s336.jsonl
 ed02e17a5c5f0f00cdb836e425127206af63fe3da8c16633e0df811750de31a2  ./tools/benchmarks/run-bench.mjs
-a5276725b4e5ea5e253e6e6147ea750ba46e98ae9ed5911b9d34f4092bac1611  ./tools/browser-e2e.mjs
+91bdac6f06aeb4cfec6d29cc0901ce61ddb146af8298c3913b9862f74b31704c  ./tools/browser-e2e.mjs
 9fbce73b5894bbb632d552bff4f989b687c576dfe752e3c8748b65d395598b7f  ./tools/cache-cleanup.sh
 565a208458fa387c12020398b80168ed1e66ead5e01f4fa18a0df202566932f7  ./tools/cbom.mjs
 a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-build-reproducibility.mjs

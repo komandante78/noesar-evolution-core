@@ -26,7 +26,10 @@ const FORBIDDEN = RANGES.map(([from, to]) => `${String.fromCodePoint(from)}-${St
 // no opinion. An unknown or missing language is treated the same way: no guard.
 const OTHER_SCRIPTS = new Set(['zh', 'ja', 'ko', 'ru', 'uk', 'bg', 'sr', 'mk', 'be', 'kk', 'mn', 'ar', 'fa', 'ur', 'he', 'yi', 'th', 'lo', 'km', 'my', 'hi', 'bn', 'ta', 'te', 'ne', 'si', 'el', 'ka', 'hy']);
 
-const ASKS_FOR_THEM = new RegExp(`[${FORBIDDEN}]|\\b(cines[ei]|chinese|mandarin\\w*|cantonese|giappones\\w*|japanese|corean\\w*|korean|kanji|hanzi|hiragana|katakana|ideogramm\\w*)\\b`, 'i');
+// The words are the interface's six languages' names for those languages and writing systems. The edges are letter lookarounds
+// and not `\b`: `\b` counts an accented letter as a non-word character, so it would never see the end of "chinês".
+// Bare "china" is left out on purpose: in Spanish and Portuguese it is the country far more often than the language.
+const ASKS_FOR_THEM = new RegExp(`[${FORBIDDEN}]|(?<![\\p{L}])(cines[ei]|chinese|chinos?|chin[eê]s\\w*|chinois\\w*|chinesisch\\w*|mandar(?:in|ín|im)\\w*|cantonese|canton[eéê]s\\w*|cantonais\\w*|kantonesisch\\w*|giappones\\w*|japanese|japon[eéê]s\\w*|japonais\\w*|japanisch\\w*|corean\\w*|cor[eé]en\\w*|korean|koreanisch\\w*|kanji|hanzi|hiragana|katakana|id[eé]ogram\\w*)(?![\\p{L}])`, 'iu');
 
 /**
  * The grammar to send with a turn, or '' for none.

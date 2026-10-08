@@ -290,12 +290,12 @@ export const WRITEUP_INSTRUCTION = [
 ].join('\n');
 
 /**
- * The interface's two languages (`i18n-catalog.js`), named in English because the model reads
+ * The interface's languages (`i18n-catalog.js`), named in English because the model reads
  * English. Looked UP rather than interpolated: the code arrives from a browser, and a string
  * pasted into a system instruction IS the system instruction. Anything unknown, absent or null
  * is English — the product's source language, and what "no preference" has to mean.
  */
-const WRITEUP_LANGUAGE_NAMES = { en:'English', it:'Italian' };
+const WRITEUP_LANGUAGE_NAMES = { en:'English', it:'Italian', es:'Spanish', fr:'French', de:'German', pt:'Portuguese' };
 export function writeupInstructionFor(language) {
   const name = WRITEUP_LANGUAGE_NAMES[language] ?? 'English';
   return WRITEUP_INSTRUCTION.replaceAll('{{LANGUAGE}}', () => name);

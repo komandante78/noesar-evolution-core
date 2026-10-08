@@ -27,6 +27,7 @@ import { AGENT_COMMANDS, MENU_GROUPS, hiddenNote } from '../../../apps/shared/co
 import { promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 import { PAGE_HELP } from '../../../apps/webui-static/page-help.js';
 import { INVARIANT_ENFORCEMENT } from '../src/path-auth.mjs';
+import { writeupInstructionFor } from '../src/research.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '../../..');
@@ -173,8 +174,15 @@ describe('resolving a language', () => {
   test('auto follows the browser, and only among languages we ship', () => {
     assert.equal(resolveLanguage('auto', 'it-IT'), 'it');
     assert.equal(resolveLanguage('auto', 'en-GB'), 'en');
-    assert.equal(resolveLanguage('auto', 'de-DE'), SOURCE_LANGUAGE, 'a language we do not ship falls back to the source');
+    assert.equal(resolveLanguage('auto', 'ja-JP'), SOURCE_LANGUAGE, 'a language we do not ship falls back to the source');
     assert.equal(resolveLanguage('auto', ''), SOURCE_LANGUAGE);
+  });
+
+  test('every shipped language is found from the browser\'s own tag, regional variants included', () => {
+    for (const [tag, code] of [['es-MX', 'es'], ['es-419', 'es'], ['fr-CA', 'fr'], ['fr', 'fr'], ['de-AT', 'de'],
+      ['de-CH', 'de'], ['pt-BR', 'pt'], ['pt-PT', 'pt'], ['IT-it', 'it']]) {
+      assert.equal(resolveLanguage('auto', tag), code, tag);
+    }
   });
 
   test('an explicit choice beats the browser', () => {
@@ -185,7 +193,7 @@ describe('resolving a language', () => {
   });
 
   test('a stored language we no longer ship does not strand the interface', () => {
-    assert.equal(resolveLanguage('de', 'it-IT'), SOURCE_LANGUAGE);
+    assert.equal(resolveLanguage('ja', 'it-IT'), SOURCE_LANGUAGE);
   });
 });
 
@@ -326,28 +334,41 @@ describe('the `/` menu is translated — the surface neither measurement could s
   // gone by the time anything can look — so this reads the source. The failure it prevents is
   // the nastiest kind available here: two translations of one sentence, one of them dead, and
   // the interface showing whichever came last with every check still green.
-  test('no sentence is translated twice', () => {
-    const source = readFileSync(join(repoRoot, 'apps/webui-static/i18n-catalog.js'), 'utf8');
-    const body = source.slice(source.indexOf('const it = {'));
-    const seen = new Map();
-    // All three ways a key is written in this file, not one of them. The first version read
-    // single quotes only and therefore never examined 20 of the 1369 entries: the whole
-    // account-recovery and authenticator block, written with double quotes, plus `models:`,
-    // written as a bare identifier. A second translation of any of those would have killed the
-    // first in silence with this check green — and those are the sentences a person reads when
-    // they are locked out.
-    for (const match of body.matchAll(/^ {2}((?:'(?:[^'\\]|\\.)*')|(?:"(?:[^"\\]|\\.)*")|(?:[A-Za-z_$][\w$]*))\s*:/gm)) {
-      seen.set(match[1], (seen.get(match[1]) ?? 0) + 1);
+  test('no sentence is translated twice, in any catalogue', () => {
+    // Italian lives in the catalogue module (its object ends at the first `};`); every other
+    // language has a file of its own, whose object runs to the end. The same scan reads them all:
+    // the key-for-key comparison against Italian further down uses `Object.keys`, which cannot
+    // see a duplicate at all.
+    const catalogues = [
+      ['i18n-catalog.js', 'const it = {', '\n};', CATALOGS.it],
+      ...Object.keys(CATALOGS).filter((code) => code !== SOURCE_LANGUAGE && code !== 'it')
+        .map((code) => [`i18n-catalog-${code}.js`, 'Object.freeze({', '\n});', CATALOGS[code]]),
+    ];
+    for (const [file, opening, closing, catalogue] of catalogues) {
+      const source = readFileSync(join(repoRoot, 'apps/webui-static', file), 'utf8');
+      const start = source.indexOf(opening);
+      assert.ok(start >= 0, `${file}: the object this test reads has moved`);
+      const body = source.slice(start, source.indexOf(closing, start));
+      const seen = new Map();
+      // All three ways a key is written in this file, not one of them. The first version read
+      // single quotes only and therefore never examined 20 of the 1369 entries: the whole
+      // account-recovery and authenticator block, written with double quotes, plus `models:`,
+      // written as a bare identifier. A second translation of any of those would have killed the
+      // first in silence with this check green — and those are the sentences a person reads when
+      // they are locked out.
+      for (const match of body.matchAll(/^ {2}((?:'(?:[^'\\]|\\.)*')|(?:"(?:[^"\\]|\\.)*")|(?:[A-Za-z_$][\w$]*))\s*:/gm)) {
+        seen.set(match[1], (seen.get(match[1]) ?? 0) + 1);
+      }
+      assert.ok(seen.size > 500, `${file}: the key scanner matched almost nothing — it has stopped measuring`);
+      const duplicated = [...seen].filter(([, count]) => count > 1).map(([key]) => key);
+      assert.deepEqual(duplicated, [], `${file}: these sentences have two entries; the second one wins and the first is dead`);
+      // The backstop, and the only part of this that cannot be fooled by HOW a key is written:
+      // every key line in the file has to still be a key in the object. One fewer means two
+      // lines collapsed into one entry — including the case the scan above cannot see, the same
+      // sentence written once in single quotes and once in double.
+      assert.equal(seen.size, Object.keys(catalogue).length,
+        `${file}: the file has key lines the catalogue has no keys for — a sentence is translated twice and the later entry silently won`);
     }
-    assert.ok(seen.size > 500, 'the key scanner matched almost nothing — it has stopped measuring');
-    const duplicated = [...seen].filter(([, count]) => count > 1).map(([key]) => key);
-    assert.deepEqual(duplicated, [], 'these sentences have two entries; the second one wins and the first is dead');
-    // The backstop, and the only part of this that cannot be fooled by HOW a key is written:
-    // every key line in the file has to still be a key in the object. One fewer means two
-    // lines collapsed into one entry — including the case the scan above cannot see, the same
-    // sentence written once in single quotes and once in double.
-    assert.equal(seen.size, Object.keys(CATALOGS.it).length,
-      'the file has key lines the catalogue has no keys for — a sentence is translated twice and the later entry silently won');
   });
 
   // The derivation is load-bearing and quiet: if it were replaced by a copied list, this suite
@@ -386,5 +407,75 @@ describe('the `/` menu is translated — the surface neither measurement could s
       'the runtime-only list restates the command strings instead of deriving them — that is a second list, and a second list is what PANEL_NAMES was');
     assert.match(catalogueSource, /\.\.\.Object\.values\(PAGE_HELP\)/,
       'the runtime-only list restates the help texts instead of deriving them — that copy is what drifted');
+  });
+});
+
+// ——— the languages after Italian ———
+//
+// Spanish, French, German and Portuguese were each translated from the English keys in one
+// pass, by the assistant, and have not been read by a native speaker. What can be held
+// mechanically is held here: the same sentences as Italian (no language is allowed to know
+// fewer than another, which is how a half-translated interface comes back), and the pieces a
+// program reads out of a sentence — placeholders, quoted code, addresses, numbers — unharmed.
+// Wording is NOT asserted: it is the part only a reader of that language can judge.
+describe('every language is held to the same sentences', () => {
+  const languages = Object.keys(CATALOGS).filter((code) => code !== SOURCE_LANGUAGE);
+  const sentences = Object.keys(CATALOGS.it);
+
+  // What a program reads out of a sentence. A decimal comma is the same number as a decimal point.
+  const pieces = (text) => [
+    ...(text.match(/`[^`]*`/g) ?? []),
+    ...(text.match(/<[^<>\s][^<>]*>/g) ?? []),
+    ...(text.match(/\{[^{}]*\}/g) ?? []),
+    ...(text.match(/https?:\/\/[^\s"')]+/g) ?? []),
+    ...(text.match(/\d+(?:[.,:]\d+)*/g) ?? []).map((number) => number.replaceAll(',', '.')),
+  ].sort();
+
+  test('each catalogue has exactly the sentences of the Italian one', () => {
+    for (const code of languages) {
+      const keys = Object.keys(CATALOGS[code]);
+      assert.deepEqual(sentences.filter((key) => !(key in CATALOGS[code])), [], `${code} lacks sentences Italian has`);
+      assert.deepEqual(keys.filter((key) => !(key in CATALOGS.it)), [], `${code} has sentences Italian does not`);
+    }
+  });
+
+  test('no translation is empty', () => {
+    for (const code of languages) {
+      const empty = Object.entries(CATALOGS[code]).filter(([, value]) => typeof value !== 'string' || !value.trim());
+      assert.deepEqual(empty, [], `${code} has empty translations`);
+    }
+  });
+
+  // The reference for "which pieces must survive" is the Italian entry, not a list kept here:
+  // where Italian itself rewrites a piece on purpose (an `<argument>` name, an example address)
+  // the same rewrite is expected, and where Italian keeps it, every language must keep it.
+  test('placeholders, quoted code, addresses and numbers survive in every language', () => {
+    for (const code of languages.filter((language) => language !== 'it')) {
+      const broken = [];
+      for (const key of sentences) {
+        const expected = JSON.stringify(pieces(key));
+        if (JSON.stringify(pieces(CATALOGS.it[key])) !== expected) continue; // Italian rewrote it on purpose
+        if (JSON.stringify(pieces(CATALOGS[code][key])) !== expected) broken.push(key.slice(0, 70));
+      }
+      assert.deepEqual(broken, [], `${code}: a piece the code reads was changed in ${broken.length} sentences`);
+    }
+  });
+
+  test('the picker offers exactly the languages we ship, each under its own name', () => {
+    const markup = readFileSync(join(repoRoot, 'apps/webui-static/index.html'), 'utf8');
+    const select = markup.match(/<select id="languageSelect">(.*?)<\/select>/s)?.[1] ?? '';
+    const options = [...select.matchAll(/<option value="([^"]+)">([^<]*)<\/option>/g)].map((m) => [m[1], m[2]]);
+    assert.deepEqual(options.map(([value]) => value), ['auto', ...Object.keys(CATALOGS)]);
+    for (const [value, label] of options.filter(([value]) => value !== 'auto' && value !== SOURCE_LANGUAGE)) {
+      assert.equal(label, LANGUAGE_NAMES[value], `${value} is labelled in someone else's language`);
+    }
+  });
+
+  test('a written-up answer is asked for in the language that was chosen', () => {
+    // The server names each language to the model in English; a shipped language missing from
+    // that list would be answered in English with the interface in another language.
+    for (const code of languages) {
+      assert.doesNotMatch(writeupInstructionFor(code), /write the whole answer in English/, `${code} is answered in English`);
+    }
   });
 });

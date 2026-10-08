@@ -39,6 +39,14 @@
 import { AGENT_COMMANDS, MENU_GROUPS } from '../shared/coden/agent-commands.js';
 // Same reason, same shape: `page-help.js` imports nothing either, so there is no cycle.
 import { PAGE_HELP } from './page-help.js';
+// One file per language beyond Italian, each the same keys as `it` in the same order. They are
+// imported eagerly (about 150 KB of source each): the translator is synchronous and a language
+// picked in the middle of a session has to repaint at once, with no network round trip.
+// ponytail: all catalogues load for everyone; load only the chosen one if page weight matters.
+import { CATALOG_ES } from './i18n-catalog-es.js';
+import { CATALOG_FR } from './i18n-catalog-fr.js';
+import { CATALOG_DE } from './i18n-catalog-de.js';
+import { CATALOG_PT } from './i18n-catalog-pt.js';
 
 /** The language the interface is WRITTEN in. Never a lookup — the markup is already this. */
 export const SOURCE_LANGUAGE = 'en';
@@ -53,7 +61,9 @@ export const SOURCE_LANGUAGE = 'en';
 export const UNTRANSLATED_TAGS = Object.freeze(['script', 'style', 'code', 'pre', 'noscript']);
 
 /** Display names stay in their OWN language: a person looking for Italian looks for "Italiano". */
-export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
+export const LANGUAGE_NAMES = Object.freeze({
+  en: 'English', it: 'Italiano', es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português',
+});
 
 /**
  * Entries that exist for text JavaScript writes, and that therefore appear in no markup.
@@ -2345,6 +2355,10 @@ const it = {
   'Auto': 'Auto',
   'English': 'English',                       // a language names itself
   'Italiano': 'Italiano',
+  'Español': 'Español',
+  'Français': 'Français',
+  'Deutsch': 'Deutsch',
+  'Português': 'Português',
   'ASK': 'ASK',                               // product mode identifiers, not prose
   'CREATE': 'CREATE',
   'ACT': 'ACT',
@@ -2635,4 +2649,11 @@ const it = {
   'Change it now': 'Cambiala ora',
 };
 
-export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });
+export const CATALOGS = Object.freeze({
+  en: Object.freeze({}),
+  it: Object.freeze(it),
+  es: CATALOG_ES,
+  fr: CATALOG_FR,
+  de: CATALOG_DE,
+  pt: CATALOG_PT,
+});

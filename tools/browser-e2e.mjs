@@ -4306,15 +4306,19 @@ try {
     // each from a page that was OPENED in the starting language — an English page switched to Italian
     // proves nothing about an Italian page switched to English, and that second one is where it hid.
     // What counts as "left behind" is read from the catalogue itself, not guessed from the look of a word.
-    const languageLeft = (language) => page.evaluate(async (wanted) => {
+    // `wanted` is the language the page is in now, `opened` the one it was opened in: switching en -> X leaves English
+    // behind if X lacks a sentence, switching X -> en leaves X behind if the repaint missed a node.
+    const languageLeft = (wanted, opened) => page.evaluate(async (wanted, opened) => {
       const { CATALOGS } = await import('/i18n-catalog.js');
-      const it = CATALOGS.it;
-      const own = (key) => Object.hasOwn(it, key);
-      const italian = new Set(Object.values(it).filter((value) => typeof value === 'string'));
+      const translated = CATALOGS[wanted === 'en' ? opened : wanted];
+      const own = (key) => Object.hasOwn(translated, key);
+      const inThatLanguage = new Set(Object.values(translated).filter((value) => typeof value === 'string'));
       // Words that prove nothing about a language, each for a stated reason: "code" is English AND Italian for "queues",
       // "Test" is also the Italian label of "Tests", "Note" is Italian for "Notes", "Agenti" is the AGENTI module's own name,
-      // the privacy state is an identifier the product keeps untranslated on purpose (refreshPrivacy), and a provider's own name.
-      const notInterface = new Set(['code', 'Test', 'Note', 'Agenti', 'LOCAL ONLY VERIFIED', 'Local OpenAI-compatible']);
+      // the privacy state is an identifier the product keeps untranslated on purpose (refreshPrivacy), a provider's own name,
+      // and the default project's name, which is saved as data in whatever language was active when it was made.
+      const notInterface = new Set(['code', 'Test', 'Note', 'Agenti', 'LOCAL ONLY VERIFIED', 'Local OpenAI-compatible',
+        ...Object.values(CATALOGS).map((catalogue) => catalogue['My things']).filter(Boolean)]);
       const seen = [];
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -4329,16 +4333,24 @@ try {
         seen.push(text);
       }
       return wanted === 'en'
-        ? seen.filter((text) => italian.has(text) && !own(text))
-        : seen.filter((text) => own(text) && it[text] !== text && /[a-z]/i.test(text) && text.length > 3);
-    }, language);
-    for (const start of ['en', 'it']) {
-      const other = start === 'en' ? 'it' : 'en';
+        ? seen.filter((text) => inThatLanguage.has(text) && !own(text))
+        // an English sentence that is also what this language says for another sentence proves nothing (German "Start" is
+        // "Home", and an English sentence of its own)
+        : seen.filter((text) => own(text) && translated[text] !== text && /[a-z]/i.test(text) && text.length > 3 && !inThatLanguage.has(text));
+    }, wanted, opened);
+    // Every language the product ships, each way. The first one is read on every destination; the others on the screens that
+    // draw the most text with code (the repaint is the same code for all, and the catalogues are held to the same sentences
+    // by ui-language-coverage.test.mjs), because ten full passes would cost more minutes than they add certainty.
+    const shipped = await page.evaluate(async () => Object.keys((await import('/i18n-catalog.js')).CATALOGS).filter((code) => code !== 'en'));
+    const sampled = ['home', 'chat', 'projects', 'documents', 'models', 'settings', 'settings/language', 'settings/privacy'];
+    for (const [start, language] of shipped.flatMap((code) => [['en', code], [code, code]])) {
+      const other = start === 'en' ? language : 'en';
       await page.select('#languageSelect', start);
       await page.waitForFunction((want) => document.documentElement.lang === want, { timeout: 10000 }, start);
       await page.reload({ waitUntil: 'networkidle2' });
       const left = {};
-      const screens = destinations.filter((destination) => destination !== 'coden-tui'); // a terminal is a session log, not a page
+      // a terminal is a session log, not a page
+      const screens = destinations.filter((destination) => destination !== 'coden-tui' && (language === shipped[0] || sampled.includes(destination)));
       for (const screen of screens) {
         await gotoIdle(`${BASE}/#/${screen}`);
         await new Promise((resolve) => { setTimeout(resolve, 250); });
@@ -4348,12 +4360,12 @@ try {
         // by the same measure gotoIdle uses (networkidle2), then give the drawing its turn.
         await page.waitForNetworkIdle({ idleTime: 500, concurrency: 2, timeout: 8000 }).catch(() => {});
         await new Promise((resolve) => { setTimeout(resolve, 300); });
-        const found = await languageLeft(other);
+        const found = await languageLeft(other, language);
         if (found.length) left[screen] = found.slice(0, 6);
         await page.select('#languageSelect', start);
         await page.waitForFunction((want) => document.documentElement.lang === want, { timeout: 10000 }, start);
       }
-      check(`I18N-RUNTIME a page opened in ${start}, switched to ${other}: nothing of ${start} is left on any of ${screens.length} destinations`,
+      check(`I18N-RUNTIME a page opened in ${start}, switched to ${other}: nothing of ${start} is left on any of ${screens.length} destinations${language === 'it' ? '' : ` (${language})`}`,
         Object.keys(left).length === 0, JSON.stringify(left).slice(0, 1500));
     }
 

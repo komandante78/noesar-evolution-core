@@ -32,9 +32,25 @@ describe('when the guard is sent', () => {
     }
   });
 
+  test('nor when the request is written in Spanish, French, German or Portuguese', () => {
+    const asked = {
+      es: ['traduce esto al chino', 'cómo se dice gracias en japonés', 'escríbelo en coreano', 'explícame los ideogramas', 'en mandarín, por favor'],
+      fr: ['traduis en chinois', 'comment dit-on merci en japonais', 'écris-le en coréen', 'explique-moi les idéogrammes'],
+      de: ['übersetze das ins Chinesische', 'wie sagt man danke auf Japanisch', 'schreib es auf Koreanisch', 'was ist ein Ideogramm', 'auf Kantonesisch'],
+      pt: ['traduza para chinês', 'como se diz obrigado em japonês', 'escreva em coreano', 'em cantonês, por favor'],
+    };
+    for (const [language, texts] of Object.entries(asked)) {
+      for (const userText of texts) assert.equal(scriptGrammar({ language, userText }), '', `${language}: ${userText}`);
+    }
+  });
+
   test('and is sent for words that merely resemble them', () => {
     for (const userText of ['il ristorante cinesino sotto casa', 'chinatown a Milano', 'ho mangiato sushi ieri']) {
       assert.notEqual(scriptGrammar({ language: 'it', userText }), '', userText);
+    }
+    // "China" alone is the country in Spanish and Portuguese, not a request for its language.
+    for (const [language, userText] of [['es', 'quiero viajar a China'], ['pt', 'a economia da China'], ['fr', 'la Chine et le Japon'], ['de', 'Reise nach Japan']]) {
+      assert.notEqual(scriptGrammar({ language, userText }), '', `${language}: ${userText}`);
     }
   });
 });
