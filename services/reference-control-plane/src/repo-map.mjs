@@ -23,7 +23,7 @@
 // surface is exactly the "schema mork" failure 09_PIANO.md §1 names: a signal that reads as
 // more certain than it is, is worse than no signal.
 
-import { readFileSync, readdirSync, lstatSync } from 'node:fs';
+import { readFileSync, readdirSync, lstatSync, realpathSync } from 'node:fs';
 import { basename, extname, join, relative, resolve, sep } from 'node:path';
 
 export class RepoMapError extends Error {
@@ -225,6 +225,48 @@ export const DELIBERATELY_SCANNED_PATHS = Object.freeze({
 export function resolveExclusions(rootDir, paths = []) {
   const root = resolve(rootDir);
   return new Set([...ENGINE_STATE_PATHS, ...paths].map((entry) => resolve(root, entry)));
+}
+
+/**
+ * The exclusions a scan uses, anchored where they are MEANT: at the workspace, not at the folder the scan starts in.
+ *
+ * Found on 2026-10-08, over HTTP on a clean installation, by a session holding only `workspace.read`: the list above is
+ * relative paths under the workspace, `walk()` skips them as it meets them, and a scan whose root was `config/`, `audit/` or
+ * `state/` had nothing to meet — `config` is not an entry UNDER `config/`. `GET /api/v1/repo-map/search?path=audit&q=…`
+ * returned the audit chain, `path=state` returned `auth.json`, and `path=config` the credential key and the first-owner token.
+ * The chat reaches the same function as the tool `engine_repoMap_search`. The workspace-level scan was always right; the
+ * list was right; the matching was anchored in the wrong place — the shape of the 2026-09-09 `auth.json.bak` defect.
+ *
+ * `options.workspaceRoot` is what callers that take a person-supplied `path` must pass: the exclusions are then resolved
+ * against it, and a scan that STARTS inside an engine-state path (or is a copy of an engine-state file) is refused outright,
+ * because its root is the thing excluded. Callers that scan their own tree (a shadow, a benchmark checkout) pass nothing and
+ * keep the old meaning: the root is the workspace.
+ */
+function exclusionsFor(root, options) {
+  const anchor = options.workspaceRoot ? resolve(options.workspaceRoot) : root;
+  if (options.workspaceRoot && isInsideEngineState(anchor, root, options.excludePaths)) {
+    refuse('ENGINE_STATE', 'that part of the workspace belongs to the engine and is not scanned');
+  }
+  return resolveExclusions(anchor, options.excludePaths);
+}
+
+/**
+ * Whether `target` IS an engine-state path or lies inside one, for a workspace at `workspaceRoot`: a directory
+ * (`config/`, `audit/`), a file (`state/auth.json`), or a copy of one of those files (`state/auth.json.bak_…`).
+ *
+ * Asked twice, by the path as written and by where it really lands. `walk()` never ENTERS a symlinked directory but it
+ * does start in one, so `workspace/link -> config/` would pass the first test and read the credentials through the second.
+ *
+ * Exported because a scan is not the only reader that takes a path from a request: `documents.check` reads whole files at
+ * paths a model can name, and it asked nothing of the exclusions at all.
+ */
+export function isInsideEngineState(workspaceRoot, target, extraPaths = []) {
+  const realOf = (path) => { try { return realpathSync(path); } catch { return path; } };
+  const inside = (candidate, set) => [...set].some((path) => candidate === path
+    || candidate.startsWith(`${path}${sep}`) || isEngineStatePath(candidate, new Set([path])));
+  const anchor = resolve(workspaceRoot);
+  const full = resolve(target);
+  return inside(full, resolveExclusions(anchor, extraPaths)) || inside(realOf(full), resolveExclusions(realOf(anchor), extraPaths));
 }
 
 /**
@@ -526,7 +568,7 @@ export function buildRepositoryMap(rootDir, options = {}) {
   const maxSymbols = options.maxSymbols ?? 5000;
   const maxImportEntries = options.maxImportEntries ?? 5000;
 
-  const { files, skippedSymlinks, truncated:filesTruncated } = walk(root, maxFiles, resolveExclusions(root, options.excludePaths));
+  const { files, skippedSymlinks, truncated:filesTruncated } = walk(root, maxFiles, exclusionsFor(root, options));
   const languages = detectLanguages(files);
   const manifests = detectManifests(root, files);
   const entryPoints = detectEntryPoints(root, manifests);
@@ -575,7 +617,7 @@ export function literalSearch(rootDir, query, options = {}) {
   const caseSensitive = options.caseSensitive !== false;
   const needle = caseSensitive ? text : text.toLowerCase();
 
-  const { files, truncated:filesTruncated } = walk(root, maxFiles, resolveExclusions(root, options.excludePaths));
+  const { files, truncated:filesTruncated } = walk(root, maxFiles, exclusionsFor(root, options));
   const matches = [];
   let truncated = filesTruncated;
   for (const file of files) {
@@ -631,7 +673,7 @@ export function literalSearchMany(rootDir, queries, options = {}) {
   const caseSensitive = options.caseSensitive !== false;
   const needles = texts.map((text) => (caseSensitive ? text : text.toLowerCase()));
 
-  const { files, truncated:filesTruncated } = walk(root, maxFiles, resolveExclusions(root, options.excludePaths));
+  const { files, truncated:filesTruncated } = walk(root, maxFiles, exclusionsFor(root, options));
   const results = texts.map((query) => ({ query, caseSensitive, matches:[], truncated:filesTruncated }));
   // How many queries are still under their own cap. When none are, no line can change an
   // answer any more and the remaining files do not need to be read at all.

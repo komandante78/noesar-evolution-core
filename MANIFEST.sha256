@@ -6358,7 +6358,7 @@ d4dd091eca05aad1b69210196951ff0a7c8748da389066b10a0f02a0ca264fcc  ./services/ref
 9ea78681e652411d8a20f155ea1adb518a933add20c4fca221236689d9842e96  ./services/reference-control-plane/src/release-version.mjs
 d6077f9d49761abe0e4e47ace969e88b820116daf14c588160099765a363d47e  ./services/reference-control-plane/src/remote-target-fetch.mjs
 39808f513eb4ed769c9bbc85e29e9344fd55f34e4635655479a346d4b78216dc  ./services/reference-control-plane/src/remote-target-registry.mjs
-b15660c6ce2fa40e70cb61aed809c12a7bc4d92de4d8fb62ae2d0a4e0cd4d84e  ./services/reference-control-plane/src/repo-map.mjs
+93df9a2f532060a277b52929d8dce5926d333cd6775a14b00c23229abc907c85  ./services/reference-control-plane/src/repo-map.mjs
 3710ba63a287fb84c20024dcdf0a159160d8fdc632ef8f7208ebf6a84451a680  ./services/reference-control-plane/src/request-grounding.mjs
 ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  ./services/reference-control-plane/src/request-origin.mjs
 2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
@@ -6370,11 +6370,11 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 e3c7945c91ece3646b03eae9a590a3a8cd35c5ec48bea53d9a00f884f99d2ac7  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-c3e670c5c3f9fc23ea3a7cc3728ce658d5e50766f3a62b387748be2247ec0ee7  ./services/reference-control-plane/src/server.mjs
+b6bcf763a100fb7da9a829d590b172201e9f0b8f979ad7764c9c471f1081ee30  ./services/reference-control-plane/src/server.mjs
 485bf33753970bc9bb05fcb186292f2e5d54e6d6221894d690256f24adcdaeb8  ./services/reference-control-plane/src/session-proof-html.mjs
 e96f15965179c45fe86c7b4785f8bb49961fc6cd0b5736c1e86996649bb840c5  ./services/reference-control-plane/src/session-proof-signature.mjs
 c261fdd2ff6ae65e24f2bf6b8f35239c5399b1bfa83d8cb015816ecac23c7049  ./services/reference-control-plane/src/session-proof.mjs
-98b8e3a26d433e715cba28bc3a0f26a5dc9408f8d93b684be7a3be69ac2dceaf  ./services/reference-control-plane/src/session-protocol.mjs
+f9b375a25e9bd9a736283c1a42af8719d8ca102ec8704359e2a7b9453b997734  ./services/reference-control-plane/src/session-protocol.mjs
 2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  ./services/reference-control-plane/src/session-replay.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  ./services/reference-control-plane/src/setup-token.mjs
 4056d381fcdda7b91defa29c4ca8fa87fec8b703f6286aedd1a361e94216ffc1  ./services/reference-control-plane/src/shadow.mjs
@@ -6508,11 +6508,11 @@ ee9e02df8e302ff8cb8b7e16a580d43ea24c04298ae6cfd162679d861e1290ea  ./services/ref
 908a813ff6e39639c6f6a57e5c39f719b652c2ca605e40142c9540a42ee250bb  ./services/reference-control-plane/test/decision-log-references.test.mjs
 6a33e99cb9ff2f2441ba076b558b3b163adae99664c4fae6ba4926520a035c13  ./services/reference-control-plane/test/divergence-connected.test.mjs
 b2c2959017f750b1e487e238e454edb47ceaf50b7bb55fb8a6c2d940e0dd3af0  ./services/reference-control-plane/test/divergence-profile.test.mjs
-1615dee95f49784e0b839792214ff03393da2ed5bcac3a9583f359216f395392  ./services/reference-control-plane/test/documents-check.test.mjs
+4d380e4a60145493c422e8021fdfa31f8aa9201fdb2dbb9e7991b9f7a06c5c83  ./services/reference-control-plane/test/documents-check.test.mjs
 b827da2ae8b84e6b1e79013bf20c5be0331b3c975abbd29de623c243ebcff0b5  ./services/reference-control-plane/test/durability.test.mjs
 aecf96dd49c0df0b2ac507097a723c5b3c6ab95de8defed863328752a4251512  ./services/reference-control-plane/test/edit-blocks-bound-the-answer.test.mjs
 53cbca84b7863107d5f674daa1c6377c72bc20f13c9e3f44b8f7776f91279917  ./services/reference-control-plane/test/effect-receipt.test.mjs
-fa4bf219f2dd609ccb13349c0c41d289f653cf6d81283a8048f15b85eaec5a55  ./services/reference-control-plane/test/engine-state-exclusions.test.mjs
+caa892598d71923ffa1915c83e6f5ddca2ab3a637f129f61665cc46397bf19a7  ./services/reference-control-plane/test/engine-state-exclusions.test.mjs
 6b780bbaad2b8e16d05e34fc4af928a7894595a289fe85db5ab8ec2c9cb068f6  ./services/reference-control-plane/test/event-vectors.test.mjs
 ed9ea2fd9b75a18bde94cf92fcc775264785d0a1af1b2bcfcba74ab9c73877dd  ./services/reference-control-plane/test/executor-vectors.test.mjs
 2503ae264769af245bbd02b5b1958732e1ff00be8a22d3b68177678380746309  ./services/reference-control-plane/test/executor.test.mjs

@@ -11,7 +11,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { sentencesOf, passageFor, checkDocument, SUPPORT_QUESTION } from '../src/document-check.mjs';
@@ -81,6 +81,30 @@ test('documents.check reads the document and its sources from the workspace, and
       (error) => error instanceof ProtocolError && error.kind === 'INVALID_PATH');
     await assert.rejects(dispatch('documents.check', { path: 'doc.md', sources: [] }, 'owner', allowAll),
       (error) => error instanceof ProtocolError && error.kind === 'INVALID_REQUEST');
+  } finally { rmSync(ws, { recursive: true, force: true }); }
+});
+
+test('documents.check does not read the engine\'s own state as a document or as a source', async () => {
+  // It reads WHOLE files at paths a model can name and returns their sentences. The credential key, the authentication state
+  // and the audit chain live inside the workspace, and the scanner hides them (`repo-map.mjs`); this method asked nothing.
+  const ws = mkdtempSync(join(tmpdir(), 'noesar-doccheck-state-'));
+  try {
+    for (const dir of ['config', 'state', 'audit']) mkdirSync(join(ws, dir), { recursive: true });
+    writeFileSync(join(ws, 'config/notes.md'), 'The credential key is CANARY_KEY and it never changes.');
+    writeFileSync(join(ws, 'state/auth.json'), 'The password hash is CANARY_AUTH and it is long enough.');
+    writeFileSync(join(ws, 'state/auth.json.bak_old'), 'A copy of the password hash is CANARY_COPY here.');
+    writeFileSync(join(ws, 'audit/events.jsonl'), 'The audit chain says CANARY_AUDIT happened today.');
+    writeFileSync(join(ws, 'state/notes.md'), DOC);          // an operator's own file in a visible folder
+    writeFileSync(join(ws, 'spec.md'), SOURCE);
+    const dispatch = createSessionDispatch({ workspaceRoot: ws, resolveWorkspaceSubpath, decide: judge });
+    for (const path of ['config/notes.md', 'state/auth.json', 'state/auth.json.bak_old', 'audit/events.jsonl']) {
+      await assert.rejects(dispatch('documents.check', { path, sources: ['spec.md'] }, 'owner', allowAll),
+        (error) => error instanceof ProtocolError && error.kind === 'INVALID_PATH', `${path} as the document`);
+      await assert.rejects(dispatch('documents.check', { path: 'spec.md', sources: [path] }, 'owner', allowAll),
+        (error) => error instanceof ProtocolError && error.kind === 'INVALID_PATH', `${path} as a source`);
+    }
+    const ordinary = await dispatch('documents.check', { path: 'state/notes.md', sources: ['spec.md'] }, 'owner', allowAll);
+    assert.equal(ordinary.supported, 1, 'an operator\'s own file in a folder called state/ is still a document');
   } finally { rmSync(ws, { recursive: true, force: true }); }
 });
 

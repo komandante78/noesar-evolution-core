@@ -3361,7 +3361,7 @@ const requestListener = async (req, res) => {
       const target = resolveWorkspaceSubpath(root, payload?.path);
       if (!target) return json(res, 400, { error:'invalid_path', reason:'path escapes the workspace' });
       try {
-        const map = buildRepositoryMap(target);
+        const map = buildRepositoryMap(target, { workspaceRoot:root });
         ledger.append({ actor:authenticated.user.id, action:'repo_map.scanned', result:'success', details:{ path:payload?.path ?? '.', filesScanned:map.filesScanned, truncated:map.truncated } });
         return json(res, 200, map);
       } catch (error) {
@@ -3379,7 +3379,7 @@ const requestListener = async (req, res) => {
       if (!target) return json(res, 400, { error:'invalid_path', reason:'path escapes the workspace' });
       const q = url.searchParams.get('q') ?? '';
       try {
-        const found = literalSearch(target, q, { caseSensitive:url.searchParams.get('caseSensitive') !== 'false' });
+        const found = literalSearch(target, q, { caseSensitive:url.searchParams.get('caseSensitive') !== 'false', workspaceRoot:root });
         ledger.append({ actor:authenticated.user.id, action:'repo_map.searched', result:'success', details:{ path:url.searchParams.get('path') ?? '.', matches:found.matches.length, truncated:found.truncated } });
         return json(res, 200, found);
       } catch (error) {

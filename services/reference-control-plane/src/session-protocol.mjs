@@ -23,6 +23,7 @@ import { createServer, connect } from 'node:net';
 import { profileChange as defaultProfileChange } from './divergence-profile.mjs';
 import { existsSync, unlinkSync, chmodSync, readFileSync } from 'node:fs';
 import { checkDocument } from './document-check.mjs';
+import { isInsideEngineState } from './repo-map.mjs';
 
 // `documents.check`: a check is one decision per (sentence, source), so both are bounded here.
 const DOCUMENT_CHECK_MAX_SOURCES = 5;
@@ -391,12 +392,14 @@ export function createSessionDispatch({
     'repoMap.scan': ({ params }) => {
       const target = resolveWorkspaceSubpath(workspaceRoot, params?.path);
       if (!target) throw new ProtocolError('INVALID_PATH', 'path escapes the workspace');
-      return buildRepositoryMap(target);
+      // `workspaceRoot` is passed on purpose: the engine-state exclusions are anchored there, and a `path` that names
+      // `config/` or `state/` would otherwise be scanned as a root with nothing left to exclude (see `exclusionsFor`).
+      return buildRepositoryMap(target, { workspaceRoot });
     },
     'repoMap.search': ({ params }) => {
       const target = resolveWorkspaceSubpath(workspaceRoot, params?.path);
       if (!target) throw new ProtocolError('INVALID_PATH', 'path escapes the workspace');
-      return literalSearch(target, params?.q ?? '', { caseSensitive: params?.caseSensitive !== false });
+      return literalSearch(target, params?.q ?? '', { caseSensitive: params?.caseSensitive !== false, workspaceRoot });
     },
     'events.correlation': ({ params }) => ({
       correlationId: params?.correlationId, events: engineEvents.correlation(params?.correlationId),
@@ -629,6 +632,10 @@ export function createSessionDispatch({
       const read = (path) => {
         const target = resolveWorkspaceSubpath(workspaceRoot, path);
         if (!target || !existsSync(target)) throw new ProtocolError('INVALID_PATH', `\`${path}\` is not a file in the workspace`);
+        // The credential key, the authentication state and the audit chain are inside the workspace and are not "a document":
+        // this reads the whole file and returns its sentences, so it must ask what the scanner asks. Same answer as `not found`
+        // on purpose — a different one would confirm that the file exists.
+        if (isInsideEngineState(workspaceRoot, target)) throw new ProtocolError('INVALID_PATH', `\`${path}\` is not a file in the workspace`);
         const contents = readFileSync(target, 'utf8');
         if (Buffer.byteLength(contents) > DOCUMENT_CHECK_MAX_BYTES) {
           throw new ProtocolError('INVALID_REQUEST', `\`${path}\` is larger than ${DOCUMENT_CHECK_MAX_BYTES} bytes`);

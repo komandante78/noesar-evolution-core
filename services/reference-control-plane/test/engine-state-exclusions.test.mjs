@@ -14,7 +14,7 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -191,5 +191,84 @@ describe('a copy of an excluded file is still the excluded file', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('a scan that STARTS inside the engine\'s state is not a way round the exclusions', () => {
+  // Measured 2026-10-08 over HTTP on a clean installation, by a session holding only `workspace.read`:
+  // `GET /api/v1/repo-map/search?path=audit` returned the audit chain, `path=state` returned `auth.json`, and a scan of
+  // `config/` listed the credential key and the first-owner token. The exclusions are relative paths under the WORKSPACE;
+  // `walk()` skips them as it meets them; a scan rooted at `config/` had no `config` to meet. The chat reaches the same
+  // function as the tool `engine_repoMap_search`, with no approval, because it is a read.
+  const workspace = () => {
+    const root = mkdtempSync(join(tmpdir(), 'noesar-scan-root-'));
+    for (const dir of ['config', 'audit', 'state', 'docs', 'models']) mkdirSync(join(root, dir), { recursive: true });
+    writeFileSync(join(root, 'config/provider-credentials.key'), 'CANARY_KEY\n');
+    writeFileSync(join(root, 'config/first-owner-setup.token'), 'CANARY_TOKEN\n');
+    writeFileSync(join(root, 'audit/events.jsonl'), '{"e":"CANARY_AUDIT"}\n');
+    writeFileSync(join(root, 'state/auth.json'), '{"h":"CANARY_AUTH"}\n');
+    writeFileSync(join(root, 'state/auth.json.bak_old'), '{"h":"CANARY_COPY"}\n');
+    writeFileSync(join(root, 'state/machine.mjs'), 'export const CANARY_OPERATOR = 1;\n');
+    writeFileSync(join(root, 'docs/letter.txt'), 'CANARY_LETTER\n');
+    return root;
+  };
+  const seen = (root, from, term = 'CANARY') => literalSearch(join(root, from), term, { workspaceRoot: root }).matches.map((m) => m.path);
+
+  test('a search rooted in config, audit or models is refused, with a reason a person can read', () => {
+    const root = workspace();
+    try {
+      for (const from of ['config', 'audit', 'models']) {
+        assert.throws(() => literalSearch(join(root, from), 'CANARY', { workspaceRoot: root }),
+          (error) => error.name === 'RepoMapError' && error.kind === 'ENGINE_STATE', `${from}/ must not be a scan root`);
+      }
+      assert.throws(() => buildRepositoryMap(join(root, 'config'), { workspaceRoot: root }), (error) => error.kind === 'ENGINE_STATE');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('a search rooted in the state/ container sees the operator\'s file and none of the engine\'s', () => {
+    const root = workspace();
+    try {
+      const found = seen(root, 'state');
+      assert.deepEqual(found, ['machine.mjs'], 'only the operator\'s own state/machine.mjs: auth.json and its copy are the engine\'s');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('the workspace as a whole, and an ordinary folder, still work exactly as before', () => {
+    const root = workspace();
+    try {
+      assert.deepEqual(seen(root, '.').sort(), ['docs/letter.txt', 'state/machine.mjs']);
+      assert.deepEqual(seen(root, 'docs'), ['letter.txt']);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('a symlink to the engine\'s state is refused by where it lands, not by what it is called', () => {
+    const root = workspace();
+    try {
+      symlinkSync(join(root, 'config'), join(root, 'docs/looks-harmless'));
+      assert.throws(() => literalSearch(join(root, 'docs/looks-harmless'), 'CANARY', { workspaceRoot: root }), (error) => error.kind === 'ENGINE_STATE');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('without a workspace root the meaning is unchanged: the scan root is the workspace (shadows, checkouts)', () => {
+    const root = workspace();
+    try {
+      assert.deepEqual(literalSearch(join(root, 'config'), 'CANARY').matches.length, 2,
+        'a caller that scans its OWN tree and names no workspace keeps the old behaviour; the person-facing callers below must not be such callers');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('every caller that takes a person-supplied path hands the scanner the workspace root', () => {
+    // The fix is only as good as its callers. Derived from the source, the way this file derives the engine's writes: each call of
+    // `literalSearch(`/`buildRepositoryMap(` in the two modules that accept a `path` from a request must name `workspaceRoot`.
+    const modules = ['server.mjs', 'session-protocol.mjs'].map((name) => [name, readFileSync(join(srcDir, name), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')]);
+    let calls = 0;
+    for (const [name, source] of modules) {
+      for (const match of source.matchAll(/\b(literalSearch|buildRepositoryMap)\(([^;\n]*)/g)) {
+        calls += 1;
+        assert.ok(/workspaceRoot/.test(match[2]), `${name}: ${match[0].slice(0, 90)} does not pass the workspace root`);
+      }
+    }
+    assert.ok(calls >= 4, `expected the four routes and methods, found ${calls}: the derivation has stopped measuring`);
   });
 });
