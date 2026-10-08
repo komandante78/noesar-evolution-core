@@ -692,7 +692,8 @@ describe('plain words on the first screens', () => {
   });
 
   test("under an answer the simple interface keeps Copy and Retry and drops the engineer's gestures", () => {
-    assert.ok(css.includes('body[data-ui=simple] .message.assistant [data-fork-message],'));
+    assert.ok(css.includes('body[data-ui=simple] [data-fork-message],'), 'forking is a gesture for engineers: gone under a person\'s own question too, not only under the answer');
+    assert.ok(!css.includes('body[data-ui=simple] .message.assistant [data-fork-message]'));
     assert.ok(css.includes('body[data-ui=simple] [data-exclude-message],'));
     assert.ok(css.includes('body[data-ui=simple] .message.assistant [data-edit-message]{display:none}'));
     assert.ok(!css.includes('[data-copy-message]{display:none}') && !css.includes('[data-retry-message]{display:none}'), 'Copy and Retry stay');
@@ -816,5 +817,28 @@ describe('the time a person reads, when the server cannot know their zone', () =
       assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
       assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
     }
+  });
+});
+
+describe('small print in the simple interface', () => {
+  const block = css.slice(css.indexOf('/* Small print a person has to read.'));
+  const rule = (selector) => {
+    const at = block.indexOf(selector);
+    return at < 0 ? '' : block.slice(at, block.indexOf('}', at) + 1);
+  };
+
+  test('the buttons under a message are at least 13px and 32px tall', () => {
+    const r = rule('body[data-ui=simple] .message-actions button{');
+    assert.ok(r.includes('font-size:calc(var(--text-scale)*13px)') && r.includes('min-height:32px'), r);
+  });
+
+  test('the status bar, the top actions, the model name and the privacy line are not under 12px, and still follow the size setting', () => {
+    assert.match(rule('body[data-ui=simple] .top-actions,\nbody[data-ui=simple] .statusbar{'), /font-size:calc\(var\(--text-scale\)\*12\.5px\)/);
+    assert.ok(rule('body[data-ui=simple] .model-switch small{').includes('calc(var(--text-scale)*12.5px)'));
+    assert.ok(rule('body[data-ui=simple] .footer-privacy small{').includes('font-size:1em'), 'a <small> inside the bar is as big as the bar, not 83% of it');
+  });
+
+  test('every size in the block is a multiple of --text-scale or relative, never a bare pixel size (the setting in Appearance must keep working)', () => {
+    for (const m of block.matchAll(/font-size:([^;}]+)/g)) assert.ok(/--text-scale|1em/.test(m[1]), `bare size: ${m[1]}`);
   });
 });

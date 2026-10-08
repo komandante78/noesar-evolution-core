@@ -4619,6 +4619,24 @@ try {
   check('nothing a first visit does not need is on screen', firstVisit.stillShown.length === 0, firstVisit.stillShown.join(', '));
   check('what a person needs stays on screen: the box, send, the approval strip, sign out, a new conversation',
     Object.values(firstVisit.kept).every(Boolean), JSON.stringify(firstVisit.kept));
+  // Measured, not read from the stylesheet: a rule can say 13px and lose to a more specific one. On 2026-10-08 the privacy
+  // line of the live chat was 9px (a <small> in an 11px bar) while every rule about it said 11.
+  const smallPrint = await simple.evaluate(() => {
+    const seen = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent.trim();
+      const el = node.parentElement;
+      if (text.length < 2 || !el || ['SCRIPT', 'STYLE', 'OPTION'].includes(el.tagName)) continue;
+      const box = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      if (box.width === 0 || box.height === 0 || style.visibility === 'hidden' || style.display === 'none') continue;
+      const size = parseFloat(style.fontSize);
+      if (size < 12) seen.push(`${text.slice(0, 24)}@${size.toFixed(1)}`);
+    }
+    return seen;
+  });
+  check('nothing a person reads on the first screen is under 12px', smallPrint.length === 0, smallPrint.slice(0, 6).join(' | '));
 
   // The menu: one button, and it keeps to the four destinations — fewer for a role that may not
   // open them all — and closes again once one is chosen.

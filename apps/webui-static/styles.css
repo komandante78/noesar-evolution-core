@@ -1862,7 +1862,7 @@ body[data-ui=simple] .model-switch small{max-width:22ch;direction:ltr}
 body[data-ui=simple] #sidebar nav #chatNav{order:5}
 /* under an answer a person wants to Copy it or try again: branching the conversation, taking a message out of
    the model's context and editing the model's own words are an engineer's gestures */
-body[data-ui=simple] .message.assistant [data-fork-message],
+body[data-ui=simple] [data-fork-message],
 body[data-ui=simple] [data-exclude-message],
 body[data-ui=simple] .message.assistant [data-edit-message]{display:none}
 /* Settings, for someone who has just started, has four doors: how it looks, the language, the password and the AI.
@@ -1904,3 +1904,11 @@ body[data-ui=simple] #projectForm label:has(#projectKnowledgeMode),
 body[data-ui=simple] #projectForm label:has(#projectKnowledgeLimit){display:none}
 /* The time the page shows is UTC and the computer says otherwise: one calm line with one button, above everything. */
 body[data-ui=simple] #zoneBanner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--surface-raised);font-size:calc(var(--text-scale)*13px)}
+/* Small print a person has to read. Measured on the chat, 2026-10-08: the buttons under a message were 11px and 24px tall,
+   the privacy line 9px (a <small> inside an 11px bar), the model name and the status words 11px. Nothing a person reads is
+   under 12px here, and what they press under a message is 32px tall. The size setting in Appearance still multiplies all of it. */
+body[data-ui=simple] .message-actions button{font-size:calc(var(--text-scale)*13px);min-height:32px;padding:5px 12px}
+body[data-ui=simple] .top-actions,
+body[data-ui=simple] .statusbar{font-size:calc(var(--text-scale)*12.5px)}
+body[data-ui=simple] .footer-privacy small{font-size:1em}
+body[data-ui=simple] .model-switch small{font-size:calc(var(--text-scale)*12.5px)}

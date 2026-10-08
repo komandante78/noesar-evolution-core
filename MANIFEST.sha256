@@ -351,7 +351,7 @@ fa9af57834b4d9ec7b838783c23e2d5d117bebed4a70cacd0abac07943c3646d  ./apps/webui-s
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
 d650d58b596e93da39543bc47b6d748351dfe274c6ddfee53cb86ccf1414ab91  ./apps/webui-static/simple-mode.js
-f881cb9b235b15a3222a7efe0157babc186115aaa688b9f3f03c572d39fc33c8  ./apps/webui-static/styles.css
+8f7c2b69f706e2e9202046199090498d53947563bd47815401e506f9dd3adff6  ./apps/webui-static/styles.css
 b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd  ./apps/webui-static/vendor/xterm/LICENSE
 70cf8efd07e7e8a60fdcb4ba09f142f7ba8ac53f0f54cd4317bde25fe8730851  ./apps/webui-static/vendor/xterm/PROVENANCE.md
 854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6  ./apps/webui-static/vendor/xterm/xterm.css
@@ -6645,7 +6645,7 @@ b384c620443005442c5c4c3d511e4377c02239cabee32cda9051827d83279374  ./services/ref
 5073ebefb1c1b2da4de352771b77a6084bd376b24368467b33f9914a21dbb86f  ./services/reference-control-plane/test/webui-jump-to-address.test.mjs
 79c79c804d4fd794787b04d03a2612db0c0fbc0beadb4d0ddb1825d303521aee  ./services/reference-control-plane/test/webui-markup-structure.test.mjs
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs
-cbea30c859f83b65955df09f8cb66ec009e5c4d2640372d0cad2ffb9c8d932e3  ./services/reference-control-plane/test/webui-simple-mode.test.mjs
+49b706d9be9946f6e18e359af48785bd53b3ed42142ea2c6b6464c1df22bd1bc  ./services/reference-control-plane/test/webui-simple-mode.test.mjs
 3a547526f1f9ae1e7a5980efbc4b40d0ee1a406ee49f71ede4241fcc5778f095  ./services/reference-control-plane/test/workflow-engine.test.mjs
 1eb92d39e1c01874e63efee2e89f2ed81500e1f2e4d46766ba227c01ffef09fd  ./services/reference-control-plane/test/workflow-interrupted-step.test.mjs
 6f7c435405b62a334d66d72e490cff1e9931225bdebc09ef6ff7421c284ed92e  ./services/reference-control-plane/test/workspace-actions-http-adversarial.test.mjs
@@ -6708,7 +6708,7 @@ db98b53e39c7c41c7aaa93981499afff66ebbd054e7c46cc4704228073d15cfa  ./tools/benchm
 8c88d945b6b72d4c8f675ae687cedf22b7cb549584e8d90c5d1d87dc5487ba69  ./tools/benchmarks/hilbench/swe-pipeline-check.sh
 fcf262e912884b3d345df9d72490c8b9905ed266b11ad07865df6eccd1aea3a0  ./tools/benchmarks/results-s336.jsonl
 ed02e17a5c5f0f00cdb836e425127206af63fe3da8c16633e0df811750de31a2  ./tools/benchmarks/run-bench.mjs
-767563b6aa4c7f46bd0f94ae1c9e4edbd1aa247f52f3b6bdd498a7f33031e310  ./tools/browser-e2e.mjs
+4c279387c3f1b4c0d0ce46b5435cde8c3c3c36d0ce4f0fac39aca362e4d8397b  ./tools/browser-e2e.mjs
 9fbce73b5894bbb632d552bff4f989b687c576dfe752e3c8748b65d395598b7f  ./tools/cache-cleanup.sh
 565a208458fa387c12020398b80168ed1e66ead5e01f4fa18a0df202566932f7  ./tools/cbom.mjs
 a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-build-reproducibility.mjs
