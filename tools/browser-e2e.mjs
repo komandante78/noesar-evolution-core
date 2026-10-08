@@ -4300,6 +4300,63 @@ try {
     check('I18N-RUNTIME choosing English restores the source language, with no reload',
       /Projects/.test(sidebarBack), sidebarBack);
 
+    // The Owner's symptom again, for text the CODE draws with t() inside translate="no" (the project
+    // buttons, the role above a message, the default-password notice, the approval strip): the
+    // translator never revisits it, so it stayed in the language it was drawn in. Both directions,
+    // each from a page that was OPENED in the starting language — an English page switched to Italian
+    // proves nothing about an Italian page switched to English, and that second one is where it hid.
+    // What counts as "left behind" is read from the catalogue itself, not guessed from the look of a word.
+    const languageLeft = (language) => page.evaluate(async (wanted) => {
+      const { CATALOGS } = await import('/i18n-catalog.js');
+      const it = CATALOGS.it;
+      const own = (key) => Object.hasOwn(it, key);
+      const italian = new Set(Object.values(it).filter((value) => typeof value === 'string'));
+      // Words that prove nothing about a language, each for a stated reason: "code" is English AND Italian for "queues",
+      // "Test" is also the Italian label of "Tests", "Note" is Italian for "Notes", "Agenti" is the AGENTI module's own name,
+      // the privacy state is an identifier the product keeps untranslated on purpose (refreshPrivacy), and a provider's own name.
+      const notInterface = new Set(['code', 'Test', 'Note', 'Agenti', 'LOCAL ONLY VERIFIED', 'Local OpenAI-compatible']);
+      const seen = [];
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent.replace(/\s+/g, ' ').trim();
+        const parent = node.parentElement;
+        // a conversation's title is what a person wrote, not interface text
+        if (text.length < 2 || !parent || ['SCRIPT', 'STYLE', 'OPTION'].includes(parent.tagName) || notInterface.has(text)
+          || parent.closest('.chat-nav-title, .session-title')) continue;
+        const box = parent.getBoundingClientRect();
+        const style = getComputedStyle(parent);
+        if (!box.width || !box.height || style.visibility === 'hidden' || style.display === 'none') continue;
+        seen.push(text);
+      }
+      return wanted === 'en'
+        ? seen.filter((text) => italian.has(text) && !own(text))
+        : seen.filter((text) => own(text) && it[text] !== text && /[a-z]/i.test(text) && text.length > 3);
+    }, language);
+    for (const start of ['en', 'it']) {
+      const other = start === 'en' ? 'it' : 'en';
+      await page.select('#languageSelect', start);
+      await page.waitForFunction((want) => document.documentElement.lang === want, { timeout: 10000 }, start);
+      await page.reload({ waitUntil: 'networkidle2' });
+      const left = {};
+      const screens = destinations.filter((destination) => destination !== 'coden-tui'); // a terminal is a session log, not a page
+      for (const screen of screens) {
+        await gotoIdle(`${BASE}/#/${screen}`);
+        await new Promise((resolve) => { setTimeout(resolve, 250); });
+        await page.select('#languageSelect', other);
+        await page.waitForFunction((want) => document.documentElement.lang === want, { timeout: 10000 }, other);
+        // The language change runs the page's own loader again (it fetches, then draws). Read the page once that has quieted,
+        // by the same measure gotoIdle uses (networkidle2), then give the drawing its turn.
+        await page.waitForNetworkIdle({ idleTime: 500, concurrency: 2, timeout: 8000 }).catch(() => {});
+        await new Promise((resolve) => { setTimeout(resolve, 300); });
+        const found = await languageLeft(other);
+        if (found.length) left[screen] = found.slice(0, 6);
+        await page.select('#languageSelect', start);
+        await page.waitForFunction((want) => document.documentElement.lang === want, { timeout: 10000 }, start);
+      }
+      check(`I18N-RUNTIME a page opened in ${start}, switched to ${other}: nothing of ${start} is left on any of ${screens.length} destinations`,
+        Object.keys(left).length === 0, JSON.stringify(left).slice(0, 1500));
+    }
+
     await page.select('#languageSelect', 'it');
     await page.waitForFunction(() => document.documentElement.lang === 'it', { timeout: 10000 });
     await page.evaluate(() => window.__i18n?.clearUntranslatedStrings?.());

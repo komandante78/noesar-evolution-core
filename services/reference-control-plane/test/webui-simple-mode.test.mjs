@@ -480,6 +480,8 @@ describe('the default-password banner, for a person who has just signed in with 
   const start = app.indexOf("let banner=$('#defaultPasswordBanner');");
   const bannerCode = app.slice(start, app.indexOf('}else if(banner){banner.remove();}', start));
   const changeCode = app.slice(app.indexOf("$('#securityPasswordForm').addEventListener('submit'"), app.indexOf('function renderMfaEnrolment('));
+  // the words are written by one function, so that the same words can be written again when the language changes
+  const paintCode = app.slice(app.indexOf('function paintDefaultPasswordBanner()'), app.indexOf('function repaintForLanguage()'));
 
   test('the banner code is found, and it builds its text and link with the DOM, not with markup', () => {
     assert.ok(start > 0 && bannerCode.includes("banner.id='defaultPasswordBanner'"));
@@ -487,11 +489,33 @@ describe('the default-password banner, for a person who has just signed in with 
   });
 
   test('it says it in the person\'s language and links straight to the form that changes the password', () => {
-    assert.match(bannerCode, /t\('This account is still using the default password\.'\)/);
+    assert.ok(paintCode.length > 0 && paintCode.length < 600, 'the function that writes the two phrases is found');
+    assert.match(paintCode, /t\('This account is still using the default password\.'\)/);
+    assert.match(paintCode, /querySelector\('a'\)\.textContent=t\('Change it now'\)/);
+    assert.match(bannerCode, /paintDefaultPasswordBanner\(\)/, 'written when the banner is made');
+    assert.match(bannerCode, /banner\.setAttribute\('translate','no'\)/, 'and marked, so the translator leaves the finished words alone');
     assert.match(bannerCode, /link\.href='#settings\/security'/);
-    assert.match(bannerCode, /link\.textContent=t\('Change it now'\)/);
     assert.match(app, /security:'settings\/security'/, 'and that address is a route that exists');
     assert.ok(html.includes('id="securityPasswordForm"'), 'with the form on that page');
+  });
+
+  test('what the code drew with t() is drawn again when the language changes, not only what the translator walks', () => {
+    const repaint = app.slice(app.indexOf('function repaintForLanguage()'), app.indexOf('function labelHelpButtons()'));
+    assert.match(app, /\$\('#languageSelect'\)\?\.addEventListener\('change',repaintForLanguage\)/);
+    for (const painter of ['renderAll()', 'renderChatNav()', 'paintApprovalStrip()', 'paintDefaultPasswordBanner()', 'paintSimpleComputer(lastComputerReport)', 'refreshCodenModelChip()', 'refreshMessages()', 'goToHash()']) {
+      assert.ok(repaint.includes(painter), `the language change does not draw again: ${painter}`);
+    }
+    assert.match(repaint, /if\(!currentUser\)return;/, 'and does nothing at the sign-in window, where there is nothing to draw');
+  });
+
+  test('the model card is translate="no" as a whole, so every word in it goes through t()', () => {
+    const card = app.slice(app.indexOf('function modelCard('), app.indexOf('function modelCard(') + 2600);
+    assert.match(card, /<article class="entity-card model-tile" translate="no">/);
+    assert.match(card, /escapeHtml\(t\(modelCategoryTitle\(f\)\)\)/, 'the category badges');
+    assert.match(card, /<em>\$\{escapeHtml\(t\('undeclared'\)\)\}<\/em>/, 'the word "undeclared"');
+    assert.ok(!card.includes("'<em>undeclared</em>'"), 'and no literal English where a word is drawn');
+    assert.match(app, /<p class="model-description">\$\{escapeHtml\(t\(item\.description\)\)\}<\/p>/, 'the description');
+    assert.match(app, /<h4 translate="no">\$\{escapeHtml\(t\(modelCategoryTitle\(key\)\)\)\}<\/h4>/, 'and the headings of the suggested models');
   });
 
   test('a successful change takes the banner away at once, and the page stops believing the flag', () => {

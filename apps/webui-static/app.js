@@ -747,12 +747,14 @@ function syncSimpleLanguage(){
   for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}
 }
 // The AI that answers, and the machine, in plain words (Settings › Models and hardware).
+let lastComputerReport=null;
 function paintSimpleAi(name){
   const line=$('#simpleAiNow');if(!line)return;
   line.textContent=name?`${t('Answering you now:')} ${name}`:t('No AI is connected yet.');
 }
 function paintSimpleComputer(report){
   const host=$('#simpleComputer');if(!host)return;
+  lastComputerReport=report;
   host.innerHTML=describeComputer(report).map(([label,value])=>`<li><b>${escapeHtml(t(label))}</b> ${escapeHtml(value==='Yes'?t('Yes'):(value||t('None found')))}</li>`).join('');
 }
 // --- connecting a model, in plain words (model-discovery.mjs) -------------------
@@ -1008,10 +1010,12 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
       banner=document.createElement('div');banner.id='defaultPasswordBanner';banner.className='top-notice';banner.setAttribute('role','alert');
       // The first thing a person sees after the installer's own sign-in, so in their language, and the link goes to
       // the form: "#settings" alone opened Sessions, sixteen sections away from the password.
-      const link=document.createElement('a');link.href='#settings/security';link.textContent=t('Change it now');
-      const message=document.createElement('span');message.textContent=t('This account is still using the default password.');
+      const link=document.createElement('a');link.href='#settings/security';
+      const message=document.createElement('span');
+      banner.setAttribute('translate','no');
       banner.append(message,link);
       document.body.prepend(banner);
+      paintDefaultPasswordBanner();
     }
   }else if(banner){banner.remove();}
   // The router runs at boot, before the role is known, so every gated route resolved to
@@ -5858,7 +5862,7 @@ function acquireControl(item,context){
 // dichiarata" reads as a fact about what the publisher said.
 function modelDescription(item){
   return item.description
-    ?`<p class="model-description">${escapeHtml(item.description)}</p>`
+    ?`<p class="model-description">${escapeHtml(t(item.description))}</p>`
     :`<p class="model-description hint"><em>${escapeHtml(t('No description declared by the publisher.'))}</em></p>`;
 }
 // A licence with conditions is the thing a person needs told BEFORE downloading, not after.
@@ -5989,8 +5993,9 @@ function gib(mib){
     :(mib/1024).toLocaleString(document.documentElement.lang||undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
 }
 function modelCard(item,context={}){
+  // The card is `translate="no"` (names, sizes, a licence are data), so every WORD in it goes through t() here.
   const declared=(value)=>value==='undeclared'||value===null||value===undefined
-    ?'<em>undeclared</em>':escapeHtml(String(value));
+    ?`<em>${escapeHtml(t('undeclared'))}</em>`:escapeHtml(String(value));
   const outside=item.outsideFilter
     ?'<small>in use &middot; outside the current filter, and shown anyway — a product that hides what it is executing is one you cannot stop</small>':'';
   const source=item.sourceUrl
@@ -6001,7 +6006,7 @@ function modelCard(item,context={}){
   // `title` per chi ne ha bisogno.
   const shortName=String(item.id).includes('/')?String(item.id).split('/').slice(1).join('/'):item.id;
   const badges=item.functions.filter((f)=>f!=='undeclared')
-    .map((f)=>`<span class="model-badge">${escapeHtml(modelCategoryTitle(f))}</span>`).join('');
+    .map((f)=>`<span class="model-badge">${escapeHtml(t(modelCategoryTitle(f)))}</span>`).join('');
   return `<article class="entity-card model-tile" translate="no">`
     +`<header class="model-tile-head"><h3 title="${escapeHtml(item.id)}">${escapeHtml(shortName)}</h3>`
     +`<div class="model-badges">${badges}</div></header>`
@@ -6010,7 +6015,7 @@ function modelCard(item,context={}){
     +`<dl class="model-facts">`
     +`<div><dt>${escapeHtml(t('Licence'))}</dt><dd>${escapeHtml(item.license??'—')}</dd></div>`
     +`<div><dt>${escapeHtml(t('Type'))}</dt><dd>${declared(item.type)}</dd></div>`
-    +`<div><dt>${escapeHtml(t('Context'))}</dt><dd>${item.contextWindow?escapeHtml(String(item.contextWindow)):'<em>undeclared</em>'}</dd></div>`
+    +`<div><dt>${escapeHtml(t('Context'))}</dt><dd>${item.contextWindow?escapeHtml(String(item.contextWindow)):declared(null)}</dd></div>`
     +`</dl>`
     +modelAdvisories(item)
     +outside+authenticityLine(item)
@@ -6094,7 +6099,7 @@ function renderSuggestedModels(catalog){
   // better answer, and the smaller ones below it are the fallbacks.
   const size=(entry)=>estimatedModelBytes(entry.item.parameters)??0;
   host.innerHTML=[...byCategory.entries()].map(([key,entries])=>
-    `<h4 translate="no">${escapeHtml(modelCategoryTitle(key))}</h4>`
+    `<h4 translate="no">${escapeHtml(t(modelCategoryTitle(key)))}</h4>`
     +entries.sort((a,b)=>size(b)-size(a)).slice(0,4).map(({item,fit})=>
       `<div class="model-suggested-row"><b translate="no" title="${escapeHtml(item.id)}">${escapeHtml(String(item.id).split('/').pop())}</b>`
       +`<small class="model-suggested-fit-${fit}" translate="no">${escapeHtml(fit==='gpu'?t('fits the GPU'):t('RAM only, slow'))}</small></div>`
@@ -7140,6 +7145,24 @@ function installHelpButtonsUnsafely(){
   // has registered its own listener on the same control, so the language in effect has
   // already changed by the time this runs.
   $('#languageSelect')?.addEventListener('change',labelHelpButtons);
+  // And everything the code DREW with t() inside a `translate="no"` element (the project buttons, the
+  // role above a message, the model line, the computer lines): the walker never revisits it, so it is
+  // drawn again from what is already in memory. Measured: Italian -> English left them in Italian.
+  $('#languageSelect')?.addEventListener('change',repaintForLanguage);
+}
+// Composed from t() and marked translate="no", so it is written here and again whenever the language changes.
+function paintDefaultPasswordBanner(){
+  const banner=$('#defaultPasswordBanner');if(!banner)return;
+  banner.querySelector('span').textContent=t('This account is still using the default password.');
+  banner.querySelector('a').textContent=t('Change it now');
+}
+function repaintForLanguage(){
+  if(!currentUser)return;
+  renderAll();renderChatNav();paintApprovalStrip();paintDefaultPasswordBanner();
+  if(lastComputerReport)paintSimpleComputer(lastComputerReport);
+  refreshCodenModelChip();refreshMessages();
+  // and the page the person is on, by the same road they arrived: its own loader fetches and draws it again
+  goToHash();
 }
 
 function labelHelpButtons(){
