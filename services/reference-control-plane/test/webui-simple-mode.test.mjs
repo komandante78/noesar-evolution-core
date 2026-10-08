@@ -611,6 +611,16 @@ describe('the wiring in app.js', () => {
     assert.match(app, /if\(!first\)return\{view:simpleOn\?'chat':'home'/);
   });
 
+  test('in simple mode the address #/home, typed or bookmarked or reached by a legacy name, opens the chat', () => {
+    // The first version of this interface only chose the chat for an EMPTY address; `#/home` still showed the full
+    // interface's Home page inside the simple frame — the old look under the new header (08/10, reported by the Owner on
+    // https://…:8443/#/home; reproduced in the lab with a clean profile).
+    assert.match(app, /if\(simpleOn&&first==='home'\)return\{view:'chat',section:'',place:'',redirected:true\};/);
+    assert.match(app, /view:simpleOn&&lv==='home'\?'chat':lv/);
+    const route = app.slice(app.indexOf('function routeFromHash()'), app.indexOf('function sessionPlaceFromHash()'));
+    assert.ok(route.indexOf("first==='home'") < route.indexOf('LEGACY_ROUTES[first]'), 'the check comes before the legacy table');
+  });
+
   test('a first message creates the conversation only in simple mode, and the mode is inferred only there', () => {
     assert.match(app, /if\(!state\.activeConversationId&&!\(simpleOn&&await ensureConversation\(\)\)\)/);
     assert.match(app, /mode:simpleOn\?inferChatMode\(content\):currentMode/);

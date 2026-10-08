@@ -460,8 +460,11 @@ function routeFromHash(){
   const raw=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
   const [first='',second='',third='']=raw.split('/').filter(Boolean);
   if(!first)return{view:simpleOn?'chat':'home',section:'',place:''};
+  // The simple interface has no Home page: its home is the chat. A bookmark or a typed `#/home` used to show the full
+  // interface's Home inside the simple frame, which is the old look under the new header.
+  if(simpleOn&&first==='home')return{view:'chat',section:'',place:'',redirected:true};
   const legacy=LEGACY_ROUTES[first];
-  if(legacy){const [lv,ls='']=legacy.split('/');return{view:lv,section:ls,place:'',redirected:true};}
+  if(legacy){const [lv,ls='']=legacy.split('/');return{view:simpleOn&&lv==='home'?'chat':lv,section:ls,place:'',redirected:true};}
   return{view:first,section:second,place:third};
 }
 // Which of the three places the address names. An unknown third segment falls back to the

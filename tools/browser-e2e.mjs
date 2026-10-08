@@ -4689,6 +4689,14 @@ try {
   check('nothing a first visit does not need is on screen', firstVisit.stillShown.length === 0, firstVisit.stillShown.join(', '));
   check('what a person needs stays on screen: the box, send, the approval strip, sign out, a new conversation',
     Object.values(firstVisit.kept).every(Boolean), JSON.stringify(firstVisit.kept));
+  // The Owner reported not seeing the new look at https://…:8443/#/home. Reproduced with a clean profile: that address showed the
+  // full interface's Home page (Ask / Create / Act) inside the simple frame, because only an EMPTY address chose the chat.
+  // Typed into the open page, as a person would, not set in storage.
+  await simple.evaluate(() => { location.hash = '#/home'; });
+  await simple.waitForFunction(() => location.hash === '#/chat', { timeout: 10000 }).catch(() => {});
+  const typedHome = await simple.evaluate(() => ({ hash: location.hash, view: document.querySelector('.view.active')?.id }));
+  check('in the simple interface a typed #/home opens the chat, not the full interface\'s Home page',
+    typedHome.hash === '#/chat' && typedHome.view === 'view-chat', JSON.stringify(typedHome));
   // Measured, not read from the stylesheet: a rule can say 13px and lose to a more specific one. On 2026-10-08 the privacy
   // line of the live chat was 9px (a <small> in an 11px bar) while every rule about it said 11.
   const smallPrint = await simple.evaluate(() => {
