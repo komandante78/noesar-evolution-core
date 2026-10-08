@@ -4,6 +4,10 @@ import { randomUUID } from 'node:crypto';
 import { wrapUntrusted, enforceToolScope } from './untrusted-content.mjs';
 import { AGENT_DIRECTIVE_INSTRUCTION, extractAgentDirective } from './agent-directive.mjs';
 import { composeSystemPrompt } from './assistant-identity.mjs';
+import { mentionsFiles } from '../workspace-files.mjs';
+
+/** The two read-only file tools (`files.list`, `files.read`), by the name a model sees. */
+const FILE_TOOL_NAME = /^engine_files_/;
 
 function sse(res,event,data){res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);}
 
@@ -77,7 +81,7 @@ export class ChatOrchestrator{
   // by name rather than crashing, because "no executor" and "no such tool" must not be the same
   // stack trace.
   // `decide`: `choose()` from `decide.mjs`, or `null` — see `narrowToolsByDecision`.
-  constructor({graph,workspace,providers,store,ledger,agentService=null,installationSnapshot=null,toolExecutor=null,decide=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.installationSnapshot=installationSnapshot;this.toolExecutor=toolExecutor;this.decide=typeof decide==='function'?decide:null;this.active=new Map();this.pending=new Map();}
+  constructor({graph,workspace,providers,store,ledger,agentService=null,installationSnapshot=null,toolExecutor=null,decide=null,fileContext=null}){this.fileContext=typeof fileContext==='function'?fileContext:null;this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.installationSnapshot=installationSnapshot;this.toolExecutor=toolExecutor;this.decide=typeof decide==='function'?decide:null;this.active=new Map();this.pending=new Map();}
   // A snapshot that throws must never take the turn down with it: the assistant is worse without
   // its grounding, but it still answers, and an installation fact is not worth a 500.
   #installationFacts(){
@@ -118,13 +122,27 @@ export class ChatOrchestrator{
       signal?.addEventListener('abort',()=>settle(false),{once:true});
     });
   }
-  async #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[],audience='operator',language=''}){
+  async #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[],audience='operator',language='',can=null}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??inspection.conversation.mode??'ASK').toUpperCase();
     const projectInstructions=inspection.project?.instructions?`Project instructions:\n${inspection.project.instructions}`:'';
     const memoryText=inspection.memories.length?`Visible memory selected for this project:\n${inspection.memories.map((item)=>`- ${item.title}: ${item.content}`).join('\n')}`:'';
     const policy=inspection.project?.knowledgePolicy??{mode:'hybrid',limit:8,maxCharacters:60000};
     const evidence=this.workspace.knowledgeContext(content,{projectId:inspection.conversation.projectId,sourceIds,policy});
+    // A person who asks about one of their files wants it read, and a 7B asked to find it by itself (list, choose, read) got it right
+    // 3 times in 8 (measured 2026-10-08, files_live.mjs). So the server finds the file the message is about and puts its text in front
+    // of the model as one more fenced source, like any retrieved passage — and offers no tool for that turn. When it cannot tell which
+    // file, nothing is added and the two file tools stay on offer (below): the model looks. Decoration, like the grounding above: if
+    // it fails the turn goes on without it.
+    const fileReads=[];
+    // The caller's OWN authority, like every built-in tool (`builtin-tools.mjs`, property 1): a file is read for a person who may read the
+    // workspace, and a caller that says nothing about what it may do gets nothing read.
+    if(audience==='everyday'&&selectedMode==='ASK'&&this.fileContext&&typeof can==='function'&&can('workspace.read')&&mentionsFiles(content,{asking:true})){
+      try{
+        for(const passage of await this.fileContext(content)){evidence.push(passage);fileReads.push({path:passage.source?.name??passage.sourceId});}
+        if(fileReads.length)this.ledger?.append({actor:'system',action:'chat.file-context',result:'read',details:{conversationId,paths:fileReads.map((item)=>item.path)}});
+      }catch(error){this.ledger?.append({actor:'system',action:'chat.file-context',result:'failed',details:{conversationId,message:String(error?.message??error).slice(0,200)}});}
+    }
     // Retrieved passages are untrusted input. They are fenced and carried in
     // their own non-system message: text a third party wrote must never sit in
     // the role that carries this runtime's own instructions.
@@ -163,7 +181,12 @@ export class ChatOrchestrator{
     // action (ACT), and the prompt then says plainly that none are on offer. The operator's register is
     // untouched.
     const quiet=audience==='everyday'&&selectedMode!=='ACT';
-    if(quiet){granted=[];scope={...scope,allowedToolIds:[]};}
+    // One exception, and it is two small schemas: a person who names one of THEIR files wants it read, and nothing else on the list
+    // would help. Same scope rule as above — a tool left out cannot be executed either.
+    if(quiet){
+      granted=!fileReads.length&&mentionsFiles(content,{asking:selectedMode==='ASK'})?granted.filter((item)=>FILE_TOOL_NAME.test(item.name)):[];
+      scope={...scope,allowedToolIds:granted.map((item)=>item.id)};
+    }
     // Narrowed BEFORE the system message is composed, so the assistant is told exactly the tools it
     // is offered, and the scope narrows with it: a tool left out cannot be executed either.
     if(this.decide&&granted.length>TOOLS_NARROWED_ABOVE){
@@ -202,7 +225,7 @@ export class ChatOrchestrator{
     if(untrusted?.detections.length){
       this.ledger?.append({actor:'system',action:'prompt-injection.detected',result:'contained',details:{conversationId,passages:untrusted.detections.length,signals:untrusted.detections.flatMap((item)=>item.signals.map((signal)=>signal.signal))}});
     }
-    return{inspection,selectedMode,projectInstructions,memoryText,evidence,messages,tools,toolScope:scope,injectionDetections:untrusted?.detections??[],dataClasses:dataClassesFor({history:inspection.messages.length,projectInstructions,memoryText,evidence,tools})};
+    return{inspection,selectedMode,projectInstructions,memoryText,evidence,fileReads,messages,tools,toolScope:scope,injectionDetections:untrusted?.detections??[],dataClasses:dataClassesFor({history:inspection.messages.length,projectInstructions,memoryText,evidence,tools})};
   }
   #citations(evidence){return evidence.map((item)=>({sourceId:item.sourceId,sourceName:item.source?.name??item.sourceId,passageIndex:item.index,score:item.score,excerpt:item.text.slice(0,500),evidenceStatus:'retrieved',claimStatus:'not_independently_verified'}));}
 
@@ -318,7 +341,7 @@ export class ChatOrchestrator{
     // answer with a status code any more, and a rejection from here used to escape the
     // request handler entirely and take the process down with it.
     const user=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'user',content,metadata:{mode:selectedMode,sourceIds,toolIds}});
-    const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds,audience:speakTo,language:typeof language==='string'?language:''});
+    const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds,audience:speakTo,language:typeof language==='string'?language:'',can});
     // #buildContext includes the just-persisted user message; remove its duplicate final copy.
     built.messages=built.messages.filter((message,index)=>!(index===built.messages.length-2&&message.role==='user'&&message.content===user.content));
     // No stray Chinese in an Italian draft: only for a person (the everyday register), only when the turn offers no tool, only for a
@@ -327,6 +350,12 @@ export class ChatOrchestrator{
     const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});
     res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});
     sse(res,'run',{runId,status:'started',providerRoute});
+    // The files read for this turn show up as the same row a running tool does, so the person sees what the answer is based on.
+    for(const [index,read] of (built.fileReads??[]).entries()){
+      const id=`file-context-${index}`;
+      sse(res,'tool-call',{runId,id,name:'engine_files_read',arguments:{path:read.path},defect:null});
+      sse(res,'tool-result',{runId,id,name:'engine_files_read',ok:true});
+    }
     let answer='';let selectedProvider=null;let usage=null;
     // Every tool this turn ran, in order, so the persisted message can carry the record. A person
     // reading the conversation tomorrow must be able to see that an answer came from a tool and

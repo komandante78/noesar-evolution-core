@@ -24,6 +24,12 @@ import { profileChange as defaultProfileChange } from './divergence-profile.mjs'
 import { existsSync, unlinkSync, chmodSync, readFileSync } from 'node:fs';
 import { checkDocument } from './document-check.mjs';
 import { isInsideEngineState } from './repo-map.mjs';
+import { listFolder, readFileText, FilesError } from './workspace-files.mjs';
+
+/** A refusal from the file reader, in the protocol's own error type; anything else is a defect and passes through. */
+function filesProtocolError(error) {
+  return error instanceof FilesError ? new ProtocolError(error.kind === 'NOT_FOUND' ? 'INVALID_PATH' : error.kind, error.message) : error;
+}
 
 // `documents.check`: a check is one decision per (sentence, source), so both are bounded here.
 const DOCUMENT_CHECK_MAX_SOURCES = 5;
@@ -146,6 +152,10 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   'workspace.runs': { permission: 'workspace.read', bridged: false },
   'repoMap.scan': { permission: 'workspace.read', bridged: true },
   'repoMap.search': { permission: 'workspace.read', bridged: true },
+  // Phase 5, first slice: a person's files, READ ONLY (`workspace-files.mjs`). `workspace.read` like the scanner it sits beside, and
+  // for the same reason it is `bridged`: the terminal and the browser reach one surface, not two.
+  'files.list': { permission: 'workspace.read', bridged: true },
+  'files.read': { permission: 'workspace.read', bridged: true },
   'events.correlation': { permission: null, bridged: true },
   status: { permission: null, bridged: true },
   // `D-0577`, closing `F-REVOKE-001`. Both `bridged: true`, and for the reason `skills.*` gives
@@ -270,6 +280,9 @@ export function bridgedMethodPermissions() {
 export function createSessionDispatch({
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
+  // `({ name, bytes }) => { text, status, warning }` — the product's own extractor for PDF and Office files, or `null`: then `files.read`
+  // reads plain text only and says so for the rest. Passed in like everything above, so it is the instance the uploads use.
+  extractFileText = null,
   capabilityStatus, capabilityMinter, contextGraph, ledger, invariantEnforcement,
   codenAddressBook, gitStatus, profileChange = defaultProfileChange,
   // Phase 3b. The same two objects the HTTP routes for these already hold — passed in rather
@@ -400,6 +413,17 @@ export function createSessionDispatch({
       const target = resolveWorkspaceSubpath(workspaceRoot, params?.path);
       if (!target) throw new ProtocolError('INVALID_PATH', 'path escapes the workspace');
       return literalSearch(target, params?.q ?? '', { caseSensitive: params?.caseSensitive !== false, workspaceRoot });
+    },
+    'files.list': ({ params }) => {
+      const target = resolveWorkspaceSubpath(workspaceRoot, params?.path);
+      if (!target) throw new ProtocolError('INVALID_PATH', 'path escapes the workspace');
+      try { return listFolder(workspaceRoot, target); } catch (error) { throw filesProtocolError(error); }
+    },
+    'files.read': async ({ params }) => {
+      if (!params?.path) throw new ProtocolError('INVALID_REQUEST', 'name the file to read');
+      const target = resolveWorkspaceSubpath(workspaceRoot, params.path);
+      if (!target) throw new ProtocolError('INVALID_PATH', 'path escapes the workspace');
+      try { return await readFileText(workspaceRoot, target, { offset: params?.offset, extract: extractFileText }); } catch (error) { throw filesProtocolError(error); }
     },
     'events.correlation': ({ params }) => ({
       correlationId: params?.correlationId, events: engineEvents.correlation(params?.correlationId),

@@ -92,6 +92,21 @@ export function toolActionTitle(name) {
   return Object.hasOwn(TOOL_ACTIONS, name) ? TOOL_ACTIONS[name] : null;
 }
 
+/**
+ * The tools that only LOOK, in the words the running-tool row uses. They never wait for an approval, so they are not in
+ * `TOOL_ACTIONS` (the approval card's titles, all of them changes); a person watching the assistant work should read "Look at
+ * your files", not `engine_files_list`.
+ */
+export const READ_ACTIVITY = Object.freeze({
+  engine_files_list: 'Look at your files',
+  engine_files_read: 'Read a file',
+});
+
+/** What the running-tool row says in the simple interface, or `null` for a tool with no plain phrase (the row then shows its name). */
+export function toolActivityTitle(name) {
+  return Object.hasOwn(READ_ACTIVITY, name) ? READ_ACTIVITY[name] : toolActionTitle(name);
+}
+
 const CHANGE_KINDS = Object.freeze({ CREATED: 'new', MODIFIED: 'changed', DELETED: 'removed' });
 const PREVIEW_CHARS = 2000;
 const countLines = (text) => (text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0));

@@ -4,7 +4,7 @@ import { PAGE_HELP, SIMPLE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer } from './simple-mode.js';
+import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, toolActivityTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer } from './simple-mode.js';
 import { renderMarkdownLite as renderMarkdown } from './markdown-lite.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
@@ -1576,7 +1576,9 @@ function renderToolActivity(article,data){
   const row=document.createElement('li');
   row.className='tool-activity-row running';
   const icon=document.createElement('span');icon.className='tool-activity-icon';icon.setAttribute('aria-hidden','true');icon.textContent='⟳';
-  const name=document.createElement('span');name.className='tool-activity-name';name.textContent=data.name??t('unnamed tool');
+  // A person is told what is being done ("Read a file"), not the tool's name; a tool with no plain phrase still shows its name.
+  const plain=simpleOn?toolActivityTitle(data.name):null;
+  const name=document.createElement('span');name.className='tool-activity-name';name.textContent=plain?t(plain):(data.name??t('unnamed tool'));
   const state=document.createElement('span');state.className='tool-activity-state';state.textContent=t('running');
   row.append(icon,name,state);
   list.append(row);

@@ -62,6 +62,7 @@ import { resolveExecuteSandboxConfig } from './execute-sandbox-config.mjs';
 import { detectSandboxSync } from './sandbox-runner.mjs';
 import { EventLedger, eventsStatus } from './events.mjs';
 import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
+import { filePassagesFor } from './workspace-files.mjs';
 import { gitStatus } from './git-status.mjs';
 import {
   SectorModuleError, loadSectorModules, sectorModulesStatus, validateCandidateManifest,
@@ -497,7 +498,16 @@ const installationSnapshotForChat = () => {
   if (!profile) return snapshot;
   return { ...snapshot, modelName: profile.defaultModel, providerName: profile.name, providerIsLocal: true };
 };
-const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat, toolExecutor, decide: decider });
+// PDF and Office files for `files.read` and for the file a chat message is about, through the SAME extractor the uploads use; the copy
+// it stores while extracting is removed at once, because reading a file for a chat turn is not ingesting it.
+const extractFileText = async ({ name, bytes }) => {
+  const result = await fileExtractor.extract({ name, bytesBase64: bytes.toString('base64') });
+  fileExtractor.delete(result.blobId);
+  return result;
+};
+const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService, installationSnapshot:installationSnapshotForChat, toolExecutor, decide: decider,
+  // The file a plain-language question is about, read before the model answers (`filePassagesFor`).
+  fileContext: (message) => filePassagesFor(workspace, message, { extract: extractFileText }) });
 const hardware = discoverHardware();
 // The bootstrap token is resolved from a 0600 runtime file, not from the
 // environment: an environment variable is visible in `docker inspect` and in
@@ -530,6 +540,7 @@ const sessionDispatch = createSessionDispatch({
   searchSkillCatalog: (query) => searchSkillCatalogEntries(repoRoot, skillCatalogRoot, query),
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot: workspace, engineEvents,
+  extractFileText,
   // Bound to THIS installation's answer so the terminal shell and the browser cannot report
   // different capabilities for one running product (session-protocol.mjs calls it with none).
   workspaceActionsStatus: () => workspaceActionsStatus(executeSandboxConfig),

@@ -127,6 +127,9 @@ export const EFFECT = Object.freeze({
   'research.search': 'read',
   // Reads a document and its sources in the workspace and asks decisions about them; writes nothing.
   'documents.check': 'read',
+  // A person's own files, read only (`workspace-files.mjs`): a listing and the text of one file. Neither changes anything.
+  'files.list': 'read',
+  'files.read': 'read',
 });
 
 /**
@@ -221,6 +224,11 @@ export const SCHEMA = Object.freeze({
     path: str('the document in the workspace'),
     sources: strings('workspace files the document should be supported by, at most 5'),
   }, ['path', 'sources']),
+  'files.list': object({ path: str('folder; omit for the top') }),
+  'files.read': object({
+    path: str('the file'),
+    offset: num('continue from this character: the last answer\'s nextOffset'),
+  }, ['path']),
 });
 
 /** The four methods no `/` command names, so no summary exists to derive. Written here rather than

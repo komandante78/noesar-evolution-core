@@ -138,6 +138,9 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'diff', argument: '<run>', summary: 'What a run changed, against the shadow', group: 'work', kind: 'call', method: 'workspace.get', permission: null },
   { name: 'map', argument: '[path]', summary: 'Scan the workspace: languages, entry points, symbols', group: 'work', kind: 'call', method: 'repoMap.scan', permission: 'workspace.read' },
   { name: 'search', argument: '<text>', summary: 'Literal search across the workspace', group: 'work', kind: 'call', method: 'repoMap.search', permission: 'workspace.read' },
+  // The person's own files, read only (Phase 5). `/files` lists a folder, `/read` shows the text of one file.
+  { name: 'files', argument: '[path]', summary: 'List the files in a folder of the workspace, and in the folders below it', group: 'work', kind: 'call', method: 'files.list', permission: 'workspace.read' },
+  { name: 'read', argument: '<path>', summary: 'Read the text of one file of the workspace', group: 'work', kind: 'call', method: 'files.read', permission: 'workspace.read' },
   // `web` and not `search`: the line above searches the WORKSPACE, and two commands whose names
   // differ by a qualifier nobody reads is how a person sends their code to a search engine by
   // accident. `CE-020` is what required this to exist at all — a capability the engine exposes

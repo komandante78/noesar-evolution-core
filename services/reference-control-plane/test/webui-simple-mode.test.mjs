@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   SIMPLE_KEY, SIMPLE_VIEWS, readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash,
-  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer,
+  TOOL_ACTIONS, toolActionTitle, READ_ACTIVITY, toolActivityTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer,
   SCHEME_KEY, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer,
 } from '../../../apps/webui-static/simple-mode.js';
 import { RUNTIME_ONLY, CATALOGS } from '../../../apps/webui-static/i18n-catalog.js';
@@ -250,6 +250,20 @@ describe('what a waiting tool is about to do, in plain words', () => {
       assert.equal(toolActionTitle(name), null, String(name));
     }
     assert.ok(Object.keys(TOOL_ACTIONS).every((name) => name.startsWith('engine_workspace_')));
+  });
+
+  test('the tools that only look have a plain phrase for the running-tool row, declared and translated in every language', () => {
+    assert.equal(toolActivityTitle('engine_files_list'), 'Look at your files');
+    assert.equal(toolActivityTitle('engine_files_read'), 'Read a file');
+    assert.equal(toolActivityTitle('engine_workspace_approve'), 'Apply the change to your files', 'the change tools keep theirs');
+    for (const name of ['engine_status', 'something_else', undefined, 'constructor', '__proto__']) assert.equal(toolActivityTitle(name), null, String(name));
+    for (const phrase of Object.values(READ_ACTIVITY)) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      for (const code of Object.keys(CATALOGS).filter((language) => language !== 'en')) {
+        assert.ok(typeof CATALOGS[code][phrase] === 'string' && CATALOGS[code][phrase] !== phrase, `${code}: not translated: ${phrase}`);
+      }
+    }
+    assert.match(app, /const plain=simpleOn\?toolActivityTitle\(data\.name\):null;/, 'only the simple interface says it in plain words');
   });
 
   const entry = (over = {}) => ({ path: 'a.md', status: 'MODIFIED', before: 'one\ntwo\n', after: 'one\nthree\n', diffAvailable: true, ...over });

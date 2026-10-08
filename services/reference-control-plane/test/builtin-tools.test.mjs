@@ -375,7 +375,27 @@ test('the built-in catalogue rides in a turn under a declared budget', () => {
   // to whatever the code currently does turns the measurement into a rubber stamp (`D-0686`, the
   // i18n ratchet, three days ago). 12 KiB is roughly 3k tokens — real on a local 14B build, which
   // is why it is watched rather than assumed.
-  assert.ok(bytes <= 12_288, `the engine tool schemas now cost ${bytes} bytes in every chat turn that names no tool`);
+  //
+  // 2026-10-08: 12 -> 13 KiB for the two file tools (`files.list`, `files.read`, 672 bytes, ~170 tokens). The old ceiling had
+  // 286 bytes of room and the file tools could not fit in it however tersely they were written; the new one leaves about the same
+  // room again, and is NOT fitted to today's number. Raised by a reason, once, here: the next tool pays for itself the same way or
+  // asks for the same decision. In the plain-language interface the whole catalogue does not ride at all: a turn that names a file
+  // carries these two and nothing else (`chat-orchestrator.mjs`).
+  assert.ok(bytes <= 13_312, `the engine tool schemas now cost ${bytes} bytes in every chat turn that names no tool`);
   // The floor matters too: a catalogue that silently emptied would sail under any ceiling.
   assert.ok(bytes > 2_000, `only ${bytes} bytes of tool schema — the catalogue is not being built`);
+});
+
+test('the file tools are read-only, named engine_files_*, and gated on the permission the scanner asks', () => {
+  // The name prefix is load-bearing: `assistant-identity.mjs` derives what the assistant says it can do from it, and
+  // `chat-orchestrator.mjs` offers exactly these two to a person who names a file. A write under this prefix would be offered
+  // to that person with no approval step the plain-language interface shows, so none exists: writing stays with the plan flow.
+  const files = builtinToolRecords().filter((record) => /^engine_files_/.test(record.name));
+  assert.deepEqual(files.map((record) => record.name).sort(), ['engine_files_list', 'engine_files_read']);
+  for (const record of files) {
+    assert.deepEqual(record.permissions, ['workspace.read']);
+    assert.equal(record.mutative, false);
+    assert.equal(record.requiresApproval, false);
+  }
+  assert.deepEqual(builtinToolCatalogue().filter((entry) => /^files\./.test(entry.method)).map((entry) => entry.effect), ['read', 'read']);
 });
