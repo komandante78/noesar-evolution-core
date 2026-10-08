@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   SIMPLE_KEY, SIMPLE_VIEWS, readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash,
-  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName,
+  TOOL_ACTIONS, toolActionTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer,
 } from '../../../apps/webui-static/simple-mode.js';
 import { RUNTIME_ONLY, CATALOGS } from '../../../apps/webui-static/i18n-catalog.js';
 
@@ -744,6 +744,10 @@ describe('plain words on the first screens', () => {
     assert.ok(list.includes("$$('[data-copy-artifact]').forEach("), 'and it does something');
     assert.ok(list.includes("${simpleOn?'Edit':'New version'}"), 'the full interface still says New version');
     assert.ok(list.includes("(simpleOn?t('No documents yet. When an answer is worth keeping, press Save under it.'):'No documents.')"));
+    // The markup starts the list as "empty-state" (text centred, 20px padding). A list that is never told it is no longer
+    // empty draws every letter and every table centred, in both interfaces (seen on a live page, 2026-10-08).
+    assert.ok(list.startsWith("function renderArtifacts(){$('#artifactList').classList.toggle('empty-state',state.artifacts.length===0);"), 'the list stops being "empty" once it holds a document');
+    assert.ok(html.includes('id="artifactList" class="card-list empty-state"'), 'and this is why it has to be done: the markup starts it empty');
     assert.ok(list.includes("catch{toast(t('Could not copy. Select the text and copy it by hand.'),{kind:'error'});}"));
   });
 
@@ -773,5 +777,44 @@ describe('plain words on the first screens', () => {
     const block = css.slice(css.indexOf('/* ── plain words and a quiet screen'));
     const rules = block.slice(block.indexOf('*/') + 2);
     assert.ok(!/approv/i.test(rules), 'no rule in this block mentions approvals: the strip is never hidden or restyled here');
+  });
+});
+
+describe('the time a person reads, when the server cannot know their zone', () => {
+  const rome = { effective: 'UTC', source: 'utc-fallback', browserReported: 'Europe/Rome' };
+
+  test('the browser zone is offered when the server fell back to UTC and the browser says otherwise', () => {
+    assert.equal(zoneOffer(rome), 'Europe/Rome');
+    assert.equal(zoneOffer({ ...rome, browserReported: ' Europe/Rome ' }), 'Europe/Rome');
+  });
+
+  test('nothing is offered when the zone is somebody\'s decision, when the browser agrees, or when nothing is known', () => {
+    for (const source of ['manual-override', 'user', 'host', 'installer', 'browser']) {
+      assert.equal(zoneOffer({ ...rome, source }), '', `a zone from "${source}" is not a gap`);
+    }
+    assert.equal(zoneOffer({ ...rome, browserReported: 'UTC' }), '', 'the browser already says UTC');
+    assert.equal(zoneOffer({ ...rome, browserReported: null }), '');
+    assert.equal(zoneOffer({ ...rome, browserReported: '' }), '');
+    assert.equal(zoneOffer(null), '');
+    assert.equal(zoneOffer(undefined), '');
+  });
+
+  const wiring = app.slice(app.indexOf('async function loadEffectiveZone('), app.indexOf('let confirmResolve=null;'));
+  test('the offer is drawn only in the simple interface, by a button the person presses, with the same PUT as Settings', () => {
+    assert.ok(wiring.includes('paintZoneOffer(settings);'), 'every load of the zone repaints the offer');
+    assert.ok(wiring.includes("const zone=simpleOn?zoneOffer(settings):'';"), 'simple interface only, and only what zoneOffer returns');
+    assert.ok(wiring.includes("if(!zone){bar?.remove();return;}"), 'the line goes away once it no longer applies');
+    assert.ok(wiring.includes("await api('/api/v1/settings/timezone',{method:'PUT',body:JSON.stringify({timezone:zone})});"), 'the person\'s own choice, audited by the server like any other');
+    assert.ok(wiring.includes('await loadEffectiveZone();await refreshWorkspace();'), 'and the times on the page change at once');
+    assert.ok(!/innerHTML/.test(wiring.slice(wiring.indexOf('function paintZoneOffer('))), 'built with the DOM: the zone name comes from the browser');
+    assert.ok(!/style\.cssText|style=/.test(wiring), 'no inline style');
+    assert.ok(css.includes('body[data-ui=simple] #zoneBanner{'), 'drawn by the stylesheet');
+  });
+
+  test('its three sentences are declared runtime-only and translated', () => {
+    for (const phrase of ['Times are shown in UTC.', 'Your computer is in', 'Use the time on my computer']) {
+      assert.ok(RUNTIME_ONLY.includes(phrase), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
   });
 });

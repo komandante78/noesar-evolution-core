@@ -181,6 +181,20 @@ export function approvalStrip({ queueTotal = 0, queueTitles = [], chatTitles = [
  * which is why the token may travel in it and not in a query string. Anything that is not a
  * token-shaped value is ignored: a link cannot make the page type something odd into a field.
  */
+/**
+ * The time zone a person can be offered, in one click, when the page would otherwise show UTC.
+ *
+ * The server never applies the browser's zone silently (UI-045). With nothing chosen and no host or installer zone it
+ * falls back to UTC and says so in a `warning` nobody reads: a person in Rome reads "02:36 · UTC" on a clock that says
+ * 04:36. The browser's zone is offered here, never applied: the person presses the button. Only the pure fallback is
+ * offered — a zone chosen by hand, by the host or by the installer is somebody's decision, not a gap.
+ */
+export function zoneOffer(settings) {
+  const zone = String(settings?.browserReported ?? '').trim();
+  if (settings?.source !== 'utc-fallback' || !zone || zone === settings.effective) return '';
+  return zone;
+}
+
 export function setupTokenFromHash(hash) {
   const match = /^#setup=([A-Za-z0-9_-]{16,128})$/.exec(String(hash ?? ''));
   return match ? match[1] : '';

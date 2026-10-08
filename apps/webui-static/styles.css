@@ -1902,3 +1902,5 @@ body[data-ui=simple] #view-documents .panel-title span{display:none}
 body[data-ui=simple] #projectForm label:has(#projectTags),
 body[data-ui=simple] #projectForm label:has(#projectKnowledgeMode),
 body[data-ui=simple] #projectForm label:has(#projectKnowledgeLimit){display:none}
+/* The time the page shows is UTC and the computer says otherwise: one calm line with one button, above everything. */
+body[data-ui=simple] #zoneBanner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--surface-raised);font-size:calc(var(--text-scale)*13px)}
