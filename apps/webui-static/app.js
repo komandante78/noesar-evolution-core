@@ -475,7 +475,6 @@ function sessionPlaceFromHash(){
   const {place}=routeFromHash();
   return ['archived','bin'].includes(place)?place:'active';
 }
-function viewFromHash(){return routeFromHash().view;}
 function activate(view,{updateHash=true,section='',place=''}={}){
   const known=ROUTES.has(view)&&document.querySelector(`#view-${view}`);
   // A page the account may not reach is shown as access-denied, not as a panel that
@@ -1749,9 +1748,10 @@ function resolveToolActivity(row,data){
 // new one called "My things".
 async function ensureProject(){
   if(state.activeProjectId)return state.activeProjectId;
-  if(state.projects.length)return(state.activeProjectId=state.projects[0].id);
+  if(state.projects.length){state.activeProjectId=state.projects[0].id;return state.activeProjectId;}
   const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:t('My things'),description:'',instructions:'',tags:[],knowledgePolicy:{mode:'hybrid',limit:8,maxCharacters:60000}})});
-  return(state.activeProjectId=project.id);
+  state.activeProjectId=project.id;
+  return state.activeProjectId;
 }
 async function ensureConversation(){
   const first=$('#chatInput').value.trim();

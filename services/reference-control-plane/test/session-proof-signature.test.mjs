@@ -129,6 +129,7 @@ test('the in-page verifier accepts the signed proof and refuses a tampered one (
   const { privateKey, publicKey } = keys();
   const envelope = signSessionProof(await realProof(), privateKey);
   const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+  // eslint-disable-next-line no-new-func -- la prova esegue il verificatore della pagina, testualmente
   const page = new Function(`${VERIFY_JS}; return { verifyProof, canonicalJson };`)();
   const good = await page.verifyProof(envelope, spki);
   assert.equal(good.valid, true, good.reason);

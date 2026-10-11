@@ -757,6 +757,7 @@ describe('plain words on the first screens', () => {
     assert.deepEqual(subs, [['skills', 'modules'], ['sessions', 'storage'], ['audit', 'health'], ['about', 'updates'], ['licence', 'updates'], ['remote-targets', 'updates']]);
     const groups = app.match(/const SETTINGS_GROUPS=(\{[^;]*\});/)?.[1];
     assert.ok(groups, 'the entries that carry more than one section');
+    // eslint-disable-next-line no-new-func -- legge SETTINGS_GROUPS dal sorgente della pagina
     const carried = Object.values(Function(`return ${groups}`)()).flat();
     for (const section of ['sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people', 'security', 'skills', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules', 'remote-targets']) {
       assert.ok(menu.includes(section) || carried.includes(section), `no way to the section "${section}"`);

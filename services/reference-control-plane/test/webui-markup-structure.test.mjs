@@ -552,7 +552,6 @@ describe('the missing interface parts', () => {
 // webui-simple-mode.test.mjs holds those — and what remains moved where it is used.
 describe('what the initial screen held · UI-062, UI-063', () => {
   const app = readFileSync(join(here, '../../../apps/webui-static/app.js'), 'utf8');
-  const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
   const tasks = html.slice(html.indexOf('id="view-tasks"'), html.indexOf('id="view-models"'));
   const health = html.slice(html.indexOf('id="section-health"'), html.indexOf('id="view-health"'));
 
