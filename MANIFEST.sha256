@@ -6624,7 +6624,7 @@ d4f072ae13fa41a7bd0afe7fd3039812c77ca2da683bc66559f12112ae21dd46  ./services/ref
 11dc430c871defba8ae3b6298f19a6754e1e06eab5748976236cfebb91bd0c20  ./services/reference-control-plane/test/stream-failure-containment.test.mjs
 fecd53501d7caefb760b5396b31dd742c808f948aadc82bd17360e4c8debc027  ./services/reference-control-plane/test/support/workspace.mjs
 18f954adcd93a21cec5dfe6fcc73dde98f52c7077a663e0c18af95b235c12bc5  ./services/reference-control-plane/test/technology-radar.test.mjs
-bc430abe883f047ea61e04d5d78a1d61361e7dae20b6ddbfa78bfc46a78a596d  ./services/reference-control-plane/test/timezone.test.mjs
+4fa5c81e816604e00f90b6b58932efc818085aee1206de54a396c3540c996af0  ./services/reference-control-plane/test/timezone.test.mjs
 b47a3c43764bb90c49584e0575259ebe479446ef6cce9e4faeb4fac1dd6c0a1a  ./services/reference-control-plane/test/tls.test.mjs
 db879a08b15938df15319b0345dc19a106cf211b70f02339f74fe7f814d6677f  ./services/reference-control-plane/test/tool-call-stream.test.mjs
 23e3597e9964125cff77569950194641a4856192cc29592664d5bb1e81352f6e  ./services/reference-control-plane/test/tool-catalog.test.mjs

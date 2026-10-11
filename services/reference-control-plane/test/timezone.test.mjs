@@ -72,7 +72,7 @@ test('the host zone is read from the /etc/localtime symlink when /etc/timezone i
   const root = workspace();
   const localtime = join(root, 'localtime');
   symlinkSync('/usr/share/zoneinfo/Europe/Rome', localtime);
-  const result = readHostTimeZone({ localtimePath: localtime, timezoneFilePath: join(root, 'does-not-exist') });
+  const result = readHostTimeZone({ localtimePath: localtime, timezoneFilePath: join(root, 'does-not-exist'), containerMarkerPath: '/definitely-not-present' });
   assert.equal(result.zone, 'Europe/Rome');
   assert.equal(result.via, 'localtime-symlink');
 });
@@ -113,14 +113,14 @@ test('/etc/timezone is still honoured where it exists', () => {
   const root = workspace();
   const timezoneFile = join(root, 'timezone');
   writeFileSync(timezoneFile, 'Asia/Tokyo\n');
-  const result = readHostTimeZone({ localtimePath: join(root, 'absent'), timezoneFilePath: timezoneFile });
+  const result = readHostTimeZone({ localtimePath: join(root, 'absent'), timezoneFilePath: timezoneFile, containerMarkerPath: '/definitely-not-present' });
   assert.equal(result.zone, 'Asia/Tokyo');
   assert.equal(result.via, 'etc-timezone');
 });
 
 test('an unreadable host yields no zone rather than a guess', () => {
   const root = workspace();
-  const result = readHostTimeZone({ localtimePath: join(root, 'absent'), timezoneFilePath: join(root, 'absent2') });
+  const result = readHostTimeZone({ localtimePath: join(root, 'absent'), timezoneFilePath: join(root, 'absent2'), containerMarkerPath: '/definitely-not-present' });
   assert.equal(result.zone, null);
   assert.equal(result.via, 'unavailable');
 });
