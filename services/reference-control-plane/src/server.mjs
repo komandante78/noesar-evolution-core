@@ -3019,7 +3019,9 @@ const requestListener = async (req, res) => {
     // AI workspace: Ask / Create / Act, versioned context graph and explicit provider control.
     if (req.method === 'GET' && url.pathname === '/api/v1/ai/bootstrap') {
       const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
-      return json(res, 200, { modes:['ASK','CREATE','ACT'], providerCatalog:providerGateway.catalog(), ...aiWorkspace.snapshot() });
+      // `webSearch`: whether this installation has a search endpoint at all, so the box can offer its web switch only
+      // when pressing it can do something. Configuration, read where `research.search` reads it.
+      return json(res, 200, { modes:['ASK','CREATE','ACT'], providerCatalog:providerGateway.catalog(), webSearch:Boolean(process.env.NOESAR_SEARCH_ENDPOINT), ...aiWorkspace.snapshot() });
     }
     // --- the reasoning seam · phase 1 -----------------------------------------
     // The provider is the only road to a plan. It is reported and exercised here so that

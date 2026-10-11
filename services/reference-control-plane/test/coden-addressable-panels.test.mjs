@@ -296,8 +296,9 @@ describe('the interface does not claim what the code contradicts', () => {
       'Knowledge does not say that audio and video are not transcribed');
   });
   test('the TUI destination carries no "not built" flag, and the files it names exist', () => {
-    const navEntry = html.match(/<button class="nav" data-view="coden-tui">[^<]*(?:<[^>]+>[^<]*)*?<\/button>/);
-    assert.ok(navEntry, 'the coden-tui nav entry is gone');
+    // Since 2026-10-11 the way in is Settings › Terminal access (one interface: a configuration, not a page of the menu).
+    const navEntry = html.match(/<button class="nav settings-link" data-view="coden-tui" type="button">[^<]*(?:<[^>]+>[^<]*)*?<\/button>/);
+    assert.ok(navEntry, 'the way to the coden-tui destination is gone');
     assert.doesNotMatch(navEntry[0], /not built/);
     // The flag is not the point; the claim underneath it is. These three files are what
     // make "built" true, so the test fails if the claim outlives them.

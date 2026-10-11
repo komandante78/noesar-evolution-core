@@ -66,8 +66,9 @@ test('one request writes every chip that names the resident model', () => {
   const body = appJs.match(/async function refreshCodenModelChip\(\)\{([\s\S]*?)\n\}/)?.[1] ?? '';
   assert.match(body, /#codenModelChipLabel/, 'the CodeN chip');
   assert.match(body, /#chatModelLabel/, 'the composer switcher');
-  assert.match(body, /#modelChip/, 'the global chip — whose CodeN sibling has claimed since s336 '
-    + 'that the two carry the same value');
+  // 2026-10-11: the global chip went with the top bar (one interface: the model is named in the box where you write).
+  // What must not come back is a third writer of the same fact somewhere else.
+  assert.doesNotMatch(appJs, /#modelChip\b/, 'no global model chip: the box names the model');
 });
 
 // Owner, 2026-08-28: «devi fare modo che al riavvio non carichi nulla». A restart used to start

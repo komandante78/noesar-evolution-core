@@ -4,7 +4,7 @@ import { PAGE_HELP, SIMPLE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { readSimple, writeSimple, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, toolActivityTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer } from './simple-mode.js';
+import { readLevel, writeLevel, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, toolActivityTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer } from './simple-mode.js';
 import { renderMarkdownLite as renderMarkdown } from './markdown-lite.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
@@ -130,13 +130,15 @@ const THEMES=[
   {id:'daylight',label:'Daylight',hint:'light'},
   {id:'contrast',label:'High contrast',hint:'maximum separation'},
 ];
-const THEME_KEY='noesar.theme';
+// A theme picked by hand among the nine (Settings › Appearance › More appearance options). Its own key: the old one was
+// written on every load, so it cannot tell a choice from a default.
+const THEME_KEY='noesar.theme.chosen';
 const ACCENT_KEY='noesar.accent';
 // The accent is a FAMILY, not one value: a fill carries a gradient, a wash carries an
 // alpha, and a link has to be readable as text. Choosing one hue moves all of them
 // together, which is what lets "any colour you like" survive the contrast requirement.
 const ACCENT_TOKENS=['accent-fill-from','accent-fill-to','accent-link','accent-brand','accent-eyebrow','blue'];
-function readTheme(){try{const value=localStorage.getItem(THEME_KEY);return THEMES.some((theme)=>theme.id===value)?value:'midnight';}catch{return 'midnight';}}
+function readTheme(){try{const value=localStorage.getItem(THEME_KEY);return THEMES.some((theme)=>theme.id===value)?value:'';}catch{return '';}}
 function readAccent(){try{const value=localStorage.getItem(ACCENT_KEY);return parseHex(value)?value:'';}catch{return '';}}
 function tokenValue(name){return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();}
 // `D-0416`, and it is here rather than beside the functions that use it for exactly the reason
@@ -172,7 +174,6 @@ function applyAccent(hex){
   // when what is actually true is that this one pairing is not readable.
   for(const token of ['accent-link','accent-brand','accent-eyebrow'])root.style.setProperty(`--${token}`,readable?readable.hex:hex);
 }
-applyTheme(readTheme());
 applyAccent(readAccent());
 // The CSRF token is a double-submit value: the server sets `noesar_csrf` as a
 // deliberately NON-HttpOnly cookie so that this script can read it back and echo it in
@@ -188,13 +189,15 @@ function readCsrfCookie(){
   return entry?decodeURIComponent(entry.slice('noesar_csrf='.length)):'';
 }
 let csrfToken=readCsrfCookie();let currentUser=null;let setupChallenge='';let loginChallenge='';let codenMode='NORMAL';let currentPathPlan=null;let activeRunId=null;let currentMode='ASK';
-// The simple interface is the default (simple-mode.js); the person can switch to the full one.
-const simpleOn=readSimple(localStorage);document.body.dataset.ui=simpleOn?'simple':'full';
-// The simple interface is light or dark by the computer's own setting unless the person chose (Settings › Appearance).
-// It does not write THEME_KEY: that is the full interface's choice among nine themes.
+// One interface for everyone (Owner, 2026-10-09). The level — Base or Advanced, Settings › Appearance — adds details for
+// whoever works with code and models; it never moves or hides a place. CSS reads it from body[data-level].
+let uiLevel=readLevel(localStorage);document.body.dataset.level=uiLevel;
+// Light or dark as the person chose, or as the computer says. A theme picked by hand among the nine replaces it until a
+// light/dark choice is made again (which forgets the theme).
 const darkQuery=matchMedia('(prefers-color-scheme: dark)');
-function applySchemeTheme(){document.documentElement.dataset.theme=themeForScheme(readScheme(localStorage),darkQuery.matches);}
-if(simpleOn){applySchemeTheme();darkQuery.addEventListener?.('change',applySchemeTheme);}
+function applySchemeTheme(){if(readTheme())return;document.documentElement.dataset.theme=themeForScheme(readScheme(localStorage),darkQuery.matches);}
+if(readTheme())applyTheme(readTheme());else applySchemeTheme();
+darkQuery.addEventListener?.('change',applySchemeTheme);
 // A setup token carried in the fragment of the link the installer opens (`/#setup=…`) is taken out
 // of the address at once, before the router reads the hash as if it were a route.
 const setupLinkToken=setupTokenFromHash(location.hash);if(setupLinkToken)history.replaceState(null,'',location.pathname+location.search);
@@ -333,11 +336,11 @@ const ROUTES=new Set(['home','chat','coden','coden-tui','tools','projects','docu
 // here is the order rendered, and it is the source of truth for which section a hash may
 // name — the markup is checked against it at boot rather than being trusted.
 const SETTINGS_SECTIONS=['sessions','appearance','language','about','licence','privacy','people','security','skills','models-hardware','storage','audit','health','updates','modules','remote-targets'];
-// Which section a bare "#/settings" lands on. It is the menu's first entry again: the
-// exception existed only because Sessions was ranked and not built, and a landing surface
-// saying "not built" reads as a broken product. Sessions is built, so the reason is gone
-// and the special case goes with it.
-const DEFAULT_SECTION='sessions';
+// The entries of the Settings menu that carry more than one section (2026-10-11, the drawing): the first is the entry's
+// own, the others are shown under it. Every section keeps its own address — #/settings/sessions opens the Backup and
+// storage entry with the chats' archive under the backups.
+const SETTINGS_GROUPS={modules:['modules','skills'],storage:['storage','sessions'],health:['health','audit'],updates:['updates','about','licence','remote-targets']};
+const settingsGroupOf=(section)=>Object.keys(SETTINGS_GROUPS).find((head)=>SETTINGS_GROUPS[head].includes(section))??section;
 // Where a demoted page went. Every address that used to work still works: a deep link, a
 // bookmark or an old note lands on the section that now owns it instead of on a 404.
 // Removing a page from the sidebar is a change of rank, not a change of address.
@@ -459,12 +462,11 @@ function maySection(section){return allows(SECTION_ACCESS[section]);}
 function routeFromHash(){
   const raw=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
   const [first='',second='',third='']=raw.split('/').filter(Boolean);
-  if(!first)return{view:simpleOn?'chat':'home',section:'',place:''};
-  // The simple interface has no Home page: its home is the chat. A bookmark or a typed `#/home` used to show the full
-  // interface's Home inside the simple frame, which is the old look under the new header.
-  if(simpleOn&&first==='home')return{view:'chat',section:'',place:'',redirected:true};
+  if(!first)return{view:'chat',section:'',place:''};
+  // The chat is the home: a bookmark or a typed `#/home` opens it.
+  if(first==='home')return{view:'chat',section:'',place:'',redirected:true};
   const legacy=LEGACY_ROUTES[first];
-  if(legacy){const [lv,ls='']=legacy.split('/');return{view:simpleOn&&lv==='home'?'chat':lv,section:ls,place:'',redirected:true};}
+  if(legacy){const [lv,ls='']=legacy.split('/');return{view:lv==='home'?'chat':lv,section:ls,place:'',redirected:true};}
   return{view:first,section:second,place:third};
 }
 // Which of the three places the address names. An unknown third segment falls back to the
@@ -592,7 +594,6 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // An address that names a panel is announced as that panel, not as the page containing
   // it: "Diff panel", not "CodeN Evolution view" for eleven different addresses.
   if(codenAddress)announceCodenPanel(section,codenAddress.split('/')[1]);
-  applyPanelRank(view);
   // Gated on a signed-in user, not on permission alone: the router runs once at boot, before
   // `/auth/me` has answered, and `enterApplication()` runs it again once the role is known —
   // deliberately, so that a cold deep link is not resolved as access-denied. Everything the
@@ -604,22 +605,29 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // A section this account may not open must not fetch. Running the loader anyway fired
   // four requests that all answered 403 for a page the person was being refused — the
   // gate would have been enforced on screen and abandoned on the wire.
-  if(activeSection&&currentUser&&maySection(activeSection)&&typeof SECTION_LOADERS[activeSection]==='function')SECTION_LOADERS[activeSection]();
+  // …and every section shown under the same menu entry (SETTINGS_GROUPS).
+  if(activeSection&&currentUser&&maySection(activeSection))for(const section of SETTINGS_GROUPS[settingsGroupOf(activeSection)]??[activeSection])if(maySection(section)&&typeof SECTION_LOADERS[section]==='function')SECTION_LOADERS[section]();
 }
 // Returns the section actually shown, which is not always the one asked for: an unknown
 // name falls back to the first, and one this account may not open renders as denied
 // rather than as a section whose every fetch answers 403.
 function activateSection(requested){
-  // A bare "#/settings" lands on how the page looks in the simple interface: the first entry of the full menu is the
-  // list of work sessions, which that menu no longer shows.
-  const wanted=SETTINGS_SECTIONS.includes(requested)?requested:simpleOn?'appearance':DEFAULT_SECTION;
+  // A bare "#/settings" lands on the first entry of the menu: how the page looks, and its level.
+  const wanted=SETTINGS_SECTIONS.includes(requested)?requested:'appearance';
   const permitted=maySection(wanted);
-  const shown=permitted?wanted:'';
-  $$('.settings-section').forEach((node)=>node.classList.toggle('active',node.dataset.section===shown));
+  const head=settingsGroupOf(wanted);
+  const shown=permitted?(SETTINGS_GROUPS[head]??[wanted]).filter((section)=>section===wanted||maySection(section)):[];
+  $$('.settings-section').forEach((node)=>node.classList.toggle('active',shown.includes(node.dataset.section)));
   $$('.settings-nav').forEach((node)=>{
-    node.classList.toggle('active',node.dataset.section===wanted);
-    node.setAttribute('aria-current',node.dataset.section===wanted?'page':'false');
+    const sub=node.classList.contains('settings-nav-sub');
+    // the entry of the group is lit; a section listed under it is lit too when it is the one asked for
+    const on=sub?node.dataset.section===wanted:node.dataset.section===head;
+    node.classList.toggle('active',on);
+    node.classList.toggle('open',sub&&node.dataset.group===head);
+    node.setAttribute('aria-current',on?'page':'false');
   });
+  // a section listed under an entry is shown under it: go to it
+  if(permitted&&wanted!==head)requestAnimationFrame(()=>document.querySelector(`.settings-section[data-section="${wanted}"]`)?.scrollIntoView({block:'start'}));
   const denial=$('#settingsDenied');
   if(denial){
     denial.classList.toggle('hidden',permitted);
@@ -688,66 +696,120 @@ function initRouter(){
   window.addEventListener('hashchange',goToHash);
   goToHash();
   initSidebarRank();
-  initSimpleUi();
-  initContextPanelRank();
+  initInterface();
   initSettingsMenu();
 }
-// --- the simple interface (simple-mode.js) -----------------------------------
-// What the welcome chips and the two switches do. Everything visual is CSS keyed on
-// `body[data-ui]`; nothing here hides a control by script, so a test can read the rules.
-function setUi(simple){writeSimple(localStorage,simple);location.reload();}
-function initSimpleUi(){
+// --- one interface (simple-mode.js, look.css) ----------------------------------
+// The menu's own buttons, the first screen of a chat, the box's switches, and the level. Everything visual is CSS keyed
+// on `body[data-level]`; nothing here hides a place by script.
+function initInterface(){
   initModelWizard();
-  $('#simpleToFull')?.addEventListener('click',()=>setUi(false));
-  $('#fullToSimple')?.addEventListener('click',()=>setUi(true));
-  $('#simpleNewChat')?.addEventListener('click',async()=>{await selectConversation(null);$('#chatInput')?.focus();});
-  // The box says what to do in a person's words; the full interface keeps its hint about slash commands.
-  // The translator keeps the first value an attribute had and repaints from it, so a placeholder changed from here would be
-  // put back. The box is the person's own text field: it is excluded from translation and painted with t() instead.
-  if(simpleOn){
-    const box=$('#chatInput');
-    if(box){
-      box.setAttribute('translate','no');
-      const paint=()=>box.setAttribute('placeholder',t('Write here what you need…'));
-      paint();
-      $('#languageSelect')?.addEventListener('change',()=>setTimeout(paint,0));
-    }
+  $('#newChat')?.addEventListener('click',async()=>{navigate('chat');await selectConversation(null);$('#chatInput')?.focus();});
+  $('#openSearch')?.addEventListener('click',()=>openPalette());
+  // Your name opens the two things that are about you: Settings and signing out.
+  const me=$('#meButton');const menu=$('#meMenu');
+  const closeMe=()=>{menu?.classList.add('hidden');me?.setAttribute('aria-expanded','false');};
+  me?.addEventListener('click',()=>{menu.classList.toggle('hidden');me.setAttribute('aria-expanded',String(!menu.classList.contains('hidden')));});
+  document.addEventListener('click',(event)=>{if(menu&&!menu.classList.contains('hidden')&&!event.target.closest('#meMenu,#meButton'))closeMe();});
+  menu?.addEventListener('click',(event)=>{if(event.target.closest('button'))closeMe();});
+  // The box says what to do in a person's words. The translator keeps the first value an attribute had and repaints from
+  // it, so a placeholder changed from here would be put back: the box is excluded from translation and painted with t().
+  const box=$('#chatInput');
+  if(box){
+    const paint=()=>box.setAttribute('placeholder',t('Write what you need…'));
+    paint();
+    $('#languageSelect')?.addEventListener('change',()=>setTimeout(()=>{paint();paintGreeting();paintLockline();},0));
   }
-  // Settings, for a person: light or dark, the language of the screens, and looking for an AI.
+  // Light or dark, and the level. A light/dark choice forgets a theme picked by hand among the nine.
   paintSchemeChoices();
-  $$('#schemeChoices [data-scheme]').forEach((choice)=>choice.addEventListener('click',()=>{writeScheme(localStorage,choice.dataset.scheme);applySchemeTheme();paintSchemeChoices();}));
+  $$('#schemeChoices [data-scheme]').forEach((choice)=>choice.addEventListener('click',()=>{try{localStorage.removeItem(THEME_KEY);}catch{}writeScheme(localStorage,choice.dataset.scheme);applySchemeTheme();paintSchemeChoices();}));
+  paintLevelChoices();
+  $$('#levelChoices [data-level]').forEach((choice)=>choice.addEventListener('click',()=>{writeLevel(localStorage,choice.dataset.level);uiLevel=readLevel(localStorage);document.body.dataset.level=uiLevel;paintLevelChoices();}));
+  // The sign-in page has its own language select; it drives the one in Settings, so there is one setting.
   syncSimpleLanguage();
-  $$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect').forEach((choice)=>choice.addEventListener('change',(event)=>{
+  $('#authLanguageSelect')?.addEventListener('change',(event)=>{
     const main=$('#languageSelect');if(!main)return;
     main.value=event.target.value;main.dispatchEvent(new Event('change',{bubbles:true}));setTimeout(syncSimpleLanguage,80);
-  }));
+  });
   $('#simpleAiSearch')?.addEventListener('click',()=>{
     navigate('chat');
     const notice=$('#simpleNoModel');notice?.classList.remove('hidden');notice?.classList.add('wizard-only');
     $('#modelWizardOpen')?.click();
   });
-  // A chip is a sentence to start from, written into the box rather than sent: it is the
-  // person's turn to add the details. The text is the chip's own, already in their language.
+  // A chip is a sentence to start from, written into the box rather than sent: it is the person's turn to add the
+  // details. "Search the internet" also switches the web search on for this message.
   $$('[data-simple-prompt]').forEach((chip)=>chip.addEventListener('click',()=>{
     const box=$('#chatInput');if(!box)return;
-    // A chip that needs the person's own words (a text to paste, a job to describe) writes the start of the
-    // sentence and leaves the cursor below it: sent as it was, it got "first paste it, then I will go on".
     const open=chip.dataset.promptText;
-    box.value=chip.hasAttribute('data-prompt-complete')?t(open):`${t(open)}\n\n`;
+    box.value=chip.hasAttribute('data-prompt-complete')?t(open):`${t(open)} `;
+    if(chip.hasAttribute('data-prompt-web'))setWeb(true);
     box.focus();box.setSelectionRange(box.value.length,box.value.length);
   }));
-  // Choosing a destination closes the menu again, so the page stays clean.
-  if(simpleOn)$$('#sidebar .nav').forEach((item)=>item.addEventListener('click',()=>applySidebarRank('hidden')));
+  // Web search, in the box. On: this message may search the internet, in general words only — the search is written by
+  // a model that never sees your documents, and every search passes the egress gate on the server. Off by default, and
+  // off again after each message: searching is something you ask for, not a state you forget you left on.
+  $('#chatWeb')?.addEventListener('click',()=>setWeb($('#chatWeb').getAttribute('aria-pressed')!=='true'));
+  // A file for this chat: it goes into the project's Library (read and indexed on this computer) and the next message
+  // is answered with it in front of the model.
+  $('#chatAttach')?.addEventListener('click',()=>$('#chatFile')?.click());
+  $('#chatFile')?.addEventListener('change',()=>{const file=$('#chatFile').files?.[0];$('#chatFile').value='';if(file)void attachChatFile(file);});
+  paintGreeting();
+}
+// The web switch says so when pressing it cannot do anything: an installation with no search endpoint. (Its title is the
+// markup's, kept by the translator; the reason is said when it is pressed.)
+let webAvailable=true;
+function paintWebAvailable(available){
+  webAvailable=available;
+  $('#chatWeb')?.classList.toggle('unavailable',!available);
+  if(!available)setWeb(false);
+}
+function setWeb(on){
+  const button=$('#chatWeb');if(!button)return;
+  if(on&&!webAvailable){toast(t('Web search is not set up on this NOESAR. An administrator turns it on with the address of a search service.'));return;}
+  button.setAttribute('aria-pressed',String(on));
+  paintLockline();
+}
+// The greeting of an empty chat, in the person's language and with their name.
+function paintGreeting(){
+  const slot=$('#chatGreeting');if(!slot)return;
+  const name=(currentUser?.displayName??'').trim();
+  const hour=new Date().getHours();
+  const hello=t(hour<5||hour>=18?'Good evening':hour<13?'Good morning':'Good afternoon');
+  slot.setAttribute('translate','no');
+  slot.textContent=name?`${hello}, ${name}. ${t('What shall we do?')}`:t('What shall we do?');
+}
+// Files attached to the message being written: [{id,name}]. Sent as the turn's sources, then cleared.
+let chatFiles=[];
+function paintChatFiles(){
+  const host=$('#chatFiles');if(!host)return;
+  host.classList.toggle('hidden',chatFiles.length===0);
+  host.innerHTML=chatFiles.map((file)=>`<span class="file-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/></svg><span translate="no">${escapeHtml(file.name)}</span><button type="button" data-file-drop="${escapeHtml(file.id)}" aria-label="${escapeHtml(t('Remove'))}">✕</button></span>`).join('');
+  host.querySelectorAll('[data-file-drop]').forEach((button)=>button.addEventListener('click',()=>{chatFiles=chatFiles.filter((file)=>file.id!==button.dataset.fileDrop);paintChatFiles();}));
+}
+async function attachChatFile(file){
+  try{
+    await ensureProject();
+    setStatus(`${t('Reading the file on this computer…')} ${file.name}`);
+    const result=await api('/api/v1/sources/upload',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,name:file.name,mimeType:file.type||'application/octet-stream',bytesBase64:await fileToBase64(file),redact:false})});
+    const id=result?.source?.id??result?.id;
+    if(!id)throw new Error(t('The file was read, but NOESAR did not say where it is.'));
+    chatFiles=[...chatFiles,{id,name:file.name}];paintChatFiles();
+    $('#chatInput')?.focus();
+  }catch(error){reportError(error,'Could not add the file');}
+}
+function paintLevelChoices(){
+  $$('#levelChoices [data-level]').forEach((choice)=>choice.setAttribute('aria-pressed',String(choice.dataset.level===uiLevel)));
 }
 function paintSchemeChoices(){
   const chosen=readScheme(localStorage);
   $$('#schemeChoices [data-scheme]').forEach((choice)=>choice.setAttribute('aria-pressed',String(choice.dataset.scheme===chosen)));
 }
-// The language select of the top bar is hidden in the simple interface; this one drives it, so there is one setting.
+// The sign-in page's language select mirrors the one in Settings, so there is one setting.
 function syncSimpleLanguage(){
   const main=$('#languageSelect');
-  if(!main)return;
-  for(const mine of $$('#simpleLanguageSelect,#menuLanguageSelect,#authLanguageSelect')){mine.innerHTML=main.innerHTML;mine.value=main.value;}
+  const mine=$('#authLanguageSelect');
+  if(!main||!mine)return;
+  mine.innerHTML=main.innerHTML;mine.value=main.value;
 }
 // The AI that answers, and the machine, in plain words (Settings › Models and hardware).
 let lastComputerReport=null;
@@ -826,34 +888,32 @@ function initModelWizard(){
   $('#modelWizardOpen')?.addEventListener('click',wizardSearch);
   $('#modelWizardAgain')?.addEventListener('click',wizardSearch);
 }
-// --- rank of the sidebar: full · icons · away -------------------------------
-// `[` collapses one step and `]` expands one step. The choice is remembered, and a visible
-// control in the top bar cycles the same three states: a keyboard shortcut is the fast
-// path, never the only path — a sidebar that can only be brought back by knowing a key is
-// a sidebar a mouse user has lost.
+// --- the menu: open, icons, or away ----------------------------------------
+// On a computer the menu is open; `[` narrows it to icons and then away, `]` brings it back, and the choice is
+// remembered — a keyboard shortcut is the fast path, never the only path: the menu button does the same. On a phone the
+// menu is a drawer over the page, closed until the menu button opens it, and closed again by choosing a place.
 const SIDEBAR_RANKS=['hidden','icons','full'];
-const SIDEBAR_KEY='noesar.sidebar.rank';
+// Its own key: the old one held the simple view's default, "hidden", for everyone who had used it.
+const SIDEBAR_KEY='noesar.menu.rank';
+const narrowQuery=matchMedia('(max-width: 900px)');
 function readSidebarRank(){
-  const fallback=simpleOn?'hidden':'full';
-  try{const stored=localStorage.getItem(SIDEBAR_KEY);return SIDEBAR_RANKS.includes(stored)?stored:fallback;}catch{return fallback;}
+  if(narrowQuery.matches)return 'hidden';
+  try{const stored=localStorage.getItem(SIDEBAR_KEY);return SIDEBAR_RANKS.includes(stored)?stored:'full';}catch{return 'full';}
 }
 function applySidebarRank(rank){
   const shell=$('#appShell');if(!shell)return;
   shell.dataset.sidebar=rank;
-  const control=$('#sidebarRank');
-  if(control){
-    control.setAttribute('aria-expanded',String(rank==='full'));
-    const label=$('#sidebarRankLabel');if(label)label.textContent=`Sidebar: ${rank}`;
-  }
-  // In icon rank the label is hidden visually but stays in the accessible name, so a
-  // screen reader still hears "Projects" rather than a glyph with no name.
-  try{localStorage.setItem(SIDEBAR_KEY,rank);}catch{}
+  $('#sidebarRank')?.setAttribute('aria-expanded',String(rank!=='hidden'));
+  // In icon rank the label is hidden visually but stays in the accessible name, so a screen reader still hears
+  // "Library" rather than a glyph with no name. A drawer opened on a phone is not a choice to remember.
+  if(!narrowQuery.matches){try{localStorage.setItem(SIDEBAR_KEY,rank);}catch{}}
 }
 function stepSidebarRank(direction){
   const current=$('#appShell')?.dataset.sidebar??'full';
   const index=Math.max(0,SIDEBAR_RANKS.indexOf(current));
   applySidebarRank(SIDEBAR_RANKS[Math.min(SIDEBAR_RANKS.length-1,Math.max(0,index+direction))]);
 }
+function closeDrawer(){if(narrowQuery.matches)applySidebarRank('hidden');}
 // A shortcut that fires while someone is typing a "[" into a message is a defect, not a
 // shortcut. Anything that takes text keeps its keystroke.
 function isTyping(target){
@@ -863,135 +923,14 @@ function isTyping(target){
 }
 function initSidebarRank(){
   applySidebarRank(readSidebarRank());
-  $('#sidebarRank')?.addEventListener('click',()=>{
-    const current=$('#appShell')?.dataset.sidebar??'full';
-    // The simple interface has one menu button with two states, open and closed; the three-step
-    // cycle (hidden, icons, full) stays for the full interface.
-    applySidebarRank(simpleOn?(current==='full'?'hidden':'full'):SIDEBAR_RANKS[(SIDEBAR_RANKS.indexOf(current)+1)%SIDEBAR_RANKS.length]);
-  });
+  $('#sidebarRank')?.addEventListener('click',()=>applySidebarRank($('#appShell')?.dataset.sidebar==='hidden'?'full':'hidden'));
+  narrowQuery.addEventListener?.('change',()=>applySidebarRank(readSidebarRank()));
+  $$('#sidebar .nav, #sidebar [data-view-link], #newChat, #openSearch').forEach((item)=>item.addEventListener('click',closeDrawer));
   window.addEventListener('keydown',(event)=>{
     if(event.ctrlKey||event.metaKey||event.altKey||isTyping(event.target))return;
     if(event.key==='[')stepSidebarRank(-1);
     else if(event.key===']')stepSidebarRank(1);
   });
-}
-// --- rank of the context panel: docked · floating · away ---------------------
-// Remembered PER DESTINATION. The panel is not equally wanted everywhere, and one global
-// setting means every destination is wrong for someone: docking it for the workbench used
-// to mean docking it on Home too.
-const PANEL_RANKS=['docked','floating','hidden'];
-const PANEL_KEY='noesar.panel.rank';
-let panelRanks={};
-let currentPanelView='home';
-function readPanelRanks(){
-  try{const parsed=JSON.parse(localStorage.getItem(PANEL_KEY)??'{}');return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}
-}
-// Floating position, remembered PER DESTINATION like the rank itself. Owner: "float
-// doesn't let me move it" — it did float, just to one fixed spot with no way to drag it
-// anywhere else. left/top are stored in px, clamped to the viewport at apply time in
-// case the window shrank since the position was saved.
-const PANEL_POS_KEY='noesar.panel.pos';
-let panelPositions={};
-function readPanelPositions(){
-  try{const parsed=JSON.parse(localStorage.getItem(PANEL_POS_KEY)??'{}');return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}
-}
-function clampPanelPosition(panel,left,top){
-  const maxLeft=Math.max(8,window.innerWidth-panel.offsetWidth-8);
-  const maxTop=Math.max(8,window.innerHeight-panel.offsetHeight-8);
-  return {left:Math.min(Math.max(left,8),maxLeft),top:Math.min(Math.max(top,8),maxTop)};
-}
-function applyPanelPosition(view){
-  const panel=$('#contextPanel');if(!panel)return;
-  const saved=panelPositions[view];
-  if(saved&&Number.isFinite(saved.left)&&Number.isFinite(saved.top)){
-    // `inset-block-start`/`inset-inline-end` and `top`/`left` are the same physical
-    // properties in this shell's (LTR, horizontal) writing mode — setting both on an
-    // inline style means whichever is assigned LAST wins, silently discarding the other.
-    // The logical ones must be cleared FIRST, or clearing them after overwrites the
-    // pixel position that was just set (found live: top landed at 0, not the dragged
-    // value, because the old code cleared insetBlockStart after setting top).
-    const {left,top}=clampPanelPosition(panel,saved.left,saved.top);
-    panel.style.insetInlineEnd='auto';panel.style.insetBlockStart='auto';
-    panel.style.left=`${left}px`;panel.style.top=`${top}px`;
-  }else{
-    // No saved position for this destination: fall back to the CSS default corner.
-    panel.style.left='';panel.style.top='';panel.style.insetInlineEnd='';panel.style.insetBlockStart='';
-  }
-}
-function applyPanelRank(view){
-  currentPanelView=view;
-  const shell=$('#appShell');if(!shell)return;
-  // Owner: the panel should open deactivated and only turn on if clicked — a destination
-  // with no remembered choice yet defaults to 'hidden', not 'docked'. Once a choice is
-  // made for that destination it is remembered (above), so this fallback only matters the
-  // first time a destination is visited.
-  const rank=PANEL_RANKS.includes(panelRanks[view])?panelRanks[view]:'hidden';
-  shell.dataset.panel=rank;
-  const control=$('#panelRank');
-  if(control){
-    control.setAttribute('aria-expanded',String(rank!=='hidden'));
-    const label=$('#panelRankLabel');if(label)label.textContent=`Panel: ${rank}`;
-  }
-  $$('[data-panel-rank]').forEach((button)=>button.setAttribute('aria-pressed',String(button.dataset.panelRank===rank)));
-  const title=$('#contextPanelTitle');
-  // The label comes from the nav entry's own label span, not from its whole textContent
-  // with the strings it might also carry deleted afterwards: that was a workaround for one
-  // literal flag ("not built"), and it would have gone on silently pasting the next one
-  // into a panel title. `.nav-count` and `.nav-flag` are the two spans that are not the
-  // label, the same distinction the icons-only sidebar rank already makes in CSS.
-  if(title){
-    const nav=$$('.nav').find((node)=>node.dataset.view===view);
-    const label=nav?.querySelector('span:not(.nav-count):not(.nav-flag)')?.textContent?.trim();
-    title.setAttribute('translate','no');title.textContent=label?`${t('Context')} · ${label}`:t('Context');
-  }
-  if(rank==='floating')applyPanelPosition(view);
-}
-function setPanelRank(rank){
-  if(!PANEL_RANKS.includes(rank))return;
-  panelRanks={...panelRanks,[currentPanelView]:rank};
-  try{localStorage.setItem(PANEL_KEY,JSON.stringify(panelRanks));}catch{}
-  applyPanelRank(currentPanelView);
-}
-function initPanelDrag(){
-  const handle=$('#contextPanelTitle');const panel=$('#contextPanel');
-  if(!handle||!panel)return;
-  let dragging=null;
-  handle.addEventListener('pointerdown',(event)=>{
-    if($('#appShell')?.dataset.panel!=='floating')return;
-    const rect=panel.getBoundingClientRect();
-    dragging={startX:event.clientX,startY:event.clientY,startLeft:rect.left,startTop:rect.top};
-    handle.setPointerCapture(event.pointerId);
-    handle.classList.add('dragging');
-  });
-  handle.addEventListener('pointermove',(event)=>{
-    if(!dragging)return;
-    const {left,top}=clampPanelPosition(panel,dragging.startLeft+(event.clientX-dragging.startX),dragging.startTop+(event.clientY-dragging.startY));
-    panel.style.insetInlineEnd='auto';panel.style.insetBlockStart='auto';
-    panel.style.left=`${left}px`;panel.style.top=`${top}px`;
-  });
-  const stopDrag=(event)=>{
-    if(!dragging)return;
-    handle.classList.remove('dragging');
-    try{handle.releasePointerCapture(event.pointerId);}catch{}
-    const rect=panel.getBoundingClientRect();
-    panelPositions={...panelPositions,[currentPanelView]:{left:rect.left,top:rect.top}};
-    try{localStorage.setItem(PANEL_POS_KEY,JSON.stringify(panelPositions));}catch{}
-    dragging=null;
-  };
-  handle.addEventListener('pointerup',stopDrag);
-  handle.addEventListener('pointercancel',stopDrag);
-  window.addEventListener('resize',()=>{if($('#appShell')?.dataset.panel==='floating')applyPanelPosition(currentPanelView);});
-}
-function initContextPanelRank(){
-  panelRanks=readPanelRanks();
-  panelPositions=readPanelPositions();
-  initPanelDrag();
-  $$('[data-panel-rank]').forEach((button)=>button.addEventListener('click',()=>setPanelRank(button.dataset.panelRank)));
-  $('#panelRank')?.addEventListener('click',()=>{
-    const current=$('#appShell')?.dataset.panel??'docked';
-    setPanelRank(PANEL_RANKS[(PANEL_RANKS.indexOf(current)+1)%PANEL_RANKS.length]);
-  });
-  applyPanelRank(viewFromHash());
 }
 function initSettingsMenu(){
   $$('.settings-nav').forEach((button)=>button.addEventListener('click',()=>activate('settings',{section:button.dataset.section})));
@@ -1003,7 +942,7 @@ function optionList(items,{empty='None',label=(item)=>item.name,value=(item)=>it
 // and wrong the moment TLS is terminated in front of the product.
 function showTransportWarning(status){const box=$('#authTransportWarning');if(!box)return;if(status?.browserSignInPossible===false){box.classList.remove('hidden');const link=$('#authSecureLink');if(link&&status.secureAddress){link.href=status.secureAddress;link.textContent=status.secureAddress;link.classList.remove('hidden');}}else{box.classList.add('hidden');}}
 async function initializeAuth(){const status=await api('/api/v1/auth/status');showTransportWarning(status);if(!status.initialized){showOnly('#setupForm');if(setupLinkToken)$('#setupToken').value=setupLinkToken;$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
-async function enterApplication(){$('#authGate').classList.add('hidden');$('#userAvatar').textContent=(currentUser?.displayName??currentUser?.username??'U').slice(0,1).toUpperCase();if(currentUser?.role!=='owner'){const bypass=$('[data-mode="OWNER_BYPASS"]');bypass.disabled=true;}
+async function enterApplication(){$('#authGate').classList.add('hidden');$('#userAvatar').textContent=(currentUser?.displayName??currentUser?.username??'U').slice(0,1).toUpperCase();$('#userName').textContent=currentUser?.displayName??currentUser?.username??'';paintGreeting();if(currentUser?.role!=='owner'){const bypass=$('[data-mode="OWNER_BYPASS"]');bypass.disabled=true;}
   // ponytail: fixed a persistent banner (not a dismissible toast) until the default
   // password is changed in Settings - the Owner's own words were "avviso fisso finche
   // non cambia password nelle impostazioni".
@@ -1128,44 +1067,39 @@ async function refreshPrivacy(){
   box.querySelector('.verified')?.setAttribute('translate','no');
   try{
     const {banner,state:privacyState,disclosures,telemetry}=await api('/api/v1/privacy');
-    // Same verdict (banner.external), said the way a person says it. The server's own sentences stay in the full interface.
-    box.querySelector('strong').textContent=simpleOn?(banner.external?'An outside AI service is in use.':'Everything stays on this computer.'):banner.headline;
-    box.querySelector('small').textContent=simpleOn?(banner.external?'Your words are sent to it because you chose it.':'Nothing you write is sent to anyone else.'):banner.detail;
+    // Same verdict (banner.external), said the way a person says it; the server's state name is shown at the Advanced level.
+    lastPrivacy={external:Boolean(banner.external),unconfirmed:false};
+    paintLockline();
     box.querySelector('.verified').textContent=privacyState.replaceAll('_',' ');
     // banner.external is the server's own verdict. Comparing the state string here
     // would be a second, silently drifting copy of that rule — and the first attempt
     // at it tested for 'LOCAL_ONLY', a value this server never emits, which would have
     // left the banner permanently amber.
-    box.classList.toggle('external',Boolean(banner.external));
-    box.classList.toggle('status-good',!banner.external);
     renderPrivacyDisclosures(disclosures??[],telemetry);
-    // The runtime chip reports the SAME derived state as the footer, because it is the
-    // same claim shown twice. It used to be written from the provider dropdown: the footer
-    // read "● Local-only verified" whenever a local model happened to be selected, whatever
-    // the server thought — a privacy guarantee asserted by a <select>.
-    setPrivacyChips(Boolean(banner.external));
   }catch(error){
-    box.classList.add('external');
-    box.classList.remove('status-good');
-    box.querySelector('strong').textContent=simpleOn?'NOESAR could not check where your words go.':'Privacy state could not be confirmed.';
-    box.querySelector('small').textContent=simpleOn?'':'The server did not answer the privacy check, so this notice is not reporting a verified state.';
+    // An unanswered check is not a local-only guarantee.
+    lastPrivacy={external:false,unconfirmed:true};
+    paintLockline();
     box.querySelector('.verified').textContent='UNVERIFIED';
-    // Same rule for the chips: an unanswered check is not a local-only guarantee.
-    setPrivacyChips(false,true);
     renderPrivacyDisclosures([],null);
     if(window.__noesarDebug)console.error(error);
   }
 }
-
-function setPrivacyChips(external,unconfirmed=false){
-  const runtime=$('#runtimeState');
-  // The words are English sources on purpose: the translator keeps them, so a change of language repaints them.
-  if(runtime&&simpleOn){
-    runtime.textContent=unconfirmed?'Not confirmed':(external?'External service':'Private');
-    runtime.title=unconfirmed?'NOESAR could not confirm where your words go.':(external?'You chose to use an AI service outside this computer.':'What you write stays on this computer.');
-  }else if(runtime)runtime.textContent=unconfirmed?'● Privacy state not confirmed':(external?'● External by consent':'● Local-first');
-  const egress=$('#egressMetric');
-  if(egress){egress.textContent=unconfirmed?'Unknown':(external?'Available by consent':'Blocked');egress.className=external||unconfirmed?'amber':'';}
+// The line under the box: where your words go, in a person's words. Three facts decide it — whether the privacy state
+// was confirmed, whether the service that answers is outside this computer, and whether this message may search the
+// internet. The words are English sources on purpose: the translator keeps them, so a change of language repaints them.
+let lastPrivacy={external:false,unconfirmed:true};
+function paintLockline(){
+  const box=$('#footerPrivacy');if(!box)return;
+  const web=$('#chatWeb')?.getAttribute('aria-pressed')==='true';
+  const [head,detail]=lastPrivacy.unconfirmed?['NOESAR could not check where your words go.','']
+    :lastPrivacy.external?['An outside AI service is in use.','Your words are sent to it because you chose it.']
+    :web?['Internet: only searches in general words','your documents stay on this computer']
+    :['Everything stays on this computer','NOESAR can be wrong: check what matters'];
+  $('#chatModelPickerOpen')?.classList.toggle('external',lastPrivacy.external);
+  box.classList.toggle('external',lastPrivacy.external||lastPrivacy.unconfirmed);
+  box.querySelector('strong').textContent=head;
+  box.querySelector('small').textContent=detail;
 }
 
 // The eight elements 01_PRODUCT/12 requires, rendered from the server's disclosure record.
@@ -1225,10 +1159,12 @@ function renderPrivacyDisclosures(disclosures,telemetry){
 // Split so opening a page can ask for fresh data WITHOUT the chat's side effects: dragging
 // `selectConversation()` along would mean opening #/projects quietly changed which conversation
 // you were in. One fetch, two callers, no second copy of the assignment.
-async function refreshWorkspaceData(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;renderAll();return data;}
-async function refreshWorkspace(){await refreshWorkspaceData();if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
-function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderNotes();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;}
-function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#noteProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#noteConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});setChip($('#projectChip'),'Project:','Project: none',state.projects.find((item)=>item.id===state.activeProjectId)?.name);const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
+async function refreshWorkspaceData(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];paintWebAvailable(data.webSearch===true);if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;renderAll();return data;}
+// Opening NOESAR is a new chat (the first screen: a greeting and the box). A chat is reopened from the menu, never
+// picked for the person because it happened to be first.
+async function refreshWorkspace(){await refreshWorkspaceData();renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
+function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderNotes();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();}
+function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#noteProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#noteConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
 function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b translate="no">${escapeHtml(item.name)}</b><small translate="no">${escapeHtml(item.description||t('No description'))}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b translate="no">${escapeHtml(item.title)}</b><small translate="no">${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
 // §3#9, OWNER_REVIEW_2026-08-21: created a project, no way to remove it. The backend already
 // had the whole mechanism (`updateProject` accepts `archived`, `listProjects` already filters
@@ -1296,9 +1232,9 @@ $('#chatConversation').addEventListener('change',async(event)=>selectConversatio
 // Read out of the document instead of written a second time in code: `#messageList` is
 // restored from what the markup already says, so the two cannot drift apart. The button
 // forwards to `#newConversation` rather than repeating what it does, for the same reason.
-const EMPTY_CHAT_HTML=$('#messageList')?.innerHTML??'Create or select a conversation.';
+const EMPTY_CHAT_HTML=$('#messageList')?.innerHTML??'';
 document.addEventListener('click',(event)=>{if(event.target.closest('[data-start-conversation]'))$('#newConversation')?.click();});
-async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#view-chat')?.setAttribute('data-empty','');$('#messageList').innerHTML=EMPTY_CHAT_HTML;return;}state.activeConversationId=id;$('#view-chat')?.removeAttribute('data-empty');const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?` · ${t('external')}`:` · ${t('local')}`}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();
+async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#view-chat')?.setAttribute('data-empty','');$('#messageList').innerHTML=EMPTY_CHAT_HTML;return;}state.activeConversationId=id;$('#view-chat')?.removeAttribute('data-empty');const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);if(detail.conversation?.projectId)state.activeProjectId=detail.conversation.projectId;state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?` · ${t('external')}`:` · ${t('local')}`}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();
 // Point 4b: BEFORE `refreshMessages()`, deliberately — that call can throw, and everything
 // after it would then never run. The same ordering, for the same reason, that `loadChatNav()`
 // is given in `refreshWorkspace` (`D-0329`); the test asserts the order, not the presence.
@@ -1377,7 +1313,50 @@ function readChatClearedMap(){try{const parsed=JSON.parse(localStorage.getItem(C
 function chatClearedWatermark(conversationId,branchId){return readChatClearedMap()[`${conversationId}:${branchId}`]??null;}
 function setChatClearedWatermark(conversationId,branchId,createdAt){const map=readChatClearedMap();map[`${conversationId}:${branchId}`]=createdAt;try{localStorage.setItem(CHAT_CLEARED_KEY,JSON.stringify(map));}catch{}}
 async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const watermark=chatClearedWatermark(state.activeConversationId,state.activeBranchId);const visible=watermark?data.messages.filter((message)=>message.createdAt>watermark):data.messages;renderMessages(visible);await inspectContext();}
-function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b translate="no">${escapeHtml(t(message.role))}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body" translate="no">${renderMarkdownLite(message.content)}</div>${message.citations?.length?`<div class="citations" translate="no">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}${message.metadata?.toolCalls?.length?`<div class="citations tool-calls" translate="no">${escapeHtml(t('Tools used'))}: ${message.metadata.toolCalls.map((call)=>`${escapeHtml(call.name)} ${call.ok?'✓':'✗'}`).join(' · ')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-copy-message="${message.id}">Copy</button>${simpleOn?`<button data-save-message="${message.id}">Save this answer</button>`:''}<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
+// One message as the drawings show it: your words in a bubble on the right, the answer as plain text on the left; above
+// the answer, what left for the internet (if anything); below it, its sources as chips, then Copy, Retry and "⋯" for the
+// rest. Who wrote it and when, the technical status of each source and the tools used are details: the Advanced level
+// shows them open, Base keeps the work steps one click away.
+function messageHtml(message){
+  const id=message.id;
+  const assistant=message.role==='assistant';
+  const sources=(message.citations??[]).map((c)=>{
+    const name=state.sources.find((item)=>item.id===c.sourceId)?.name??c.sourceId;
+    const detail=`${c.evidenceStatus??(c.verified?'retrieved':'attached')} · claim ${c.claimStatus??'unverified'}`;
+    return `<span class="source-chip" title="${escapeHtml(detail)}" translate="no">${escapeHtml(name)}</span>`;
+  });
+  const web=(message.metadata?.webSources??[]).map((url)=>{
+    let host='';try{host=new URL(url).hostname.replace(/^www\./,'');}catch{return '';}
+    return `<a class="source-chip" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" translate="no">${escapeHtml(host)}</a>`;
+  }).filter(Boolean);
+  const steps=message.metadata?.toolCalls??[];
+  const searched=(message.metadata?.web??[]).map((item)=>searchedLine(item).outerHTML).join('');
+  const more=`<details class="message-more"><summary aria-label="${escapeHtml(t('More'))}" title="${escapeHtml(t('More'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></summary><div class="message-more-menu">${assistant?`<button data-save-message="${id}">Save this answer</button>`:''}<button data-edit-message="${id}">Edit</button><button data-fork-message="${id}">Fork here</button><button data-exclude-message="${id}">Remove from context</button></div></details>`;
+  return `<article class="message ${escapeHtml(message.role)}" data-message-id="${id}">`
+    +`<div class="message-head level-advanced"><b translate="no">${escapeHtml(t(message.role))}</b><small>${instantHtml(message.createdAt)}</small></div>`
+    +searched
+    +`<div class="message-body" translate="no">${renderMarkdownLite(message.content)}</div>`
+    +(sources.length||web.length?`<div class="citations">${[...web,...sources].join('')}</div>`:'')
+    +(steps.length?`<details class="tool-calls work-steps"${uiLevel==='advanced'?' open':''}><summary>${escapeHtml(t('Work steps'))} (${steps.length})</summary><div translate="no">${steps.map((call)=>`${escapeHtml(call.name)} ${call.ok?'✓':'✗'}`).join(' · ')}</div></details>`:'')
+    +`<div class="message-actions">${assistant?`<button data-copy-message="${id}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy</span></button><button data-retry-message="${id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Retry</span></button>`:''}${more}</div>`
+    +`</article>`;
+}
+function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map(messageHtml).join('')||'';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
+// What left this computer for the internet in one search, said in a line above the answer. `item` is what the server
+// recorded: the words sent, what the gate decided, and whether the turn had private text in front of it.
+function searchedLine(item){
+  const line=document.createElement('div');
+  line.className=`searched${item.outcome==='BLOCK'||item.outcome==='NOT_APPROVED'?' stopped':''}`;
+  line.setAttribute('translate','no');
+  const globe='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
+  const lock='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  if(item.outcome==='BLOCK'||item.outcome==='NOT_APPROVED'){
+    line.innerHTML=`${globe}<span>${escapeHtml(t(item.outcome==='BLOCK'?'Search stopped: it contained data from your documents.':'Search not sent: you did not approve it.'))}</span><span class="safe">${lock}${escapeHtml(t('nothing left this computer'))}</span>`;
+    return line;
+  }
+  line.innerHTML=`${globe}<span>${escapeHtml(t('I searched the internet for:'))} <b translate="no">«${escapeHtml(item.sent??'')}»</b></span>${item.guarded?`<span class="safe">${lock}${escapeHtml(t(item.removed?'your data was taken out first':'no data from your documents left'))}</span>`:''}`;
+  return line;
+}
 /**
  * Every source this conversation has cited, gathered where it stays put.
  *
@@ -1577,7 +1556,7 @@ function renderToolActivity(article,data){
   row.className='tool-activity-row running';
   const icon=document.createElement('span');icon.className='tool-activity-icon';icon.setAttribute('aria-hidden','true');icon.textContent='⟳';
   // A person is told what is being done ("Read a file"), not the tool's name; a tool with no plain phrase still shows its name.
-  const plain=simpleOn?toolActivityTitle(data.name):null;
+  const plain=toolActivityTitle(data.name);
   const name=document.createElement('span');name.className='tool-activity-name';name.textContent=plain?t(plain):(data.name??t('unnamed tool'));
   const state=document.createElement('span');state.className='tool-activity-state';state.textContent=t('running');
   row.append(icon,name,state);
@@ -1612,7 +1591,7 @@ function renderToolApproval(article,data){
   const phrase=toolActionTitle(data.name);
   chatWaiting.set(row,phrase?t(phrase):String(data.name??''));
   paintApprovalStrip();
-  if(simpleOn)void describeApproval(row,data);
+  void describeApproval(row,data);
   return row;
 }
 // What is about to happen, before the person decides (simple interface). The server has always sent
@@ -1691,20 +1670,22 @@ function resolveToolActivity(row,data){
   row.querySelector('.tool-activity-state').textContent=data.ok?t('done'):`${t('not run')} — ${data.detail??t('failed')}`;
 }
 
-// Simple interface: typing is the whole gesture. A first message with no conversation open makes
-// the project (if there is none) and the conversation (titled by the message) by itself — the
-// "create or select a conversation" step that used to stand in front of the first word.
+// Typing is the whole gesture. A first message with no conversation open makes the project (if there is none) and the
+// conversation (titled by the message) by itself — the "create or select a
+// conversation" step that used to stand in front of the first word.
+// The project a new chat (or a file added before the first message) belongs to: the active one, else the first, else a
+// new one called "My things".
+async function ensureProject(){
+  if(state.activeProjectId)return state.activeProjectId;
+  if(state.projects.length)return(state.activeProjectId=state.projects[0].id);
+  const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:t('My things'),description:'',instructions:'',tags:[],knowledgePolicy:{mode:'hybrid',limit:8,maxCharacters:60000}})});
+  return(state.activeProjectId=project.id);
+}
 async function ensureConversation(){
   const first=$('#chatInput').value.trim();
   if(!first)return false;
   try{
-    if(!state.activeProjectId){
-      if(state.projects.length)state.activeProjectId=state.projects[0].id;
-      else{
-        const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:t('My things'),description:'',instructions:'',tags:[],knowledgePolicy:{mode:'hybrid',limit:8,maxCharacters:60000}})});
-        state.activeProjectId=project.id;
-      }
-    }
+    await ensureProject();
     const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title:titleFromMessage(first),mode:inferChatMode(first),providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});
     state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;
     await refreshWorkspace();
@@ -1712,12 +1693,17 @@ async function ensureConversation(){
   }catch(error){setStatus(error.message,true);return false;}
 }
 async function sendChat({signal=null,onDelta=null}={}){
-  if(!state.activeConversationId&&!(simpleOn&&await ensureConversation())){setStatus('Create a conversation first.',true);return '';}
+  if(!state.activeConversationId&&!(await ensureConversation())){setStatus('Create a conversation first.',true);return '';}
   const content=$('#chatInput').value.trim();
   if(!content)return '';
   const providerId=$('#chatProvider').value||null;
+  // This message's own choices: the web search and the files attached to it. Both are spent by sending it.
+  const web=$('#chatWeb')?.getAttribute('aria-pressed')==='true';
+  const sourceIds=chatFiles.map((file)=>file.id);
+  chatFiles=[];paintChatFiles();setWeb(false);
   $('#chatInput').value='';
   $('#stopGeneration').classList.remove('hidden');
+  $('#sendMessage').classList.add('hidden');
   $('#sendMessage').disabled=true;
   let assistantText='';
   let article=null;
@@ -1736,10 +1722,14 @@ async function sendChat({signal=null,onDelta=null}={}){
         content,
         providerId,
         model:$('#chatModel').value.trim(),
-        mode:simpleOn?inferChatMode(content):currentMode,
-        // The register follows the interface the person chose: the simple one speaks to someone who is
-        // not an engineer, the full one keeps the engineer's.
-        audience:simpleOn?'everyday':'operator',
+        // The mode a message implies (simple-mode.js): nobody picks Ask, Create or Act by hand.
+        mode:inferChatMode(content),
+        // One interface, one register: the one that speaks to a person rather than to an engineer.
+        audience:'everyday',
+        // Whether this message may search the internet, said by the person (the switch in the box). The server also
+        // counts a request written in words ("cerca su internet"); either way the search leaves only through the gate.
+        web,
+        sourceIds,
         // What the page is shown in, so a small model is told the language instead of guessing it
         // from one short message (a 7B answered an Italian request in Chinese).
         language:document.documentElement.lang||''
@@ -1793,7 +1783,7 @@ async function sendChat({signal=null,onDelta=null}={}){
           // The simple interface shows ONE row per tool: the card. The "running" row the call itself
           // made would sit above it saying "in corso" with the technical name, while the card says
           // what is waiting; it is hidden, and still resolved below so nothing reads it as stuck.
-          if(simpleOn&&approvalRow&&toolRow)toolRow.classList.add('superseded');
+          if(approvalRow&&toolRow)toolRow.classList.add('superseded');
         }else if(event==='tool-result'){
           // Resolved in place, and deliberately NOT announced from here. UI-043 forbids the
           // streaming branch from announcing, and its own test caught this line: announcing
@@ -1802,7 +1792,10 @@ async function sendChat({signal=null,onDelta=null}={}){
           resolveToolActivity(toolRow,data);
           // …and the card's own row gets the outcome, so what was decided and how it ended read as one.
           forgetChatWait(approvalRow);
-          if(simpleOn&&approvalRow){approvalRow.classList.remove('awaiting');resolveToolActivity(approvalRow,data);approvalRow=null;}
+          if(approvalRow){approvalRow.classList.remove('awaiting');resolveToolActivity(approvalRow,data);approvalRow=null;}
+        }else if(event==='searched'){
+          // What left this computer for the internet, word for word — or that nothing did.
+          article?.querySelector('.message-body')?.before(searchedLine(data));
         }else if(event==='error'){
           throw new Error(data.error);
         }else if(event==='stopped'){
@@ -1839,13 +1832,15 @@ async function sendChat({signal=null,onDelta=null}={}){
     // strip at the bottom — and must not lose what it wrote when nothing was answered.
     // The server's own sentence for "no model" is English and talks about modes; the person is told
     // in the words the welcome already uses (and the server's sentence stays in the status line).
-    if(simpleOn){if(!assistantText)$('#chatInput').value=content;toast(/No enabled model provider/i.test(error.message)?t('NOESAR needs an AI to answer.'):error.message,{kind:'error'});}
+    if(!assistantText)$('#chatInput').value=content;
+    toast(/No enabled model provider/i.test(error.message)?t('NOESAR needs an AI to answer.'):error.message,{kind:'error'});
     return assistantText;
   }finally{
     // A turn that ends — answered, stopped or dropped — has nothing left to wait for.
     forgetChatWait(approvalRow);
     activeRunId=null;
     $('#stopGeneration').classList.add('hidden');
+    $('#sendMessage').classList.remove('hidden');
     $('#sendMessage').disabled=false;
   }
 }
@@ -2336,7 +2331,7 @@ function scheduledInstantFromField(value){
 $('#taskForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/tasks',{method:'POST',body:JSON.stringify({projectId:$('#taskProject').value||null,title:$('#taskTitle').value,description:$('#taskDescription').value,priority:$('#taskPriority').value,status:$('#taskScheduledAt').value?'scheduled':'planned',scheduledAt:scheduledInstantFromField($('#taskScheduledAt').value),dueAt:scheduledInstantFromField($('#taskDueAt').value),recurrence:$('#taskRecurrence').value||null})});event.target.reset();await refreshWorkspace();});
 function renderNotes(){$('#noteList').innerHTML=state.memories.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.content)}</p><small>${escapeHtml(item.scope)} · ${escapeHtml(item.tags.join(', '))}</small><button data-edit-note="${item.id}">Edit</button><button class="danger" data-delete-note="${item.id}">Delete</button></article>`).join('')||'No notes yet — pin one to a project or conversation above.';$$('[data-edit-note]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.memories.find((m)=>m.id===button.dataset.editNote);const content=await textDialog('Edit note',item.content,{multiline:true});if(content!==null){await api(`/api/v1/memories/${item.id}`,{method:'PATCH',body:JSON.stringify({content})});await refreshWorkspace();}}));$$('[data-delete-note]').forEach((button)=>button.addEventListener('click',async()=>{if(confirm('Delete this note?')){await api(`/api/v1/memories/${button.dataset.deleteNote}`,{method:'DELETE',body:'{}'});await refreshWorkspace();}}));}
 $('#noteForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/memories',{method:'POST',body:JSON.stringify({projectId:$('#noteProject').value||null,conversationId:$('#noteScope').value==='conversation'?($('#noteConversation').value||state.activeConversationId):null,scope:$('#noteScope').value,title:$('#noteTitle').value,content:$('#noteContent').value,tags:$('#noteTags').value.split(',').map((v)=>v.trim()).filter(Boolean)})});event.target.reset();await refreshWorkspace();});
-function renderArtifacts(){$('#artifactList').classList.toggle('empty-state',state.artifacts.length===0);$('#artifactList').innerHTML=state.artifacts.map((item)=>`<article class="entity-card"><h3 translate="no">${escapeHtml(item.title)}</h3><small translate="no">${escapeHtml(t(item.type))} · ${t('version')} ${item.versions.length}</small><pre>${escapeHtml(item.versions.at(-1)?.content??'')}</pre><button data-copy-artifact="${item.id}">Copy</button><button data-edit-artifact="${item.id}">${simpleOn?'Edit':'New version'}</button></article>`).join('')||(simpleOn?t('No documents yet. When an answer is worth keeping, press Save under it.'):'No documents.');$$('[data-copy-artifact]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.artifacts.find((a)=>a.id===button.dataset.copyArtifact);try{await navigator.clipboard.writeText(item?.versions.at(-1)?.content??'');toast(t('Copied.'));}catch{toast(t('Could not copy. Select the text and copy it by hand.'),{kind:'error'});}}));$$('[data-edit-artifact]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.artifacts.find((a)=>a.id===button.dataset.editArtifact);const content=await textDialog('New artifact version',item.versions.at(-1)?.content??'',{multiline:true});if(content!==null){await api(`/api/v1/artifacts/${item.id}`,{method:'PATCH',body:JSON.stringify({content})});await refreshWorkspace();}}));}
+function renderArtifacts(){$('#artifactList').classList.toggle('empty-state',state.artifacts.length===0);$('#artifactList').innerHTML=state.artifacts.map((item)=>`<article class="entity-card"><h3 translate="no">${escapeHtml(item.title)}</h3><small translate="no">${escapeHtml(t(item.type))} · ${t('version')} ${item.versions.length}</small><pre>${escapeHtml(item.versions.at(-1)?.content??'')}</pre><button data-copy-artifact="${item.id}">Copy</button><button data-edit-artifact="${item.id}">Edit</button></article>`).join('')||t('No documents yet. When an answer is worth keeping, press Save under it.');$$('[data-copy-artifact]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.artifacts.find((a)=>a.id===button.dataset.copyArtifact);try{await navigator.clipboard.writeText(item?.versions.at(-1)?.content??'');toast(t('Copied.'));}catch{toast(t('Could not copy. Select the text and copy it by hand.'),{kind:'error'});}}));$$('[data-edit-artifact]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.artifacts.find((a)=>a.id===button.dataset.editArtifact);const content=await textDialog('New artifact version',item.versions.at(-1)?.content??'',{multiline:true});if(content!==null){await api(`/api/v1/artifacts/${item.id}`,{method:'PATCH',body:JSON.stringify({content})});await refreshWorkspace();}}));}
 $('#artifactForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/artifacts',{method:'POST',body:JSON.stringify({projectId:$('#artifactProject').value||null,type:$('#artifactType').value,title:$('#artifactTitle').value,content:$('#artifactContent').value})});event.target.reset();await refreshWorkspace();});
 function renderSources(){$('#sourceList').innerHTML=state.sources.map((item)=>`<article class="entity-card"><h3 translate="no">${escapeHtml(item.name)}</h3><p translate="no">${escapeHtml(item.mimeType)}</p><small translate="no">${escapeHtml(t(item.extractionStatus))} · ${item.byteLength} ${t('bytes')}</small>${item.piiRedacted?`<div><span class="badge">${escapeHtml(t('Identifiers redacted'))}</span></div>`:''}<button data-preview-source="${item.id}">Preview passages</button>${item.piiRedacted?`<button data-reveal-source="${item.id}" data-source-name="${escapeHtml(item.name)}">${escapeHtml(t('Reveal original'))}</button>`:''}<button class="danger" data-delete-source="${item.id}" data-source-name="${escapeHtml(item.name)}">Delete</button></article>`).join('')||'No sources indexed yet — add a file or paste text to make it searchable.';$$('[data-preview-source]').forEach((button)=>button.addEventListener('click',async()=>{const item=await api(`/api/v1/sources/${button.dataset.previewSource}`);$('#knowledgeResults').innerHTML=item.passages?.map((passage)=>`<article class="entity-card"><h3 translate="no">${t('Passage')} ${passage.index}</h3><p>${escapeHtml(passage.text)}</p></article>`).join('')||'<p>No extracted passages.</p>';}));$$('[data-reveal-source]').forEach((button)=>button.addEventListener('click',async()=>{const password=await textDialog(t('Enter your password to reveal the unredacted original.'),'',{password:true});if(password===null)return;await withBusy(button,async()=>{let result;try{result=await api(`/api/v1/sources/${button.dataset.revealSource}/reveal`,{method:'POST',body:JSON.stringify({password})});}catch(error){setStatus(error.message,true);return;}if(result.originalText)await textDialog(t('Unredacted original'),result.originalText,{multiline:true});if(result.blobBase64){const bytes=Uint8Array.from(atob(result.blobBase64),(c)=>c.charCodeAt(0));const blob=new Blob([bytes],{type:result.mimeType||'application/octet-stream'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=result.blobFilename||button.dataset.sourceName||'document';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}});}));$$('[data-delete-source]').forEach((button)=>button.addEventListener('click',async()=>{const name=button.dataset.sourceName;if(!(await confirmDialog(`${t('Delete this document?')}\n\n${name}\n\n${t('This permanently removes the file and everything extracted from it. This cannot be undone.')}`)))return;if(!(await confirmDialog(t('Are you sure? There is no way to recover this after deletion.'))))return;await withBusy(button,async()=>{await api(`/api/v1/sources/${button.dataset.deleteSource}`,{method:'DELETE',body:'{}'});await refreshWorkspace();});}));}
 function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(reader.error);reader.onload=()=>resolve(String(reader.result).split(',')[1]??'');reader.readAsDataURL(file);});}
@@ -2382,7 +2377,9 @@ function updatePrivacyFromProvider(){
   // THIS conversation will use, which can differ from what the installation has resident. What
   // changes is only the empty case, which now asks the installation instead of concluding none.
   const override=$('#chatModel').value||selected?.defaultModel||'';
-  if(override)setChip($('#modelChip'),'Model:','Model: none',override);
+  // The box names it: the model this conversation will use when one is set, else the one the installation runs.
+  const label=$('#chatModelLabel');
+  if(override&&label)label.textContent=shortModelName(override);
   else void refreshCodenModelChip();
   refreshPrivacy();
 }
@@ -2521,7 +2518,7 @@ $('#runForm').addEventListener('submit',async(event)=>{
   }catch(error){setStatus(error.message,true);}
 });
 async function exportData(){const bundle=await api('/api/v1/data/export');const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`noesar-export-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(link.href);}
-$('#saveRetention').addEventListener('click',async()=>{await api('/api/v1/data/retention',{method:'PUT',body:JSON.stringify({days:Number($('#retentionDays').value)})});await refreshWorkspace();setStatus('Retention policy saved.');});$('#applyRetention').addEventListener('click',async()=>{const result=await api('/api/v1/data/retention/apply',{method:'POST',body:'{}'});await refreshWorkspace();setStatus(`Retention applied: ${JSON.stringify(result.counts)}`);});$('#exportData').addEventListener('click',exportData);$('#rightExportData').addEventListener('click',exportData);$('#purgeProject').addEventListener('click',async()=>{if(!state.activeProjectId||!confirm('Permanently delete the active project data?'))return;await api('/api/v1/data/purge',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId})});state.activeProjectId=null;state.activeConversationId=null;await refreshWorkspace();});
+$('#exportData').addEventListener('click',exportData);$('#purgeProject').addEventListener('click',async()=>{if(!state.activeProjectId||!(await confirmDialog(t('Permanently delete the active project data?'))))return;await api('/api/v1/data/purge',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId})});state.activeProjectId=null;state.activeConversationId=null;await refreshWorkspace();});
 // --- one box: go to an address, or search what is inside the addresses ------
 // The Owner's objection to this workbench was "too many menus", and the answer accepted in
 // s313 is a single jump-to-address mechanism on `/`. The obvious build is a command palette
@@ -2600,6 +2597,7 @@ function setPaletteActive(index){
   $('#globalSearch').setAttribute('aria-activedescendant',current?current.id:'');
 }
 function closePalette(){
+  $('#searchDialog')?.classList.add('hidden');
   $('#globalSearchResults').classList.add('hidden');
   $('#globalSearch').setAttribute('aria-expanded','false');
   $('#globalSearch').setAttribute('aria-activedescendant','');
@@ -2607,6 +2605,7 @@ function closePalette(){
 }
 function openPalette(){
   if($('#authGate')&&!$('#authGate').classList.contains('hidden'))return;
+  $('#searchDialog')?.classList.remove('hidden');
   const input=$('#globalSearch');
   input.focus();input.select();
   renderPalette(matchLocalAddresses(input.value),'');
@@ -4090,15 +4089,15 @@ function paintApprovalStrip(){
   // A card that left the page (another conversation, a reload of the list) can no longer be decided.
   for(const row of chatWaiting.keys())if(!row.isConnected)chatWaiting.delete(row);
   const view=approvalStrip({queueTotal:lastQueue.total,queueTitles:lastQueue.items.map((item)=>item.title),chatTitles:[...chatWaiting.values()],chatLabel:t('In this chat:')});
-  // Simple interface, nothing waiting: one quiet phrase instead of a counter and a sentence about a queue. The
-  // button to the queue stays: the browser suite keeps it as the proof that the strip is on screen, and a
-  // strip a person can always reach is the rule this interface was built on. Anything waiting: the full strip.
-  const calm=simpleOn&&view.total===0;
+  // Nothing waiting, nothing said: the banner shows only while something waits for this person (rule 5 of the one
+  // interface: the system speaks when there is something to decide). A queue that cannot be read is said too, by
+  // refreshApprovals(), because "cannot tell" is not "nothing waiting".
+  $('#approvalStrip')?.classList.toggle('hidden',view.total===0);
   if(strip){
-    if(calm)strip.textContent=t('Nothing to approve');else setChip(strip,'Approvals:','Approvals: —',view.total);
-    strip.className=`approval-strip-state ${view.total>0?'status-warn':'status-good'}`;
+    setChip(strip,'Waiting for you:','Waiting for you: —',view.total);
+    strip.className='approval-strip-state status-warn';
   }
-  if(detail)detail.textContent=view.total===0?(calm?'':'Nothing is waiting for a decision.'):view.detail;
+  if(detail)detail.textContent=view.detail;
   // With only the chat waiting, "open the queue" would lead to an empty list: go where the card is.
   if(open){open.dataset.viewLink=view.inChatOnly?'chat':'settings/audit';open.textContent=t(view.inChatOnly?'Show in chat':'Open queue');}
 }
@@ -4130,7 +4129,8 @@ async function refreshApprovals(){
     // A queue that cannot be read says so. Showing "0 waiting" on a failed fetch would
     // be a false all-clear on the one surface whose job is to raise the alarm.
     lastQueue={...lastQueue,failed:true};
-    if(strip){strip.textContent='Approvals: unavailable';strip.className='approval-strip-state status-bad';}
+    $('#approvalStrip')?.classList.remove('hidden');
+    if(strip){strip.textContent='The approvals waiting for you could not be read.';strip.className='approval-strip-state status-bad';}
     if(detail)detail.textContent=error.message;
     if(navCount)navCount.classList.add('hidden');
     return null;
@@ -4353,10 +4353,7 @@ function formatInstant(value,{withZone=true}={}){
   if(Number.isNaN(date.getTime()))return '—';
   const zone=zoneName();
   // A person says "today, 04:36", not "8 Oct 2026, 04:36 · Europe/Rome"; the zone is named only where it is not their own.
-  if(simpleOn)return friendlyWhen(date,{zone,lang:document.documentElement.lang||undefined,showZone:withZone&&zone!==Intl.DateTimeFormat().resolvedOptions().timeZone});
-  const text=new Intl.DateTimeFormat(document.documentElement.lang||undefined,
-    {dateStyle:'medium',timeStyle:'short',timeZone:zone}).format(date);
-  return withZone?`${text} · ${zone}`:text;
+  return friendlyWhen(date,{zone,lang:document.documentElement.lang||undefined,showZone:withZone&&zone!==Intl.DateTimeFormat().resolvedOptions().timeZone});
 }
 function instantHtml(value){
   const date=new Date(value);
@@ -4370,16 +4367,14 @@ async function loadEffectiveZone(){
     settings=await api(`/api/v1/settings/timezone?browserTimezone=${encodeURIComponent(browserTimezone??'')}`);
     effectiveZone=settings.effective||browserTimezone||'UTC';
   }catch{effectiveZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}
-  const chip=$('#timezoneChip');
-  if(chip)setChip(chip,'Zone:','Zone: —',effectiveZone);
   paintZoneOffer(settings);
   return effectiveZone;
 }
-// Simple interface: when the server would show UTC and the browser knows better, say so and offer the browser's
+// When the server would show UTC and the browser knows better, say so and offer the browser's
 // zone with one button. Pressing it is the person's own choice (the same PUT as Settings), so nothing is applied silently.
 function paintZoneOffer(settings){
   let bar=$('#zoneBanner');
-  const zone=simpleOn?zoneOffer(settings):'';
+  const zone=zoneOffer(settings);
   // One notice at a time: the default password comes first, and the hour is offered once it is gone.
   if(!zone||$('#defaultPasswordBanner')){bar?.remove();return;}
   if(bar)return;
@@ -4392,8 +4387,9 @@ function paintZoneOffer(settings){
     }catch(error){reportError(error,'Save time zone');}
   }));
   const message=document.createElement('span');message.textContent=`${t('Times are shown in UTC.')} ${t('Your computer is in')} ${zone}.`;
-  bar.append(message,use);
-  document.body.prepend(bar);
+  bar.append(message,use);bar.setAttribute('translate','no');
+  // At the top of the page, beside the menu: the one place a notice is read in this layout.
+  ($('#mainContent')??document.body).prepend(bar);
 }
 
 // ---------------------------------------------------------------------------
@@ -4661,8 +4657,8 @@ function chatNavRowHtml(item){
   const current=item.id===state.activeConversationId;
   return `<div class="chat-nav-row${current?' current':''}" data-chat-nav-id="${item.id}">
     <button class="chat-nav-open" type="button" data-chat-open="${item.id}" ${current?'aria-current="true"':''}>
-      <span class="chat-nav-title">${escapeHtml(item.title)}</span>
-      <small>${simpleOn?'':`${item.messageCount} message${item.messageCount===1?'':'s'} · `}${when}</small>
+      <span class="chat-nav-title" translate="no">${escapeHtml(item.title)}</span>
+      <small class="level-advanced">${when}</small>
     </button>
     <span class="chat-nav-actions">
       <button type="button" title="Archive" aria-label="Archive ${escapeHtml(item.title)}" data-session-archive="${item.id}">⊟</button>
@@ -4685,18 +4681,41 @@ function renderChatNav(){
   $('#chatNavOverflowBox').classList.toggle('hidden',rest.length===0);
   $('#chatNavOverflowCount').textContent=rest.length?`${rest.length} more${total>items.length?` of ${total}`:''}`:'';
   $('#chatNavOverflow').innerHTML=rest.map(chatNavRowHtml).join('');
-  bindChatNavRows();
+  bindChatNavRows($('#chatNav'));
+  renderNavProjects();
 }
 
-function bindChatNavRows(){
-  $$('#chatNav [data-chat-open]').forEach((button)=>button.addEventListener('click',async()=>{
+function bindChatNavRows(root){
+  if(!root)return;
+  root.querySelectorAll('[data-chat-open]').forEach((button)=>button.addEventListener('click',async()=>{
     activate('chat');
+    closeDrawer();
     await selectConversation(button.dataset.chatOpen);
     renderChatNav();
   }));
   // The row actions are NOT reimplemented here: they call the one function that asks first.
-  $$('#chatNav [data-session-archive]').forEach((button)=>button.addEventListener('click',()=>sessionAction('archive',[button.dataset.sessionArchive])));
-  $$('#chatNav [data-session-bin]').forEach((button)=>button.addEventListener('click',()=>sessionAction('bin',[button.dataset.sessionBin])));
+  root.querySelectorAll('[data-session-archive]').forEach((button)=>button.addEventListener('click',()=>sessionAction('archive',[button.dataset.sessionArchive])));
+  root.querySelectorAll('[data-session-bin]').forEach((button)=>button.addEventListener('click',()=>sessionAction('bin',[button.dataset.sessionBin])));
+}
+// The projects in the menu, each with its chats inside — the same rows, and the same row actions, as Recent. Open: the
+// project of the chat you are in, unless you closed it, and any you opened by hand (remembered on this device).
+const PROJECT_FOLDERS_KEY='noesar.nav.projects';
+const projectFolders=(()=>{try{const value=JSON.parse(localStorage.getItem(PROJECT_FOLDERS_KEY)??'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}})();
+function renderNavProjects(){
+  const host=$('#menuProjects');if(!host)return;
+  const items=chatNav.data?.items??[];
+  host.innerHTML=state.projects.map((project)=>{
+    const chats=items.filter((item)=>item.projectId===project.id);
+    const open=projectFolders[project.id]??chats.some((item)=>item.id===state.activeConversationId);
+    return `<div class="nav-project${open?' open':''}"><button type="button" class="nav-folder" data-project-toggle="${escapeHtml(project.id)}" aria-expanded="${open}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span translate="no">${escapeHtml(project.name)}</span></button>`
+      +(open?`<div class="nav-project-chats">${chats.map(chatNavRowHtml).join('')||'<p class="chat-nav-empty">No chats yet.</p>'}</div>`:'')+'</div>';
+  }).join('');
+  host.querySelectorAll('[data-project-toggle]').forEach((button)=>button.addEventListener('click',()=>{
+    projectFolders[button.dataset.projectToggle]=button.getAttribute('aria-expanded')!=='true';
+    try{localStorage.setItem(PROJECT_FOLDERS_KEY,JSON.stringify(projectFolders));}catch{}
+    renderNavProjects();
+  }));
+  bindChatNavRows(host);
 }
 
 async function loadChatNav(){
@@ -4721,7 +4740,6 @@ function initChatNav(){
     chatNav.open=!chatNav.open;
     toggle.setAttribute('aria-expanded',String(chatNav.open));
     $('#chatNavBody').classList.toggle('hidden',!chatNav.open);
-    $('.chat-nav-caret').textContent=chatNav.open?'▾':'▸';
   });
   // UI-004: the archive is a page, and it is the page that already exists — ten per page,
   // select-all, restore and delete, every one of them asking first.
@@ -6753,10 +6771,8 @@ function codenChatAnswerMarkup(chat){
  *  full id is in the panel and the title attribute. Falls back to the whole id when it matches
  *  no known shape, because a name this cannot parse is still a name. */
 function shortModelName(id){
-  // The simple interface names it the way a person would; the full one keeps the compact form.
-  if(simpleOn)return friendlyModelName(id);
-  const match=String(id).match(/(\d+(?:\.\d+)?b(?:-[a-z]+)?)/i);
-  return match?match[1]:String(id);
+  // Named the way a person would: "Qwen 7B", not "qwen2.5-7b-instruct-q4_k_m".
+  return friendlyModelName(id);
 }
 async function refreshCodenModelChip(){
   // Two labels off ONE request: the CodeN chip and the chat composer's switcher say the same
@@ -6765,31 +6781,26 @@ async function refreshCodenModelChip(){
   // written defensively rather than gated on the pair existing.
   const label=$('#codenModelChipLabel');
   const composer=$('#chatModelLabel');
-  if(!label&&!composer&&!$('#modelChip'))return;
-  const top=$('#modelChip');
+  if(!label&&!composer)return;
   const write=(chip,short)=>{
     if(label)label.textContent=`model ${chip}`;
     if(composer)composer.textContent=short;
-    // The global chip too — three surfaces naming the resident model, one request and one
-    // sentence. Skipped when a per-conversation override is set, which is the one case where the
-    // global chip is deliberately saying something else.
-    if(top&&!($('#chatModel')?.value))setChip(top,'Model:','Model: none',chip);
   };
   try{
     const active=await api('/api/v1/models/active');
     const loaded=active?.state==='loaded'?(active.id||'loaded'):null;
-    // The simple interface says so plainly, above the box, for as long as nothing can answer: no
+    // Said plainly, above the box, for as long as nothing can answer: no
     // model, no reply, and a chat that never explains why is where a first visit ends.
     // "No model" is: no running model AND no enabled provider. A provider connected from the welcome
     // (or from Providers) answers through the route whatever this chip says.
-    const enabled=simpleOn&&!loaded?(await api('/api/v1/providers')).providers.filter((item)=>item.enabled).sort((a,b)=>(a.priority??100)-(b.priority??100)):[];
+    const enabled=!loaded?(await api('/api/v1/providers')).providers.filter((item)=>item.enabled).sort((a,b)=>(a.priority??100)-(b.priority??100)):[];
     const answers=Boolean(loaded)||enabled.length>0;
-    $('#simpleNoModel')?.classList.toggle('hidden',answers||!simpleOn);
+    $('#simpleNoModel')?.classList.toggle('hidden',answers);
     // The box says which model answers: the running one, or else the one the route would use first.
     // "none" beside a chat that answers is the contradiction a first visit reads as broken.
     write(loaded??(active?.state==='unreachable'?'unreachable'
       :active?.state==='none-served'?'no model served':'none configured'),
-      loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):t(simpleOn?'No AI yet':'none'));
+      loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):t('No AI yet'));
     paintSimpleAi(loaded?shortModelName(loaded):enabled[0]?.defaultModel?shortModelName(enabled[0].defaultModel):'');
   }catch{ write('—','—'); }
 }
@@ -7069,8 +7080,8 @@ function closeHelp(){
   $$('.help-button[aria-expanded="true"]').forEach((node)=>node.setAttribute('aria-expanded','false'));
 }
 function openHelp(button,address){
-  // The simple interface has its own words for the four pages it has; any other page uses the entry it always had.
-  const plain=simpleOn?SIMPLE_HELP[address]:null;
+  // The plain words for the pages that have them; any other page uses the entry it always had.
+  const plain=SIMPLE_HELP[address]??null;
   const entry=plain??PAGE_HELP[address];
   const panel=$('#pageHelp');
   if(!panel)return;

@@ -40,9 +40,15 @@ const DESTINATIONS = [
   'home', 'chat', 'coden', 'coden-tui', 'tools', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
-/** The sidebar, in its own order — the destinations that also have a permanent button.
- *  Deliberately NOT the same list: `tools` is reached through `/` alone. */
-const SIDEBAR = DESTINATIONS.filter((destination) => destination !== 'tools');
+/** Every button that names a destination, in document order (2026-10-11, one interface): the menu (New chat, Library,
+ *  CodeN Evolution, the projects' "+", the gear), the tabs of Library and Automations (the menu's Library and
+ *  Automations open their first tab, so each address is named once), and the two links in Settings (Terminal access, All
+ *  models). `home` and `tools` are reached through Ctrl K and `/` alone. */
+const SIDEBAR = [
+  'chat', 'coden', 'projects', 'settings',
+  'knowledge', 'documents', 'memory', 'research', 'agents', 'workflows',
+  'coden-tui', 'models',
+];
 /** The single Settings destination's own menu — menu inside the menu, in three groups.
  *  'modules' rejoined in D-0277 (owner catalog: one-click install/activate through the
  *  real D-0274/D-0275 framework) after D-0273's ad-hoc version of it was retired in
@@ -264,7 +270,8 @@ describe('webui markup structure', () => {
     const menu = [...html.matchAll(/class="settings-nav[^"]*"[^>]*data-section="([^"]+)"/g)].map((m) => m[1]);
     assert.deepEqual([...menu].sort(), [...SETTINGS_SECTIONS].sort(), 'menu and sections disagree');
     const groups = [...html.matchAll(/class="settings-group">([^<]+)</g)].map((m) => m[1].trim());
-    assert.equal(groups.length, 3, `expected three groups, found ${groups.length}: ${groups.join(' | ')}`);
+    // 2026-10-11, the drawing: two groups, what is about you and what is about this installation
+    assert.deepEqual(groups, ['You', 'This NOESAR']);
   });
 
   test('no demoted page was deleted rather than demoted', () => {
@@ -395,9 +402,18 @@ describe('the missing interface parts', () => {
     assert.match(app, /of 12 fields have a source/, 'and the count must be computed, not written down');
   });
 
-  test('UI-037 · the top bar keeps its reference elements and ADDS coverage', () => {
-    for (const id of ['globalSearch', 'projectChip', 'modelChip', 'languageSelect', 'timezoneChip', 'userAvatar', 'coverageChip']) {
-      assert.match(html, new RegExp(`id="${id}"`), `the top bar lost "${id}"`);
+  // UI-037, changed 2026-10-11 (Owner: «una grafica sola», the drawings in PROGETTO_GRAFICA_UNICA_20261009/NUOVA_GRAFICA):
+  // there is no top bar. Each of its reference elements went where it is used, and the four chips that answered
+  // questions nobody asked went with it — the model is named in the box, the project in the chat's breadcrumb.
+  test('UI-037 · the top bar\'s elements live where they are used, and its chips are gone', () => {
+    const where = (id) => html.slice(0, html.indexOf(`id="${id}"`));
+    const dialog = html.slice(html.indexOf('id="searchDialog"'), html.indexOf('id="searchDialog"') + 1500);
+    assert.ok(dialog.includes('id="globalSearch"'), 'the search box lives in the search dialog (Ctrl K, or Search in the menu)');
+    assert.ok(where('languageSelect').includes('id="section-language"'), 'the language is chosen in Settings › Language and time');
+    assert.ok(where('userAvatar').includes('class="sidebar-foot"'), 'you are at the foot of the menu');
+    assert.ok(where('chatModelLabel').includes('class="composer chat-composer"'), 'the model is named in the box');
+    for (const id of ['projectChip', 'modelChip', 'timezoneChip', 'coverageChip']) {
+      assert.doesNotMatch(html, new RegExp(`id="${id}"`), `"${id}" came back`);
     }
   });
 
@@ -415,7 +431,7 @@ describe('the missing interface parts', () => {
   // surface in Settings › Sessions. Two renderers of one list is the divergence `D-0300`
   // already cost this project, so the assertions below are about the SHARING.
   describe('the sidebar chat list reuses the sessions surface rather than copying it', () => {
-    const nav = html.slice(html.indexOf('id="chatNav"'), html.indexOf('data-view="coden"'));
+    const nav = html.slice(html.indexOf('id="chatNav"'), html.indexOf('id="navModules"'));
 
     test('UI-001/UI-002 · five laid out, and a scroller with its count above it', () => {
       for (const id of ['chatNavRecent', 'chatNavOverflowBox', 'chatNavOverflowCount', 'chatNavOverflow']) {
@@ -436,9 +452,10 @@ describe('the missing interface parts', () => {
     });
 
     test('UI-008 · the row actions raise the ONE confirmation, not a second one', () => {
-      assert.match(app, /\$\$\('#chatNav \[data-session-archive\]'\)[\s\S]{0,160}sessionAction\('archive'/,
+      // One binder for the rows of Recent and of the projects in the menu (2026-10-11): bindChatNavRows(root).
+      assert.match(app, /root\.querySelectorAll\('\[data-session-archive\]'\)[\s\S]{0,160}sessionAction\('archive'/,
         'archive in the sidebar must go through sessionAction');
-      assert.match(app, /\$\$\('#chatNav \[data-session-bin\]'\)[\s\S]{0,160}sessionAction\('bin'/,
+      assert.match(app, /root\.querySelectorAll\('\[data-session-bin\]'\)[\s\S]{0,160}sessionAction\('bin'/,
         'delete in the sidebar must go through sessionAction');
       const block = app.slice(app.indexOf('function chatNavRowHtml'), app.indexOf('function initChatNav'));
       assert.equal(/confirmAction\(|window\.confirm/.test(block), false,

@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
   <title>NOESAR Evolution</title>
   <link rel="stylesheet" href="/vendor/xterm/xterm.css">
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/simple.css">
+  <link rel="stylesheet" href="/look.css">
 </head>
-<body data-ui="simple">
+<body data-level="base">
   <div class="auth-gate" id="authGate">
     <section class="auth-card" aria-labelledby="authTitle">
       <div class="auth-brand"><span class="brand-mark">N</span><b>NOESAR Evolution</b></div>
@@ -105,45 +105,32 @@
     </section>
   </div>
 
-  <!-- 2.4.1 Bypass Blocks. The sidebar is 12 destinations now rather than 23, but the
-       link stays: a keyboard or screen-reader user must still be able to jump past all
-       of them, and past the sidebar rank control, to reach the content. -->
+  <!-- 2.4.1 Bypass Blocks: a keyboard or screen-reader user jumps past the menu to the content. -->
   <a class="skip-link" href="#mainContent">Skip to main content</a>
-  <div class="app-shell" id="appShell" data-sidebar="full" data-panel="hidden">
-    <header class="topbar">
-      <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong><span>Evolution</span></div>
-      <button class="chip rank-control" id="sidebarRank" type="button" aria-controls="sidebar" aria-expanded="true" title="Sidebar: full · icons · hidden — [ collapses, ] expands">☰ <span id="sidebarRankLabel">Sidebar: full</span><span class="simple-only">Menu</span></button>
-      <!-- One box, two answers: an address to go to, and what the search finds inside the
-           addresses. `/` and Ctrl K both open it. The overlay palette this replaces would
-           have been a second navigation widget standing beside a box that already existed,
-           and the count of those widgets is the thing being reduced. -->
-      <div class="command"><span>⌕</span><input id="globalSearch" role="combobox" aria-expanded="false" aria-controls="globalSearchResults" aria-autocomplete="list" aria-haspopup="listbox" autocomplete="off" aria-label="Go to a page, or search chats, files, memory, tools and tasks" title="Press / to jump to a page — Ctrl K opens the same box" placeholder="Go to a page, or search — press /"><kbd>/</kbd><div id="globalSearchResults" class="search-popover hidden" role="listbox" aria-label="Places and results"></div></div>
-      <!-- UI-037. The reference bar carries search · project · model · privacy · language ·
-           time zone · profile; verification coverage is ADDED to them, never in place of
-           them. The coverage chip reads "—" because nothing recalculates yet: a coverage
-           figure with no verifier behind it would be the most damaging invented number in
-           the product, since its whole purpose is to say how much you may trust. -->
-      <div class="top-actions"><label class="language-picker">Language<select id="languageSelect"><option value="auto">Auto</option><option value="en">English</option><option value="it">Italiano</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option></select></label><span class="chip" id="timezoneChip" title="Instants are stored in UTC and shown in this IANA zone">Zone: —</span><span class="chip" id="projectChip">Project: none</span><span class="chip" id="modelChip">Model: none</span><span class="chip" id="coverageChip" title="Verification coverage: how much of an answer was recalculated rather than inferred. Nothing recalculates in this build, so there is no figure to show.">Coverage: —</span><span class="status-good" id="runtimeState">● Local-first</span><button class="chip rank-control" id="panelRank" type="button" aria-controls="contextPanel" aria-expanded="false" title="Context panel: docked · floating · hidden — remembered for each destination">◫ <span id="panelRankLabel">Panel: hidden</span></button><button class="chip" id="logoutButton">Sign out</button><span class="avatar" id="userAvatar">O</span></div>
-    </header>
-
+  <!-- One interface for everyone (Owner, 2026-10-09/11: «una grafica sola», built as the drawings in
+       PROGETTO_GRAFICA_UNICA_20261009/NUOVA_GRAFICA). One menu on the left: what you do every day, your
+       projects with their chats, the recent chats, and you. No top bar: the model is chosen in the box
+       where you write, the language and the time zone are in Settings, signing out is under your name.
+       The level (Base / Advanced, Settings › Appearance) adds details, never places. -->
+  <div class="app-shell" id="appShell" data-sidebar="full">
+    <!-- On a phone the menu is a drawer; this is the only way to open it there. -->
+    <button class="menu-toggle" id="sidebarRank" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <aside class="sidebar" id="sidebar">
+      <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong></div>
       <nav aria-label="Primary">
-        <button class="nav active" data-view="home">⌂ <span>Home</span></button>
-        <button class="nav" data-view="chat">◗ <span>Chat</span></button>
-        <!-- The chat list, in the sidebar — `UI-001…UI-012` rendered where the work happens.
-             It is NOT a second implementation of the management surface in Settings ›
-             Sessions: the rows call the same `sessionAction()`, which raises the same
-             confirmation, and the archive link goes to the page that already exists. Two
-             renderers of one list is exactly the divergence `D-0300` cost this project
-             (`PANEL_NAMES` said 14 where the markup had 25), so the shared thing here is
-             the BEHAVIOUR, not a copied block of markup.
-
-             Source is `GET /api/v1/sessions?place=active`, not `state.conversations` from
-             the bootstrap: only the former knows what has been archived, and a sidebar that
-             kept showing archived chats would be the same divergence by another route. -->
+        <button class="nav nav-new" data-view="chat" type="button" id="newChat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>New chat</span></button>
+        <button class="nav-act nav-search" type="button" id="openSearch" aria-haspopup="dialog" aria-controls="searchDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search</span><kbd translate="no">Ctrl K</kbd></button>
+        <button class="nav-act nav-library" data-view-link="knowledge" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z"/><path d="M20 17v4H6.5A2.5 2.5 0 0 1 4 18.5"/></svg><span>Library</span></button>
+        <button class="nav-act nav-automations" data-view-link="agents" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg><span>Automations</span></button>
+        <button class="nav" data-view="coden" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg><span>CodeN Evolution</span></button>
+        <!-- Your projects, each with its chats inside. The open one is the project of the chat you are in. -->
+        <div class="nav-label"><span>Projects</span><button class="nav nav-label-add" data-view="projects" type="button" title="Projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="visually-hidden">Projects</span></button></div>
+        <div class="nav-projects" id="menuProjects"></div>
+        <!-- The chat list (UI-001…UI-012), the same records as Settings › Sessions: the rows call the same
+             `sessionAction()`, which raises the same confirmation. Source is `GET /api/v1/sessions?place=active`. -->
         <div class="chat-nav" id="chatNav">
-          <button class="chat-nav-toggle" type="button" id="chatNavToggle" aria-expanded="true" aria-controls="chatNavBody">
-            <span class="chat-nav-caret" aria-hidden="true">▾</span> Recent chats <span class="chat-nav-count" id="chatNavCount"></span>
+          <button class="chat-nav-toggle nav-label" type="button" id="chatNavToggle" aria-expanded="true" aria-controls="chatNavBody">
+            <span>Recent</span> <span class="chat-nav-count" id="chatNavCount"></span>
           </button>
           <div class="chat-nav-body" id="chatNavBody">
             <!-- UI-001: the five most recent, laid out. -->
@@ -154,38 +141,31 @@
               <div class="chat-nav-list chat-nav-scroller" id="chatNavOverflow" tabindex="0"></div>
             </div>
             <p class="chat-nav-empty hidden" id="chatNavEmpty">No chats yet.</p>
-            <!-- UI-004: the archive is its own page, and this is the way in. It goes to the
-                 surface that already paginates at ten with select-all, restore and delete. -->
-            <button class="chat-nav-archive" type="button" id="chatNavArchive">Archive →</button>
+            <!-- UI-004: the archive is its own page, and this is the way in. -->
+            <button class="chat-nav-archive" type="button" id="chatNavArchive">Archive</button>
           </div>
         </div>
-        <button class="nav" data-view="coden">⌁ <span>CodeN Evolution</span></button>
-        <!-- No "not built" flag. The destination's own page carries SESSION PROTOCOL BUILT
-             and it is right: tools/tui-client.mjs is a real client, src/session-protocol.mjs
-             a real server, and bin/codev-child.mjs is listening on tui.sock right now. The
-             flag was a second copy of a fact the code had long moved past — maintained by
-             hand, and stale for as long as the TUI had been working. `.nav-flag` itself
-             stays in the stylesheet: the mechanism is honest, this use of it was not. -->
-        <button class="nav" data-view="coden-tui">▤ <span>CodeN Evolution TUI</span></button>
-        <button class="nav" data-view="projects">▢ <span>Projects</span></button>
-        <button class="nav" data-view="documents">▥ <span>Documents</span></button>
-        <button class="nav" data-view="knowledge">◈ <span>Knowledge</span></button>
-        <button class="nav" data-view="memory">✦ <span>Memory</span></button>
-        <button class="nav" data-view="agents">◍ <span>Agents</span></button>
-        <button class="nav" data-view="workflows">⇉ <span>Workflows</span></button>
-        <button class="nav" data-view="models">▦ <span>Models</span></button>
-        <button class="nav" data-view="research">⌕ <span>Research</span></button>
-        <button class="nav" data-view="settings">⚙ <span>Settings</span><span class="nav-count hidden" id="navApprovalCount">0</span></button>
         <div id="navModules"></div>
       </nav>
       <div class="sidebar-foot">
-        <label class="sidebar-language simple-only">Language<select id="menuLanguageSelect"></select></label>
-        <button type="button" class="text-button simple-only" id="simpleToFull">Full interface</button>
-        <button type="button" class="text-button advanced-only" id="fullToSimple">Simple view</button>
+        <button type="button" class="me" id="meButton" aria-haspopup="menu" aria-expanded="false" aria-controls="meMenu"><span class="avatar" id="userAvatar">·</span><span class="me-name" id="userName" translate="no"></span></button>
+        <button class="nav nav-gear" data-view="settings" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span class="visually-hidden">Settings</span><span class="nav-count hidden" id="navApprovalCount">0</span></button>
+        <div class="me-menu hidden" id="meMenu" role="menu" aria-labelledby="meButton">
+          <button type="button" role="menuitem" data-view-link="settings/appearance">Settings</button>
+          <button type="button" role="menuitem" id="logoutButton">Sign out</button>
+        </div>
       </div>
     </aside>
+    <!-- Ctrl K, or Search in the menu: one box for the pages, the settings and what is inside your chats, files,
+         memory, tools and tasks. The same box that used to sit in a top bar, now where you call it. -->
+    <div class="search-dialog hidden" id="searchDialog" role="dialog" aria-modal="true" aria-label="Search">
+      <div class="command"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="globalSearch" role="combobox" aria-expanded="false" aria-controls="globalSearchResults" aria-autocomplete="list" aria-haspopup="listbox" autocomplete="off" aria-label="Go to a page, or search chats, files, memory, tools and tasks" placeholder="Go to a page, or search your chats and files"><kbd>Esc</kbd><div id="globalSearchResults" class="search-popover hidden" role="listbox" aria-label="Places and results"></div></div>
+    </div>
 
     <main class="main" id="mainContent" tabindex="-1">
+      <!-- Something waiting for your decision: said at the top of the page, only while it waits (or while the queue
+           cannot be read, which is a different fact from an empty one). Nothing waiting, nothing said. -->
+      <div class="approval-banner hidden" id="approvalStrip" role="status" aria-live="polite"><span class="approval-strip-state" id="approvalStripState"></span> <span class="approval-strip-detail" id="approvalStripDetail"></span> <button class="text-button" id="approvalStripOpen" type="button" data-view-link="settings/audit">Open queue</button></div>
       <!-- The local-only/external state used to also live here as a full-width banner
            (01_PRODUCT/12's own headline+detail+verified badge). Owner: keep the guarantee,
            move the notice into the footer — a compact permanent line beats a banner that
@@ -204,6 +184,20 @@
         <p class="hint" id="privacyTelemetry"></p>
       </section>
 
+      <!-- Library and Automations: one menu entry each, their pages as tabs (PROGETTO_GRAFICA_UNICA §4.5). One copy of each
+           strip, shown while one of its pages is open (look.css, keyed on the shell's data-view). -->
+      <nav class="page-tabs" id="libraryTabs" aria-label="Library">
+        <p class="page-tabs-title">Library</p>
+        <button class="nav" data-view="knowledge" type="button"><span>Your files</span></button>
+        <button class="nav" data-view="documents" type="button"><span>Created</span></button>
+        <button class="nav" data-view="memory" type="button"><span>What it remembers</span></button>
+        <button class="nav" data-view="research" type="button"><span>Research</span></button>
+      </nav>
+      <nav class="page-tabs" id="automationTabs" aria-label="Automations">
+        <p class="page-tabs-title">Automations</p>
+        <button class="nav" data-view="agents" type="button"><span>Assistants</span></button>
+        <button class="nav" data-view="workflows" type="button"><span>Procedures</span></button>
+      </nav>
       <section class="view active" id="view-home">
         <div class="hero"><h1 class="visually-hidden">Ask. Create. Act.</h1></div>
         <div class="mode-cards">
@@ -269,64 +263,49 @@
       </section>
 
       <section class="view" id="view-chat" data-empty>
-        <div class="section-header compact"><h1 class="visually-hidden">AI Workspace</h1></div>
-        <!-- §4#3, OWNER_REVIEW_2026-08-21, REOPENED by the Owner 2026-08-24: «un menu per
-             software per bambini». The previous answer (`D-0641`) kept all ten controls on
-             screen and merely boxed them into three labelled cards — which is what made it read
-             like a teaching form bolted on top of a conversation. Grouping was not the problem;
-             PERMANENCE was.
-             What is on screen now is only what tells you where you are: project, conversation,
-             branch, model. The nine actions live behind one "⋯" button and are one click away.
-             The IDs are unchanged, so every existing behaviour and test still binds. -->
-        <!-- Owner, 2026-08-28: one row, not three. The title block is gone (hidden, for the
-             screen reader), the mode switch came down out of it, and `data-help-anchor` brings
-             the ⓘ down here too instead of leaving it alone on a strip of its own. -->
-        <div class="chat-toolbar" data-help-anchor>
+        <h1 class="visually-hidden">Chat</h1>
+        <!-- Where you are, and nothing else: the project and the chat, as words. They are the two selects they always
+             were (every behaviour binds to them), drawn as a breadcrumb. Everything else about the conversation is
+             behind "⋯": a new chat, branches, the service that answers, comparing models. -->
+        <div class="chat-head" data-help-anchor>
           <div class="chat-crumb">
             <label><span class="visually-hidden">Project</span><select id="chatProject" title="Which project this conversation belongs to"></select></label>
-            <span class="chat-crumb-sep" aria-hidden="true">›</span>
+            <span class="chat-crumb-sep" aria-hidden="true">/</span>
             <label><span class="visually-hidden">Conversation</span><select id="chatConversation" title="The conversation you are reading"></select></label>
           </div>
-          <div class="mode-switch" id="chatModes"><button class="selected" data-chat-mode="ASK">Ask</button><button data-chat-mode="CREATE">Create</button><button data-chat-mode="ACT">Act</button></div>
-          <div class="chat-chips">
-            <!-- No decorative glyph in front of either select. The first draft had `⑂` and `◈`;
-                 seen rendered on the probe they came out as tofu boxes, because a self-hosted
-                 product cannot presume a font on the machine it is installed on (platform law,
-                 §62). The selects already say "main" and "Automatic route" — a decoration that
-                 may fail to draw is exactly what §76 forbids. -->
-            <label class="chat-chip"><span class="visually-hidden">Branch</span><select id="chatBranch" title="Branches let you try an approach without changing the conversation everyone else sees"></select></label>
-            <label class="chat-chip"><span class="visually-hidden">Provider / route</span><select id="chatProvider" title="Which external or local AI service answers this conversation"></select></label>
-          </div>
-          <button type="button" class="secondary simple-only" id="simpleNewChat">＋ New conversation</button>
           <div class="chat-more">
-            <button id="chatMore" class="secondary" type="button" aria-expanded="false" aria-controls="chatMoreMenu" aria-label="More conversation actions" title="More conversation actions">⋯</button>
+            <button id="chatMore" class="icon-button" type="button" aria-expanded="false" aria-controls="chatMoreMenu" aria-label="More conversation actions" title="More conversation actions"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
             <div class="chat-more-menu hidden" id="chatMoreMenu" role="group" aria-labelledby="chatMore">
               <p class="chat-more-heading">Conversation</p>
-              <button id="newConversation" type="button" title="Start a new conversation in the selected project">＋ New conversation</button>
+              <button id="newConversation" type="button" title="Start a new conversation in the selected project">New conversation</button>
               <button id="clearConversation" type="button" title="Empty this conversation on screen. Nothing is deleted: the messages stay on the branch they are on, and you can reopen it from the branch list.">Clear conversation</button>
+              <button id="undoHead" type="button" title="Take back the last message">Undo</button>
               <p class="chat-more-heading">Branches</p>
+              <label class="chat-more-field"><span class="visually-hidden">Branch</span><select id="chatBranch" title="Branches let you try an approach without changing the conversation everyone else sees"></select></label>
               <button id="forkBranch" type="button" title="Copy this branch so you can try something without changing the original">Fork</button>
               <button id="compareBranches" type="button" title="Show two branches side by side">Compare branches</button>
               <button id="mergeBranch" type="button" title="Bring a branch's changes back into the one you started it from">Merge</button>
               <p class="chat-more-heading">Model</p>
-              <label class="chat-more-field">Model ID<input id="chatModel" placeholder="Model ID or provider default" title="Leave blank to use the provider's default model"></label>
+              <label class="chat-more-field">Service that answers<select id="chatProvider" title="Which external or local AI service answers this conversation"></select></label>
+              <label class="chat-more-field level-advanced">Model ID<input id="chatModel" placeholder="Model ID or provider default" title="Leave blank to use the provider's default model"></label>
               <button id="compareModels" type="button" title="Ask the same prompt to more than one model at once, to compare the answers">Compare models</button>
             </div>
           </div>
         </div>
         <div class="chat-grid">
-          <section class="panel chat-panel">
-            <div class="simple-welcome" id="simpleWelcome">
-              <h2>How can I help you today?</h2>
-              <p>Write in the box below, or start from an example. NOESAR shows you what will change before it changes anything.</p>
-              <div class="simple-chips">
-                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Help me write a text. This is what I need:"><strong>Write something</strong><span>An email, a letter, a message</span></button>
-                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Summarize this text:"><strong>Summarize a text</strong><span>Paste it and I will make it shorter</span></button>
-                <button type="button" class="secondary" data-simple-prompt data-prompt-text="Help me plan this task, one step at a time:"><strong>Plan a task</strong><span>One step at a time</span></button>
-                <button type="button" class="secondary" data-simple-prompt data-prompt-complete data-prompt-text="What can you do here, on this computer?"><strong>See what I can do</strong><span>On this computer, for you</span></button>
+          <section class="chat-panel">
+            <!-- An empty chat is the first screen: a greeting, the box, and four sentences to start from. A sentence
+                 is written into the box, never sent: it is the person's turn to add the details. -->
+            <div class="chat-start" id="simpleWelcome">
+              <h2 id="chatGreeting">What shall we do?</h2>
+              <div class="chat-start-chips">
+                <button type="button" data-simple-prompt data-prompt-text="Summarize this document:"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/></svg><span>Summarize a document</span></button>
+                <button type="button" data-simple-prompt data-prompt-text="Help me write a letter. This is what I need:"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Write a letter</span></button>
+                <button type="button" data-simple-prompt data-prompt-web data-prompt-text="Search the internet for:"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span>Search the internet</span></button>
+                <button type="button" data-view-link="coden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg><span>Work on code</span></button>
               </div>
             </div>
-            <div id="messageList" class="messages empty-state">Create or select a conversation. <button type="button" class="secondary" data-start-conversation>＋ New conversation</button></div>
+            <div id="messageList" class="messages empty-state"></div>
             <div class="notice hidden" id="simpleNoModel" role="status">
               <b>NOESAR needs an AI to answer.</b>
               <p>It can run on this computer, or be a service you choose.</p>
@@ -357,16 +336,24 @@
                 </div>
               </div>
             </div>
+            <!-- The box: the most cared-for object on the screen. Its bottom row says where your words go — the model
+                 and where it runs — and whether this message may search the internet. -->
             <div class="composer chat-composer">
               <div class="composer-commands hidden" id="chatCommands" role="listbox" aria-label="Slash commands"></div>
-              <textarea id="chatInput" placeholder="Ask, or type / for commands…" aria-describedby="chatCommands"></textarea>
-              <div class="composer-row"><span id="chatContextSummary">No context selected</span><button id="inspectContext" class="secondary icon-btn" type="button" title="Context" aria-label="Context">🗂</button><button id="undoHead" class="secondary icon-btn" type="button" title="Undo" aria-label="Undo">↩</button><button id="stopGeneration" class="danger icon-btn hidden" type="button" title="Stop" aria-label="Stop">⏹</button><button type="button" class="secondary model-switch" id="chatModelPickerOpen" aria-expanded="false" aria-controls="chatModelPicker" aria-label="Choose the model this installation uses" title="Choose the model this installation uses">🧠<small id="chatModelLabel" translate="no">—</small></button><button id="sendMessage" class="primary icon-btn" type="button" title="Send" aria-label="Send">➤</button></div>
-              <!-- Owner, 2026-08-21: "devi mettere una finestra con i modelli che sono scaricati
-                   in modo da poter caricare e cambiare subito" — reachable from chat, not only
-                   from #/coden. Deliberately NOT a second catalogue or a second decision: same
-                   markup shape, same GET /api/v1/models/installed, same POST
-                   /api/v1/models/activate as the #/coden picker (server.mjs, s336) — see
-                   createModelPicker() in app.js, the factory both instances share. -->
+              <div class="composer-files hidden" id="chatFiles" aria-live="polite"></div>
+              <textarea id="chatInput" placeholder="Write what you need…" aria-describedby="chatCommands" translate="no"></textarea>
+              <div class="composer-row">
+                <button type="button" class="composer-plus" id="chatAttach" aria-label="Add a file" title="Add a file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+                <input type="file" id="chatFile" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                <button type="button" class="composer-web" id="chatWeb" aria-pressed="false" title="Search the internet for this message. Only general words leave this computer, never the data in your documents."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span>Web search</span></button>
+                <span class="composer-context level-advanced" id="chatContextSummary">No context selected</span>
+                <button id="inspectContext" class="icon-button level-advanced" type="button" title="What is sent to the model" aria-label="What is sent to the model"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/></svg></button>
+                <button type="button" class="composer-model" id="chatModelPickerOpen" aria-expanded="false" aria-controls="chatModelPicker" aria-label="Choose the model this installation uses" title="Choose the model this installation uses"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span id="chatModelLabel" translate="no">—</span><span class="composer-model-where where-local">on this computer</span><span class="composer-model-where where-external">outside this computer</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+                <button id="stopGeneration" class="composer-send hidden" type="button" title="Stop" aria-label="Stop"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1"/></svg></button>
+                <button id="sendMessage" class="composer-send" type="button" title="Send" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button>
+              </div>
+              <!-- The same picker as #/coden (createModelPicker() in app.js): same GET /api/v1/models/installed, same POST
+                   /api/v1/models/activate. Not a second catalogue. -->
               <div class="model-picker hidden" id="chatModelPicker" role="dialog" aria-modal="false" aria-labelledby="chatModelPickerTitle">
                 <div class="model-picker-head">
                   <h3 id="chatModelPickerTitle">Model</h3>
@@ -380,24 +367,12 @@
                 <p class="model-picker-foot"><button type="button" class="text-button" data-view-link="models">All models, and how to get more</button></p>
               </div>
             </div>
-            <p class="hint chat-disclaimer advanced-only">NOESAR EVOLUTION is an AI and can make mistakes.</p>
-            <p class="hint chat-disclaimer simple-only">NOESAR is an AI and can be wrong. Check what matters.</p>
+            <!-- Where your words go, said under the box where you write them (refreshPrivacy() and the web switch). -->
+            <p class="lockline" id="footerPrivacy" aria-live="polite"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><strong>Checking where your words go…</strong> <small></small> <span class="verified"></span></p>
           </section>
-          <!-- The work beside the conversation, s326 (Owner's point 4b: a chat that unites
-               work and research). The column already existed and held one thing — a JSON dump
-               of the included context. What research turns up used to scroll away with the
-               messages; here it stays put, which is the whole point of the pattern.
-
-               THE PLAN BLOCK, s327. It used to declare a gap: a workspace-action run was not
-               attached to a conversation anywhere in this build, so "the work for this chat"
-               named a relation the product did not have. The Owner decided the relation on
-               2026-08-06 — THE CHAT OWNS THE RUN — and it now exists in the engine: `plan()`
-               takes a `conversationId` and the run carries it. So this block renders runs it
-               is GIVEN by `/api/v1/workspace-actions/runs?conversationId=…`; it still derives
-               nothing. Runs started from the terminal have no conversation by construction and
-               are never shown here — they are listed, unattached and labelled as such, in the
-               CodeN work surface rather than filed under whichever chat happens to be open. -->
-          <aside class="panel context-panel" id="chatWorkPanel">
+          <!-- Advanced level: the work beside the conversation (s326/s327) — the sources, the plan this chat owns
+               (`/api/v1/workspace-actions/runs?conversationId=…`), and the exact context sent to the model. -->
+          <aside class="context-panel level-advanced" id="chatWorkPanel">
             <div class="panel-title"><h2>Work</h2><span id="tokenEstimate">0 tokens</span></div>
             <section class="work-block">
               <h3>Sources <span class="work-count" id="chatSourceCount"></span></h3>
@@ -1121,25 +1096,28 @@
         <div class="section-header"><h1 class="visually-hidden">Settings</h1></div>
         <div class="settings-layout">
           <nav class="settings-menu" aria-label="Settings sections">
-          <p class="settings-group">YOUR WORK</p>
-          <button class="settings-nav active" type="button" data-section="sessions">Sessions</button>
-          <button class="settings-nav" type="button" data-section="appearance">Appearance</button>
+          <!-- As in the drawing: what is about you, then what is about this installation. Eleven entries; some carry more
+               than one section (SETTINGS_GROUPS in app.js), shown one under the other. A section this account may not
+               open is removed (applyNavAccess), so a person who is not an administrator sees mostly the first group. -->
+          <p class="settings-group">You</p>
+          <button class="settings-nav active" type="button" data-section="appearance">Appearance and level</button>
           <button class="settings-nav" type="button" data-section="language">Language and time</button>
-          <p class="settings-group">THE PRODUCT</p>
-          <button class="settings-nav" type="button" data-section="about">NOESAR Evolution</button>
-          <button class="settings-nav" type="button" data-section="licence">Licence</button>
-          <button class="settings-nav" type="button" data-section="privacy">Privacy and connectors</button>
+          <button class="settings-nav" type="button" data-section="security">Account and security</button>
+          <button class="settings-nav" type="button" data-section="privacy">Privacy and internet</button>
+          <p class="settings-group">This NOESAR</p>
+          <button class="settings-nav" type="button" data-section="models-hardware">Models</button>
+          <button class="settings-nav" type="button" data-section="modules">Tools and modules</button>
+          <button class="settings-nav settings-nav-sub" type="button" data-section="skills" data-group="modules">Skills</button>
           <button class="settings-nav" type="button" data-section="people">People and access</button>
-          <button class="settings-nav" type="button" data-section="security"><span class="advanced-only">Security and compliance</span><span class="simple-only">Password and security</span></button>
-          <p class="settings-group">THE SYSTEM</p>
-          <button class="settings-nav" type="button" data-section="models-hardware"><span class="advanced-only">Models and hardware</span><span class="simple-only">The AI and this computer</span></button>
-          <button class="settings-nav" type="button" data-section="storage">Storage and backup</button>
-          <button class="settings-nav" type="button" data-section="audit">Audit and evidence</button>
+          <button class="nav settings-link" data-view="coden-tui" type="button"><span>Terminal access</span></button>
+          <button class="settings-nav" type="button" data-section="storage">Backup and storage</button>
+          <button class="settings-nav settings-nav-sub" type="button" data-section="sessions" data-group="storage">Sessions</button>
           <button class="settings-nav" type="button" data-section="health">Health and logs</button>
+          <button class="settings-nav settings-nav-sub" type="button" data-section="audit" data-group="health">Audit and evidence</button>
           <button class="settings-nav" type="button" data-section="updates">Updates</button>
-          <button class="settings-nav" type="button" data-section="skills">Skills</button>
-          <button class="settings-nav" type="button" data-section="modules">Modules</button>
-          <button class="settings-nav" type="button" data-section="remote-targets">Remote targets</button>
+          <button class="settings-nav settings-nav-sub" type="button" data-section="about" data-group="updates">NOESAR Evolution</button>
+          <button class="settings-nav settings-nav-sub" type="button" data-section="licence" data-group="updates">Licence</button>
+          <button class="settings-nav settings-nav-sub" type="button" data-section="remote-targets" data-group="updates">Remote targets</button>
           </nav>
           <div class="settings-body">
             <!-- A section this account may not open says so here. The gates that used to
@@ -1213,16 +1191,44 @@
         </section>
       </section>
       <section class="settings-section" id="section-appearance" data-section="appearance">
-        <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Appearance</h2><p>Nine themes, and any accent colour you like — with the contrast measured while you choose it, not afterwards.</p></div></div>
-        <section class="panel simple-only" id="simpleAppearance">
+        <h2 class="page-title">Appearance and level</h2>
+        <!-- The level: the same interface and the same places for everyone; Advanced adds details for whoever works
+             with code and models. It is the only switch of its kind (Owner, 2026-10-09: «una grafica sola»). -->
+        <section class="panel setting-box">
+          <h3>Interface level</h3>
+          <p class="hint">The same interface and the same places for everyone. Advanced adds the details for whoever works with code and with models.</p>
+          <div class="seg" id="levelChoices" role="group" aria-label="Interface level">
+            <button type="button" data-level="base" aria-pressed="true">Base</button>
+            <button type="button" data-level="advanced" aria-pressed="false">Advanced</button>
+          </div>
+          <ul class="setting-list">
+            <li>In Advanced, also: the work steps already open under every answer</li>
+            <li>the model's parameters when you choose it</li>
+            <li>the technical view: the exact context sent to the model</li>
+            <li>the keyboard shortcuts written in the menu</li>
+          </ul>
+        </section>
+        <section class="panel setting-box" id="simpleAppearance">
           <h3>Light or dark</h3>
-          <p class="hint">Pick what is easiest on your eyes. "Like this computer" follows your computer.</p>
-          <div class="choice-row" id="schemeChoices" role="group" aria-label="Light or dark">
+          <div class="seg" id="schemeChoices" role="group" aria-label="Light or dark">
             <button type="button" data-scheme="auto" aria-pressed="false">Like this computer</button>
             <button type="button" data-scheme="light" aria-pressed="false">Light</button>
             <button type="button" data-scheme="dark" aria-pressed="false">Dark</button>
           </div>
         </section>
+        <!-- UI-040: text size moves type alone, and scales every size in both stylesheets. -->
+        <section class="panel setting-box">
+          <h3>Text size</h3>
+          <div class="seg" id="textSizeGroup" role="group" aria-label="Text size">
+            <button type="button" data-text-step="1" aria-pressed="false">Normal</button>
+            <button type="button" data-text-step="2" aria-pressed="false">Large</button>
+            <button type="button" data-text-step="3" aria-pressed="false">Larger</button>
+            <button type="button" data-text-step="4" aria-pressed="false" class="level-advanced">Largest</button>
+          </div>
+        </section>
+        <!-- Advanced: the nine themes, any accent colour, zoom and motion, and the legend of the seven states. -->
+        <details class="panel setting-more level-advanced">
+          <summary>More appearance options</summary>
         <section class="panel">
           <div class="panel-title"><h3>Theme</h3><span class="badge badge-off" id="themeCurrent">—</span></div>
           <p class="hint">A theme is a remapping of the interface's colour tokens, not a second stylesheet. Meaning never moves with it: the seven states below keep their glyph and their word in every theme.</p>
@@ -1244,17 +1250,7 @@
              its own rather than only an inherited system preference. Somebody who wants
              larger type does not necessarily want fewer things on screen. -->
         <section class="panel">
-          <div class="panel-title"><h3>Reading and motion</h3></div>
-          <fieldset class="control-row">
-            <legend>Text size</legend>
-            <div class="step-group" id="textSizeGroup" role="group" aria-label="Text size">
-              <button type="button" data-text-step="1" aria-pressed="false">Standard</button>
-              <button type="button" data-text-step="2" aria-pressed="false">Large</button>
-              <button type="button" data-text-step="3" aria-pressed="false">Larger</button>
-              <button type="button" data-text-step="4" aria-pressed="false">Largest</button>
-            </div>
-            <p class="hint">Four steps, and they scale <b>the whole interface</b> — every size in the stylesheet is a multiple of this one, so nothing is left behind at its original size.</p>
-          </fieldset>
+          <div class="panel-title"><h3>Zoom and motion</h3></div>
           <fieldset class="control-row">
             <legend>Interface zoom</legend>
             <div class="zoom-row">
@@ -1271,19 +1267,20 @@
             <label class="check"><input type="checkbox" id="reduceMotion"> <span>Reduce animation and movement</span></label>
             <p class="hint" id="motionSystemHint">Your system preference is honoured on its own. This setting is stronger: it applies even where the system says nothing.</p>
           </fieldset>
-          <p class="hint">All three are stored on this device only. They are display preferences and never leave the installation.</p>
+          <p class="hint">Stored on this device only. They are display preferences and never leave the installation.</p>
         </section>
         <section class="panel">
           <div class="panel-title"><h3>The seven states</h3></div>
           <p class="hint">Each carries a glyph and a word as well as a tint, so it survives a theme change, a colour-blind reader, a monochrome print, and high-contrast mode — where the tint is discarded outright.</p>
           <div class="state-legend" id="stateLegend"></div>
         </section>
+        </details>
       </section>
       <section class="settings-section" id="section-language" data-section="language">
         <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Language and time</h2><p>Time, language and locale. The server default applies wherever you have set no preference of your own.</p></div></div>
-        <section class="panel form-stack simple-only" id="simpleLanguage">
+        <section class="panel form-stack" id="simpleLanguage">
           <h3>Language</h3>
-          <label>Language of the screens<select id="simpleLanguageSelect"></select></label>
+          <label class="language-picker">Language of the screens<select id="languageSelect"><option value="auto">Auto</option><option value="en">English</option><option value="it">Italiano</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option></select></label>
         </section>
         <div class="two-col">
           <section class="panel form-stack">
@@ -1384,10 +1381,11 @@
         <section class="panel"><div class="panel-title"><h2>Active sessions</h2><button class="text-button" id="revokeOthers" type="button">Sign out every other session</button></div><div id="sessionList" class="card-list empty-state">Loading…</div></section>
       </section>
       <section class="settings-section" id="section-models-hardware" data-section="models-hardware">
-        <section class="panel simple-only" id="simpleAi">
+        <section class="panel" id="simpleAi">
           <h3>The AI that answers you</h3>
           <p id="simpleAiNow" translate="no"></p>
           <button type="button" class="primary" id="simpleAiSearch">Look for an AI on this computer</button>
+          <button class="nav settings-link" data-view="models" type="button"><span>All models, and how to get more</span></button>
           <h3>This computer</h3>
           <ul class="plain-list" id="simpleComputer" translate="no"></ul>
         </section>
@@ -1400,7 +1398,7 @@
         <div class="section-header"><div><p class="eyebrow">EXPORT · BACKUP · RETENTION</p><h2 class="page-title">Backups</h2><p>Your data leaves in a format you can read. A database archive carries a checksum and a restore refuses a mismatch.</p></div></div>
         <div class="two-col">
           <section class="panel form-stack"><div class="panel-title"><h2>Database archive</h2><span id="backupsDbBadge" class="badge badge-off">—</span></div><label>Label<input id="backupLabel" placeholder="Optional label"></label><button class="primary" id="createBackup" type="button">Create backup</button><pre id="backupResult">No backup created in this session.</pre></section>
-          <section class="panel form-stack"><div class="panel-title"><h2>Workspace export and retention</h2></div><button class="primary" id="backupsExportData" type="button">Export workspace as JSON</button><hr><label>Retention days<input id="retentionDaysSetting" type="number" min="1" max="3650"></label><div class="inline-form"><button class="primary" id="saveRetentionSetting" type="button">Save retention</button><button id="applyRetentionSetting" type="button">Apply now</button></div><p class="hint">A full filesystem backup of the workspace is not encrypted and contains the authentication master key. Treat it as a secret.</p></section>
+          <section class="panel form-stack"><div class="panel-title"><h2>Workspace export and retention</h2></div><button class="primary" id="backupsExportData" type="button">Export workspace as JSON</button><hr><label>Retention days<input id="retentionDaysSetting" type="number" min="1" max="3650"></label><div class="inline-form"><button class="primary" id="saveRetentionSetting" type="button">Save retention</button><button id="applyRetentionSetting" type="button">Apply now</button></div><hr><button class="danger" id="purgeProject" type="button">Delete the active project's data</button><p class="hint">A full filesystem backup of the workspace is not encrypted and contains the authentication master key. Treat it as a secret.</p></section>
         </div>
       </section>
       <section class="settings-section" id="view-approvals" data-section="audit">
@@ -1483,17 +1481,6 @@
       </section>
     </main>
 
-    <aside class="rightbar" id="contextPanel" aria-label="Context panel">
-      <div class="panel-rank-bar">
-        <span class="panel-rank-title" id="contextPanelTitle" title="Drag to move (while floating)">Context</span>
-        <div class="panel-rank-buttons" role="group" aria-label="Context panel placement">
-          <button type="button" data-panel-rank="docked" aria-pressed="false">Dock</button>
-          <button type="button" data-panel-rank="floating" aria-pressed="false">Float</button>
-          <button type="button" data-panel-rank="hidden" aria-pressed="true">Hide</button>
-        </div>
-      </div>
-      <p class="panel-rank-hint" id="contextPanelHint">Placement is remembered for each destination.</p>
-      <section class="mini-panel"><div class="panel-title"><h3>System trust</h3></div><div class="metric"><span>Local runtime</span><b class="green">Available</b></div><div class="metric"><span>External egress</span><b id="egressMetric">Blocked</b></div><div class="metric"><span>Secrets</span><b>Encrypted</b></div></section><section class="mini-panel"><h3>Context control</h3><p>Model, project, messages, memory, sources, tools and estimated tokens are visible before each request.</p></section><section class="mini-panel"><h3>Data controls</h3><label>Retention days<input id="retentionDays" type="number" min="1" max="3650" value="365"></label><button class="wide-button" id="saveRetention">Save retention</button><button class="wide-button" id="applyRetention">Apply now</button><button class="wide-button" id="rightExportData">Export workspace</button><button class="wide-button danger" id="purgeProject">Delete active project data</button></section></aside>
     <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="false"></div>
     <div id="routeAnnouncer" class="visually-hidden" aria-live="polite"></div>
     <!-- UI-043. One live region for what HAPPENS, separate from the one that announces
@@ -1519,18 +1506,8 @@
         </div>
       </div>
     </div>
-    <!-- The bottom approval strip. 01_PRODUCT/11 names it as part of the binding visual
-         direction; until WP-2 this footer was a static status bar that could not tell the
-         operator anything was waiting. It is permanent, and it states the count even when
-         that count is zero — a strip that appears only when something is pending gives no
-         way to tell "nothing waiting" from "not working". -->
-    <footer class="statusbar approval-strip" id="approvalStrip" aria-live="polite">
-      <span class="footer-privacy status-good" id="footerPrivacy" aria-live="polite"><strong>Checking privacy state…</strong> <small></small> <span class="verified"></span></span>
-      <span class="approval-strip-state" id="approvalStripState">Approvals: —</span>
-      <span class="approval-strip-detail" id="approvalStripDetail">Checking the approval queue…</span>
-      <button class="text-button" id="approvalStripOpen" type="button" data-view-link="settings/audit">Open queue</button>
-      <span id="statusMessage">Ready</span>
-    </footer>
+    <!-- What happens, for assistive technology (setStatus). Errors are also shown as a notice (toast). -->
+    <p id="statusMessage" class="visually-hidden" role="status"></p>
   </div>
   <script type="module" src="/app.js"></script>
 </body>

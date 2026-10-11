@@ -22,7 +22,9 @@ test('a quantity with its unit survives redaction; a phone number does not', () 
 
 test('a chat answer says which tools it used, and whether each call worked', () => {
   const source = readFileSync(join(REPO_ROOT, 'apps/webui-static/app.js'), 'utf8');
-  const render = source.slice(source.indexOf('function renderMessages('), source.indexOf('function renderMessages(') + 3000);
-  assert.match(render, /message\.metadata\?\.toolCalls\?\.length/);
-  assert.match(render, /t\('Tools used'\)/);
+  // 2026-10-11: one message is drawn by messageHtml(); the steps sit under the answer, open at the Advanced level.
+  const render = source.slice(source.indexOf('function messageHtml('), source.indexOf('function messageHtml(') + 4000);
+  assert.match(render, /message\.metadata\?\.toolCalls/);
+  assert.match(render, /t\('Work steps'\)/);
+  assert.match(render, /call\.ok\?'✓':'✗'/);
 });

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// The simple interface: what a person sees who has never used an AI before.
+// What the interface decides for a person, without a browser: one interface for everyone (2026-10-11).
 //
 // Owner, 2026-10-06: a program for everyone, a chat that does the work from A to Z, one button
 // that opens the menu and everything else clean. Measured the same day on a clean installation:
@@ -8,27 +8,29 @@
 // out of three, a chat that would not take a word until a conversation had been created and
 // titled, and header chips (zone, project, model, coverage) answering questions nobody had asked.
 //
-// This module holds only what can be decided WITHOUT a browser — the preference, the mode a
-// message implies, the title a first message earns, the setup token in a link — so that it can
-// be tested the way `schedule.js` is. The rest is markup in `index.html` and a block of CSS keyed
-// on `body[data-ui]`.
+// Owner, 2026-10-09: that was solved with two interfaces, a simple one and a full one, and it was the
+// wrong answer — «una grafica sola», for normal and professional users alike. Since 2026-10-11 there
+// is one; what used to be the simple interface's way of speaking is everyone's, and the level
+// (Base / Advanced) only adds details.
 //
-// What simple mode never hides: the approval strip. A person who has never used an AI is the one
-// who most needs to see that something is waiting for their decision. A test asserts it.
+// This module holds only what can be decided WITHOUT a browser — the level, the mode a message
+// implies, the title a first message earns, the setup token in a link — so that it can be tested
+// the way `schedule.js` is. The rest is markup in `index.html` and `look.css`.
 
-export const SIMPLE_KEY = 'noesar.ui.simple';
+export const LEVEL_KEY = 'noesar.ui.level';
 
-/** The destinations the simple sidebar keeps. Everything else is one click away in the full interface. */
-export const SIMPLE_VIEWS = Object.freeze(['chat', 'projects', 'documents', 'settings']);
-
-/** Simple is the default. Only an explicit '0' — the person chose the full interface — turns it off. */
-export function readSimple(storage) {
-  try { return storage?.getItem(SIMPLE_KEY) !== '0'; } catch { return true; }
+/**
+ * The level of the interface: 'base' for everyone, 'advanced' for whoever works with code and models. Same places, same
+ * menu; Advanced adds details (the work steps open under each answer, the model's parameters, the technical view of the
+ * context, the keyboard shortcuts written in the menu). Anything but an explicit 'advanced', or a refused storage, is 'base'.
+ */
+export function readLevel(storage) {
+  try { return storage?.getItem(LEVEL_KEY) === 'advanced' ? 'advanced' : 'base'; } catch { return 'base'; }
 }
 
-export function writeSimple(storage, on) {
+export function writeLevel(storage, level) {
   // A private window refuses storage: the choice then lasts until the page is reloaded.
-  try { storage?.setItem(SIMPLE_KEY, on ? '1' : '0'); } catch { /* nothing to do */ }
+  try { storage?.setItem(LEVEL_KEY, level === 'advanced' ? 'advanced' : 'base'); } catch { /* nothing to do */ }
 }
 
 // Information questions are answered, not acted on: "how do I merge a PDF?" is ASK even though it

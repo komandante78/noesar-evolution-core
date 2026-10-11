@@ -225,7 +225,6 @@ button[data-busy]{opacity:.65;cursor:progress}
    density rather than removal. It becomes compact instead of disappearing. */
 @media(max-width:850px){
   .approval-strip{display:flex!important;position:sticky;bottom:0;z-index:15;flex-wrap:nowrap;gap:8px;padding:6px 10px;height:auto;min-height:38px}
-  .approval-strip #footerPrivacy,.approval-strip #statusMessage{display:none}
   .approval-strip-detail{max-width:52vw}
 }
 
@@ -1784,135 +1783,8 @@ button.armed{border-color:var(--red);color:var(--red)}
    rifiuto che le sta accanto, perche "sto lavorando" e "ho fallito" non devono somigliarsi. */
 .model-row-waiting{color:var(--text-strong);font-size:calc(var(--text-scale)*13px);font-weight:600;margin:6px 0 0;padding:6px 10px;background:var(--accent-wash);border-radius:6px}
 
-/* ── The simple interface (simple-mode.js), 2026-10-06 ─────────────────────────────────────
-   Keyed on body[data-ui]. Simple is the default; the full interface is one button away, at the
-   foot of the sidebar. Everything hidden here is hidden by a rule a test can read — and the
-   approval strip is NOT among them: someone who has never used an AI is the person who most
-   needs to see that something is waiting for their decision. */
-.simple-only{display:none}
-body[data-ui=simple] .simple-only{display:revert}
-body[data-ui=simple] .advanced-only{display:none}
-/* the top bar keeps a menu button, the name, the privacy state and the account */
-body[data-ui=simple] .topbar .command,
-body[data-ui=simple] .top-actions .language-picker,
-body[data-ui=simple] #timezoneChip,
-body[data-ui=simple] #projectChip,
-body[data-ui=simple] #modelChip,
-body[data-ui=simple] #coverageChip,
-body[data-ui=simple] #panelRank,
-body[data-ui=simple] #sidebarRankLabel{display:none}
-/* the sidebar keeps the four destinations a first visit needs; the rest is the full interface */
-body[data-ui=simple] #sidebar .nav:not([data-view=chat]):not([data-view=projects]):not([data-view=documents]):not([data-view=settings]),
-body[data-ui=simple] #navModules{display:none}
-.sidebar-foot{padding:10px 12px}
-/* the chat: no project, conversation, mode, branch or route to choose before the first word */
-body[data-ui=simple] #view-chat .chat-crumb,
-body[data-ui=simple] #chatModes,
-body[data-ui=simple] #view-chat .chat-chips,
-body[data-ui=simple] #view-chat .chat-more,
-body[data-ui=simple] #chatContextSummary,
-body[data-ui=simple] #inspectContext,
-body[data-ui=simple] #chatWorkPanel{display:none}
-body[data-ui=simple] #view-chat .chat-grid{grid-template-columns:minmax(0,1fr)}
-body[data-ui=simple] #view-chat .chat-toolbar>#simpleNewChat{margin-inline-start:auto}
-.simple-welcome{display:none}
-body[data-ui=simple] #view-chat[data-empty] .simple-welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:48px 16px;flex:1}
-body[data-ui=simple] #view-chat[data-empty] #messageList{display:none}
-.simple-welcome h2{margin:0;font-size:calc(var(--text-scale)*26px)}
-.simple-welcome p{margin:0;color:var(--muted)}
-.simple-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:640px}
-.simple-welcome .notice{max-width:480px;text-align:start}
-/* connecting a model, in plain words: the notice above the box and what it opens */
-.model-wizard-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
-.model-wizard{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.model-wizard p{margin:0}
-.model-wizard>button{align-self:flex-start}
-.model-found{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px}
-.model-found select{max-width:240px}
-/* what is about to happen, before the person decides: the card on a waiting tool row. The row wraps,
-   the card takes a line of its own, and the two buttons come last, after what they decide about. */
-.tool-activity-row.superseded{display:none}
-.tool-activity-row.has-change{flex-wrap:wrap}
-.tool-activity-row.has-change>.tool-change{order:5;flex-basis:100%;display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
-.tool-activity-row.has-change>button{order:6}
-.tool-activity-row.has-change .tool-activity-name{font-family:inherit;font-weight:600}
-.tool-change p{margin:0}
-.tool-change-files{margin:0;padding-inline-start:18px}
-.tool-change-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px}
-.tool-change-pair pre{margin:0;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:calc(var(--text-scale)*12px)}
-
-/* ── plain words and a quiet screen, 2026-10-06 ───────────────────────────────────────────────
-   Measured on a clean installation with a real model: the box carried a bare "↩" that nobody could
-   name, an English "LOCAL ONLY VERIFIED" badge sat in a strip of status words, and on a narrow
-   window (below the width at which the chat fills the screen) the box went below the fold. None of
-   this touches the approval strip's job: its words are calmer when nothing waits (app.js), and it is
-   not hidden by any rule here. */
-body[data-ui=simple] #undoHead::after{content:attr(title);margin-inline-start:.4em;font-size:.85em}
-body[data-ui=simple] #undoHead{width:auto;padding-inline:10px}
-body[data-ui=simple] .footer-privacy .verified{display:none}
-@media(max-width:850px){
-  body[data-ui=simple] .chat-composer{position:sticky;bottom:46px;z-index:6}
-  /* <main> is itself a scroll container, so on a narrow window sticky would stick to ITS box and not to the screen */
-  body[data-ui=simple] .main:has(#view-chat.active){overflow:visible}
-}
-/* the compact form cut the name from its start ("…Instruct"); a person's name for the model fits whole */
-body[data-ui=simple] .model-switch small{max-width:22ch;direction:ltr}
-/* with a long history the menu opened on the history and the other three destinations were 600 px down,
-   below the fold of the bar: the destinations come first, the history after them */
-body[data-ui=simple] #sidebar nav #chatNav{order:5}
-/* under an answer a person wants to Copy it or try again: branching the conversation, taking a message out of
-   the model's context and editing the model's own words are an engineer's gestures */
-body[data-ui=simple] [data-fork-message],
-body[data-ui=simple] [data-exclude-message],
-body[data-ui=simple] .message.assistant [data-edit-message]{display:none}
-/* Settings, for someone who has just started, has four doors: how it looks, the language, the password and the AI.
-   The other twelve (people, storage, audit, logs, modules, remote targets…) are in the full interface, one click
-   away, and every address still opens its section: only the menu is shorter. */
-body[data-ui=simple] .settings-nav[data-section=sessions],
-body[data-ui=simple] .settings-nav[data-section=about],
-body[data-ui=simple] .settings-nav[data-section=licence],
-body[data-ui=simple] .settings-nav[data-section=privacy],
-body[data-ui=simple] .settings-nav[data-section=people],
-body[data-ui=simple] .settings-nav[data-section=storage],
-body[data-ui=simple] .settings-nav[data-section=audit],
-body[data-ui=simple] .settings-nav[data-section=health],
-body[data-ui=simple] .settings-nav[data-section=updates],
-body[data-ui=simple] .settings-nav[data-section=skills],
-body[data-ui=simple] .settings-nav[data-section=modules],
-body[data-ui=simple] .settings-nav[data-section=remote-targets],
-body[data-ui=simple] .settings-menu .settings-group{display:none}
-/* Below 851 px the sidebar becomes a row of bare icons (the labels are visually hidden) and the history was squeezed
-   into it. In the simple interface the open menu is the four destinations, named, one under the other; the history
-   belongs to the full interface on a screen this size. */
-@media(max-width:850px){
-  body[data-ui=simple] #chatNav{display:none}
-  body[data-ui=simple] .nav span:not(.nav-count){position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}
-  body[data-ui=simple] .sidebar nav{flex-wrap:wrap}
-}
-/* Documents, for a person: the list of what was saved from the chat, with Copy and Edit. The form that asks for a project
-   and a "type" (document, code, table, chart, canvas, application) is the full interface's, and so is the word
-   "Versioned" and the line under each title that names the type and the version. */
-body[data-ui=simple] #artifactForm{display:none}
-body[data-ui=simple] #view-documents .two-col{grid-template-columns:1fr}
-body[data-ui=simple] #artifactList small,
-body[data-ui=simple] #view-documents .panel-title span{display:none}
-/* Projects, for a person: a name, what it is for and the rules to follow. Tags, the "knowledge mode" (hybrid RAG, full
-   context, disabled) and the number of retrieved passages are the full interface's; the form still submits their
-   defaults, because the fields stay in the page. */
-body[data-ui=simple] #projectForm label:has(#projectTags),
-body[data-ui=simple] #projectForm label:has(#projectKnowledgeMode),
-body[data-ui=simple] #projectForm label:has(#projectKnowledgeLimit){display:none}
-/* The time the page shows is UTC and the computer says otherwise: one calm line with one button, above everything. */
-body[data-ui=simple] #zoneBanner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--surface-raised);font-size:calc(var(--text-scale)*13px)}
-/* Small print a person has to read. Measured on the chat, 2026-10-08: the buttons under a message were 11px and 24px tall,
-   the privacy line 9px (a <small> inside an 11px bar), the model name and the status words 11px. Nothing a person reads is
-   under 12px here, and what they press under a message is 32px tall. The size setting in Appearance still multiplies all of it. */
-body[data-ui=simple] .message-actions button{font-size:calc(var(--text-scale)*13px);min-height:32px;padding:5px 12px}
-body[data-ui=simple] .top-actions,
-body[data-ui=simple] .statusbar{font-size:calc(var(--text-scale)*12.5px)}
-body[data-ui=simple] .footer-privacy small{font-size:1em}
-body[data-ui=simple] .model-switch small{font-size:calc(var(--text-scale)*12.5px)}
-/* The notice above everything (default password): the full interface's look; the simple interface's is in simple.css. */
+/* The simple interface's rules lived here until 2026-10-11: there is one interface now, drawn by look.css. */
+/* The notice above everything (default password). */
 .top-notice{position:sticky;top:0;z-index:9999;padding:.6rem 1rem;text-align:center;font-weight:600;color:var(--state-warn-text);background:linear-gradient(var(--surface-warn-wash),var(--surface-warn-wash)),var(--surface-root);border-bottom:1px solid var(--border-warn-strong)}
 .top-notice a{color:inherit;text-decoration:underline}
 /* An answer drawn from markdown: paragraphs, headings and rules. */
@@ -1929,3 +1801,21 @@ body[data-ui=simple] .model-switch small{font-size:calc(var(--text-scale)*12.5px
    gate used to be a fixed grid that clipped what did not fit. `safe` keeps the top of a tall card from sliding out of reach when it is centred. */
 .auth-gate{overflow-y:auto;align-items:safe center}
 
+/* Kept from the block of the simple interface removed on 2026-10-11: they are not about one interface, they draw the
+   model wizard and the card of a waiting change. One row per tool: the card takes a line of its own, and the two buttons
+   come last, after what they decide about. */
+.model-wizard-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.model-wizard{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.model-wizard p{margin:0}
+.model-wizard>button{align-self:flex-start}
+.model-found{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px}
+.model-found select{max-width:240px}
+.tool-activity-row.superseded{display:none}
+.tool-activity-row.has-change{flex-wrap:wrap}
+.tool-activity-row.has-change>.tool-change{order:5;flex-basis:100%;display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.tool-activity-row.has-change>button{order:6}
+.tool-activity-row.has-change .tool-activity-name{font-family:inherit;font-weight:600}
+.tool-change p{margin:0}
+.tool-change-files{margin:0;padding-inline-start:18px}
+.tool-change-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px}
+.tool-change-pair pre{margin:0;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:calc(var(--text-scale)*12px)}

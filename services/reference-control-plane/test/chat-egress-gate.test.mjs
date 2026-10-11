@@ -230,3 +230,56 @@ test('in a turn that has the documents in front of it, no internet asked for mea
   assert.ok(!(upstream.seen[0].tools ?? []).some((t) => t.function.name === WEB.name), 'the answer writer was offered no web search');
   assert.ok(fx.ledger.entries.some((e) => e.action === 'chat.search-writer' && e.result === 'not-asked'));
 });
+
+// The web switch in the box (2026-10-11, one interface): the page always says whether this message may search. These drive
+// what the page sends — `web` and the everyday register, where no tool is otherwise on offer.
+const runFromPage = (fx, res, content, web) => fx.orchestrator.streamToResponse({ res, actorId: 'owner-001', can: () => true, conversationId: fx.conversation.id, content, providerId: fx.profileId, audience: 'everyday', mode: 'ASK', web });
+
+test('the web switch on: a question with no word about the internet is searched, by the writer that never sees the data', async () => {
+  const upstream = await scriptedModel([[callFrame(WEB.name, { objective: 'preavviso disdetta conduttore' })], [textFrame('sei mesi')]]);
+  const found = []; const exec = { async execute(tool, input) { found.push(input); return { results: [{ url: 'https://www.example.org/disdetta', title: 'Disdetta' }] }; } };
+  const fx = fixture(upstream.port, { executor: exec });
+  const res = recordingResponse();
+  await runFromPage(fx, res, 'con quanto preavviso può disdire Mario Rossi?', true);
+  assert.equal(found.length, 1, 'the search ran');
+  assert.equal(upstream.seen[0].messages.length, 2, 'written by the search writer: one instruction and the request');
+  assert.ok(!/rossi/i.test(JSON.stringify(upstream.seen[0].messages)), 'which saw a placeholder, not the name');
+  assert.deepEqual((upstream.seen[1].tools ?? []).map((t) => t.function.name), [], 'the answer writer is offered no search (and, in the everyday register, nothing else)');
+  // what the person is shown above the answer, live and kept with it
+  const searched = res.eventsNamed('searched')[0].data;
+  assert.deepEqual([searched.outcome, searched.sent, searched.guarded, searched.removed], ['PROCEED', 'preavviso disdetta conduttore', true, false]);
+  const kept = res.eventsNamed('complete')[0].data.message.metadata;
+  assert.deepEqual(kept.web, [{ outcome: 'PROCEED', sent: 'preavviso disdetta conduttore', guarded: true, removed: false }]);
+  assert.deepEqual(kept.webSources, ['https://www.example.org/disdetta'], 'the pages found, for the chips under the answer');
+});
+
+test('the web switch off: no search, even when the model writing the answer tries one', async () => {
+  const upstream = await scriptedModel([[callFrame(WEB.name, { objective: 'aliquota iva' })], [textFrame('ok')]]);
+  const exec = recorder();
+  const fx = fixture(upstream.port, { executor: exec });
+  const res = recordingResponse();
+  await fx.orchestrator.streamToResponse({ res, actorId: 'owner-001', can: () => true, conversationId: fx.conversation.id, content: 'che aliquota iva si applica?', providerId: fx.profileId, web: false });
+  assert.equal(exec.inputs.length, 0, 'nothing was searched');
+  assert.ok(!(upstream.seen[0].tools ?? []).some((t) => t.function.name === WEB.name), 'no web search on offer');
+  assert.equal(res.eventsNamed('searched').length, 0);
+  assert.equal(res.eventsNamed('complete')[0].data.message.metadata.web, undefined, 'and nothing to show above the answer');
+});
+
+test('the words still count with the switch off: "cerca su internet" asks for the internet as surely as the switch', async () => {
+  const upstream = await scriptedModel([[callFrame(WEB.name, { objective: 'preavviso disdetta' })], [textFrame('ok')]]);
+  const exec = recorder();
+  const fx = fixture(upstream.port, { executor: exec });
+  await runFromPage(fx, recordingResponse(), 'cerca su internet il preavviso per la disdetta', false);
+  assert.equal(exec.inputs.length, 1);
+});
+
+test('a stopped search is said too, and kept: nothing left this computer', async () => {
+  const upstream = await scriptedModel([[callFrame(WEB.name, { objective: 'IT60X0542811101000000123456' })], [textFrame('ok')]]);
+  const exec = recorder();
+  const fx = fixture(upstream.port, { executor: exec });
+  const res = recordingResponse();
+  await runFromPage(fx, res, 'di che banca è il conto?', true);
+  assert.equal(exec.inputs.length, 0);
+  assert.deepEqual(res.eventsNamed('searched').map((e) => [e.data.outcome, e.data.sent]), [['BLOCK', null]]);
+  assert.equal(res.eventsNamed('complete')[0].data.message.metadata.web[0].outcome, 'BLOCK');
+});

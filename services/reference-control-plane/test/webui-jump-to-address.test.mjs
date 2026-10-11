@@ -82,7 +82,9 @@ describe('the addresses are read off the interface, not written beside it', () =
     // `class="nav[^"]*"`, because Home ships as `class="nav active"` — an exact-class regex
     // silently found twelve of the thirteen and the count guard below is what said so.
     const destinations = [...html.matchAll(/<button class="nav[^"]*" data-view="([a-z-]+)"/g)].map((match) => match[1]);
-    assert.ok(destinations.length >= 13, `only ${destinations.length} destinations found in the markup`);
+    // 2026-10-11 (one interface): twelve buttons name a destination — the menu, the tabs of Library and Automations,
+    // and two links in Settings; Home and Tools are reached through the box alone.
+    assert.ok(destinations.length >= 12, `only ${destinations.length} destinations found in the markup`);
     for (const view of destinations) {
       assert.ok(!new RegExp(`['"\`]${view}['"\`]`).test(body), `addressBook() names the destination "${view}"`);
     }
