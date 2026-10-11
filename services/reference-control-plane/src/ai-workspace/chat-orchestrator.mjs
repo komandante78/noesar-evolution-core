@@ -5,6 +5,25 @@ import { wrapUntrusted, enforceToolScope } from './untrusted-content.mjs';
 import { AGENT_DIRECTIVE_INSTRUCTION, extractAgentDirective } from './agent-directive.mjs';
 import { composeSystemPrompt } from './assistant-identity.mjs';
 import { mentionsFiles } from '../workspace-files.mjs';
+import { gateArguments, leavesThisComputer, privateIndex, pseudonymize } from './egress-gate.mjs';
+
+/** The search writer's whole instruction. It sees the person's request with every datum replaced by a placeholder, and
+ *  nothing else: no document, no earlier answer. Owner, 2026-10-10 (PROGETTO_DATI_CLIENTE_20261010, layer 1): whoever
+ *  writes what goes out must never have seen the data, because a gate made of rules cannot see meaning. */
+// Measured 2026-10-11 on the real 7B (Qwen2.5 7B, probe_writer.mjs): with a way out ("if no search is needed, answer
+// none") it searched 9 times in 12 by hand and 0 in 3 inside the product; told to always search once, 12 in 12, every
+// search in general words. Whether to search at all is decided before it runs (`ASKS_FOR_THE_WEB`), not by the model.
+const SEARCH_WRITER_PROMPT=[
+  'You write web searches for a request. You see only the request; the person\'s documents are not shown to you.',
+  'Always call the search tool once, with a short search in general words that would help answer the request. Never put a name, a number, a date, an address or a placeholder like [DATO1] in a search.',
+].join('\n');
+/** The person asked for the internet, in so many words. In a turn that has private text in front of the model, this is
+ *  the only way a search happens: the writer of the answer sees the documents and is offered no web search. */
+const ASKS_FOR_THE_WEB=/\b(?:internet|web|online|on line|in rete|google|sul sito|siti|en línea|en ligne|im netz)\b/i;
+/** How many searches the search writer may make before the answer is written. */
+const MAX_SEARCHES=3;
+/** What a provider outside this computer receives in place of an earlier answer that used the person's documents. */
+const WITHHELD_ANSWER='[This earlier answer used the person\'s documents. Its text stays on their computer and is not sent to a provider outside it.]';
 
 /** The two read-only file tools (`files.list`, `files.read`), by the name a model sees. */
 const FILE_TOOL_NAME = /^engine_files_/;
@@ -122,13 +141,25 @@ export class ChatOrchestrator{
       signal?.addEventListener('abort',()=>settle(false),{once:true});
     });
   }
-  async #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[],audience='operator',language='',can=null}){
+  /** True when any provider this turn may answer from — the first or a fallback — sends what it is given outside this
+   *  computer. The running local model has a derived id that is not in the store, and is local by construction. */
+  #routeLeavesComputer(providerIds){
+    const profiles=this.store.read().providerProfiles??[];
+    return (providerIds??[]).some((id)=>profiles.find((item)=>item.id===id)?.external===true);
+  }
+  // `privateAllowed`: false when the route may reach an external provider. Owner, 2026-10-10: a person's documents go to
+  // the model on this computer only, never to a service outside it — so with an external provider anywhere in the route
+  // the turn carries no retrieved passages, no file read before the answer, and no tool that reads the workspace. This
+  // replaces, for the documents, the older external-provider consent with «anonymize» (`provider-gateway.mjs`), which
+  // masked identifiers but still sent the rest of the text.
+  async #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[],audience='operator',language='',can=null,privateAllowed=true}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??inspection.conversation.mode??'ASK').toUpperCase();
     const projectInstructions=inspection.project?.instructions?`Project instructions:\n${inspection.project.instructions}`:'';
     const memoryText=inspection.memories.length?`Visible memory selected for this project:\n${inspection.memories.map((item)=>`- ${item.title}: ${item.content}`).join('\n')}`:'';
     const policy=inspection.project?.knowledgePolicy??{mode:'hybrid',limit:8,maxCharacters:60000};
-    const evidence=this.workspace.knowledgeContext(content,{projectId:inspection.conversation.projectId,sourceIds,policy});
+    const evidence=privateAllowed?this.workspace.knowledgeContext(content,{projectId:inspection.conversation.projectId,sourceIds,policy}):[];
+    if(!privateAllowed)this.ledger?.append({actor:'system',action:'chat.private-data',result:'withheld',details:{conversationId,reason:'external-provider-in-route'}});
     // A person who asks about one of their files wants it read, and a 7B asked to find it by itself (list, choose, read) got it right
     // 3 times in 8 (measured 2026-10-08, files_live.mjs). So the server finds the file the message is about and puts its text in front
     // of the model as one more fenced source, like any retrieved passage — and offers no tool for that turn. When it cannot tell which
@@ -137,7 +168,7 @@ export class ChatOrchestrator{
     const fileReads=[];
     // The caller's OWN authority, like every built-in tool (`builtin-tools.mjs`, property 1): a file is read for a person who may read the
     // workspace, and a caller that says nothing about what it may do gets nothing read.
-    if(audience==='everyday'&&selectedMode==='ASK'&&this.fileContext&&typeof can==='function'&&can('workspace.read')&&mentionsFiles(content,{asking:true})){
+    if(privateAllowed&&audience==='everyday'&&selectedMode==='ASK'&&this.fileContext&&typeof can==='function'&&can('workspace.read')&&mentionsFiles(content,{asking:true})){
       try{
         for(const passage of await this.fileContext(content)){evidence.push(passage);fileReads.push({path:passage.source?.name??passage.sourceId});}
         if(fileReads.length)this.ledger?.append({actor:'system',action:'chat.file-context',result:'read',details:{conversationId,paths:fileReads.map((item)=>item.path)}});
@@ -174,6 +205,12 @@ export class ChatOrchestrator{
     const requestedToolIds=toolIds.length?toolIds:(inspection.tools??[]).map((item)=>item.id);
     let scope=enforceToolScope({grantedToolIds:enabledToolIds,requestedToolIds});
     let granted=this.store.read().tools.filter((item)=>scope.allowedToolIds.includes(item.id));
+    // An external provider in the route: no built-in tool that reads the workspace, so nothing of it can reach that
+    // provider through a tool result either. The web search stays — that model has seen no document to leak.
+    if(!privateAllowed){
+      granted=granted.filter((item)=>!(item.transport==='builtin'&&(item.permissions??[]).includes('workspace.read')&&item.config?.method!=='research.search'));
+      scope={...scope,allowedToolIds:granted.map((item)=>item.id)};
+    }
     // A person who asked to write, explain or plan has not asked for anything to be DONE to the
     // installation, and the engineer's tool schemas (about 4,600 tokens on a stock install) only crowd a
     // small model, which then drifts: measured 2026-10-06 on a 7B, another language in the middle of a
@@ -216,16 +253,22 @@ export class ChatOrchestrator{
       extraInstructions:[this.agentService&&!quiet&&AGENT_DIRECTIVE_INSTRUCTION],
       audience,language,
     });
+    // An answer that used the person's documents is marked when it is saved (`privateData`, below). To a provider outside
+    // this computer it is not sent: the conversation keeps its shape, the content of that answer stays here.
     const messages=[
       {role:'system',content:system},
       ...(untrusted?[{role:'user',content:untrusted.text,untrusted:true}]:[]),
-      ...inspection.messages.map((item)=>({role:item.role,content:item.content})),
+      ...inspection.messages.map((item)=>({role:item.role,content:!privateAllowed&&item.metadata?.privateData?WITHHELD_ANSWER:item.content})),
       {role:'user',content:String(content)}
     ];
     if(untrusted?.detections.length){
       this.ledger?.append({actor:'system',action:'prompt-injection.detected',result:'contained',details:{conversationId,passages:untrusted.detections.length,signals:untrusted.detections.flatMap((item)=>item.signals.map((signal)=>signal.signal))}});
     }
-    return{inspection,selectedMode,projectInstructions,memoryText,evidence,fileReads,messages,tools,toolScope:scope,injectionDetections:untrusted?.detections??[],dataClasses:dataClassesFor({history:inspection.messages.length,projectInstructions,memoryText,evidence,tools})};
+    // What is private in this turn, for the egress gate: the passages and files read, and the conversation so far (an
+    // answer that quoted a document is as private as the document). Tool results that read the workspace are added as
+    // they arrive (`#runToolCalls`); web results are not, they came from outside.
+    const privateTexts=[...evidence.map((item)=>String(item.text??'')),...inspection.messages.map((item)=>String(item.content??''))];
+    return{inspection,selectedMode,projectInstructions,memoryText,evidence,fileReads,messages,tools,toolScope:scope,injectionDetections:untrusted?.detections??[],privateTexts,egressSent:[],userSaid:String(content??''),dataClasses:dataClassesFor({history:inspection.messages.length,projectInstructions,memoryText,evidence,tools})};
   }
   #citations(evidence){return evidence.map((item)=>({sourceId:item.sourceId,sourceName:item.source?.name??item.sourceId,passageIndex:item.index,score:item.score,excerpt:item.text.slice(0,500),evidenceStatus:'retrieved',claimStatus:'not_independently_verified'}));}
 
@@ -286,6 +329,32 @@ export class ChatOrchestrator{
       // `requiresApproval:input.requiresApproval!==false`, i.e. TRUE by default, so reading it
       // here would put an approval in front of every tool an operator has ever registered. That
       // is a different decision, and not one this change is entitled to make.
+      // The egress gate, for a call whose arguments leave this computer (Owner, 2026-10-10). Every string in the
+      // arguments is checked against what is private in this turn; the worst outcome decides. CLEAN sends the strings
+      // without the private pieces; ASK waits for the person through the same mid-turn approval a write uses; BLOCK
+      // sends nothing and tells the model why, so it can search again in general words or answer from the documents.
+      // What is recorded is the kinds removed and the text that actually left — never the private values themselves.
+      let args=call.arguments;
+      if(leavesThisComputer(tool)){
+        const {value:gated,worst,kinds,sent}=gateArguments(call.arguments,privateIndex(built.privateTexts??[]),{userSaid:built.userSaid??'',history:built.egressSent??[]});
+        sse(res,'egress',{runId,id:call.id,name:tool.name,outcome:worst.outcome,reason:worst.reason??null,kinds,topic:worst.topic??null});
+        if(worst.outcome==='BLOCK'){
+          this.ledger?.append({actor:actorId,action:'chat.egress',result:'blocked',details:{runId,conversationId,name:tool.name,kinds,reason:worst.reason}});
+          record(false,`Nothing was sent: ${worst.reason}. Data from the person's documents never leave this computer. Search again with general words only — no names, numbers, dates, addresses or passages of the documents — or answer from the documents themselves.`,'egress-blocked');
+          continue;
+        }
+        if(worst.outcome==='ASK'&&!(await this.#awaitApproval({runId,call,tool,actorId,res,signal}))){
+          this.ledger?.append({actor:actorId,action:'chat.egress',result:'not-approved',details:{runId,conversationId,name:tool.name,kinds,reason:worst.reason}});
+          record(false,`The person did not approve sending this search (${worst.reason}), so nothing left. Do not send it again this turn: answer from what you have, or search in general words.`,'egress-not-approved');
+          continue;
+        }
+        // What leaves is always the gated form: a CLEAN string without its private pieces, a PROCEED string as it was, an
+        // approved ASK string as the person saw it — so approving one string never releases another one's private pieces.
+        args=gated;
+        const left=sent;
+        built.egressSent?.push(...left);
+        this.ledger?.append({actor:actorId,action:'chat.egress',result:worst.outcome==='PROCEED'?'sent':worst.outcome==='CLEAN'?'sent-cleaned':'sent-approved',details:{runId,conversationId,name:tool.name,kinds,sent:left.join(' | ').slice(0,500)}});
+      }
       if(tool.mutative&&!(await this.#awaitApproval({runId,call,tool,actorId,res,signal}))){
         this.ledger?.append({actor:actorId,action:'chat.tool-call',result:'refused',details:{runId,conversationId,toolId:tool.id,name:tool.name,reason:'not-approved'}});
         record(false,`The person did not approve "${tool.name}", so it did not run. Do not call it again this turn: continue without it, or say what you would need.`,'not-approved');
@@ -298,8 +367,13 @@ export class ChatOrchestrator{
         // dispatch the terminal uses, so the chat reaches exactly what the person could reach by
         // typing the command — and a turn whose route did not supply one gets a refusal by name
         // rather than an unchecked call.
-        const result=await this.toolExecutor.execute(tool,call.arguments,{actorId,projectId:built.inspection.conversation.projectId,signal,can});
+        // `egressGated`: this turn already gated the arguments against its own private texts (above), so the executor's
+        // stricter check for callers that know no context is not applied a second time over an approved search.
+        const result=await this.toolExecutor.execute(tool,args,{actorId,projectId:built.inspection.conversation.projectId,signal,can,egressGated:leavesThisComputer(tool)});
         const text=typeof result==='string'?result:JSON.stringify(result);
+        // A tool that stayed on this computer (a file read, a map of the workspace) brought local text into the turn: the
+        // gate must know it before the next search. A web result is not added: it came from outside.
+        if(!leavesThisComputer(tool)){built.privateTexts?.push(text);built.privateUsed=true;}
         const fenced=wrapUntrusted([{text,sourceId:`tool:${tool.id}`,index:0,source:{name:tool.name}}],{label:`result of tool ${tool.name}`});
         if(fenced?.detections.length){
           // Recorded AND propagated: `built.injectionDetections` is what gates the agent-directive
@@ -317,7 +391,7 @@ export class ChatOrchestrator{
     return outcomes;
   }
   async compare({actorId,conversationId,branchId,content,providerIds,model=null,mode=null,sourceIds=[],toolIds=[]}){
-    const built=await this.#buildContext({conversationId,branchId,content,mode,sourceIds,toolIds});
+    const built=await this.#buildContext({conversationId,branchId,content,mode,sourceIds,toolIds,privateAllowed:!this.#routeLeavesComputer(providerIds)});
     const result=await this.providers.compare(providerIds,{actorId,projectId:built.inspection.conversation.projectId,model,messages:built.messages,tools:built.tools,dataClasses:built.dataClasses});
     this.ledger?.append({actor:actorId,action:'models.compared',result:'success',details:{conversationId,providerIds:providerIds.slice(0,8)}});
     return{...result,citations:this.#citations(built.evidence),mode:built.selectedMode};
@@ -341,7 +415,7 @@ export class ChatOrchestrator{
     // answer with a status code any more, and a rejection from here used to escape the
     // request handler entirely and take the process down with it.
     const user=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'user',content,metadata:{mode:selectedMode,sourceIds,toolIds}});
-    const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds,audience:speakTo,language:typeof language==='string'?language:'',can});
+    const built=await this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds,audience:speakTo,language:typeof language==='string'?language:'',can,privateAllowed:!this.#routeLeavesComputer(providerRoute)});
     // #buildContext includes the just-persisted user message; remove its duplicate final copy.
     built.messages=built.messages.filter((message,index)=>!(index===built.messages.length-2&&message.role==='user'&&message.content===user.content));
     // No stray Chinese in an Italian draft: only for a person (the everyday register), only when the turn offers no tool, only for a
@@ -368,6 +442,40 @@ export class ChatOrchestrator{
       // result and calls it again forever is a real failure mode and an unbounded one bills the
       // operator's own hardware for it.
       const conversation=[...built.messages];
+      // Layer 1 of «i dati del cliente non escono» (Owner, 2026-10-10): when this turn has private text in front of the
+      // model (passages, a file read, or a conversation that has already quoted one) AND the web search is on offer, the
+      // searches are written first by a separate call that sees ONLY the person's request with every datum replaced by
+      // a placeholder — so it cannot copy, translate or paraphrase a datum it never saw. Its searches still pass the
+      // egress gate (`#runToolCalls`). The results enter as fenced passages, and the model that writes the answer, which
+      // does see the documents, is then offered no web search at all: the one who sees the data has no way out.
+      const webTool=this.toolExecutor?this.store.read().tools.find((item)=>built.toolScope.allowedToolIds.includes(item.id)&&item.transport==='builtin'&&item.config?.method==='research.search'):null;
+      const seesPrivate=built.evidence.length>0||(built.inspection.messages??[]).length>1;
+      if(webTool&&seesPrivate&&!ASKS_FOR_THE_WEB.test(String(content))){
+        // No internet asked for: the answer is written from what is here, with no web search on offer.
+        this.ledger?.append({actor:actorId,action:'chat.search-writer',result:'not-asked',details:{runId,conversationId}});
+      }else if(webTool&&seesPrivate){
+        const {masked}=pseudonymize(String(content),privateIndex(built.privateTexts??[]));
+        const writer=[{role:'system',content:SEARCH_WRITER_PROMPT},{role:'user',content:masked}];
+        const schema=[{type:'function',function:{name:webTool.name,description:webTool.description,parameters:webTool.inputSchema}}];
+        let searches=null;
+        for await(const event of this.providers.streamWithFallback(providerRoute,{actorId,projectId:built.inspection.conversation.projectId,model,messages:writer,tools:schema,dataClasses:built.dataClasses},{signal:controller.signal})){
+          if(event.toolCalls?.length)searches=event.toolCalls;
+        }
+        const asked=(searches??[]).filter((call)=>call.name===webTool.name).slice(0,MAX_SEARCHES);
+        this.ledger?.append({actor:actorId,action:'chat.search-writer',result:asked.length?'searched':'none',details:{runId,conversationId,searches:asked.length,placeholders:masked!==String(content)}});
+        if(asked.length){
+          const outcomes=await this.#runToolCalls({calls:asked,built,actorId,runId,conversationId,res,signal:controller.signal,can});
+          toolTrace.push(...outcomes.map((item)=>({name:item.name,ok:item.ok,detail:item.detail})));
+          const found=outcomes.filter((item)=>item.ok).map((item)=>item.content);
+          if(found.length)conversation.splice(conversation.length-1,0,{role:'user',content:found.join('\n\n'),untrusted:true});
+        }
+      }
+      if(webTool&&seesPrivate){
+        // Either way the answer is written by the model that sees the documents: no web search on offer to it, in the
+        // schema or the scope.
+        built.tools=built.tools.filter((item)=>item.function?.name!==webTool.name);
+        built.toolScope={...built.toolScope,allowedToolIds:built.toolScope.allowedToolIds.filter((id)=>id!==webTool.id)};
+      }
       for(let round=0;round<=MAX_TOOL_ROUNDS;round+=1){
         let roundText='';let calls=null;
         // `usage` is only ever populated on the frame that carries it (see provider-gateway's
@@ -425,7 +533,10 @@ export class ChatOrchestrator{
       // `toolTrace` is persisted with the message, not only streamed: a person reopening this
       // conversation tomorrow must still be able to see that the answer came from a tool and which
       // one. Provenance that exists only in a live SSE frame is provenance that expires.
-      const assistant=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'assistant',content:cleanAnswer||'[Provider returned no text]',metadata:{runId,providerId:selectedProvider,providerRoute,model,mode:selectedMode,usage,agentCreated,toolCalls:toolTrace.length?toolTrace:undefined},citations});
+      // `privateData`: this answer was written in front of the person's documents — passages, a file, a tool that read the
+      // workspace, or an earlier answer that already had them (the mark is inherited, because a model repeats what it saw).
+      const privateData=built.evidence.length>0||built.privateUsed===true||(built.inspection.messages??[]).some((item)=>item.metadata?.privateData);
+      const assistant=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'assistant',content:cleanAnswer||'[Provider returned no text]',metadata:{runId,providerId:selectedProvider,providerRoute,model,mode:selectedMode,usage,agentCreated,toolCalls:toolTrace.length?toolTrace:undefined,privateData:privateData||undefined},citations});
       sse(res,'complete',{runId,message:assistant,providerId:selectedProvider,citations,usage,agentCreated,toolCalls:toolTrace});this.ledger?.append({actor:actorId,action:'chat.complete',result:'success',details:{runId,conversationId,providerId:selectedProvider,providerRoute}});
     }catch(error){const stopped=error.name==='AbortError'||controller.signal.aborted;sse(res,stopped?'stopped':'error',{runId,error:stopped?'Generation stopped.':error.message});this.ledger?.append({actor:actorId,action:'chat.complete',result:stopped?'stopped':'error',details:{runId,message:error.message}});
     }finally{this.active.delete(runId);for(const [key,waiting] of this.pending)if(key.startsWith(`${runId}:`)){clearTimeout(waiting.timer);this.pending.delete(key);}res.end();}

@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { guardedFetch } from './address-guard.mjs';
+import { gateArguments, leavesThisComputer } from './egress-gate.mjs';
 
 const LOCAL_HOSTS=new Set(['localhost','127.0.0.1','::1','host.docker.internal']);
 function err(message,status=400){return Object.assign(new Error(message),{status});}
@@ -50,8 +51,21 @@ export class ToolExecutor{
   // for the terminal and the browser. A built-in call arriving without one is REFUSED, never run
   // unchecked — an optional gate is how the socket transport went un-gated until `D-0302`, and how
   // a new transport inherits the accident.
-  async execute(tool,input,{actorId='system',projectId=null,signal,can=null}={}){
+  // `egressGated`: the caller already passed these arguments through the egress gate with the private texts it knows
+  // (the chat does, per turn). Every other caller — an agent run, a workflow step, the Research page — knows no such
+  // context, so a call that leaves this computer gets the strict form here: any personal datum the gate recognises
+  // (tax code, IBAN, VAT number, card, phone, email, street address, date, a person's name, an encoded string, a web
+  // address) means nothing is sent. Owner, 2026-10-10: «i dati del cliente non escono mai». This is the one place every
+  // caller passes through, so no caller can be the one that forgot.
+  async execute(tool,input,{actorId='system',projectId=null,signal,can=null,egressGated=false}={}){
     if(tool.disabled)throw err('Tool is disabled.',403);
+    if(!egressGated&&leavesThisComputer(tool)){
+      const {worst,kinds}=gateArguments(input??{});
+      if(worst.outcome!=='PROCEED'){
+        this.ledger?.append({actor:actorId,action:'tool.egress',result:'blocked',details:{toolId:tool.id,projectId,kinds}});
+        throw Object.assign(err(`Nothing was sent: the request carries personal data (${kinds.join(', ')||worst.reason}). Data never leave this computer — search in general words.`,422),{kind:'EGRESS_BLOCKED'});
+      }
+    }
     if(tool.external){if(!tool.consent?.granted)throw err('Explicit external-tool consent is required.',403);if(tool.consent.projectIds?.length&&(!projectId||!tool.consent.projectIds.includes(projectId)))throw err('Tool consent does not cover this project.',403);}
     const started=Date.now();let result;
     if(tool.transport==='builtin'){

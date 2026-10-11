@@ -6268,9 +6268,10 @@ f370efff5022df4b9bb1683c21a29563612b9f2feb2ed97ca72e5eefd7fa9428  ./services/ref
 65b20a0c388c6ebf8681f8d653d41e38f87938363f79a603a5cd2e5c1b1c933a  ./services/reference-control-plane/src/ai-workspace/assistant-identity.mjs
 cca4dc81b9586b5168f411a1a9d718a663d49089d372de525c04ca4598333eb3  ./services/reference-control-plane/src/ai-workspace/atomic-store.mjs
 01a256a302abc8a2b514aa6c4c9064ccee6fd626c713de4c396878abf1ad7729  ./services/reference-control-plane/src/ai-workspace/builtin-tools.mjs
-77477ea90223efef7b6294d392b88feb722037f6d912015a257772d30e99f041  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
+e567abb876511fdffdc196d23f26f1a487911450b619012539d82e0c574585fc  ./services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
 dd2ee09442d9d794675e23001e36aa1d0f99c626e4dc5c42462c785d382ef1e2  ./services/reference-control-plane/src/ai-workspace/context-graph.mjs
 f237bcd7b10abccfe16410b8b6a87f60b15dc3b6f5f15f1a2c03af0d461fe61c  ./services/reference-control-plane/src/ai-workspace/credential-vault.mjs
+e0f869aae2d9774b9344613fbf4cf39649f0fd8be37e1247aab229f4350bbff9  ./services/reference-control-plane/src/ai-workspace/egress-gate.mjs
 6d3c76415622d493f6e21a891b1c797ea2780c7cd6a81ba6d6ef7dc0810dd577  ./services/reference-control-plane/src/ai-workspace/file-extractors.mjs
 30ce8ad08fdbb22e9ced505451681adeb5e7c7de62e0ef20e8a7d9778fef0bc2  ./services/reference-control-plane/src/ai-workspace/output-guard.mjs
 baeffcf7725541c141f60d2b86e8af1ab3f6ad96513610f89e3ff0e598ce426b  ./services/reference-control-plane/src/ai-workspace/pii-redaction.mjs
@@ -6278,7 +6279,7 @@ baeffcf7725541c141f60d2b86e8af1ab3f6ad96513610f89e3ff0e598ce426b  ./services/ref
 4119998ce66fafbcf3c8d110ad4478158d1dcf42ca5f46ac7e4c452e325a7144  ./services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
 0f8f4f23bed3fc681851fc647acacd24ad67de241dd9d44f428f2016ae109010  ./services/reference-control-plane/src/ai-workspace/search.mjs
 e3d905867839a527a995c86fbb711f26375c089d7e9e00407b0ab6baa841675c  ./services/reference-control-plane/src/ai-workspace/tool-call-stream.mjs
-9550748da15180f83387f167d08adfd0bb6909114e0fa177b0609d62b959bf86  ./services/reference-control-plane/src/ai-workspace/tool-executor.mjs
+71f8ec0174a894eee574ddc46482f92ffc75aba175e24b06e4a730eb32d67f50  ./services/reference-control-plane/src/ai-workspace/tool-executor.mjs
 b6e4b823b8783fde1d3c96232d6fb9d4d0e63c43bca44b9045773de1dc0c3ab2  ./services/reference-control-plane/src/ai-workspace/untrusted-content.mjs
 913636b128b917bba9a6676edc032c704de8631701caa6c57daa92ebda587a76  ./services/reference-control-plane/src/ai-workspace/vision-caption.mjs
 0d188afd02c1614eb30f618337c37a97a58ebfe5f8da724a44608622e7724672  ./services/reference-control-plane/src/ai-workspace/workflow-service.mjs
@@ -6467,6 +6468,7 @@ e7a8313ae57bc86d1b9245d1b4dd877563ac7d08d2d2caea5b4413aa28e3cde0  ./services/ref
 2db2c494be60e394c448329041db0ac3508a625a7b9f341176a5872f1d1744f9  ./services/reference-control-plane/test/ce-034-the-same-names-in-both-shells.test.mjs
 fda65813149624b9bc176c24510afaad0d2138b0edc3ac21a1c0487fadfa6b9a  ./services/reference-control-plane/test/ce-036-one-menu-filtered-by-permission.test.mjs
 460d3f81a9ada2d82f9eaa5bdd9bad84f3bd6303805c5705ea3a87be3863698b  ./services/reference-control-plane/test/chat-agent-directive.test.mjs
+52e08b472593fa52a9f06544ca46d60c8f59be6f5e3a665d78dbb376addd41ac  ./services/reference-control-plane/test/chat-egress-gate.test.mjs
 4842299a8862a9d790d285900ffe89edf2d80a4edf5f612d822b2ce63b6b4bd1  ./services/reference-control-plane/test/chat-send-button-routes-commands.test.mjs
 88416aae6f2182916d70a140303cf57da575810f5a11490bff13404164228810  ./services/reference-control-plane/test/chat-tool-loop.test.mjs
 50157641fdfc1152f263387a874b31488ef3ce72d0e09a1fccbf6c1abe4b0b53  ./services/reference-control-plane/test/chat-tools-narrowed.test.mjs
@@ -6513,6 +6515,7 @@ b2c2959017f750b1e487e238e454edb47ceaf50b7bb55fb8a6c2d940e0dd3af0  ./services/ref
 b827da2ae8b84e6b1e79013bf20c5be0331b3c975abbd29de623c243ebcff0b5  ./services/reference-control-plane/test/durability.test.mjs
 aecf96dd49c0df0b2ac507097a723c5b3c6ab95de8defed863328752a4251512  ./services/reference-control-plane/test/edit-blocks-bound-the-answer.test.mjs
 53cbca84b7863107d5f674daa1c6377c72bc20f13c9e3f44b8f7776f91279917  ./services/reference-control-plane/test/effect-receipt.test.mjs
+f302ed848592263aec8af0a74bc486290b23fefb3ade0e38b376a69383179043  ./services/reference-control-plane/test/egress-gate.test.mjs
 caa892598d71923ffa1915c83e6f5ddca2ab3a637f129f61665cc46397bf19a7  ./services/reference-control-plane/test/engine-state-exclusions.test.mjs
 6b780bbaad2b8e16d05e34fc4af928a7894595a289fe85db5ab8ec2c9cb068f6  ./services/reference-control-plane/test/event-vectors.test.mjs
 ed9ea2fd9b75a18bde94cf92fcc775264785d0a1af1b2bcfcba74ab9c73877dd  ./services/reference-control-plane/test/executor-vectors.test.mjs
