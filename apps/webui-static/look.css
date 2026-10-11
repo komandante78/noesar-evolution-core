@@ -362,3 +362,63 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 #view-settings .settings-nav-sub.active{color:var(--n-ink);background:transparent;box-shadow:none;font-weight:600}
 /* one i per section of Settings, beside it; the page itself needs none */
 #view-settings>.section-header{display:none}
+
+/* ── CodeN Evolution: the terminal in the middle, the job in progress on the right (the drawing) ── */
+#view-coden.active{display:grid;grid-template-columns:minmax(0,1fr) 400px;grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:"head work" "tabs work" "bar work" "main work";align-items:start;flex:1;min-height:0;height:100%;padding:0}
+#view-coden>.section-header{display:none}
+.coden-head{grid-area:head;display:flex;align-items:center;gap:12px;min-height:60px;padding:0 28px}
+.coden-head h1{margin:0;font-size:0.9375rem;font-weight:600}
+.coden-repo{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--n-line);border-radius:999px;background:var(--n-card);font-size:0.875rem;color:var(--n-muted)}
+.coden-repo svg{width:15px;height:15px}
+.coden-tabs{grid-area:tabs;display:flex;flex-wrap:wrap;gap:4px;padding:0 28px 12px}
+.coden-tab{min-height:40px;padding:0 14px;border:0;border-radius:10px;background:transparent;color:var(--n-muted);font:inherit;font-size:0.9375rem;cursor:pointer}
+.coden-tab:hover{background:var(--n-hover);color:var(--n-ink)}
+.coden-tab.active{background:var(--n-card);color:var(--n-ink);font-weight:600;box-shadow:var(--n-shadow)}
+#view-coden .coden-bar{grid-area:bar;margin:0 28px 12px;border-radius:12px}
+#view-coden #codenDivergence{grid-area:bar}
+#view-coden .coden-terminal-region{grid-area:main;align-self:stretch;height:auto;min-height:24rem;margin:0 28px 20px;border:0;border-radius:16px;background:var(--n-term);overflow:hidden}
+#view-coden .coden-terminal-bar{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#view-coden .coden-terminal-host{padding:14px 16px}
+#view-coden .agent-shell{grid-area:main}
+/* the bench: its panels take the middle when a tab names one; its agent column is the right */
+#view-coden .bench,#view-coden:not([data-panel-open]) .bench{display:contents}
+#view-coden .bench-main{grid-area:main;margin:0 28px 20px;min-width:0}
+#view-coden:not(:has(.bench-panel.active)) .bench-main{display:none}
+#view-coden:has(.bench-panel.active) .coden-terminal-region{display:none}
+#view-coden .bench-agent{grid-area:work;align-self:stretch;display:flex;flex-direction:column;gap:14px;min-height:0;overflow:auto;padding:20px;border-inline-start:1px solid var(--n-line);background:var(--n-card)}
+#view-coden .bench-agent .mini-panel{border:0;padding:0;background:transparent;box-shadow:none}
+/* the job */
+.coden-work{display:flex;flex-direction:column;gap:14px}
+.coden-work.hidden{display:none}
+.coden-work h2{margin:0;font-size:1.1875rem}
+.coden-work .sub{margin:-8px 0 0;font-size:0.9063rem;color:var(--n-muted)}
+.coden-work .steps{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;font-size:0.9375rem}
+.coden-work .steps li::before{display:inline-block;width:1.4em;font-weight:700}
+.coden-work .steps .done{color:var(--n-ok)}.coden-work .steps .done::before{content:"✓"}
+.coden-work .steps .wait{color:var(--n-warn-ink);font-weight:600}.coden-work .steps .wait::before{content:"◷"}
+.coden-work .steps .bad{color:var(--n-bad)}.coden-work .steps .bad::before{content:"✗"}
+.coden-work .steps .off{color:var(--n-muted)}.coden-work .steps .off::before{content:"·"}
+.coden-work .file{font-weight:600;font-size:0.9375rem;overflow-wrap:anywhere}
+.coden-work .diff{border:1px solid var(--n-line);border-radius:12px;overflow:hidden;font:0.9063rem/1.55 ui-monospace,Consolas,monospace}
+.coden-work .diff div{padding:6px 12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.coden-work .diff .d{background:#fdecea;color:#b42318}.coden-work .diff .a{background:#e6f4ec;color:#0b6e3f}
+:root[data-theme="midnight"] .coden-work .diff .d,:root:not([data-theme]) .coden-work .diff .d{background:#3a1717;color:#ffb4ab}
+:root[data-theme="midnight"] .coden-work .diff .a,:root:not([data-theme]) .coden-work .diff .a{background:#12301f;color:#7fd3a1}
+.coden-work .btns{display:flex;gap:10px}
+.coden-work .btns button{flex:1;min-height:46px;border-radius:12px;font:inherit;font-weight:600;cursor:pointer}
+.coden-work .btns .yes{border:0;background:var(--n-accent);color:var(--n-on-accent)}
+.coden-work .btns .yes:disabled{opacity:.5;cursor:not-allowed}
+.coden-work .btns .no{border:1px solid var(--n-line);background:var(--n-card);color:var(--n-ink)}
+.coden-work .proof{align-self:center;min-height:40px;border:0;background:none;font:inherit;font-size:0.9063rem;font-weight:600;color:var(--n-accent-ink);cursor:pointer}
+.coden-work .back{margin:0;font-size:0.875rem;color:var(--n-muted);text-align:center}
+/* the terminal's own document: dark in both looks, as the drawing (the palette is read from these tokens) */
+:root:has(body.coden-terminal-document){--surface-code:#16191f;--text-code:#d7dde6;--surface-root:#16191f;--muted:#8a93a1;--text-primary:#ffffff;--green:#7fd3a1;--accent-brand:#5fc4b8;--cyan:#5fc4b8;--blue:#7aa7ff;--amber:#ffc264;--red:#ff8a93;--accent-wash-strong:rgba(95,196,184,.28)}
+body.coden-terminal-document{background:#16191f}
+@media (max-width:1100px){
+  #view-coden.active{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "tabs" "bar" "main" "work"}
+  #view-coden .bench-agent{border-inline-start:0;border-top:1px solid var(--n-line)}
+}
+@media (max-width:900px){.coden-head{padding:0 16px 0 60px}.coden-tabs{padding:0 16px 12px}#view-coden .coden-terminal-region,#view-coden .bench-main{margin:0 16px 16px}}
+/* with a job on screen, the right column is the job (the drawing); the authority panel a bare address opens stays one
+   address away (Advanced shows it under the job) */
+body:not([data-level=advanced]) #view-coden .bench-agent:has(.coden-work:not(.hidden)) [data-agent-panel=authority]{display:none}

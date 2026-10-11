@@ -609,7 +609,9 @@ test('CE-033 — the browser renders the four regions the terminal does', () => 
   // The status line is the `.coden-bar` chips, not a second strip: same facts, each shell's
   // own idiom. Asserted so that a later phase deleting the bar fails here rather than quietly
   // leaving the browser with three regions against the terminal's four.
-  assert.match(MARKUP, /class="coden-bar"/, 'the browser has no status region');
+  // Since 2026-10-11 the bar is shown at the Advanced level (one interface): the terminal draws its own status line
+  // in both, so a person at Base still reads it there, once.
+  assert.match(MARKUP, /class="coden-bar(?: level-advanced)?"/, 'the browser has no status region');
 });
 
 test('CE-033 — neither shell has a region the other has not', () => {

@@ -98,7 +98,7 @@ describe('webui boot order · D-0416', () => {
     // Without this, the guard above could go on passing after the call site moved away, and
     // would then be protecting nothing. The point is the reachability, not the two names.
     const source = lines.join('\n');
-    assert.match(source, /if\(target==='coden'\)attachCodenTerminal\(\);else detachCodenTerminal\(\);/,
+    assert.match(source, /if\(target==='coden'\)\{attachCodenTerminal\(\);startCodenWork\(\);\}else\{detachCodenTerminal\(\);stopCodenWork\(\);\}/,
       'the view-activation path no longer calls attach/detachCodenTerminal — re-derive what the router reaches before trusting this file');
   });
 });

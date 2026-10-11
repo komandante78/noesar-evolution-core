@@ -519,7 +519,7 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // spends one of the account's viewport slots on a screen nobody is looking at, and the
   // bridge caps those at eight. Not on every activation either — `mountCodenTerminal` is
   // idempotent here because `codenTerminal` is only null when nothing is attached.
-  if(target==='coden')attachCodenTerminal();else detachCodenTerminal();
+  if(target==='coden'){attachCodenTerminal();startCodenWork();}else{detachCodenTerminal();stopCodenWork();}
   let codenAddress='';
   // n.6, Owner 2026-08-27, during test B: «`#/coden` nudo va eliminato; deve mostrare cio che
   // oggi mostra `#/coden/agent/authority`». A bare address now names the agent region and the
@@ -594,6 +594,8 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // An address that names a panel is announced as that panel, not as the page containing
   // it: "Diff panel", not "CodeN Evolution view" for eleven different addresses.
   if(codenAddress)announceCodenPanel(section,codenAddress.split('/')[1]);
+  // The drawing's tabs: the one naming this address is lit; any other address of CodeN is the terminal's.
+  if(target==='coden'){const lit=$$('.coden-tab').some((tab)=>tab.dataset.codenTab===codenAddress);$$('.coden-tab').forEach((tab)=>tab.classList.toggle('active',lit?tab.dataset.codenTab===codenAddress:tab.dataset.codenTab==='terminal'));}
   // Gated on a signed-in user, not on permission alone: the router runs once at boot, before
   // `/auth/me` has answered, and `enterApplication()` runs it again once the role is known —
   // deliberately, so that a cold deep link is not resolved as access-denied. Everything the
@@ -699,6 +701,77 @@ function initRouter(){
   initInterface();
   initSettingsMenu();
 }
+// --- CodeN Evolution: the job in progress, on the right (the drawing, 2026-10-11) ---------
+// The latest run of the workspace engine still waiting for a decision, else the latest one decided. A view of the engine's
+// own records and two buttons that call the engine's own routes (the same as the Plan panel's): never a second write path.
+// ponytail: it polls every five seconds while CodeN is open; listen to the session's events instead if they ever carry
+// run updates.
+const UNDECIDED=new Set(['PENDING_APPROVAL','MEASURED']);
+let codenWorkTimer=null;
+function startCodenWork(){stopCodenWork();void refreshCodenWork();codenWorkTimer=setInterval(()=>{if(!document.hidden)void refreshCodenWork();},5000);}
+function stopCodenWork(){if(codenWorkTimer)clearInterval(codenWorkTimer);codenWorkTimer=null;}
+async function refreshCodenWork(){
+  const card=$('#codenWork');if(!card)return;
+  let runs=[];
+  try{runs=(await api('/api/v1/workspace-actions/runs?scope=all')).runs??[];}catch{runs=[];}
+  const chosen=[...runs].reverse().find((run)=>UNDECIDED.has(run.status))??runs.at(-1)??null;
+  if(!chosen){card.classList.add('hidden');card.replaceChildren();return;}
+  const run=await api(`/api/v1/workspace-actions/${encodeURIComponent(chosen.runId)}`).catch(()=>null);
+  if(card.dataset.drawn===JSON.stringify([chosen.runId,run?.status,Boolean(run?.measurement)]))return;
+  card.dataset.drawn=JSON.stringify([chosen.runId,run?.status,Boolean(run?.measurement)]);
+  drawCodenWork(card,chosen,run);
+}
+// Built with the DOM, as text: a request and a diff are the person's and the model's words, not this page's markup.
+function drawCodenWork(card,listed,run){
+  const status=run?.status??listed.status;
+  const change=describeChange(run);
+  const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
+  const nodes=[el('h2','',`${t('Job')} ${listed.runId.slice(0,4)}`)];
+  const request=change.request??listed.request;
+  if(request)nodes.push(el('p','sub',request));
+  const steps=el('ul','steps');
+  const step=(kind,text)=>{const item=el('li',kind,text);steps.append(item);};
+  step('done',t('Plan written'));
+  if(run?.measurement)step(run.measurement.clean?'done':'bad',t(run.measurement.clean?'Tried in the shadow: it matched':'Tried in the shadow: something did not match'));
+  if(status==='PENDING_APPROVAL')step('wait',t('Waiting to be tried in the shadow'));
+  else if(status==='MEASURED')step('wait',t('Waiting for you'));
+  else step(status==='PROMOTED'?'done':'off',t({PROMOTED:'Applied to your files',REJECTED:'Rejected',RESTORED:'Put back as it was',REFUSED:'Refused',ANSWERED:'Continued as a new job'}[status]??status));
+  nodes.push(steps);
+  for(const file of change.files.slice(0,6)){
+    nodes.push(el('div','file',file.path));
+    if(file.before===null&&file.after===null)continue;
+    const diff=el('div','diff');
+    // ponytail: the lines only in "before" and the lines only in "after", in order — not a real diff (no moved or
+    // repeated lines); a line-level LCS if a person ever needs to read a long change here.
+    const before=String(file.before??'').split('\n');const after=String(file.after??'').split('\n');
+    const kept=new Set(before.filter((line)=>after.includes(line)));
+    for(const line of before)if(!kept.has(line)&&line.trim())diff.append(el('div','d',`− ${line}`));
+    for(const line of after)if(!kept.has(line)&&line.trim())diff.append(el('div','a',`+ ${line}`));
+    if(diff.childElementCount)nodes.push(diff);
+  }
+  if(UNDECIDED.has(status)){
+    const buttons=el('div','btns');
+    const no=el('button','no',t('Reject'));no.type='button';
+    const yes=el('button','yes',t('Approve and apply'));yes.type='button';
+    // CE-008: an approval is answered against a measured result, never a description.
+    yes.disabled=status!=='MEASURED';if(yes.disabled)yes.title=t('It is tried in the shadow first: write /measure in the terminal.');
+    const decide=(verb,body)=>withBusy(verb==='approve'?yes:no,async()=>{
+      try{await api(`/api/v1/workspace-actions/${encodeURIComponent(listed.runId)}/${verb}`,{method:'POST',body:JSON.stringify(body)});card.dataset.drawn='';await refreshCodenWork();}
+      catch(error){reportError(error,verb==='approve'?'Approve':'Reject');}
+    });
+    no.addEventListener('click',async()=>{const reason=await textDialog(t('Reason for rejecting:'));if(reason!==null)void decide('reject',{reason});});
+    yes.addEventListener('click',()=>void decide('approve',{}));
+    buttons.append(no,yes);nodes.push(buttons);
+  }else{
+    // The signed page exists once the run is decided (session-proof.mjs says so itself).
+    const proof=el('button','proof',t('Download the signed receipt'));proof.type='button';
+    proof.addEventListener('click',()=>void downloadSessionProof(listed.runId));
+    nodes.push(proof);
+  }
+  if(UNDECIDED.has(status)||status==='PROMOTED')nodes.push(el('p','back',t('Afterwards you can always put it back as it was.')));
+  card.replaceChildren(...nodes);card.classList.remove('hidden');
+}
+
 // --- one interface (simple-mode.js, look.css) ----------------------------------
 // The menu's own buttons, the first screen of a chat, the box's switches, and the level. Everything visual is CSS keyed
 // on `body[data-level]`; nothing here hides a place by script.
@@ -3626,9 +3699,8 @@ function renderPlanActions(){
 }
 // One signed, self-verifying page for a decided run. Fetched with the session cookie (a plain link
 // would work too, but a download keeps the page out of the app's own origin and its policy).
-async function downloadSessionProof(){
-  if(!currentWorkspaceRun)return;
-  const runId=currentWorkspaceRun.runId;
+async function downloadSessionProof(runId=currentWorkspaceRun?.runId){
+  if(!runId)return;
   try{
     const response=await fetch(`/api/v1/workspace-actions/${encodeURIComponent(runId)}/session-proof.html`,{credentials:'same-origin'});
     if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.error??'Request failed');}
@@ -3903,7 +3975,7 @@ function initWorkspaceActions(){
   $('#planApproveBtn')?.addEventListener('click',()=>runWorkspaceAction('approve'));
   $('#planRejectBtn')?.addEventListener('click',()=>runWorkspaceAction('reject'));
   $('#planRestoreBtn')?.addEventListener('click',()=>runWorkspaceAction('restore'));
-  $('#planProofBtn')?.addEventListener('click',downloadSessionProof);
+  $('#planProofBtn')?.addEventListener('click',()=>downloadSessionProof());
   renderWorkspaceRun();
 }
 
@@ -5265,12 +5337,15 @@ async function renderBenchStatus(){
   }
 
   const gitChip=$('#codenGitChip');
+  const repo=$('#codenRepoText');
   // One fetch, two readers: the chip says which branch, the status line's `remote` field says
   // how far it has diverged. This response was already being fetched for the chip and then
   // discarded, while `remote` a few lines above reported "—" for a fact sitting in this very
   // variable. The terminal shell reads the identical state over `coden.gitStatus`.
   let gitState=null;
   try{gitState=await api('/api/v1/coden/git-status');}catch{gitState=null;}
+  // The drawing's line under the title: the folder the agent works on, and its branch, in words.
+  if(repo)repo.textContent=gitState?.available&&!gitState.detached?`${t('your code folder')} · ${t('branch')} ${gitState.branch}`:t('your code folder');
   if(gitChip){
     if(!gitState?.available)gitChip.textContent='git —';
     else if(gitState.detached)gitChip.textContent='git detached';

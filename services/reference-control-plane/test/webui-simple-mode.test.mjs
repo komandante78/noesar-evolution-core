@@ -1073,7 +1073,9 @@ describe('look.css: the one interface, readable by everyone', () => {
     assert.match(look, /body\[data-level=advanced\] \.level-advanced\{display:revert!important\}/);
     for (const rule of rules) {
       if (!/data-level/.test(rule.selector)) continue;
-      assert.ok(/body\[data-level=advanced\]|body:not\(\[data-level=advanced\]\) \.sidebar \.nav-act kbd/.test(rule.selector), `the level does something else: ${rule.selector}`);
+      // the two places Base shows less, and both are a detail, not a place: the shortcut written beside Search, and the
+      // authority panel under a job in CodeN (one address away, in the Jobs tab and in Ctrl K)
+      assert.ok(/body\[data-level=advanced\]|body:not\(\[data-level=advanced\]\) \.sidebar \.nav-act kbd|body:not\(\[data-level=advanced\]\) #view-coden \.bench-agent:has\(\.coden-work:not\(\.hidden\)\) \[data-agent-panel=authority\]/.test(rule.selector), `the level does something else: ${rule.selector}`);
     }
   });
 
@@ -1197,5 +1199,48 @@ describe('the language can be changed', () => {
   test('one setting: the select in Settings is the one the translator listens to', () => {
     assert.equal((html.match(/<select id="languageSelect">/g) ?? []).length, 1);
     assert.doesNotMatch(html, /menuLanguageSelect|simpleLanguageSelect/);
+  });
+});
+
+describe('CodeN Evolution as the drawing (2026-10-11)', () => {
+  const work = app.slice(app.indexOf('// --- CodeN Evolution: the job in progress'), app.indexOf('// --- one interface (simple-mode.js, look.css)'));
+
+  test('the title with the folder and its branch, and five tabs that are addresses', () => {
+    const head = html.slice(html.indexOf('<div class="coden-head">'), html.indexOf('</nav>', html.indexOf('<nav class="coden-tabs"')));
+    assert.match(head, /<h1>CodeN Evolution<\/h1>/);
+    assert.match(head, /id="codenRepoText"/);
+    const tabs = [...head.matchAll(/data-coden-tab="([^"]+)" data-view-link="([^"]+)">([^<]+)</g)].map((m) => [m[1], m[2], m[3]]);
+    assert.deepEqual(tabs, [['terminal', 'coden', 'Terminal'], ['agent/plan', 'coden/agent/plan', 'Jobs'], ['bench/map', 'coden/bench/map', 'Files'], ['bench/tools', 'coden/bench/tools', 'Tools'], ['bench/logs', 'coden/bench/logs', 'Log']]);
+    assert.match(app, /if\(repo\)repo\.textContent=gitState\?\.available&&!gitState\.detached\?/);
+  });
+
+  test('the job on the right is the engine\'s own record, drawn as text, decided with the engine\'s own routes', () => {
+    assert.match(work, /api\('\/api\/v1\/workspace-actions\/runs\?scope=all'\)/);
+    assert.match(work, /api\(`\/api\/v1\/workspace-actions\/\$\{encodeURIComponent\(chosen\.runId\)\}`\)/);
+    assert.ok(!/innerHTML/.test(work), 'a request and a diff are not this page\'s markup');
+    assert.match(work, /\/api\/v1\/workspace-actions\/\$\{encodeURIComponent\(listed\.runId\)\}\/\$\{verb\}/);
+    assert.match(work, /yes\.disabled=status!=='MEASURED'/, 'CE-008: no approval before a measured result');
+    assert.match(work, /downloadSessionProof\(listed\.runId\)/, 'the signed receipt of a decided job');
+    assert.match(app, /async function downloadSessionProof\(runId=currentWorkspaceRun\?\.runId\)\{/);
+  });
+
+  test('it is read only while CodeN is open', () => {
+    assert.match(app, /if\(target==='coden'\)\{attachCodenTerminal\(\);startCodenWork\(\);\}else\{detachCodenTerminal\(\);stopCodenWork\(\);\}/);
+    assert.match(work, /if\(!document\.hidden\)void refreshCodenWork\(\);/);
+  });
+
+  test('every phrase the job says is declared runtime-only and translated', () => {
+    const said = new Set([...work.matchAll(/\bt\('([^']+)'\)/g)].map((m) => m[1]));
+    for (const word of ['Applied to your files', 'Rejected', 'Put back as it was', 'Refused', 'Continued as a new job', 'Tried in the shadow: it matched', 'Tried in the shadow: something did not match']) said.add(word);
+    assert.ok(said.size >= 15, `${said.size}`);
+    for (const phrase of said) {
+      assert.ok(RUNTIME_ONLY.includes(phrase) || html.includes(`>${phrase}<`), `not declared runtime-only: ${phrase}`);
+      assert.ok(typeof CATALOGS.it[phrase] === 'string' && CATALOGS.it[phrase] !== phrase, `not translated: ${phrase}`);
+    }
+  });
+
+  test('the terminal is dark in both looks, as the drawing: its own document reads the one interface\'s tokens', () => {
+    assert.match(read('coden-terminal.html'), /<link rel="stylesheet" href="\.\/look\.css">/);
+    assert.match(look, /:root:has\(body\.coden-terminal-document\)\{--surface-code:#16191f;/);
   });
 });

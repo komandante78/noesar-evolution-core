@@ -392,6 +392,20 @@
       </section>
 
       <section class="view" id="view-coden">
+        <!-- As the drawing (2026-10-11): the title with the folder and the branch the agent works on, the tabs, the
+             terminal in the middle, and on the right the job in progress — only when there is one. The tabs are
+             addresses (the same ones Ctrl K and the terminal's / reach), so a panel is still a place you can link to. -->
+        <div class="coden-head">
+          <h1>CodeN Evolution</h1>
+          <span class="coden-repo" id="codenRepoChip" translate="no"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg><span id="codenRepoText"></span></span>
+        </div>
+        <nav class="coden-tabs" aria-label="CodeN Evolution">
+          <button class="coden-tab" type="button" data-coden-tab="terminal" data-view-link="coden">Terminal</button>
+          <button class="coden-tab" type="button" data-coden-tab="agent/plan" data-view-link="coden/agent/plan">Jobs</button>
+          <button class="coden-tab" type="button" data-coden-tab="bench/map" data-view-link="coden/bench/map">Files</button>
+          <button class="coden-tab" type="button" data-coden-tab="bench/tools" data-view-link="coden/bench/tools">Tools</button>
+          <button class="coden-tab" type="button" data-coden-tab="bench/logs" data-view-link="coden/bench/logs">Log</button>
+        </nav>
         <!-- D-0404 slice 3: CodeN Evolution IS the TUI, rendered here by a vendored terminal
              emulator over `WS /ws/coden`. The same renderer draws these frames as draws them
              over `ssh` (`apps/shared/coden/tui-screen.mjs`) — one surface, two viewports.
@@ -450,7 +464,7 @@
              AA and a view with no h1 is a worse page, not a tidier one. What is gone is the
              three-line block occupying the row the terminal spends on state. -->
         <h1 class="visually-hidden">CodeN Evolution</h1>
-        <div id="codenDivergence" class="divergence hidden" aria-live="polite"></div><div class="coden-bar"><!-- The six status chips that used to sit here (project · git · model · ctx · reasoning · sandbox) were removed on 2026-08-31: they are fields of `footerText()` in tui-screen.mjs, and the terminal above already paints every one of them. Three of the six said so themselves, in their own title attribute. The mode switch below is a CONTROL, not a readout, and stays. --><button type="button" class="coden-model-open" id="codenModelPickerOpen" aria-controls="codenModelPicker" aria-expanded="false" title="Choose the model this installation uses"><span aria-hidden="true">🧠</span>Models</button><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
+        <div id="codenDivergence" class="divergence hidden" aria-live="polite"></div><div class="coden-bar level-advanced"><!-- The six status chips that used to sit here (project · git · model · ctx · reasoning · sandbox) were removed on 2026-08-31: they are fields of `footerText()` in tui-screen.mjs, and the terminal above already paints every one of them. Three of the six said so themselves, in their own title attribute. The mode switch below is a CONTROL, not a readout, and stays. --><button type="button" class="coden-model-open" id="codenModelPickerOpen" aria-controls="codenModelPicker" aria-expanded="false" title="Choose the model this installation uses"><span aria-hidden="true">🧠</span>Models</button><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
         <!-- s336 · the model chooser, opened from the `model` chip above.
              Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e
              fa scegliere quale usare». It is deliberately NOT a second catalogue: it lists what
@@ -655,6 +669,10 @@
           <!-- UI-034. The agent column IS the context panel for this destination. Path
                authorisation lives here because that is what an authority request is. -->
           <aside class="bench-agent" id="benchAgent" aria-label="Agent">
+            <!-- The job in progress: the latest run of the workspace engine that has not been decided, or the last one
+                 decided. Read from the engine's own records (GET /api/v1/workspace-actions/runs and /:id), decided with
+                 its own routes — this card is a view and two buttons, never a second way to change files. -->
+            <section class="coden-work hidden" id="codenWork" aria-live="polite" translate="no"></section>
             <!-- Owner: an abyss of blank space opened between the bench and the agent
                  column because five always-expanded panels made this column far taller than
                  the bench beside it. D-0236/D-0237 answered with a menu — one panel at a
