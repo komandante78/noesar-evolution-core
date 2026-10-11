@@ -119,7 +119,7 @@
       <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong></div>
       <nav aria-label="Primary">
         <button class="nav nav-new" data-view="chat" type="button" id="newChat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>New chat</span></button>
-        <button class="nav-act nav-search" type="button" id="openSearch" aria-haspopup="dialog" aria-controls="searchDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search</span><kbd translate="no">Ctrl K</kbd></button>
+        <button class="nav-act nav-search" type="button" id="openSearch" aria-haspopup="dialog" aria-controls="searchDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button>
         <button class="nav-act nav-library" data-view-link="knowledge" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z"/><path d="M20 17v4H6.5A2.5 2.5 0 0 1 4 18.5"/></svg><span>Library</span></button>
         <button class="nav-act nav-automations" data-view-link="agents" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg><span>Automations</span></button>
         <button class="nav" data-view="coden" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg><span>CodeN Evolution</span></button>
@@ -197,71 +197,8 @@
         <p class="page-tabs-title">Automations</p>
         <button class="nav" data-view="agents" type="button"><span>Assistants</span></button>
         <button class="nav" data-view="workflows" type="button"><span>Procedures</span></button>
+        <button class="nav" data-view="tasks" type="button"><span>Tasks</span></button>
       </nav>
-      <section class="view active" id="view-home">
-        <div class="hero"><h1 class="visually-hidden">Ask. Create. Act.</h1></div>
-        <div class="mode-cards">
-          <button data-start-mode="ASK"><b>Ask</b><span>Answers with context, sources and uncertainty.</span></button>
-          <button data-start-mode="CREATE"><b>Create</b><span>Documents, code, tables and versioned artifacts.</span></button>
-          <button data-start-mode="ACT"><b>Act</b><span>Agent plans, tool steps and approval-gated mutations.</span></button>
-        </div>
-        <!-- The six entry actions · UI-060. Three of them act; three say what they are
-             waiting for. Rendering them from the payload rather than writing six buttons
-             here is deliberate: the count is then a property of the code, and a structural
-             test can hold it to six. -->
-        <section class="panel entry-panel" aria-labelledby="homeEntryTitle">
-          <div class="panel-title"><h2 id="homeEntryTitle">Start here</h2><span class="badge badge-off" id="homeEntryWired">—</span></div>
-          <div class="entry-actions" id="homeEntryActions">Loading…</div>
-        </section>
-        <!-- The ten quick actions · UI-061. Goals, not functions — the wording is the
-             criterion. What a goal does today is stated under them rather than implied. -->
-        <section class="panel goal-panel" aria-labelledby="homeGoalsTitle">
-          <div class="panel-title"><h2 id="homeGoalsTitle">Or start from what you want done</h2><span id="homeGoalCount"></span></div>
-          <div class="goal-actions" id="homeGoalActions">Loading…</div>
-          <p class="hint">A goal opens a conversation with itself as the opening text. Turning a goal into a Plan is the Intent Frame, which is backbone work and does not exist in this build — so nothing here has been understood yet, only asked.</p>
-        </section>
-        <div class="dashboard-grid">
-          <section class="panel"><div class="panel-title"><h2>Projects</h2><button class="text-button" data-view-link="projects">Manage</button></div><div id="homeProjects" class="list empty-state">No projects yet.</div></section>
-          <section class="panel"><div class="panel-title"><h2>Recent conversations</h2><button class="text-button" data-view-link="chat">Open chat</button></div><div id="homeConversations" class="list empty-state">No conversations yet.</div></section>
-        </div>
-        <!-- The product's metric · UI-070…UI-072. A time, never a score, and a rejected
-             change counts as time spent: excluding it would be choosing the denominator
-             that flatters the product. -->
-        <section class="panel metric-panel">
-          <div class="panel-title"><h2>Human review time per decided change</h2><span class="badge badge-off" id="metricWindow">last 30 days</span></div>
-          <div class="metric-figures">
-            <div class="metric-figure"><b id="metricMedian" translate="no">—</b><small>median review time</small></div>
-            <div class="metric-figure"><b id="metricDecided">—</b><small>changes decided</small></div>
-            <div class="metric-figure"><b id="metricRejected">—</b><small>of them rejected — counted, not excluded</small></div>
-          </div>
-          <div class="metric-trend" id="metricTrend" role="img" aria-label="Daily median review time"></div>
-          <p class="hint" id="metricDefinition">—</p>
-        </section>
-      
-        <section class="work-block" id="view-tasks">
-        <div class="section-header"><div><p class="eyebrow">SCHEDULED WORK</p><h2 class="page-title">Tasks</h2><p>Plan, schedule, assign and track work without hiding agent progress.</p></div></div>
-        <div class="two-col"><form class="panel form-stack" id="taskForm"><h2>New task</h2><label>Project<select id="taskProject"></select></label><label>Title<input id="taskTitle" required></label><label>Description<textarea id="taskDescription"></textarea></label><label>Priority<select id="taskPriority"><option value="low">low</option><option value="normal" selected>normal</option><option value="high">high</option><option value="critical">critical</option></select></label><label>Schedule<input id="taskScheduledAt" type="datetime-local"></label><label>Due<input id="taskDueAt" type="datetime-local"></label><label>Recurrence rule<input id="taskRecurrence" placeholder="Optional RRULE or human-readable policy"></label><p class="hint" id="taskFormZone">—</p><button class="primary">Create task</button></form><section class="panel schedule-board" aria-labelledby="workQueueTitle">
-          <div class="panel-title"><h2 id="workQueueTitle">Work queue</h2><span class="badge badge-off" id="taskZoneChip">—</span></div>
-          <!-- UI-062 asks for active and scheduled work in ONE place, so the two must
-               partition rather than overlap: a task listed twice is a task counted twice.
-               The rule is printed where it is applied, because a reader cannot check a
-               grouping whose criterion lives in a source file. -->
-          <p class="hint">Scheduled means a recurrence rule, or a start still in the future. Everything else that has not finished is active, and running outranks a rule. Every task appears exactly once.</p>
-          <div class="schedule-group"><h3>Active <span class="group-count" id="taskActiveCount"></span></h3><div id="taskList" class="card-list empty-state">No tasks.</div></div>
-          <div class="schedule-group"><h3>Scheduled <span class="group-count" id="taskScheduledCount"></span></h3><div id="taskScheduledList" class="card-list empty-state">Nothing scheduled.</div></div>
-        </section></div>
-      </section>
-        <!-- Service health · installed tools · models — each with its provenance · UI-063.
-             Every one of these three blocks can come back withheld instead of empty, and
-             the difference is rendered: "you may not see this" and "there is nothing here"
-             are different facts and only one of them is about the product. -->
-        <div class="three-col home-inventory">
-          <section class="panel" aria-labelledby="homeServicesTitle"><div class="panel-title"><h2 id="homeServicesTitle">Service health</h2><span class="badge badge-off" id="homeServicesStatus">—</span></div><div id="homeServices" class="empty-state">Loading…</div></section>
-          <section class="panel" aria-labelledby="homeToolsTitle"><div class="panel-title"><h2 id="homeToolsTitle">Installed tools</h2><button class="text-button" data-view-link="coden/bench/tools">Manage</button></div><div id="homeTools" class="empty-state">Loading…</div></section>
-          <section class="panel" aria-labelledby="homeModelsTitle"><div class="panel-title"><h2 id="homeModelsTitle">Models</h2><button class="text-button" data-view-link="models">Manage</button></div><div id="homeModels" class="empty-state">Loading…</div></section>
-        </div>
-      </section>
-
       <section class="view" id="view-chat" data-empty>
         <h1 class="visually-hidden">Chat</h1>
         <!-- Where you are, and nothing else: the project and the chat, as words. They are the two selects they always
@@ -385,7 +322,8 @@
             </section>
             <section class="work-block">
               <h3>Included context</h3>
-              <pre id="contextInspector">Select a conversation.</pre>
+              <p class="hint context-empty">Select a conversation.</p>
+              <pre id="contextInspector" translate="no"></pre>
             </section>
           </aside>
         </div>
@@ -912,6 +850,21 @@
         </section>
       </section>
 
+      <!-- Tasks: a page of Automations since 2026-10-11 (it used to sit inside the Home, which the chat replaced). -->
+      <section class="view" id="view-tasks">
+        <div class="section-header"><div><p class="eyebrow">SCHEDULED WORK</p><h2 class="page-title">Tasks</h2><p>Plan, schedule, assign and track work without hiding agent progress.</p></div></div>
+        <div class="two-col"><form class="panel form-stack" id="taskForm"><h2>New task</h2><label>Project<select id="taskProject"></select></label><label>Title<input id="taskTitle" required></label><label>Description<textarea id="taskDescription"></textarea></label><label>Priority<select id="taskPriority"><option value="low">low</option><option value="normal" selected>normal</option><option value="high">high</option><option value="critical">critical</option></select></label><label>Schedule<input id="taskScheduledAt" type="datetime-local"></label><label>Due<input id="taskDueAt" type="datetime-local"></label><label>Recurrence rule<input id="taskRecurrence" placeholder="Optional RRULE or human-readable policy"></label><p class="hint" id="taskFormZone">—</p><button class="primary">Create task</button></form><section class="panel schedule-board" aria-labelledby="workQueueTitle">
+          <div class="panel-title"><h2 id="workQueueTitle">Work queue</h2><span class="badge badge-off" id="taskZoneChip">—</span></div>
+          <!-- UI-062 asks for active and scheduled work in ONE place, so the two must
+               partition rather than overlap: a task listed twice is a task counted twice.
+               The rule is printed where it is applied, because a reader cannot check a
+               grouping whose criterion lives in a source file. -->
+          <p class="hint">Scheduled means a recurrence rule, or a start still in the future. Everything else that has not finished is active, and running outranks a rule. Every task appears exactly once.</p>
+          <div class="schedule-group"><h3>Active <span class="group-count" id="taskActiveCount"></span></h3><div id="taskList" class="card-list empty-state">No tasks.</div></div>
+          <div class="schedule-group"><h3>Scheduled <span class="group-count" id="taskScheduledCount"></span></h3><div id="taskScheduledList" class="card-list empty-state">Nothing scheduled.</div></div>
+        </section></div>
+      </section>
+
       <section class="view" id="view-models">
         <div class="section-header"><h1 class="visually-hidden">Models</h1></div>
         <!-- The catalogue verifies the PUBLISHER, never the model. &laquo;Qualunque modello&raquo; and
@@ -1425,6 +1378,29 @@
       </section>
       <section class="settings-section" id="section-health" data-section="health">
         <div class="section-header"><div><p class="eyebrow">THE SYSTEM</p><h2 class="page-title">Health and logs</h2><p>Service state and the log stream, in one section.</p></div></div>
+        <!-- From the Home that the chat replaced (2026-10-11): what runs, the tools and the models, and the product's metric. -->
+        <!-- Service health · installed tools · models — each with its provenance · UI-063.
+             Every one of these three blocks can come back withheld instead of empty, and
+             the difference is rendered: "you may not see this" and "there is nothing here"
+             are different facts and only one of them is about the product. -->
+        <div class="three-col home-inventory">
+          <section class="panel" aria-labelledby="homeServicesTitle"><div class="panel-title"><h2 id="homeServicesTitle">Service health</h2><span class="badge badge-off" id="homeServicesStatus">—</span></div><div id="homeServices" class="empty-state">Loading…</div></section>
+          <section class="panel" aria-labelledby="homeToolsTitle"><div class="panel-title"><h2 id="homeToolsTitle">Installed tools</h2><button class="text-button" data-view-link="coden/bench/tools">Manage</button></div><div id="homeTools" class="empty-state">Loading…</div></section>
+          <section class="panel" aria-labelledby="homeModelsTitle"><div class="panel-title"><h2 id="homeModelsTitle">Models</h2><button class="text-button" data-view-link="models">Manage</button></div><div id="homeModels" class="empty-state">Loading…</div></section>
+        </div>
+        <!-- The product's metric · UI-070…UI-072. A time, never a score, and a rejected
+             change counts as time spent: excluding it would be choosing the denominator
+             that flatters the product. -->
+        <section class="panel metric-panel">
+          <div class="panel-title"><h2>Human review time per decided change</h2><span class="badge badge-off" id="metricWindow">last 30 days</span></div>
+          <div class="metric-figures">
+            <div class="metric-figure"><b id="metricMedian" translate="no">—</b><small>median review time</small></div>
+            <div class="metric-figure"><b id="metricDecided">—</b><small>changes decided</small></div>
+            <div class="metric-figure"><b id="metricRejected">—</b><small>of them rejected — counted, not excluded</small></div>
+          </div>
+          <div class="metric-trend" id="metricTrend" role="img" aria-label="Daily median review time"></div>
+          <p class="hint" id="metricDefinition">—</p>
+        </section>
         <section class="settings-sub" id="view-health">
         <div class="section-header"><div><p class="eyebrow">LIVENESS · READINESS · RECOVERY</p><h2 class="page-title">System Health</h2><p>What the watchdog observes, and what safe mode is doing about it.</p></div><button class="primary" id="runWatchdog">Run check now</button></div>
         <section class="panel"><div class="panel-title"><h2>Status</h2><span id="healthBadge" class="badge badge-off">—</span></div><div id="healthComponents" class="metric-grid">Loading…</div></section>

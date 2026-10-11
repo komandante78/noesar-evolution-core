@@ -37,7 +37,9 @@ const PAIRED = ['section', 'form', 'main', 'aside', 'nav', 'article', 'header', 
  *  it and the terminal could not reach it. It is a destination now, reached through `/` alone —
  *  point 3's "una porta sola" is why it did not become a thirteenth sidebar button. */
 const DESTINATIONS = [
-  'home', 'chat', 'coden', 'coden-tui', 'tools', 'projects', 'documents', 'knowledge', 'memory',
+  // 2026-10-11 (one interface): the Home is gone — the chat is the first screen and #/home opens it — and Tasks,
+  // which lived inside the Home, is a destination again, the third tab of Automations.
+  'tasks', 'chat', 'coden', 'coden-tui', 'tools', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
 /** Every button that names a destination, in document order (2026-10-11, one interface): the menu (New chat, Library,
@@ -46,7 +48,7 @@ const DESTINATIONS = [
  *  models). `home` and `tools` are reached through Ctrl K and `/` alone. */
 const SIDEBAR = [
   'chat', 'coden', 'projects', 'settings',
-  'knowledge', 'documents', 'memory', 'research', 'agents', 'workflows',
+  'knowledge', 'documents', 'memory', 'research', 'agents', 'workflows', 'tasks',
   'coden-tui', 'models',
 ];
 /** The single Settings destination's own menu — menu inside the menu, in three groups.
@@ -72,8 +74,9 @@ const DEMOTED = [
   'view-updates', 'view-backups', 'view-about',
 ];
 /** Names that used to route and no longer do. Each must have a forwarding address. */
+// 'tasks' left this list on 2026-10-11: it is a destination again (a tab of Automations).
 const RETIRED_ROUTES = [
-  'tasks', 'tools', 'approvals', 'providers', 'hardware', 'users',
+  'tools', 'approvals', 'providers', 'hardware', 'users',
   'security', 'health', 'logs', 'updates', 'backups', 'about',
 ];
 
@@ -487,7 +490,8 @@ describe('the missing interface parts', () => {
         assert.ok(html.includes(`id="${id}"`), `the work column is missing "${id}"`);
       }
       // The context inspector survives as a block rather than being the whole panel.
-      assert.match(html, /<h3>Included context<\/h3>\s*<pre id="contextInspector">/);
+      // 2026-10-11: the sentence for "no conversation" sits beside it, so the JSON stays untranslated and the sentence does not
+      assert.match(html, /<h3>Included context<\/h3>\s*(?:<p class="hint context-empty">Select a conversation\.<\/p>\s*)?<pre id="contextInspector" translate="no">/);
     });
 
     // s327 REPLACES the s326 assertion here, and the replacement is the point rather than a
@@ -543,34 +547,20 @@ describe('the missing interface parts', () => {
   });
 });
 
-describe('the initial screen · UI-060…UI-063', () => {
+// The Home that held these went on 2026-10-11 (one interface: the first screen is the chat, as the drawing). Its
+// six entry actions and ten goals went with it — the chat's four sentences to start from replace them, and
+// webui-simple-mode.test.mjs holds those — and what remains moved where it is used.
+describe('what the initial screen held · UI-062, UI-063', () => {
   const app = readFileSync(join(here, '../../../apps/webui-static/app.js'), 'utf8');
   const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
-  const home = html.slice(html.indexOf('id="view-home"'), html.indexOf('id="view-chat"'));
-
-  test('UI-060 · the six entry actions have a container, and the count is declared', () => {
-    // The buttons are rendered from the payload, so the markup carries the place they go
-    // and the badge that states how many of the six can act. The count itself is held to
-    // six in the payload's own suite — asserting it twice, in two languages, is how two
-    // statements of one rule drift apart.
-    assert.match(home, /id="homeEntryActions"/);
-    assert.match(home, /id="homeEntryWired"/);
-    assert.match(app, /renderEntryActions/);
-  });
-
-  test('UI-061 · the ten goals are rendered from the list, not written into the markup', () => {
-    assert.match(home, /id="homeGoalActions"/);
-    // A goal must not fire a request on one click: the composer is filled and focused, and
-    // the person presses send. A screen that submits for you has decided what you meant.
-    const renderer = app.slice(app.indexOf('function renderQuickActions'), app.indexOf('function renderServices'));
-    assert.match(renderer, /composer\.value=action\.goal/);
-    assert.equal(/sendChat\(\)/.test(renderer), false, 'a quick action must not send anything by itself');
-  });
+  const tasks = html.slice(html.indexOf('id="view-tasks"'), html.indexOf('id="view-models"'));
+  const health = html.slice(html.indexOf('id="section-health"'), html.indexOf('id="view-health"'));
 
   test('UI-062 · active and scheduled work sit in one panel, and every task lands in one group', () => {
-    assert.match(home, /id="taskList"/);
-    assert.match(home, /id="taskScheduledList"/);
-    assert.match(home, /id="taskZoneChip"/);
+    assert.match(tasks, /id="taskList"/);
+    assert.match(tasks, /id="taskScheduledList"/);
+    assert.match(tasks, /id="taskZoneChip"/);
+    assert.match(html, /<button class="nav" data-view="tasks" type="button"><span>Tasks<\/span><\/button>/, 'a tab of Automations');
     // The grouping is imported from the tested module rather than reimplemented here: two
     // implementations of one rule is how a task comes to appear in both groups.
     assert.match(app, /import \{[^}]*splitTasks[^}]*\} from '\.\/schedule\.js'/);
@@ -589,11 +579,13 @@ describe('the initial screen · UI-060…UI-063', () => {
 
   test('UI-063 · health, tools and models each have a panel', () => {
     for (const id of ['homeServices', 'homeTools', 'homeModels']) {
-      assert.ok(home.includes(`id="${id}"`), `${id} is missing from the initial screen`);
+      assert.ok(health.includes(`id="${id}"`), `${id} is missing from Settings › Health and logs`);
     }
     assert.match(app, /renderServices/);
     assert.match(app, /renderTools/);
     assert.match(app, /renderModels/);
+    assert.match(app, /health:\(\)=>\{loadInventory\(\);loadHealth\(\);loadLogs\(\);\}/, 'loaded when the section opens');
+    assert.ok(health.includes('id="metricMedian"'), 'and the product\'s metric (UI-070) with them');
   });
 
   test('UI-063 · a withheld block is rendered as withheld, never as empty', () => {
@@ -602,18 +594,6 @@ describe('the initial screen · UI-060…UI-063', () => {
     assert.match(app, /function withheldHtml/);
     assert.match(app, /are not shown to this account/);
     assert.match(app, /block\.requires/);
-  });
-
-  test('the new surface obeys the two rules that are easiest to break', () => {
-    // Both have already been broken once on this project, which is why they are asserted
-    // on the new selectors specifically rather than trusted to the global checks.
-    const block = css.slice(css.indexOf('.entry-panel'), css.indexOf('@media(forced-colors:active)', css.indexOf('.entry-panel')));
-    assert.ok(block.length > 500, 'the new block must actually be found before it is checked');
-    assert.deepEqual([...block.matchAll(/font-size:\s*[0-9.]+px/g)].map((m) => m[0]), [],
-      'a bare pixel size on the new surface would not move with the text-size setting');
-    assert.deepEqual([...block.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/[;{]\s*(?:margin|padding|border|inset)?-?(?:left|right)\s*:/g)].map((m) => m[0].trim()), [],
-      'the new surface must be written in logical properties');
-    assert.match(block, /\.goal-action\{[^}]*min-height:3[4-9]px/, 'WCAG 2.5.8: a pill must clear the 24px floor');
   });
 
   // INST-006 (MASTER_PROJECT/08 §11, MASTER_PROJECT/05 §9): the backup is not encrypted and

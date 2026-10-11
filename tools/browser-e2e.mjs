@@ -238,11 +238,11 @@ const page = await browser.newPage();
 // and can land the click on the sticky top bar instead, which presents as a button that
 // silently does nothing — indistinguishable from the defect this suite hunts.
 await page.setViewport({ width: 1440, height: 900 });
-// The simple interface is the default for a first visit (simple-mode.js), so this page holds
-// itself on the full one: every step below was written against the controls the full interface
-// shows. The simple interface has a section of its own at the end, on a page that starts as a
+// One interface for everyone since 2026-10-11 (the drawings in PROGETTO_GRAFICA_UNICA_20261009): nothing to hold the
+// page on. The Advanced level is set here because several steps below read the details it shows (the context the model
+// is sent, the work column of the chat); the Base level has a section of its own at the end, on a page that starts as a
 // first visit does, with nothing stored.
-await page.evaluateOnNewDocument(() => { try { localStorage.setItem('noesar.ui.simple', '0'); } catch { /* none */ } });
+await page.evaluateOnNewDocument(() => { try { localStorage.setItem('noesar.ui.level', 'advanced'); } catch { /* none */ } });
 
 // Everything the page complains about is collected. A console error or a failed request
 // is a finding even when the visible outcome looked correct.
@@ -364,7 +364,7 @@ async function settled(predicate, { timeout = 4000, label = '', frame = null, ar
 
 async function leaveCodenTerminal() {
   if (!(await page.$('#codenTerminalHost iframe'))) return;
-  await page.evaluate(() => { window.location.hash = '#/home'; });
+  await page.evaluate(() => { window.location.hash = '#/chat'; });
   await page.waitForFunction(
     () => document.querySelectorAll('#codenTerminalHost iframe').length === 0,
     { timeout: 15000 },
@@ -707,9 +707,10 @@ try {
   // single Settings destination. Both are walked: a section is a surface a user reaches,
   // so dropping it from this loop would shrink the suite while the count still looked
   // healthy. Every one of these addresses must render real content, not a shell.
+  // 2026-10-11: the Home is gone (#/home opens the chat, checked below) and Tasks is a page of Automations.
   const DESTINATIONS = [
-    'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
-    'agents', 'workflows', 'models', 'research', 'settings',
+    'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
+    'agents', 'workflows', 'tasks', 'models', 'research', 'settings',
   ];
   const SETTINGS_SECTIONS = [
     'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
@@ -773,13 +774,20 @@ try {
       state.title !== '' && state.title.includes('NOESAR'), state.title);
   }
 
+  resetObservations();
+  await gotoIdle(`${BASE}/#/${'home'}`);
+  await settled(() => document.querySelector('#view-chat')?.classList.contains('active'), { label: '#/home opened the chat' });
+  const homeLanding = await page.evaluate(() => ({ hash: location.hash, view: document.querySelector('.view.active')?.id }));
+  check('#/home, typed or bookmarked, opens the chat: the first screen of the one interface',
+    homeLanding.view === 'view-chat' && homeLanding.hash === '#/chat', JSON.stringify(homeLanding));
+
   at('structure');
   // --- 23 destinations became 12, and nothing was lost on the way ----------
   // The risk of a restructure is not that it looks wrong: it is that a page quietly stops
   // being reachable, or that a gate travels with a page and arrives as decoration. Both
   // are checked here against the running interface rather than against the markup.
   resetObservations();
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   const shell = await page.evaluate(() => ({
     destinations: [...document.querySelectorAll('.nav')].map((node) => node.dataset.view),
     menu: [...document.querySelectorAll('.settings-nav')].map((node) => node.dataset.section),
@@ -789,8 +797,10 @@ try {
   // Thirteen since D-0265 (14_MEMORIA_A_CUBI.md, CUBE-009): Memory joined the sidebar as
   // its own destination, the first addition to the count since the twelve-destination
   // restructure this check's name still remembers.
-  check('the sidebar carries thirteen destinations, not twenty-three',
-    shell.destinations.length === 13, `${shell.destinations.length}: ${shell.destinations.join(' ')}`);
+  // 2026-10-11: the menu (New chat, CodeN Evolution, the projects' +, the gear), the tabs of Library and Automations
+  // and the two links in Settings name thirteen destinations, each once; Home is gone and Tools is reached by address.
+  check('the menu, its tabs and the links in Settings name thirteen destinations, each once',
+    shell.destinations.length === 13 && new Set(shell.destinations).size === 13, `${shell.destinations.length}: ${shell.destinations.join(' ')}`);
   // Fourteen as of D-0277: Modules rejoined the menu, this time as a one-click Owner-catalog
   // installer over the real D-0274/D-0275 activation framework — D-0273's ad-hoc version was
   // retired in D-0276, same section id, different backend.
@@ -817,12 +827,12 @@ try {
   check('every Settings menu entry has a section behind it and every section an entry',
     shell.menu.every((key) => shell.sections.includes(key)) && shell.sections.every((key) => shell.menu.includes(key)),
     `menu=${shell.menu.join(' ')} | sections=${shell.sections.join(' ')}`);
-  check('the sections are grouped, not one flat list', shell.groups.length === 3, shell.groups.join(' | '));
+  check('the sections are grouped as the drawing: You, then This NOESAR', shell.groups.length === 2, shell.groups.join(' | '));
 
   // Every address a demoted page used to answer on still resolves to the section that owns
   // it now. A bookmark that 404s is how a change of rank turns into a loss of function.
   const LEGACY = {
-    tasks: 'home', tools: 'coden', approvals: 'settings/audit',
+    tools: 'coden', approvals: 'settings/audit',
     providers: 'settings/privacy', hardware: 'settings/models-hardware',
     users: 'settings/people', security: 'settings/security', health: 'settings/health',
     logs: 'settings/health', updates: 'settings/updates', backups: 'settings/storage',
@@ -886,7 +896,7 @@ try {
     && healthPanel.version !== '—', JSON.stringify(healthPanel));
 
   // --- the sidebar has three ranks, and they are reachable both ways --------
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   const ranks = [];
   const rankOf = () => page.evaluate(() => ({
     rank: document.querySelector('#appShell')?.dataset.sidebar,
@@ -926,63 +936,37 @@ try {
   check('the chosen sidebar rank survives a reload', afterReload.rank === 'icons', afterReload.rank);
 
   // A shortcut that fires while someone is typing a bracket into a field is a defect.
-  await page.evaluate(() => { document.querySelector('#globalSearch').focus(); });
+  await page.evaluate(() => { document.querySelector('#chatInput').focus(); });
   await page.keyboard.press('BracketLeft');
   await new Promise((resolve) => setTimeout(resolve, 200));
   const whileTyping = await page.evaluate(() => ({
     rank: document.querySelector('#appShell')?.dataset.sidebar,
-    typed: document.querySelector('#globalSearch').value,
+    typed: document.querySelector('#chatInput').value,
   }));
   check('the bracket shortcut does not fire while text is being typed',
     whileTyping.rank === 'icons' && whileTyping.typed.includes('['),
     JSON.stringify(whileTyping));
-  await page.evaluate(() => { document.querySelector('#globalSearch').value = ''; document.querySelector('#globalSearch').blur(); });
+  await page.evaluate(() => { document.querySelector('#chatInput').value = ''; document.querySelector('#chatInput').blur(); });
   await page.evaluate(() => { document.querySelector('#sidebarRank').click(); });
   await settled(() => document.querySelector('#appShell')?.dataset.sidebar === 'full',
     { label: 'sidebar control cycled to full' });
-  // The control cycles hidden → icons → full → hidden. Standing at "icons" after the
-  // reload, one press must arrive at "full": the keyboard is the fast path, never the only
-  // one, or a mouse user who hid the sidebar has no way to bring it back.
+  // The menu button shows whenever the menu is not open (look.css), and opens it: standing at "icons" after the
+  // reload, one press must arrive at "full" — the keyboard is the fast path, never the only one.
   const cycled = await rankOf();
   check('the sidebar rank is also reachable without the keyboard', cycled.rank === 'full', cycled.rank);
 
-  // --- the context panel remembers its placement PER DESTINATION -----------
-  const panelOf = () => page.evaluate(() => ({
-    rank: document.querySelector('#appShell')?.dataset.panel,
-    onScreen: (document.querySelector('#contextPanel')?.getBoundingClientRect().width ?? 0) > 0,
-    floating: getComputedStyle(document.querySelector('#contextPanel')).position === 'fixed',
+  // --- 2026-10-11: no top bar, no right-hand context panel, no bottom bar ------------------
+  // One interface: the model is named in the box, the privacy line sits under it, and what waits for a decision is a
+  // banner shown while it waits. The three strips the old frame carried must not come back.
+  const frame = await page.evaluate(() => ({
+    topbar: Boolean(document.querySelector('.topbar')),
+    contextPanel: Boolean(document.querySelector('#contextPanel')),
+    statusbar: Boolean(document.querySelector('.statusbar')),
+    lockline: (document.querySelector('#footerPrivacy')?.getBoundingClientRect().height ?? 0) > 0,
   }));
-  await gotoIdle(`${BASE}/#/home`);
-  await page.evaluate(() => document.querySelector('[data-panel-rank="floating"]').click());
-  await settled(() => document.querySelector('#appShell')?.dataset.panel === 'floating',
-    { label: 'context panel floated' });
-  const homeFloating = await panelOf();
-  await gotoIdle(`${BASE}/#/projects`);
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const projectsDefault = await panelOf();
-  await gotoIdle(`${BASE}/#/home`);
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const homeAgain = await panelOf();
-  check('the context panel can be docked, floated or sent away',
-    homeFloating.rank === 'floating' && homeFloating.floating, JSON.stringify(homeFloating));
-  // Owner: the panel opens deactivated by default and only turns on if clicked — a
-  // destination with no remembered choice defaults to 'hidden', not 'docked'.
-  check('a placement chosen on one destination does not follow you to another',
-    projectsDefault.rank === 'hidden', JSON.stringify(projectsDefault));
-  check('the placement is remembered for the destination it was chosen on',
-    homeAgain.rank === 'floating', JSON.stringify(homeAgain));
-  await page.evaluate(() => document.querySelector('[data-panel-rank="hidden"]').click());
-  await settled(() => document.querySelector('#appShell')?.dataset.panel === 'hidden',
-    { label: 'context panel hidden' });
-  const hiddenPanel = await panelOf();
-  check('a hidden context panel is really off the screen', !hiddenPanel.onScreen, JSON.stringify(hiddenPanel));
-  await page.evaluate(() => document.querySelector('#panelRank').click());
-  await settled(() => document.querySelector('#appShell')?.dataset.panel !== 'hidden',
-    { label: 'context panel restored from the top bar' });
-  const restored = await panelOf();
-  check('a hidden context panel can be brought back from the top bar',
-    restored.onScreen, JSON.stringify(restored));
-  await page.evaluate(() => document.querySelector('[data-panel-rank="docked"]').click());
+  check('the frame is the menu and the page: no top bar, no context panel, no bottom bar',
+    !frame.topbar && !frame.contextPanel && !frame.statusbar, JSON.stringify(frame));
+  check('where your words go is said under the box', frame.lockline, JSON.stringify(frame));
   // The probe is served over plain HTTP on a container hostname, so Chromium discards the
   // Cross-Origin-Opener-Policy header the server sets and says so once per navigation. That
   // is a property of the harness's transport, not of this change: it is excluded by name,
@@ -1125,7 +1109,8 @@ try {
   const bare = await page.evaluate(() => ({
     hash: location.hash,
     open: document.querySelectorAll('#view-coden [data-bench-panel].active,#view-coden [data-agent-panel].active').length,
-    benchHeight: document.querySelector('#bench').getBoundingClientRect().height,
+    // 2026-10-11: the bench has no box of its own (the drawing): its agent column is the page's right side.
+    benchHeight: document.querySelector('#benchAgent').getBoundingClientRect().height,
     promptOnScreen: document.querySelector('#codenPrompt').getBoundingClientRect().height > 0,
   }));
   // REVERSED by the Owner on 2026-08-27, point n.6, shipped in `ddc6c565`: «`#/coden` nudo va
@@ -1169,7 +1154,7 @@ try {
     // deliberately left it standing, 3b gave the stranded addresses a view, and only then was
     // removing it something other than deleting a function that exists nowhere else.
     bench: Boolean(document.querySelector('#view-coden .bench')),
-    benchOnScreen: document.querySelector('#view-coden .bench')?.getBoundingClientRect().height > 0,
+    benchOnScreen: document.querySelector('#view-coden #benchAgent')?.getBoundingClientRect().height > 0,
     opening: document.querySelector('#codenTranscript')?.textContent?.trim() ?? '',
   }));
   check('CE-033 · the browser shows all four regions',
@@ -1575,7 +1560,7 @@ try {
     await page.keyboard.press('Enter');
     const addressRan = await soft('an address renders inline in the terminal', async () => {
       await terminalFrame().waitForFunction(
-        () => /Memory/.test(document.querySelector('#terminalHost .xterm-rows')?.textContent ?? ''),
+        () => /Memory|What it remembers/.test(document.querySelector('#terminalHost .xterm-rows')?.textContent ?? ''),
         { timeout: 15000 },
       );
     });
@@ -1583,13 +1568,13 @@ try {
       const afterAddress = (await screenText()).replace(/\s+/g, ' ');
       const hashUnchanged = await page.evaluate(() => location.hash);
       check('an address goes into the transcript, and the page does not navigate',
-        /Memory/.test(afterAddress) && !/error|refused/i.test(afterAddress) && hashUnchanged === hashBeforeAddress,
+        /Memory|What it remembers/.test(afterAddress) && !/error|refused/i.test(afterAddress) && hashUnchanged === hashBeforeAddress,
         `hash=${hashUnchanged} was=${hashBeforeAddress} ${afterAddress.slice(-200)}`);
     }
 
     // Leaving the destination destroys the document, and with it the socket, the observer and
     // the reconnect timer. Returning builds a new one — not a second one beside the first.
-    await gotoIdle(`${BASE}/#/home`);
+    await gotoIdle(`${BASE}/#/chat`);
     await settled(() => document.querySelectorAll('#codenTerminalHost iframe').length === 0,
       { label: 'terminal document detached on leaving' });
     const detached = await page.evaluate(() => ({
@@ -1650,7 +1635,7 @@ try {
   // the default. Reloading on `#/coden` does not help either: the completion has already
   // rewritten the address by then, so the reload lands on the completed panel. The fresh
   // start is taken somewhere the completion cannot reach, and the workbench entered after.
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   await page.reload({ waitUntil: 'networkidle2' });
   await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#view-coden.active', { timeout: 15000 });
@@ -1664,7 +1649,8 @@ try {
       benchColumns: getComputedStyle(document.querySelector('#bench')).gridTemplateColumns.split(' ').length,
       // PHASE 3c. A bare `#/coden` opens NO panel, so the bench is not on the screen at all —
       // "nessun pannello fisso", the line the phase-3 contract says must be true afterwards.
-      benchOnScreen: document.querySelector('#bench').getBoundingClientRect().height > 0,
+      // 2026-10-11: the bench has no box of its own (the drawing); its agent column is the right side of the page.
+      benchOnScreen: document.querySelector('#benchAgent').getBoundingClientRect().height > 0,
       addressBar: document.querySelector('#globalSearch')?.getBoundingClientRect().height > 0,
       promptMenuKey: document.querySelector('#codenPromptOpenMenu')?.getBoundingClientRect().height > 0,
       breadcrumbIsControl: Boolean(document.querySelector('button#benchWhere')),
@@ -1829,7 +1815,7 @@ try {
     };
   });
 
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   // From nowhere in particular, and with the box empty. `/` is a character when something
   // with a caret has focus — which is right, since `coden/bench/diff` has to be typeable —
   // so a block that means to press it as a SHORTCUT has to start outside the box. The step
@@ -2072,7 +2058,7 @@ try {
   // does not exist — and that reason is worth one loud failure, not the silent loss of every
   // step after it. See `soft`.
   await soft('the approval strip reaches the pending count', () => page.waitForFunction(
-    () => /Approvals: 1/.test(document.querySelector('#approvalStripState')?.textContent ?? ''),
+    () => /Waiting for you: 1/.test(document.querySelector('#approvalStripState')?.textContent ?? ''),
     { timeout: 15000 }));
 
   // The bottom approval strip. 01_PRODUCT/11 names it as binding; this is the check that
@@ -2091,9 +2077,9 @@ try {
       navCountVisible: (document.querySelector('#navApprovalCount')?.getBoundingClientRect().height ?? 0) > 0,
     };
   });
-  check('the bottom approval strip is a real box on screen',
+  check('the approval banner is a real box on screen while something waits',
     strip.onScreen, `box=${strip.width}x${strip.height}`);
-  check('the strip reports the pending count', /Approvals: 1/.test(strip.state), strip.state);
+  check('the strip reports the pending count', /Waiting for you: 1/.test(strip.state), strip.state);
   check('the strip changes tone when something is waiting', strip.warned, strip.state);
   check('the strip names what is waiting', strip.detail.length > 3, strip.detail);
   check('the nav badge shows the pending count and is visible',
@@ -2111,7 +2097,7 @@ try {
   // separate banner element any more, so "footer" and "verified" below now read the SAME
   // node rather than two that are checked against each other.
   at('privacy indicator');
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   await page.waitForSelector('#footerPrivacy', { timeout: 15000 });
   const privacyLocal = await page.evaluate(() => ({
     verified: document.querySelector('#footerPrivacy .verified')?.textContent?.trim() ?? '',
@@ -2125,8 +2111,10 @@ try {
   check('a fresh installation reports LOCAL ONLY VERIFIED despite the seeded external catalogue',
     privacyLocal.verified === 'LOCAL ONLY VERIFIED' && privacyLocal.external === false,
     JSON.stringify(privacyLocal));
-  check('the footer states the server-verified headline, not a dropdown-derived guess',
-    /NOESAR runs locally on your device/.test(privacyLocal.footer) && /local only verified/i.test(privacyLocal.footer),
+  // 2026-10-11: the line under the box says it in a person's words, from the server's own verdict (banner.external);
+  // the server's state name is kept beside it for the Advanced level.
+  check('the line under the box states the server-verified state, not a dropdown-derived guess',
+    /Everything stays on this computer/.test(privacyLocal.footer) && /local only verified/i.test(privacyLocal.footer),
     privacyLocal.footer);
   check('nothing is disclosed while the state is local-only',
     privacyLocal.disclosuresHidden === true, JSON.stringify(privacyLocal));
@@ -2164,7 +2152,7 @@ try {
       ?.querySelector('small')?.textContent ?? ''),
     { timeout: 15000 }, externalProviderId);
 
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   await page.waitForFunction(
     () => document.querySelector('#footerPrivacy .verified')?.textContent?.trim() === 'REMOTE MODEL ACTIVE',
     { timeout: 15000 });
@@ -2198,9 +2186,9 @@ try {
     /api\.openai\.com|api\.anthropic\.com|api\.moonshot\.cn/.test(privacyExternal.text));
   check('retention at the destination is shown as unknowable rather than invented',
     /UNKNOWN_AT_DESTINATION/.test(privacyExternal.text));
-  check('the footer and runtime chips follow the server, not the dropdown',
-    /remote model active/i.test(privacyExternal.footer) && /External by consent/.test(privacyExternal.runtime),
-    `${privacyExternal.footer} | ${privacyExternal.runtime}`);
+  check('the line under the box follows the server, not the dropdown',
+    /remote model active/i.test(privacyExternal.footer) && /An outside AI service is in use/.test(privacyExternal.footer),
+    privacyExternal.footer);
   check('the telemetry posture is stated rather than assumed',
     /Telemetry: off/i.test(privacyExternal.telemetry), privacyExternal.telemetry);
   check('the owner is offered the revoke control', privacyExternal.revokeEnabled);
@@ -2244,13 +2232,12 @@ try {
     { timeout: 15000 });
   const afterDecision = await page.evaluate(() => ({
     list: (document.querySelector('#approvalList')?.textContent ?? '').trim().slice(0, 120),
-    state: document.querySelector('#approvalStripState')?.textContent ?? '',
-    good: Boolean(document.querySelector('#approvalStripState')?.classList.contains('status-good')),
+    bannerHidden: document.querySelector('#approvalStrip')?.classList.contains('hidden') === true,
     navHidden: document.querySelector('#navApprovalCount')?.classList.contains('hidden') === true,
   }));
   check('approving empties the queue', /Nothing is waiting/.test(afterDecision.list), afterDecision.list);
-  check('the strip returns to zero and says so',
-    /Approvals: 0/.test(afterDecision.state) && afterDecision.good, JSON.stringify(afterDecision));
+  // One interface (rule 5): the banner speaks only while something waits.
+  check('nothing waiting, nothing said: the banner goes away', afterDecision.bannerHidden, JSON.stringify(afterDecision));
   check('the nav badge is hidden when nothing is waiting', afterDecision.navHidden);
 
   // And the run itself must have resumed to completion — the approval is only meaningful
@@ -2562,7 +2549,7 @@ try {
   // (D-0278, removed the step-up reauth prompt entirely) — a click is now just a click.
   at('home');
   resetObservations();
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   const beforeInstall = await page.evaluate(() => document.querySelector('#navModules a.nav'));
   check('no module sidebar entry before any Owner module is installed', beforeInstall === null);
 
@@ -2606,7 +2593,7 @@ try {
   );
   check('debug-evolution is Active after a single click', true);
 
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   await page.waitForSelector('#navModules a.nav', { timeout: 15000 });
   const afterActivate = await page.evaluate(() => {
     const link = document.querySelector('#navModules a.nav');
@@ -2623,7 +2610,7 @@ try {
     () => document.querySelector('#section-modules [data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
     { timeout: 15000 },
   );
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/chat`);
   await settled(() => document.querySelector('#navModules a.nav') === null,
     { label: 'modules nav entry withdrawn' });
   const afterDeactivate = await page.evaluate(() => document.querySelector('#navModules a.nav'));
@@ -3076,11 +3063,12 @@ try {
   const typeAfter = await page.evaluate((sel) => parseFloat(getComputedStyle(document.querySelector(sel)).fontSize), VISIBLE_TITLE);
   check('UI-040 a text-size step actually enlarges the type', typeAfter > typeBefore * 1.2,
     `${typeBefore}px -> ${typeAfter}px`);
-  const scaledElsewhere = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.settings-section.active .eyebrow')).fontSize));
-  check('UI-040 and it scales the whole interface, not one heading', scaledElsewhere > 11,
-    `eyebrow=${scaledElsewhere}px`);
+  const scaledElsewhere = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.settings-section.active .setting-box h3')).fontSize));
+  check('UI-040 and it scales the whole interface, not one heading', scaledElsewhere > 18 * 1.2,
+    `box title=${scaledElsewhere}px`);
   await clickOrExplain(page, '[data-text-step="1"]');
 
+  await page.evaluate(() => { document.querySelector('.setting-more').open = true; });
   const zoomBefore = await page.evaluate((sel) => document.querySelector(sel).getBoundingClientRect().height, VISIBLE_TITLE);
   await page.evaluate(() => {
     const range = document.querySelector('#zoomRange');
@@ -3132,7 +3120,8 @@ try {
   const bareBench = await page.evaluate(() => ({
     viewActive: document.querySelector('#view-coden')?.classList.contains('active') ?? false,
     panelOpen: document.querySelector('#view-coden')?.hasAttribute('data-panel-open') ?? false,
-    benchWidth: document.querySelector('.bench')?.getBoundingClientRect().width ?? 0,
+    // the bench has no box of its own since the drawing (2026-10-11): measured on its agent column, the page's right side
+    benchWidth: document.querySelector('#benchAgent')?.getBoundingClientRect().width ?? 0,
   }));
   // And REVERSED once more on 2026-08-27 (n.6, `ddc6c565`): the bare address opens Authority. The
   // single-column bench `D-0319` built is unchanged; what this now measures is that the
@@ -3658,8 +3647,8 @@ try {
     JSON.stringify(closed));
 
   at('metric');
-  // --- the product's metric · UI-070…UI-072 -------------------------------
-  await gotoIdle(`${BASE}/#/home`);
+  // --- the product's metric · UI-070…UI-072 (Settings › Health and logs since 2026-10-11) ---
+  await gotoIdle(`${BASE}/#/settings/health`);
   await page.waitForSelector('#metricDefinition', { timeout: 15000 });
   const metric = await page.evaluate(() => ({
     definition: document.querySelector('#metricDefinition')?.textContent ?? '',
@@ -3722,88 +3711,30 @@ try {
     `${attachFirst} -> ${attachSecond}`);
 
   at('initial-screen');
-  // --- the initial screen · UI-060…UI-063 ----------------------------------
-  // Driven rather than read, because every one of these is a claim about what a person
-  // sees: six buttons that exist, three of them refusing to act and SAYING why, ten goals
-  // that fill the composer without sending anything, and three inventory panels that must
-  // never come back as a bare "Loading…".
-  await gotoIdle(`${BASE}/#/home`);
-  await page.waitForSelector('#homeEntryActions .entry-action', { timeout: 15000 });
-  const entry = await page.evaluate(() => {
-    const buttons = [...document.querySelectorAll('#homeEntryActions .entry-action')];
-    return {
-      count: buttons.length,
-      wiredBadge: document.querySelector('#homeEntryWired')?.textContent ?? '',
-      // aria-disabled, not disabled: these must stay in the tab order, because the whole
-      // point of them is the sentence explaining what is missing.
-      disabled: buttons.filter((button) => button.getAttribute('aria-disabled') === 'true').map((button) => ({
-        id: button.dataset.entryAction,
-        // The reason has to be ON SCREEN. A disabled button with its explanation in a
-        // tooltip is a button that looks broken to everyone who does not hover it.
-        reason: (button.querySelector('span')?.textContent ?? '').trim().length,
-        removedFromTabOrder: button.disabled || button.tabIndex < 0,
-      })),
-      labels: buttons.map((button) => button.dataset.entryAction),
-    };
-  });
-  check('UI-060 the initial screen offers exactly six entry actions',
-    entry.count === 6, `${entry.count}: ${entry.labels.join(', ')}`);
-  check('UI-060 the actions that cannot act are marked unavailable and each says why on screen',
-    entry.disabled.length >= 3 && entry.disabled.every((item) => item.reason > 20),
-    JSON.stringify(entry.disabled));
-  check('UI-060 and they stay reachable by keyboard, so the reason is not sight-only',
-    entry.disabled.length >= 3 && entry.disabled.every((item) => item.removedFromTabOrder === false),
-    JSON.stringify(entry.disabled));
-  check('UI-060 the screen declares how many of the six can act',
-    /\d+ of 6 can act/.test(entry.wiredBadge), entry.wiredBadge);
-
-  const goals = await page.evaluate(() => {
-    const buttons = [...document.querySelectorAll('#homeGoalActions .goal-action')];
-    return {
-      count: buttons.length,
-      texts: buttons.map((button) => (button.textContent ?? '').trim()),
-      // 2.5.8 target size, measured rather than assumed — the last phase found a 22px
-      // button that reading the stylesheet had not.
-      shortest: Math.min(...buttons.map((button) => button.getBoundingClientRect().height)),
-    };
-  });
-  check('UI-061 there are ten quick actions', goals.count === 10, goals.texts.slice(0, 3).join(' | '));
-  check('UI-061 each is phrased as a goal, not as a function name',
-    goals.texts.every((text) => text.includes(' ') && !/[(){}]/.test(text)), goals.texts.join(' | ').slice(0, 200));
-  check('UI-061 every goal clears the 24px target floor', goals.shortest >= 24, `shortest ${goals.shortest}px`);
-
-  // Pressing one fills the composer and sends nothing. Both halves matter: a goal that
-  // fires a request has decided for the person what they meant by it.
-  const beforeGoal = await page.evaluate(() => document.querySelectorAll('.message').length);
-  await clickOrExplain(page, '#homeGoalActions .goal-action');
-  await settled(() => (document.querySelector('#view-chat')?.classList.contains('active') ?? false)
-    && (document.querySelector('#chatInput')?.value ?? '') !== '',
-    { label: 'goal action landed in chat with a composed prompt' });
-  const afterGoal = await page.evaluate(() => ({
-    view: document.querySelector('#view-chat')?.classList.contains('active') ?? false,
-    composer: document.querySelector('#chatInput')?.value ?? '',
-    messages: document.querySelectorAll('.message').length,
-  }));
-  check('UI-061 a goal opens the conversation with the goal in the composer',
-    afterGoal.view && afterGoal.composer.length > 10, JSON.stringify(afterGoal).slice(0, 200));
-  check('UI-061 and sends nothing by itself',
-    afterGoal.messages === beforeGoal, `${beforeGoal} -> ${afterGoal.messages}`);
-
-  await gotoIdle(`${BASE}/#/home`);
+  // --- what the initial screen held · UI-062, UI-063 ---------------------------
+  // The Home went on 2026-10-11: the first screen is the chat, with four sentences to start from (the "one interface"
+  // section at the end drives them). Its six entry actions and ten goals went with it; the inventory moved to Settings ›
+  // Health and logs and the work queue to Automations › Tasks, and both are driven here where they are now.
+  await gotoIdle(`${BASE}/#/settings/health`);
   await page.waitForSelector('#homeServices', { timeout: 15000 });
   await settled(() => (document.querySelector('#homeServices')?.textContent ?? '').trim() !== '',
-    { label: 'home inventory painted' });
-  const inventory = await page.evaluate(() => {
+    { label: 'inventory painted under Health and logs' });
+  const inventoryPart = await page.evaluate(() => {
+    const read = (id) => (document.querySelector(id)?.textContent ?? '').trim();
+    return { services: read('#homeServices'), status: read('#homeServicesStatus'), tools: read('#homeTools'), models: read('#homeModels') };
+  });
+  await gotoIdle(`${BASE}/#/tasks`);
+  await page.waitForSelector('#view-tasks.active', { timeout: 15000 });
+  await settled(() => (document.querySelector('#taskZoneChip')?.textContent ?? '').trim() !== '—',
+    { label: 'the tasks page named its zone' });
+  const inventory = await page.evaluate((part) => {
     const read = (id) => (document.querySelector(id)?.textContent ?? '').trim();
     return {
-      services: read('#homeServices'),
-      status: read('#homeServicesStatus'),
-      tools: read('#homeTools'),
-      models: read('#homeModels'),
+      ...part,
       zone: read('#taskZoneChip'),
       groups: [...document.querySelectorAll('.schedule-board .schedule-group h3')].map((node) => node.textContent.trim()),
     };
-  });
+  }, inventoryPart);
   for (const [name, text] of [['service health', inventory.services], ['tools', inventory.tools], ['models', inventory.models]]) {
     check(`UI-063 the ${name} panel resolved to real content`,
       text.length > 30 && !/^Loading…/.test(text), text.slice(0, 140));
@@ -3861,7 +3792,7 @@ try {
     fieldZone.formNote.includes(scheduled.zone) && fieldZone.panelChip.includes(scheduled.zone),
     JSON.stringify(fieldZone));
 
-  await gotoIdle(`${BASE}/#/home`);
+  await gotoIdle(`${BASE}/#/tasks`);
   await settled(() => (document.querySelector('#taskScheduledCount')?.textContent ?? '').trim() !== ''
     && (document.querySelector('#taskScheduledList')?.textContent ?? '').trim() !== '',
     { label: 'task board counts painted' });
@@ -3886,7 +3817,7 @@ try {
   // says something, and closes. A help button that renders behind the header or never opens is
   // perfectly correct to a source reader.
   await soft('POINT-3C', async () => {
-    const destinations = ['home', 'models', 'projects', 'settings/security', 'not-found'];
+    const destinations = ['tasks', 'models', 'projects', 'settings/security', 'not-found'];
     for (const destination of destinations) {
       await gotoIdle(`${BASE}/#/${destination}`);
       await new Promise((resolve) => { setTimeout(resolve, 300); });
@@ -3916,7 +3847,8 @@ try {
       check(`POINT-3C #/${destination} has an information button, on screen`,
         seen.present && seen.visible, JSON.stringify(seen).slice(0, 120));
       check(`POINT-3C clicking it says both what the page is and what to do here`,
-        seen.opened && /What this is/i.test(seen.text) && /worth doing/i.test(seen.text) && seen.text.length > 150,
+        // the plain words where they exist, the longer entry elsewhere
+        seen.opened && /What this is/i.test(seen.text) && /worth doing|you can do here/i.test(seen.text) && seen.text.length > 120,
         `${destination}: ${seen.text.slice(0, 120)}`);
       check(`POINT-3C and it reports its state to assistive technology`, seen.expanded === true);
       // Escape closes it: a panel that can only be dismissed with the mouse is a trap for
@@ -3943,7 +3875,7 @@ try {
     page.on('request', listener);
     try {
       for (const destination of ['projects', 'documents', 'knowledge', 'agents', 'tools', 'chat']) {
-        await gotoIdle(`${BASE}/#/home`);
+        await gotoIdle(`${BASE}/#/tasks`);
         seen.length = 0;
         await gotoIdle(`${BASE}/#/${destination}`);
         await new Promise((resolve) => { setTimeout(resolve, 400); });
@@ -4269,8 +4201,8 @@ try {
   await soft('I18N-RUNTIME', async () => {
     resetObservations();
     const destinations = [
-      'home', 'chat', 'coden', 'coden-tui', 'tools', 'projects', 'documents', 'knowledge',
-      'memory', 'agents', 'workflows', 'models', 'research',
+      'chat', 'coden', 'coden-tui', 'tools', 'projects', 'documents', 'knowledge',
+      'memory', 'agents', 'workflows', 'tasks', 'models', 'research',
       'settings', 'settings/appearance', 'settings/language', 'settings/about',
       'settings/privacy', 'settings/people', 'settings/security', 'settings/storage',
       'settings/audit', 'settings/health', 'settings/updates', 'settings/skills',
@@ -4279,7 +4211,7 @@ try {
 
     // Switch to Italian through the control a person would use, not by writing storage
     // directly: the defect being guarded against lived in the picker's own handler.
-    await gotoIdle(`${BASE}/#/home`);
+    await gotoIdle(`${BASE}/#/chat`);
     await page.select('#languageSelect', 'it');
     await page.waitForFunction(() => document.documentElement.lang === 'it', { timeout: 10000 });
 
@@ -4342,7 +4274,7 @@ try {
     // draw the most text with code (the repaint is the same code for all, and the catalogues are held to the same sentences
     // by ui-language-coverage.test.mjs), because ten full passes would cost more minutes than they add certainty.
     const shipped = await page.evaluate(async () => Object.keys((await import('/i18n-catalog.js')).CATALOGS).filter((code) => code !== 'en'));
-    const sampled = ['home', 'chat', 'projects', 'documents', 'models', 'settings', 'settings/language', 'settings/privacy'];
+    const sampled = ['tasks', 'chat', 'projects', 'documents', 'models', 'settings', 'settings/language', 'settings/privacy'];
     for (const [start, language] of shipped.flatMap((code) => [['en', code], [code, code]])) {
       const other = start === 'en' ? language : 'en';
       await page.select('#languageSelect', start);
@@ -4491,6 +4423,9 @@ try {
 
   at('sign-out');
   // --- sign out ------------------------------------------------------------
+  // Under your name, at the foot of the menu (2026-10-11): the name opens Settings and Sign out.
+  await page.click('#meButton');
+  await page.waitForSelector('#meMenu:not(.hidden)', { timeout: 5000 });
   await page.click('#logoutButton');
   await page.waitForSelector('#authGate:not(.hidden)', { timeout: 15000 });
   check('sign out returns to the authentication gate', true);
@@ -4629,21 +4564,16 @@ try {
   check('an allowed page still works for a restricted role',
     restrictedSecurity.rendered && /user/.test(restrictedSecurity.role));
 
-  at('simple interface');
-  // --- the simple interface (simple-mode.js): what a first visit sees --------------------
-  // Measured on a clean installation on 2026-10-06: twelve destinations, about twenty controls in
-  // the chat, a mode to pick by hand, and a chat that took no word until a conversation had been
-  // created and titled. A second page, in the same signed-in browser, that starts as a first visit
-  // does — nothing stored. (Signed in as the restricted account the run ends on: a first visit
-  // must work for a person who can only chat, not only for the owner.)
+  at('one interface');
+  // --- one interface (2026-10-11): what a first visit sees ------------------------------------------
+  // Built as the drawings the Owner approved (PROGETTO_GRAFICA_UNICA_20261009/NUOVA_GRAFICA). A second page, in the same
+  // signed-in browser, that starts as a first visit does — nothing stored. (Signed in as the restricted account the run
+  // ends on: a first visit must work for a person who can only chat, not only for the owner.)
   const simple = await browser.newPage();
   await simple.setViewport({ width: 1440, height: 900 });
   const simpleErrors = [];
   simple.on('pageerror', (error) => simpleErrors.push(error.message));
-  // Everything stored is cleared, once per page — not once per document: the switch to the full
-  // interface reloads, and an init script that cleared the choice on every load would undo it.
-  // All of it, not only the interface choice: the pages above left the sidebar open and a
-  // conversation selected, and a first visit has neither.
+  // Everything stored is cleared, once per page — not once per document, so a choice made below survives a reload.
   await simple.evaluateOnNewDocument(() => {
     try {
       if (!sessionStorage.getItem('e2e-simple-init')) {
@@ -4654,9 +4584,6 @@ try {
   });
   await simple.goto(`${BASE}/`, { waitUntil: 'networkidle2' });
   await simple.waitForSelector('#authGate.hidden', { timeout: 25000 });
-  // A first visit has no conversation; this run does (the steps above made several, and the page
-  // resumes one). Starting a new one is the same screen a first visit lands on.
-  await simple.evaluate(() => { document.querySelector('#simpleNewChat').click(); });
   await simple.waitForFunction(() => document.querySelector('#view-chat').hasAttribute('data-empty'), { timeout: 10000 });
   const firstVisit = await simple.evaluate(() => {
     const shown = (sel) => {
@@ -4666,39 +4593,35 @@ try {
       return getComputedStyle(node).display !== 'none' && box.width > 0 && box.height > 0;
     };
     return {
-      ui: document.body.dataset.ui,
+      level: document.body.dataset.level,
       view: document.querySelector('.view.active')?.id,
       sidebar: document.querySelector('#appShell').dataset.sidebar,
-      menu: shown('#sidebarRank') && /Menu/.test(document.querySelector('#sidebarRank').innerText),
-      welcome: shown('#simpleWelcome'),
-      chips: document.querySelectorAll('[data-simple-prompt]').length,
-      stillShown: ['.topbar .command', '#timezoneChip', '#projectChip', '#modelChip', '#coverageChip', '#panelRank',
-        '#chatModes', '#view-chat .chat-crumb', '#view-chat .chat-chips', '#view-chat .chat-more',
-        '#chatWorkPanel', '#chatContextSummary'].filter(shown),
-      kept: {
-        input: shown('#chatInput'), send: shown('#sendMessage'), approvals: shown('#approvalStripOpen'),
-        signOut: shown('#logoutButton'), newChat: shown('#simpleNewChat'), language: shown('.top-actions .language-picker'),
-      },
+      greeting: shown('#chatGreeting') ? document.querySelector('#chatGreeting').textContent.trim() : '',
+      sentences: document.querySelectorAll('.chat-start-chips button').length,
+      // they step aside while the notice that no AI is connected is the next step (look.css)
+      sentencesShown: [...document.querySelectorAll('.chat-start-chips button')].filter((node) => node.getBoundingClientRect().height > 0).length,
+      noModel: shown('#simpleNoModel'),
+      menu: ['#newChat', '#openSearch', '.nav-library', '.nav-automations', '#sidebar .nav[data-view="coden"]', '#menuProjects', '#chatNav', '#meButton', '#sidebar .nav[data-view="settings"]'].filter((sel) => !shown(sel)),
+      box: ['#chatInput', '#chatAttach', '#chatWeb', '#chatModelPickerOpen', '#sendMessage', '#footerPrivacy'].filter((sel) => !shown(sel)),
+      gone: ['.topbar', '#contextPanel', '.statusbar', '#chatModes', '#simpleToFull', '#fullToSimple'].filter((sel) => document.querySelector(sel)),
+      advancedShown: ['#chatWorkPanel', '#chatContextSummary', '#inspectContext'].filter(shown),
     };
   });
-  check('a first visit opens the simple interface, on the chat',
-    firstVisit.ui === 'simple' && firstVisit.view === 'view-chat', JSON.stringify(firstVisit));
-  check('the menu is one button and the sidebar starts closed',
-    firstVisit.menu && firstVisit.sidebar === 'hidden', JSON.stringify(firstVisit));
-  check('the chat opens on a welcome with suggestions', firstVisit.welcome && firstVisit.chips >= 3, JSON.stringify(firstVisit));
-  check('nothing a first visit does not need is on screen', firstVisit.stillShown.length === 0, firstVisit.stillShown.join(', '));
-  check('what a person needs stays on screen: the box, send, the approval strip, sign out, a new conversation',
-    Object.values(firstVisit.kept).every(Boolean), JSON.stringify(firstVisit.kept));
-  // The Owner reported not seeing the new look at https://…:8443/#/home. Reproduced with a clean profile: that address showed the
-  // full interface's Home page (Ask / Create / Act) inside the simple frame, because only an EMPTY address chose the chat.
-  // Typed into the open page, as a person would, not set in storage.
+  check('a first visit opens on the chat, at the Base level, with the menu open',
+    firstVisit.view === 'view-chat' && firstVisit.level === 'base' && firstVisit.sidebar === 'full', JSON.stringify(firstVisit));
+  check('the first screen is the drawing: a greeting with the name, and four sentences to start from',
+    /What shall we do\?/.test(firstVisit.greeting) && firstVisit.sentences === 4 && firstVisit.sentencesShown === (firstVisit.noModel ? 0 : 4), JSON.stringify(firstVisit));
+  check('the menu carries what the drawing shows', firstVisit.menu.length === 0, firstVisit.menu.join(', '));
+  check('the box carries +, Web search, the model and send, and the line under it says where your words go',
+    firstVisit.box.length === 0, firstVisit.box.join(', '));
+  check('the old frame is gone, not hidden: no top bar, no right panel, no bottom bar, no mode switch, no interface switch',
+    firstVisit.gone.length === 0, firstVisit.gone.join(', '));
+  check('Base shows no technical detail', firstVisit.advancedShown.length === 0, firstVisit.advancedShown.join(', '));
   await simple.evaluate(() => { location.hash = '#/home'; });
   await simple.waitForFunction(() => location.hash === '#/chat', { timeout: 10000 }).catch(() => {});
   const typedHome = await simple.evaluate(() => ({ hash: location.hash, view: document.querySelector('.view.active')?.id }));
-  check('in the simple interface a typed #/home opens the chat, not the full interface\'s Home page',
-    typedHome.hash === '#/chat' && typedHome.view === 'view-chat', JSON.stringify(typedHome));
-  // Measured, not read from the stylesheet: a rule can say 13px and lose to a more specific one. On 2026-10-08 the privacy
-  // line of the live chat was 9px (a <small> in an 11px bar) while every rule about it said 11.
+  check('a typed #/home opens the chat', typedHome.hash === '#/chat' && typedHome.view === 'view-chat', JSON.stringify(typedHome));
+  // Measured, not read from the stylesheet: a rule can say 14px and lose to a more specific one.
   const smallPrint = await simple.evaluate(() => {
     const seen = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -4715,13 +4638,13 @@ try {
     return seen;
   });
   check('nothing a person reads on the first screen is under 14px', smallPrint.length === 0, smallPrint.slice(0, 6).join(' | '));
-  // The same rule for what a person presses, and for the colour scheme: measured on the page, because a rule can say 44px and lose to a more specific one.
+  // PROGETTO §5 B: no target under 40px on a computer (44 on a phone, measured by the phone checks of the project).
   const smallTargets = await simple.evaluate(() => [...document.querySelectorAll('button, a[href], select, input:not([type=hidden]), textarea, summary')]
     .map((el) => ({ el, box: el.getBoundingClientRect(), style: getComputedStyle(el) }))
-    .filter(({ box, style }) => box.width > 1 && box.height > 1 && style.visibility !== 'hidden' && style.display !== 'none')
-    .filter(({ box }) => box.height < 44 || box.width < 44)
+    .filter(({ el, box, style }) => box.width > 1 && box.height > 1 && style.visibility !== 'hidden' && style.display !== 'none' && !el.closest('.chat-head'))
+    .filter(({ box }) => box.height < 40 || box.width < 40)
     .map(({ el, box }) => `${(el.innerText || el.getAttribute('aria-label') || el.id || el.tagName).trim().slice(0, 20)} ${Math.round(box.width)}x${Math.round(box.height)}`));
-  check('nothing a person presses on the first screen is under 44px', smallTargets.length === 0, smallTargets.slice(0, 6).join(' | '));
+  check('nothing a person presses on the first screen is under 40px', smallTargets.length === 0, smallTargets.slice(0, 6).join(' | '));
   // the page hears the browser's own change event, which arrives after the emulation call returns
   await simple.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
   await simple.waitForFunction(() => document.documentElement.dataset.theme === 'midnight', { timeout: 5000 }).catch(() => {});
@@ -4729,43 +4652,35 @@ try {
   await simple.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
   await simple.waitForFunction(() => document.documentElement.dataset.theme === 'daylight', { timeout: 5000 }).catch(() => {});
   const lightTheme = await simple.evaluate(() => document.documentElement.dataset.theme);
-  check('the simple interface is light or dark as the computer says, while the page is open', darkTheme === 'midnight' && lightTheme === 'daylight', `${darkTheme} / ${lightTheme}`);
+  check('the page is light or dark as the computer says, while it is open', darkTheme === 'midnight' && lightTheme === 'daylight', `${darkTheme} / ${lightTheme}`);
 
-  // The menu: one button, and it keeps to the four destinations — fewer for a role that may not
-  // open them all — and closes again once one is chosen.
-  await simple.evaluate(() => { document.querySelector('#sidebarRank').click(); });
-  const menuOpen = await simple.evaluate(() => ({
-    rank: document.querySelector('#appShell').dataset.sidebar,
-    destinations: [...document.querySelectorAll('#sidebar .nav')]
-      .filter((node) => getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().height > 0)
-      .map((node) => node.dataset.view),
-    fullSwitch: getComputedStyle(document.querySelector('#simpleToFull')).display !== 'none',
-  }));
-  check('the menu opens on the destinations a first visit needs, and offers the full interface',
-    menuOpen.rank === 'full' && menuOpen.destinations.includes('chat')
-      && menuOpen.destinations.every((view) => ['chat', 'projects', 'documents', 'settings'].includes(view))
-      && menuOpen.fullSwitch, JSON.stringify(menuOpen));
-  await simple.evaluate(() => { document.querySelector('#sidebar .nav[data-view="settings"]').click(); });
-  const afterChoice = await simple.evaluate(() => ({
-    rank: document.querySelector('#appShell').dataset.sidebar,
-    view: document.querySelector('.view.active')?.id,
-  }));
-  check('choosing a destination closes the menu again', afterChoice.rank === 'hidden' && afterChoice.view !== 'view-chat',
-    JSON.stringify(afterChoice));
-
-  // The first word: no conversation to create, none to title.
+  // The level: the same places at Base and at Advanced; Advanced only adds details.
+  const places = () => simple.evaluate(() => [...document.querySelectorAll('#sidebar .nav, #sidebar .nav-act')]
+    .filter((node) => node.getBoundingClientRect().height > 0).map((node) => node.dataset.view ?? node.dataset.viewLink ?? node.id).join(' '));
+  const baseMenu = await places();
+  await simple.evaluate(() => { location.hash = '#/settings/appearance'; });
+  await simple.waitForSelector('#levelChoices [data-level="advanced"]', { visible: true, timeout: 10000 });
+  await simple.evaluate(() => { document.querySelector('#levelChoices [data-level="advanced"]').click(); });
+  const advanced = await simple.evaluate(() => ({ level: document.body.dataset.level, pressed: document.querySelector('#levelChoices [data-level="advanced"]').getAttribute('aria-pressed') }));
+  const advancedMenu = await places();
   await simple.evaluate(() => { location.hash = '#/chat'; });
   await simple.waitForFunction(() => document.querySelector('.view.active')?.id === 'view-chat', { timeout: 10000 });
-  await simple.evaluate(() => { document.querySelector('#simpleNewChat').click(); });
+  const workPanel = await simple.evaluate(() => (document.querySelector('#chatWorkPanel')?.getBoundingClientRect().width ?? 0) > 0);
+  check('Advanced is a level, not another interface: the same places, and the technical view beside the chat',
+    advanced.level === 'advanced' && advanced.pressed === 'true' && advancedMenu === baseMenu && workPanel, JSON.stringify({ advanced, baseMenu, advancedMenu, workPanel }));
+  await simple.evaluate(() => { document.querySelector('#levelChoices [data-level="base"]').click(); });
+
+  // The first word: no conversation to create, none to title.
+  await simple.evaluate(() => { document.querySelector('#newChat').click(); });
   await simple.waitForFunction(() => document.querySelector('#view-chat').hasAttribute('data-empty'), { timeout: 10000 });
-  // The first card asks for the person's own words: it writes the start of a sentence and leaves the cursor below it.
+  // A sentence to start from is written into the box, never sent: it is the person's turn to add the details.
   const suggestion = await simple.evaluate(() => {
-    const card = document.querySelector('[data-simple-prompt]:not([data-prompt-complete])');
+    const card = [...document.querySelectorAll('[data-simple-prompt]')].find((node) => /write/i.test(node.dataset.promptText));
     card.click();
-    return { card: card.querySelector('strong')?.textContent.trim(), box: document.querySelector('#chatInput').value, focused: document.activeElement?.id };
+    return { card: card.textContent.trim(), box: document.querySelector('#chatInput').value, focused: document.activeElement?.id };
   });
-  check('a suggestion is written into the box, and the box takes the focus',
-    /:\n\n$/.test(suggestion.box) && suggestion.box.length > 10 && suggestion.focused === 'chatInput', JSON.stringify(suggestion));
+  check('a sentence is written into the box, and the box takes the focus',
+    /: $/.test(suggestion.box) && suggestion.box.length > 10 && suggestion.focused === 'chatInput', JSON.stringify(suggestion));
   // ...and the person goes on in their own words
   await simple.evaluate(() => {
     const box = document.querySelector('#chatInput');
@@ -4819,22 +4734,20 @@ try {
   });
   check('and the "connect a model" button says so in words instead of an error', /owner or administrator/.test(wizardDenied ?? ''), String(wizardDenied));
 
-  // The other way: the full interface is one button away and brings every destination back.
+  // On a phone: the menu is a drawer, closed until its button opens it, and choosing a place closes it again.
+  await simple.setViewport({ width: 390, height: 844 });
+  await simple.waitForFunction(() => document.querySelector('#appShell').dataset.sidebar === 'hidden', { timeout: 5000 }).catch(() => {});
+  const phoneClosed = await simple.evaluate(() => document.querySelector('#appShell').dataset.sidebar);
   await simple.evaluate(() => { document.querySelector('#sidebarRank').click(); });
-  await Promise.all([
-    simple.waitForNavigation({ waitUntil: 'networkidle2' }),
-    simple.evaluate(() => { document.querySelector('#simpleToFull').click(); }),
-  ]);
-  await simple.waitForSelector('#authGate.hidden', { timeout: 25000 });
-  const fullAgain = await simple.evaluate(() => ({
-    ui: document.body.dataset.ui,
-    destinations: [...document.querySelectorAll('#sidebar .nav')]
-      .filter((node) => getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().height > 0).length,
-    switchBack: getComputedStyle(document.querySelector('#fullToSimple')).display !== 'none',
+  const phoneOpen = await simple.evaluate(() => ({
+    rank: document.querySelector('#appShell').dataset.sidebar,
+    labels: [...document.querySelectorAll('#sidebar .nav span, #sidebar .nav-act span')].filter((node) => !node.classList.contains('visually-hidden') && node.getBoundingClientRect().width > 0).length,
   }));
-  check('the full interface is one button away and keeps every destination',
-    fullAgain.ui === 'full' && fullAgain.destinations > 4 && fullAgain.switchBack, JSON.stringify(fullAgain));
-  check('the simple interface raised no script error', simpleErrors.length === 0, simpleErrors.slice(0, 3).join(' | '));
+  await simple.evaluate(() => { document.querySelector('#sidebar .nav[data-view="settings"]').click(); });
+  const phoneChosen = await simple.evaluate(() => document.querySelector('#appShell').dataset.sidebar);
+  check('on a phone the menu is a drawer: closed, opened by its button with every label, closed again by choosing',
+    phoneClosed === 'hidden' && phoneOpen.rank === 'full' && phoneOpen.labels >= 4 && phoneChosen === 'hidden', JSON.stringify({ phoneClosed, phoneOpen, phoneChosen }));
+  check('the one interface raised no script error', simpleErrors.length === 0, simpleErrors.slice(0, 3).join(' | '));
   await simple.close();
 } catch (error) {
   let context = '';

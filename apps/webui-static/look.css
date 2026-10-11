@@ -63,6 +63,9 @@ body[data-level=advanced] .composer-row .level-advanced{display:inline-flex!impo
 .app-shell>.sidebar{grid-row:1;grid-column:1}
 .app-shell>.main{grid-row:1;grid-column:2;padding:0;display:flex;flex-direction:column;min-height:0;overflow:auto;background:var(--n-bg)}
 .menu-toggle{display:none}
+/* a menu narrowed to icons or put away with [ comes back with the mouse too: the button shows wherever the menu is not open */
+.app-shell:not([data-sidebar=full]) .menu-toggle{position:fixed;top:8px;inset-inline-start:8px;z-index:70;display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--n-line);border-radius:12px;background:var(--n-card);color:var(--n-ink);cursor:pointer}
+.app-shell[data-sidebar=icons] .menu-toggle{inset-inline-start:84px}
 
 /* ── the menu ── */
 .sidebar{display:flex;flex-direction:column;gap:2px;padding:16px 12px 0;background:var(--n-side);border-inline-end:1px solid var(--n-line);overflow:hidden}
@@ -76,7 +79,7 @@ body[data-level=advanced] .composer-row .level-advanced{display:inline-flex!impo
 .sidebar .nav-act kbd{margin-inline-start:auto;padding:0;border:0;background:none;font-size:0.875rem;color:var(--n-muted)}
 body:not([data-level=advanced]) .sidebar .nav-act kbd{display:none}
 .nav-label{display:flex;align-items:center;justify-content:space-between;width:100%;margin:18px 0 4px;padding:0 12px;border:0;background:none;font:inherit;font-size:0.875rem;font-weight:600;color:var(--n-muted);text-align:start}
-.nav-label-add{display:grid;place-items:center;width:32px;height:32px;margin-inline-end:-8px;border:0;border-radius:8px;background:transparent;color:var(--n-muted);cursor:pointer}
+.nav-label-add{display:grid;place-items:center;width:40px;height:40px;margin-inline-end:-12px;border:0;border-radius:8px;background:transparent;color:var(--n-muted);cursor:pointer}
 .nav-label-add:hover{background:var(--n-hover);color:var(--n-ink)}
 .nav-folder{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--n-ink);font:inherit;font-size:0.9688rem;font-weight:600;text-align:start;cursor:pointer}
 .nav-folder:hover{background:var(--n-hover)}
@@ -84,7 +87,7 @@ body:not([data-level=advanced]) .sidebar .nav-act kbd{display:none}
 .nav-project.open>.nav-folder svg{transform:rotate(90deg)}
 .nav-folder span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chat-nav{margin:0;padding:0;border:0}
-.chat-nav-toggle{cursor:pointer;text-transform:none;letter-spacing:0;padding:0 12px;min-height:0}
+.chat-nav-toggle{cursor:pointer;text-transform:none;letter-spacing:0;padding:0 12px;min-height:40px}
 .chat-nav-toggle:hover{color:var(--n-ink)}
 .chat-nav-count{display:none}
 .chat-nav-list{display:flex;flex-direction:column;gap:2px}
@@ -102,7 +105,7 @@ body:not([data-level=advanced]) .sidebar .nav-act kbd{display:none}
 .chat-nav-actions button:hover{background:var(--n-card);color:var(--n-ink)}
 .chat-nav-empty,.chat-nav-more{margin:4px 12px;font-size:0.875rem;color:var(--n-muted)}
 .nav-project-chats .chat-nav-empty{margin-inline-start:42px}
-.chat-nav-archive{margin:6px 0 0;padding:0 12px 0 42px;min-height:36px;border:0;background:none;font:inherit;font-size:0.875rem;color:var(--n-muted);text-align:start;cursor:pointer}
+.chat-nav-archive{margin:6px 0 0;padding:0 12px 0 42px;min-height:40px;border:0;background:none;font:inherit;font-size:0.875rem;color:var(--n-muted);text-align:start;cursor:pointer}
 .chat-nav-archive:hover{color:var(--n-ink)}
 .chat-nav-scroller{max-height:220px;overflow:auto}
 .sidebar-foot{position:relative;display:flex;align-items:center;gap:8px;min-height:60px;margin:8px -12px 0;padding:8px 12px 8px;border-top:1px solid var(--n-line)}
@@ -265,7 +268,11 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 .lockline.external{color:var(--n-warn-ink)}
 
 /* the notice when nothing can answer */
-#simpleNoModel{max-width:760px;margin:0 auto 12px;padding:16px 18px;border:1px solid var(--n-line);border-radius:16px;background:var(--n-card)}
+#simpleNoModel{max-width:760px;margin:0 auto 12px;padding:16px 18px;border:1px solid var(--n-line);border-radius:16px;background:var(--n-card);font-size:1rem}
+#simpleNoModel b,#simpleNoModel p,#simpleNoModel button,#simpleNoModel label,#simpleNoModel select{font-size:1rem}
+#simpleNoModel button{min-height:40px}
+#chatWorkPanel .work-block:has(#contextInspector:not(:empty)) .context-empty{display:none}
+#contextInspector:empty{display:none}
 
 /* ── buttons and fields everywhere, in the same hand ── */
 .main button.primary,.main .primary{background:var(--n-accent);color:var(--n-on-accent);border:0;box-shadow:none}
@@ -277,7 +284,10 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 
 /* ── a phone: the menu is a drawer, the chat fills the screen ── */
 @media (max-width:900px){
-  .app-shell{--col-side:0px}
+  /* styles.css made the old frame a strip at 850px (display:block, labels hidden): the one interface keeps its frame */
+  .app-shell{--col-side:0px;display:grid;height:100vh;height:100dvh;overflow:hidden}
+  .app-shell .nav span:not(.nav-count):not(.visually-hidden){position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}
+  .app-shell .sidebar nav{display:flex}
   .app-shell>.main{grid-column:1/-1}
   .menu-toggle{position:fixed;top:8px;inset-inline-start:8px;z-index:70;display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--n-line);border-radius:12px;background:var(--n-card);color:var(--n-ink);cursor:pointer}
   .app-shell .sidebar{position:fixed;inset-block:0;inset-inline-start:0;z-index:65;width:min(300px,86vw);box-shadow:var(--n-lift);padding-top:60px}
@@ -334,15 +344,15 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 /* ── Library and Automations: the pages of one menu entry, as tabs ── */
 .page-tabs{display:none;flex-wrap:wrap;align-items:center;gap:4px;padding:16px 28px 4px}
 .app-shell:is([data-view=knowledge],[data-view=documents],[data-view=memory],[data-view=research]) #libraryTabs,
-.app-shell:is([data-view=agents],[data-view=workflows]) #automationTabs{display:flex}
+.app-shell:is([data-view=agents],[data-view=workflows],[data-view=tasks]) #automationTabs{display:flex}
 .page-tabs-title{flex-basis:100%;margin:0 0 8px;font-size:1.625rem;font-weight:650;letter-spacing:-.01em}
 .page-tabs .nav{display:inline-flex;align-items:center;width:auto;min-height:40px;padding:0 14px;border:0;border-radius:10px;background:transparent;color:var(--n-muted);font:inherit;font-size:0.9375rem;cursor:pointer;box-shadow:none}
 .page-tabs .nav:hover{background:var(--n-hover);color:var(--n-ink);box-shadow:none}
 .page-tabs .nav.active{background:var(--n-card);color:var(--n-ink);font-weight:600;box-shadow:var(--n-shadow)}
 .app-shell:is([data-view=knowledge],[data-view=documents],[data-view=memory],[data-view=research]) .sidebar .nav-library,
-.app-shell:is([data-view=agents],[data-view=workflows]) .sidebar .nav-automations,
+.app-shell:is([data-view=agents],[data-view=workflows],[data-view=tasks]) .sidebar .nav-automations,
 .app-shell[data-view=projects] .sidebar .nav-label-add{background:var(--n-card);font-weight:600;box-shadow:var(--n-shadow)}
-.sidebar .nav.nav-label-add{width:32px;min-height:32px;padding:0;justify-content:center;margin-inline-end:-8px;color:var(--n-muted)}
+.sidebar .nav.nav-label-add{width:40px;min-height:40px;padding:0;justify-content:center;margin-inline-end:-12px;color:var(--n-muted)}
 .sidebar .nav.nav-new.active{background:var(--n-card);font-weight:600;box-shadow:none}
 #view-settings .nav.settings-link,#simpleAi .nav.settings-link{display:flex;align-items:center;width:100%;min-height:42px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--n-ink);font:inherit;font-size:0.9375rem;text-align:start;cursor:pointer;box-shadow:none}
 #simpleAi .nav.settings-link{width:auto;margin-top:8px;padding:0;color:var(--n-accent-ink);font-weight:600}

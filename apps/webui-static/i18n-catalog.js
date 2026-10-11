@@ -581,7 +581,6 @@ export const RUNTIME_ONLY = Object.freeze([
   'Remove from context',
   'No source has been cited in this chat yet.',
   'No work has been started from this chat yet.',
-  'Select a conversation.',
   'user',
   'assistant',
   'messages',
@@ -1031,14 +1030,6 @@ const it = {
   'Primary': 'Principale',
 
   // ——— Home ———
-  'Ask. Create. Act.': 'Chiedi. Crea. Agisci.',
-  'Ask': 'Chiedi',
-  'Answers with context, sources and uncertainty.': 'Risposte con contesto, fonti e incertezza.',
-  'Create': 'Crea',
-  'Documents, code, tables and versioned artifacts.': 'Documenti, codice, tabelle e artefatti versionati.',
-  'Act': 'Agisci',
-  'Agent plans, tool steps and approval-gated mutations.': 'Piani dell’agente, passi degli strumenti e modifiche soggette ad approvazione.',
-  'Start here': 'Comincia da qui',
   'Loading…': 'Caricamento…',
   // `D-0404` slice 3 — the CodeN terminal's operational states. Only the first is in the
   // markup, as the pre-JavaScript value; the other five are written by `coden-terminal.js`
@@ -1232,13 +1223,7 @@ const it = {
   'Reconnecting…': 'Riconnessione…',
   'Not permitted to attach.': 'Collegamento non permesso.',
   'This terminal could not start.': 'Questo terminale non è riuscito ad avviarsi.',
-  'Or start from what you want done': 'Oppure parti da ciò che vuoi ottenere',
-  'A goal opens a conversation with itself as the opening text. Turning a goal into a Plan is the Intent Frame, which is backbone work and does not exist in this build — so nothing here has been understood yet, only asked.': 'Un obiettivo apre una conversazione usando sé stesso come testo iniziale. Trasformare un obiettivo in un Piano è l’Intent Frame, che è lavoro di dorsale e non esiste in questa build — quindi qui nulla è ancora stato compreso, solo chiesto.',
   'Manage': 'Gestisci',
-  'No projects yet.': 'Ancora nessun progetto.',
-  'Recent conversations': 'Conversazioni recenti',
-  'Open chat': 'Apri la chat',
-  'No conversations yet.': 'Ancora nessuna conversazione.',
   'Human review time per decided change': 'Tempo di revisione umana per modifica decisa',
   'last 30 days': 'ultimi 30 giorni',
   'median review time': 'tempo mediano di revisione',
@@ -2124,8 +2109,6 @@ const it = {
   // Written from the census, and translated here rather than in `page-help.js`, so the help
   // text flows through the SAME mechanism as every other string. A second place to translate
   // would be a second place to forget.
-  'The starting point: your projects, recent conversations, the work queue and the health of the services behind them.': 'Il punto di partenza: i tuoi progetti, le conversazioni recenti, la coda di lavoro e la salute dei servizi che stanno dietro.',
-  'Start from a goal rather than a blank chat — a goal opens a conversation with itself as the opening text. Turning that goal into a Plan is backbone work that does not exist in this build, so what you get here is the question asked, not yet understood.': 'Parti da un obiettivo invece che da una chat vuota — un obiettivo apre una conversazione usando sé stesso come testo iniziale. Trasformarlo in un Piano è lavoro di dorsale che in questa build non esiste, quindi qui ottieni la domanda posta, non ancora compresa.',
   'The conversation, with its context graph: every project keeps its own chats, branches, memory, files and tools.': 'La conversazione, col suo grafo di contesto: ogni progetto tiene le proprie chat, i rami, la memoria, i file e gli strumenti.',
   'Check the context panel before you send — model, project, messages, memory, sources and estimated tokens are all shown first. Branch instead of editing when you want to compare two directions; merging and comparing branches are both here.': 'Controlla il pannello di contesto prima di inviare — modello, progetto, messaggi, memoria, fonti e token stimati sono mostrati prima. Ramifica invece di modificare quando vuoi confrontare due strade; unire e confrontare i rami stanno entrambi qui.',
   'The workbench and the session: one program with two shells, this one and the terminal, joined to the SAME live session rather than two clients with separate state.': 'Il banco di lavoro e la sessione: un solo programma con due shell, questa e il terminale, unite alla STESSA sessione viva invece di essere due client con stati separati.',
@@ -2632,6 +2615,8 @@ const it = {
   'This account is still using the default password.': 'Questo account usa ancora la password predefinita, uguale per tutti.',
   'Change it now': 'Cambiala ora',
   // One interface for everyone (2026-10-11).
+  'Work with a start, a deadline or a repeat rule, listed once: active or scheduled, never both.': 'Lavori con un inizio, una scadenza o una regola di ripetizione, elencati una volta sola: attivi o pianificati, mai tutte e due le cose.',
+  'Give a task a start in the future or a repeat rule to schedule it; anything else not finished is active. The time you type is read in your time zone before it is sent.': 'Dai a un’attività un inizio nel futuro o una regola di ripetizione per pianificarla; tutto il resto non finito è attivo. L’ora che scrivi viene letta nel tuo fuso orario prima di essere inviata.',
   'Jobs': 'Lavori',
   'Log': 'Registro',
   'your code folder': 'la tua cartella di codice',

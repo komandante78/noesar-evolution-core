@@ -331,7 +331,7 @@ function authError(message=''){$('#authError').textContent=message;}
 // to; everything else is a section you arrive at. The fifteen entries that used to sit in
 // the sidebar did not disappear — they changed rank and live inside the single Settings
 // destination, or inside the working surface that actually uses them.
-const ROUTES=new Set(['home','chat','coden','coden-tui','tools','projects','documents','knowledge','memory','agents','workflows','models','research','settings']);
+const ROUTES=new Set(['tasks','chat','coden','coden-tui','tools','projects','documents','knowledge','memory','agents','workflows','models','research','settings']);
 // The Settings destination's own menu: menu inside the menu, in three groups. The order
 // here is the order rendered, and it is the source of truth for which section a hash may
 // name — the markup is checked against it at boot rather than being trusted.
@@ -345,7 +345,7 @@ const settingsGroupOf=(section)=>Object.keys(SETTINGS_GROUPS).find((head)=>SETTI
 // bookmark or an old note lands on the section that now owns it instead of on a 404.
 // Removing a page from the sidebar is a change of rank, not a change of address.
 const LEGACY_ROUTES={
-  tasks:'home',tools:'coden',
+  tools:'coden',
   approvals:'settings/audit',providers:'settings/privacy',hardware:'settings/models-hardware',
   users:'settings/people',security:'settings/security',health:'settings/health',
   logs:'settings/health',updates:'settings/updates',backups:'settings/storage',
@@ -996,7 +996,7 @@ function isTyping(target){
 }
 function initSidebarRank(){
   applySidebarRank(readSidebarRank());
-  $('#sidebarRank')?.addEventListener('click',()=>applySidebarRank($('#appShell')?.dataset.sidebar==='hidden'?'full':'hidden'));
+  $('#sidebarRank')?.addEventListener('click',()=>applySidebarRank($('#appShell')?.dataset.sidebar==='full'?'hidden':'full'));
   narrowQuery.addEventListener?.('change',()=>applySidebarRank(readSidebarRank()));
   $$('#sidebar .nav, #sidebar [data-view-link], #newChat, #openSearch').forEach((item)=>item.addEventListener('click',closeDrawer));
   window.addEventListener('keydown',(event)=>{
@@ -1118,7 +1118,7 @@ function navigate(spec){
   if(legacy){const [lv,ls='']=legacy.split('/');activate(lv,{section:ls});return;}
   activate(first,{section:second,place:third});
 }
-$$('.nav').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.view)));$$('[data-view-link]').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.viewLink)));$$('[data-start-mode]').forEach((button)=>button.addEventListener('click',()=>{setMode(button.dataset.startMode);activate('chat');}));
+$$('.nav').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.view)));$$('[data-view-link]').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.viewLink)));
 function setMode(mode){currentMode=mode;$$('[data-chat-mode]').forEach((button)=>button.classList.toggle('selected',button.dataset.chatMode===mode));}
 $$('[data-chat-mode]').forEach((button)=>button.addEventListener('click',()=>setMode(button.dataset.chatMode)));
 // The banner asserts a privacy guarantee, so it must never assert one it has not just
@@ -1236,9 +1236,8 @@ async function refreshWorkspaceData(){const data=await api('/api/v1/ai/bootstrap
 // Opening NOESAR is a new chat (the first screen: a greeting and the box). A chat is reopened from the menu, never
 // picked for the person because it happened to be first.
 async function refreshWorkspace(){await refreshWorkspaceData();renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
-function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderNotes();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();}
+function renderAll(){renderProjectOptions();renderProjects();renderTasks();renderNotes();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();}
 function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#noteProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#noteConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
-function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b translate="no">${escapeHtml(item.name)}</b><small translate="no">${escapeHtml(item.description||t('No description'))}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b translate="no">${escapeHtml(item.title)}</b><small translate="no">${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
 // §3#9, OWNER_REVIEW_2026-08-21: created a project, no way to remove it. The backend already
 // had the whole mechanism (`updateProject` accepts `archived`, `listProjects` already filters
 // `!archived`) from the same non-destructive pattern D-0397 gave agents — CLAUDE10 §4 refuses a
@@ -2611,7 +2610,7 @@ $('#exportData').addEventListener('click',exportData);$('#purgeProject').addEven
 // staleness — a destination hidden from this account by applyNavAccess() is `hidden` in the
 // DOM and therefore simply absent here, so the box can never offer a page that answers 403;
 // and phase 3 can retire the Navigator column without touching a line of this code.
-const CONTENT_HOME={project:'projects',conversation:'chat',message:'chat',memory:'memory',artifact:'documents',source:'knowledge',tool:'coden',task:'home'};
+const CONTENT_HOME={project:'projects',conversation:'chat',message:'chat',memory:'memory',artifact:'documents',source:'knowledge',tool:'coden',task:'tasks'};
 function addressBook(){
   const entries=[];
   const add=(address,kind,label)=>{if(label)entries.push({address,kind,label});};
@@ -4946,50 +4945,6 @@ async function loadReviewMetric(){
 function withheldHtml(block,what){
   return `<p class="declared-empty withheld">${escapeHtml(what)} are not shown to this account. It would need <code>${escapeHtml(block.requires)}</code>. ${escapeHtml(block.detail??'')}</p>`;
 }
-function renderEntryActions(payload){
-  const host=$('#homeEntryActions');if(!host)return;
-  const actions=payload.entryActions??[];
-  // `aria-disabled`, NOT the `disabled` attribute. A disabled button is removed from the
-  // tab order, and these three exist entirely to explain what is missing — so disabling
-  // them would hide that explanation from exactly the people who cannot see the dimmed
-  // styling. They stay reachable and announced as unavailable; nothing is bound to them,
-  // so pressing one does nothing. The audit's own exclusion note is what surfaced this:
-  // it reported skipping disabled controls, and three of them were mine.
-  host.innerHTML=actions.map((action)=>`<button class="entry-action${action.wired?'':' entry-waiting'}" data-entry-action="${escapeHtml(action.id)}"${action.wired?'':' aria-disabled="true"'}><b>${escapeHtml(action.label)}</b><span>${escapeHtml(action.detail)}</span></button>`).join('');
-  // Declared rather than left to be counted, the same way the bench states how many of its
-  // status fields have a source: two of six acting is the honest headline of this screen.
-  const chip=$('#homeEntryWired');
-  // n.2: composed with two counts, so it can never be matched whole in the catalogue — the words
-  // are translated, the numbers are not.
-  if(chip)chip.textContent=`${payload.entryActionsWired} ${t('of')} ${actions.length} ${t('can act on this build')}`;
-  for(const button of host.querySelectorAll('[data-entry-action]')){
-    const action=actions.find((item)=>item.id===button.dataset.entryAction);
-    if(!action?.wired||!action.target)continue;
-    button.addEventListener('click',async()=>{
-      if(action.target.sessionId){activate('chat');await selectConversation(action.target.sessionId);return;}
-      activate(action.target.view);
-      if(action.target.focus){const field=$(`#${action.target.focus}`);if(field)field.focus();}
-    });
-  }
-}
-function renderQuickActions(payload){
-  const host=$('#homeGoalActions');if(!host)return;
-  const actions=payload.quickActions??[];
-  host.innerHTML=actions.map((action)=>`<button class="goal-action" data-goal-action="${escapeHtml(action.id)}">${escapeHtml(action.goal)}</button>`).join('');
-  const count=$('#homeGoalCount');if(count)count.textContent=`${actions.length} ${t('goals')}`;
-  for(const button of host.querySelectorAll('[data-goal-action]')){
-    const action=actions.find((item)=>item.id===button.dataset.goalAction);
-    button.addEventListener('click',()=>{
-      // ACT, because every one of these ten asks for something to be done rather than
-      // explained. The goal lands in the composer and is NOT sent: a screen that fires a
-      // request off the back of one click decides for the person what they meant.
-      setMode('ACT');
-      activate('chat');
-      const composer=$('#chatInput');
-      if(composer){composer.value=action.goal;composer.focus();}
-    });
-  }
-}
 function renderServices(payload){
   const host=$('#homeServices');if(!host)return;
   const block=payload.services??{};
@@ -5048,14 +5003,15 @@ function renderModels(payload){
       <small>${block.localRuntime.launchedHere?t('launched by this installation'):t('attached, not launched here')}${block.localRuntime.overriddenByEnvironment?` · ${t('overridden by the environment')}`:''}</small></p>`;
   host.innerHTML=`${providers}${runtime}<p class="hint">${escapeHtml(block.trustState?.reason??'')}</p>`;
 }
-async function loadHome(){
+// What used to load the Home: now the top of Settings › Health and logs (the chat replaced the Home, 2026-10-11).
+async function loadInventory(){
   // The metric has its own route and its own failure mode; keeping it separate means a
   // metric that cannot be read does not blank the rest of the screen.
   loadReviewMetric();
   let payload;
   try{payload=await api('/api/v1/home');}
   catch(error){
-    for(const id of ['#homeEntryActions','#homeGoalActions','#homeServices','#homeTools','#homeModels']){
+    for(const id of ['#homeServices','#homeTools','#homeModels']){
       const host=$(id);
       // Named, not left on "Loading…". A panel that never resolves is the defect this
       // product has already shipped once and does not intend to ship again.
@@ -5063,8 +5019,6 @@ async function loadHome(){
     }
     return;
   }
-  renderEntryActions(payload);
-  renderQuickActions(payload);
   renderServices(payload);
   renderTools(payload);
   renderModels(payload);
@@ -5214,7 +5168,7 @@ function renderBenchNavigator(){
   $('#navProjects').innerHTML=list(state.projects,(item)=>item.name,'No project yet.','projects');
   $('#navRecent').innerHTML=list(state.artifacts??[],(item)=>item.title,'Nothing opened recently.','documents');
   $('#navSessions').innerHTML=list(state.conversations,(item)=>item.title,'No session yet.','chat');
-  $('#navTasks').innerHTML=list(state.tasks??[],(item)=>item.title,'No task.','home');
+  $('#navTasks').innerHTML=list(state.tasks??[],(item)=>item.title,'No task.','tasks');
   $('#navAgents').innerHTML=list(state.agents??[],(item)=>item.name,'No agent.','agents');
   $('#navHistory').innerHTML=list(state.agentRuns??[],(item)=>`${item.goal??'run'} · ${item.status??''}`,'No run has happened.','agents');
   for(const id of ['#navProjects','#navRecent','#navSessions','#navTasks','#navAgents','#navHistory']){
@@ -7252,6 +7206,7 @@ function repaintForLanguage(){
   renderAll();renderChatNav();paintApprovalStrip();paintDefaultPasswordBanner();
   if(lastComputerReport)paintSimpleComputer(lastComputerReport);
   refreshCodenModelChip();refreshMessages();
+  const work=$('#codenWork');if(work){work.dataset.drawn='';void refreshCodenWork();}
   // and the page the person is on, by the same road they arrived: its own loader fetches and draws it again
   goToHash();
 }
@@ -7278,7 +7233,6 @@ Object.assign(VIEW_LOADERS,{
   research:loadResearchDestination,
   workflows:loadWorkflows,
   coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
-  home:loadHome,
   // D-0520: the consent is read BEFORE the catalogue, because the Acquire button on every card
   // is drawn from it — reading it after would draw the whole page in the wrong state first.
   models:async()=>{await loadModelEgress();await loadModelCatalogue();await refreshAcquisitions();},
@@ -7286,6 +7240,8 @@ Object.assign(VIEW_LOADERS,{
   // the SAME fetch, so they share the one loader: seven copies would be seven places to forget
   // one, which is the shape D-0300 and D-0302 were both about.
   chat:refreshWorkspaceData,
+  // a page of Automations since 2026-10-11: it reads the tasks again when it is opened, like every list page
+  tasks:refreshWorkspaceData,
   tools:refreshWorkspaceData,
   projects:refreshWorkspaceData,
   documents:refreshWorkspaceData,
@@ -7322,7 +7278,7 @@ Object.assign(SECTION_LOADERS,{
   language:loadSettings,
   security:loadSecurity,
   people:loadUsers,
-  health:()=>{loadHealth();loadLogs();},
+  health:()=>{loadInventory();loadHealth();loadLogs();},
   updates:loadUpdates,
   storage:loadBackups,
   about:loadAbout,

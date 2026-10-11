@@ -31,9 +31,10 @@
  * `howto` — what is worth doing here, concretely. Never "click the button to use the feature".
  */
 export const PAGE_HELP = Object.freeze({
-  home: {
-    what: 'The starting point: your projects, recent conversations, the work queue and the health of the services behind them.',
-    howto: 'Start from a goal rather than a blank chat — a goal opens a conversation with itself as the opening text. Turning that goal into a Plan is backbone work that does not exist in this build, so what you get here is the question asked, not yet understood.',
+  // The Home went on 2026-10-11 (the chat is the first screen); Tasks, which it held, is a page of Automations.
+  tasks: {
+    what: 'Work with a start, a deadline or a repeat rule, listed once: active or scheduled, never both.',
+    howto: 'Give a task a start in the future or a repeat rule to schedule it; anything else not finished is active. The time you type is read in your time zone before it is sent.',
   },
   chat: {
     what: 'The conversation, with its context graph: every project keeps its own chats, branches, memory, files and tools.',

@@ -651,7 +651,8 @@ describe('the wiring in app.js', () => {
     const rank = app.slice(app.indexOf('const SIDEBAR_RANKS='), app.indexOf('function initSettingsMenu('));
     assert.match(rank, /if\(narrowQuery\.matches\)return 'hidden';/);
     assert.match(rank, /\?stored:'full'/);
-    assert.match(rank, /applySidebarRank\(\$\('#appShell'\)\?\.dataset\.sidebar==='hidden'\?'full':'hidden'\)/);
+    assert.match(rank, /applySidebarRank\(\$\('#appShell'\)\?\.dataset\.sidebar==='full'\?'hidden':'full'\)/, 'the button opens the menu from icons or away, and puts it away when open');
+    assert.match(look, /\.app-shell:not\(\[data-sidebar=full\]\) \.menu-toggle\{position:fixed;/, 'and it shows on a computer whenever the menu is not open');
     assert.match(rank, /if\(event\.key==='\['\)stepSidebarRank\(-1\);/);
     assert.match(rank, /function closeDrawer\(\)\{if\(narrowQuery\.matches\)applySidebarRank\('hidden'\);\}/);
     assert.match(rank, /const SIDEBAR_KEY='noesar\.menu\.rank';/, 'its own key: the old one held the simple view\'s "hidden" for everyone who used it');
