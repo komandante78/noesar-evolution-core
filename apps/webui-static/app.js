@@ -4323,14 +4323,18 @@ function renderAccentReadout(hex){
   const colour=parseHex(hex);
   if(!colour){box.innerHTML='<div><b>—</b><small>Not a colour this field understands. Use a hex value such as <code>#5b8cff</code>.</small></div>';return;}
   const surface=tokenValue('surface-card')||'#0a121f';
-  const onFill=contrast(colour,parseHex('#ffffff'));
+  // The look puts whichever of white and black reads better on the fill (applyAccent), so that is the text this measures.
+  const onWhite=contrast(colour,parseHex('#ffffff'));
+  const onBlack=contrast(colour,parseHex('#000000'));
+  const onFill=Math.max(onWhite,onBlack);
+  const fillText=onWhite>=onBlack?'White':'Black';
   const asText=contrast(colour,parseHex(surface));
   const readable=deriveReadable(hex,surface,4.5);
   const verdict=(ratio,threshold)=>ratio>=threshold
     ? `<span class="state state-ok">passes ${threshold}:1</span>`
     : `<span class="state state-warning">below ${threshold}:1</span>`;
   box.innerHTML=`
-    <div><b>${escapeHtml(formatRatio(onFill))}</b><small>White text on this colour as a fill. ${verdict(onFill,4.5)}</small>
+    <div><b>${escapeHtml(formatRatio(onFill))}</b><small>${fillText} text on this colour as a fill. ${verdict(onFill,4.5)}</small>
       <span class="swatch-line"><i data-swatch="${escapeHtml(hex)}"></i><span>the colour you chose</span></span></div>
     <div><b>${escapeHtml(formatRatio(asText))}</b><small>This colour used AS TEXT on a panel. ${verdict(asText,4.5)}</small></div>
     <div><b>${escapeHtml(formatRatio(readable?.ratio??0))}</b><small>${readable&&readable.derived

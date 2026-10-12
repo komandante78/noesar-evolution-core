@@ -117,6 +117,13 @@ describe('appearance: what the page shows is what the look paints', () => {
     assert.ok(themePalette.includes('applyAccent(readAccent())'), 'it does not put the accent back');
   });
 
+  test('the readout judges the text colour the look really puts on the fill: the better of white and black, as applyAccent() chooses (it warned "white text 1.5:1" for a gold the look paints black on)', () => {
+    const readout = app.slice(app.indexOf('function renderAccentReadout('), app.indexOf('function renderAppearance('));
+    assert.ok(readout.includes("parseHex('#000000')"), 'the readout does not consider black text');
+    assert.ok(readout.includes('Math.max('), 'it does not take the better of the two');
+    assert.ok(/\$\{fillText\} text on this colour as a fill/.test(readout), 'it does not say which text colour it measured');
+  });
+
   test('a checkbox, a slider and a radio take the accent, and a link with no class of its own is readable on every surface', () => {
     assert.match(look, /input\[type=range\],input\[type=checkbox\],input\[type=radio\],progress\{accent-color:var\(--n-accent\)\}/);
     assert.match(look, /a:not\(\[class\]\)\{color:var\(--n-accent-ink\)\}/);
