@@ -1197,15 +1197,9 @@
             <button type="button" data-text-step="4" aria-pressed="false" class="level-advanced">Largest</button>
           </div>
         </section>
-        <!-- Advanced: the nine themes, any accent colour, zoom and motion, and the legend of the seven states. -->
-        <details class="panel setting-more level-advanced">
-          <summary>More appearance options</summary>
-        <section class="panel">
-          <div class="panel-title"><h3>Theme</h3><span class="badge badge-off" id="themeCurrent">—</span></div>
-          <p class="hint">A theme is a remapping of the interface's colour tokens, not a second stylesheet. Meaning never moves with it: the seven states below keep their glyph and their word in every theme.</p>
-          <div class="theme-grid" id="themeGrid" role="group" aria-label="Theme"></div>
-        </section>
-        <section class="panel">
+        <!-- For everyone: the accent colour (any hue), zoom and motion. A personal setting is not an Advanced detail (Owner, 2026-10-12).
+             Advanced: the nine themes and the legend of the seven states. -->
+        <section class="panel setting-box">
           <div class="panel-title"><h3>Accent colour</h3></div>
           <p class="hint">Any hue. A hue that does not carry as text is <b>not refused</b> — it stays as the fill, and a readable relative of it is derived by moving away from the background until it reaches 4.5:1. Both figures are shown below.</p>
           <div class="accent-row">
@@ -1220,7 +1214,7 @@
              type alone, zoom moves the whole layout with it, and motion is a setting of
              its own rather than only an inherited system preference. Somebody who wants
              larger type does not necessarily want fewer things on screen. -->
-        <section class="panel">
+        <section class="panel setting-box">
           <div class="panel-title"><h3>Zoom and motion</h3></div>
           <fieldset class="control-row">
             <legend>Interface zoom</legend>
@@ -1239,6 +1233,13 @@
             <p class="hint" id="motionSystemHint">Your system preference is honoured on its own. This setting is stronger: it applies even where the system says nothing.</p>
           </fieldset>
           <p class="hint">Stored on this device only. They are display preferences and never leave the installation.</p>
+        </section>
+        <details class="panel setting-more level-advanced">
+          <summary>More appearance options</summary>
+        <section class="panel">
+          <div class="panel-title"><h3>Theme</h3><span class="badge badge-off" id="themeCurrent">—</span></div>
+          <p class="hint">A theme is a remapping of the interface's colour tokens, not a second stylesheet. Meaning never moves with it: the seven states below keep their glyph and their word in every theme.</p>
+          <div class="theme-grid" id="themeGrid" role="group" aria-label="Theme"></div>
         </section>
         <section class="panel">
           <div class="panel-title"><h3>The seven states</h3></div>

@@ -338,7 +338,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-b26c437d0f1e07b5c9d76e6e905a7a6863609ad5d30c37c0fd8b3bec0b04d50a  ./apps/webui-static/app.js
+e04c671fe0b405772024dac3dec7e500381a0c74e534c45bd0d0d19e7df97cf6  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 f0746c53941913718783ec519522381004f094b61dd83f6660f82545dcaa9197  ./apps/webui-static/coden-terminal.html
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
@@ -350,7 +350,7 @@ dd6a757541274d6922fe5c942867fd54f565232f20e0e1de9550e8fb2b696ada  ./apps/webui-s
 a3017406a755c29bf85415893bbce15cf935537eab1d5259638e696de4c2c014  ./apps/webui-static/i18n-catalog-pt.js
 50aab60311720aa2586545a710e506b166dbdd237caef672b282f8bb3d7b3d23  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
-b7e49eabf5be9f3843305fde97cf463250ab3abbb15933c47bd74fe8c41f6de5  ./apps/webui-static/index.html
+7a959d335951029ae9f2f9f0ea1fe28f7956ca147419af0bfa23263ed0fec1e2  ./apps/webui-static/index.html
 8ab72a788626695580ce255d8eb5231a1c64cf41f1691bde96e6bf89d9387044  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
@@ -6413,6 +6413,7 @@ b788e43a4553068fc9db158e03e61a918368fada7b2af54137201e79ca100c41  ./services/ref
 211196abb94cd0a39a1cd5a185edf781510f2f853448d9d1b3a36c55bdb80e5d  ./services/reference-control-plane/test/ai-workspace.test.mjs
 fc1fb90903479d51017717de91437cc9bb72852caa64059284e3dce047b3b203  ./services/reference-control-plane/test/api-target-probe.test.mjs
 894f5d2fcba3afb0d71cd2ceaf0574d5ce42675b241da182acb6fff066b03945  ./services/reference-control-plane/test/api-target-registry.test.mjs
+a23d8709133df6dcba13fed3ce05029c5cbfefe966fcb53af8253028a1676ab6  ./services/reference-control-plane/test/appearance-everyone.test.mjs
 cbcff58008da1946bf799829fcf177d48f1458edc57ffb192e259a963db3d491  ./services/reference-control-plane/test/approval-queue.test.mjs
 9eae6a090fee40f091cfa80d9e91ab49b29461ed3635299acd617f821e6d56c5  ./services/reference-control-plane/test/artefact-digest.test.mjs
 ecd68fff211134982428de610d8bc660d8a18d92e061adc0bb134cd0fc536741  ./services/reference-control-plane/test/assistant-identity.test.mjs

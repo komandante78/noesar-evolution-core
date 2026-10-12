@@ -138,6 +138,9 @@ const ACCENT_KEY='noesar.accent';
 // alpha, and a link has to be readable as text. Choosing one hue moves all of them
 // together, which is what lets "any colour you like" survive the contrast requirement.
 const ACCENT_TOKENS=['accent-fill-from','accent-fill-to','accent-link','accent-brand','accent-eyebrow','blue'];
+// look.css draws with its own family (primary buttons, the avatar, the box's border, the web switch, the "private" line), not with the
+// tokens above. The picker has to move it too, or the colour changes and the new look does not follow it (Owner, 2026-10-12).
+const NEW_LOOK_ACCENT_TOKENS=['n-accent','n-accent-ink','n-accent-soft','n-on-accent'];
 function readTheme(){try{const value=localStorage.getItem(THEME_KEY);return THEMES.some((theme)=>theme.id===value)?value:'';}catch{return '';}}
 function readAccent(){try{const value=localStorage.getItem(ACCENT_KEY);return parseHex(value)?value:'';}catch{return '';}}
 function tokenValue(name){return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();}
@@ -160,7 +163,7 @@ function applyTheme(id){
 }
 function applyAccent(hex){
   const root=document.documentElement;
-  for(const token of ACCENT_TOKENS)root.style.removeProperty(`--${token}`);
+  for(const token of [...ACCENT_TOKENS,...NEW_LOOK_ACCENT_TOKENS])root.style.removeProperty(`--${token}`);
   if(!hex||!parseHex(hex))return;
   // Measured against the ACTIVE theme's own surface, so the derivation answers the question
   // that matters here rather than one about whichever theme happened to be default.
@@ -173,6 +176,13 @@ function applyAccent(hex){
   // relative. Refusing the colour outright would tell someone their choice is forbidden,
   // when what is actually true is that this one pairing is not readable.
   for(const token of ['accent-link','accent-brand','accent-eyebrow'])root.style.setProperty(`--${token}`,readable?readable.hex:hex);
+  // The look's family: the fill is the chosen hue, the ink is the readable relative, the wash is the hue at low alpha over the card,
+  // and the text on the fill is whichever of white and black reads better on it.
+  const fill=parseHex(hex);
+  root.style.setProperty('--n-accent',hex);
+  root.style.setProperty('--n-accent-ink',readable?readable.hex:hex);
+  root.style.setProperty('--n-accent-soft',`rgba(${fill.r},${fill.g},${fill.b},.16)`);
+  root.style.setProperty('--n-on-accent',contrast(fill,parseHex('#ffffff'))>=contrast(fill,parseHex('#000000'))?'#ffffff':'#000000');
 }
 applyAccent(readAccent());
 // The CSRF token is a double-submit value: the server sets `noesar_csrf` as a
