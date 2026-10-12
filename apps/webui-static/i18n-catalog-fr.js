@@ -1597,4 +1597,12 @@ export const CATALOG_FR = Object.freeze({
   'your data was taken out first': 'tes données ont été retirées avant',
   'no data from your documents left': 'aucune donnée de tes documents n’est sortie',
   'Permanently delete the active project data?': 'Supprimer définitivement les données du projet actif ?',
+  'Entries to show': 'Entrées à afficher',
+  'Logs on this device:': 'Journaux sur cet appareil :',
+  'The number only limits what is shown here. The logs stay on the device until you delete them.': 'Ce nombre limite seulement ce qui est affiché ici. Les journaux restent sur l’appareil jusqu’à ce que vous les supprimiez.',
+  'Delete logs': 'Supprimer les journaux',
+  'Delete all logs?': 'Supprimer tous les journaux ?',
+  'Every log file on this device is removed. The audit record is a different store and is not touched; it will say that you deleted the logs.': 'Chaque fichier journal de cet appareil est supprimé. Le registre d’audit est un espace à part et n’est pas touché : il indiquera que vous avez supprimé les journaux.',
+  'This cannot be undone.': 'Cette action est irréversible.',
+  'Logs deleted': 'Journaux supprimés',
 });

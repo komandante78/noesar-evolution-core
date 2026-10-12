@@ -3492,6 +3492,7 @@ async function loadLogs(){
     put('q',$('#logQuery').value.trim());put('limit',$('#logLimit').value);
     const data=await api(`/api/v1/logs?${query.toString()}`);
     const entries=data.entries??[];
+    if(data.stats)$('#logDisk').textContent=`${humanBytes(data.stats.bytes)} / ${humanBytes(data.stats.quotaBytes)}`;
     if(!entries.length){results.className='card-list empty-state';results.textContent='No log records match this filter.';return;}
     results.className='card-list';
     results.innerHTML=entries.map((entry)=>`<div class="log-row">
@@ -3519,6 +3520,19 @@ async function loadLogs(){
   });
 }
 $('#logSearch').addEventListener('click',(event)=>withBusy(event.currentTarget,()=>loadLogs()));
+$('#logsDelete').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+  const accepted=await confirmAction({
+    title:'Delete all logs?',
+    body:'Every log file on this device is removed. The audit record is a different store and is not touched; it will say that you deleted the logs.',
+    consequence:'This cannot be undone.',
+    confirmLabel:'Delete logs',
+    dangerous:true,
+  });
+  if(!accepted)return;
+  const result=await api('/api/v1/logs/clear',{method:'POST',body:JSON.stringify({})});
+  toast({title:'Logs deleted',body:humanBytes(result.bytesFreed),kind:'success'});
+  await loadLogs();
+}));
 $('#debugEnable').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
   try{
     await api('/api/v1/debug/enable',{method:'POST',body:JSON.stringify({ttlMinutes:30})});

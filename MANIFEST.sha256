@@ -338,7 +338,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-e04c671fe0b405772024dac3dec7e500381a0c74e534c45bd0d0d19e7df97cf6  ./apps/webui-static/app.js
+9c4ee62e3d69f377dc8c6d4ae354f557d9f089bfc4971dfd259dc7afd5edfe28  ./apps/webui-static/app.js
 d1c6798b5aaa1a7d1a6f1f3a61a7cb381cfec3394d86761c74f80afe0cd942a6  ./apps/webui-static/brand/noesar-mark-on-dark.svg
 45cec7dbc363c17d8521992ac7b8c72f556b209dcb5059773d04a77feed5518f  ./apps/webui-static/brand/noesar-mark-on-light.svg
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
@@ -346,13 +346,13 @@ f0746c53941913718783ec519522381004f094b61dd83f6660f82545dcaa9197  ./apps/webui-s
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
 7270a42d516b6dbee1b6f8d0bad8731ec76554e347d005f5cb499ec12c888da0  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-db8be28a7ae1092dbf90da6776a44595768075ee21a12116c1bfa4dc119140ab  ./apps/webui-static/i18n-catalog-de.js
-a4151b59f8be640cd202768ac8b5e4d62680492220678699ebefae4a7af2f45e  ./apps/webui-static/i18n-catalog-es.js
-33e516a73a3950134980a4abc2c9d07dd3c8686acd767248738c09b01442f8a4  ./apps/webui-static/i18n-catalog-fr.js
-99c80fa58b7c848f6ea45b2452ca53a6791a25e3a255a7c35d1a78d9b2b7357f  ./apps/webui-static/i18n-catalog-pt.js
-27ca6a7e7d7211c52ded525c862f942335f55c7ea12e901167cc59d2fcf32cb1  ./apps/webui-static/i18n-catalog.js
+875829ba437f04731e254206fe5e0908bbad3c800c24468fadbc1f4d9218fff0  ./apps/webui-static/i18n-catalog-de.js
+8de6e6a6652add6ff8cd75dedb4207efa416ae28a1af1e28fda6a01ef64e51ba  ./apps/webui-static/i18n-catalog-es.js
+7e6dd5cb0ba3a803ee072bd3f034cf4e237bf91db594ff5391bc56b627d1bfac  ./apps/webui-static/i18n-catalog-fr.js
+88f385aecbf56669ef101d810534decfac2655c6c77cfc34e4d8532c7c5278db  ./apps/webui-static/i18n-catalog-pt.js
+fb2ab8057e64707ff144b019556fb132e596235897c81390bb6dbd139081e6f5  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
-55173ac906f4f4336256982ebd26e3f5bc2c1b86940eeae605317f2838bb1ad6  ./apps/webui-static/index.html
+d744d05a0ca5f9d216cfce4d786c889be0572c70fe1189ea4065e2b145a193ab  ./apps/webui-static/index.html
 2d39144dfa7ebfbcafb0fa458259ab248cb4d4fee8fdcbd17bc54e4e1a20fa45  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
@@ -6328,7 +6328,7 @@ c92e8d917acbf8796901028a7280e6de212c1ec2afc5ba38dd51c1c9ba403691  ./services/ref
 5afe1f02e79d8ad6d0e627b5a37e3008bde1d1ae9210ea88447c5c0f618613dc  ./services/reference-control-plane/src/huggingface-descriptor.mjs
 de9462d2d8b3f7a4e053d2a8f907c10e53c5564d78c8c6af5fe89a544d01cc9d  ./services/reference-control-plane/src/isolation.mjs
 5e6d04c568d4da11d8c301de1bf24f739bd1bef9ddb22cbf1f8782afa2550e42  ./services/reference-control-plane/src/local-model-runtime.mjs
-0c6103875935810eb716231d5031a9d1bf495f857b44b46497ad9c5c2c260cf2  ./services/reference-control-plane/src/logging.mjs
+791e5d8c9213b90476e093db51712eaa00ab627054cf19aaecfcbeb43ae61965  ./services/reference-control-plane/src/logging.mjs
 4dfef3b8a143cc0824dcaeb5d2c590ec77062e4dc9e0766a7d6d2fb619802c58  ./services/reference-control-plane/src/memory-compaction.mjs
 07abd3b0cf286dbea7e0d2fbf3ba9f00ed02d735666c8bd0435c4e075b9e4742  ./services/reference-control-plane/src/memory-model-swap.mjs
 1eb683ef3db572897be98d69f77f6f6f2712e89830505da05273b1fabedeb567  ./services/reference-control-plane/src/memory-service.mjs
@@ -6373,7 +6373,7 @@ fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  ./services/ref
 e3c7945c91ece3646b03eae9a590a3a8cd35c5ec48bea53d9a00f884f99d2ac7  ./services/reference-control-plane/src/searxng-provider.mjs
 ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  ./services/reference-control-plane/src/sector-modules.mjs
 0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  ./services/reference-control-plane/src/secure-address.mjs
-53e0c9f06eb6270f7581bcbf0b99797eebd86365de1d9cfa23330b7f35ca52ba  ./services/reference-control-plane/src/server.mjs
+baf23e72ad35839d825b31995647b75269c8da14efb25c9de70d61cd01083b72  ./services/reference-control-plane/src/server.mjs
 485bf33753970bc9bb05fcb186292f2e5d54e6d6221894d690256f24adcdaeb8  ./services/reference-control-plane/src/session-proof-html.mjs
 e96f15965179c45fe86c7b4785f8bb49961fc6cd0b5736c1e86996649bb840c5  ./services/reference-control-plane/src/session-proof-signature.mjs
 c261fdd2ff6ae65e24f2bf6b8f35239c5399b1bfa83d8cb015816ecac23c7049  ./services/reference-control-plane/src/session-proof.mjs
@@ -6537,8 +6537,9 @@ bab20e90e687dd7bd16b3dc91b53648e06c7c0f450fd4f3af0bdd0eea66c0791  ./services/ref
 ed93607cb2f6eeb8458e207c7f8ffa92d3e85eab8fdd859bf1dea1dbd6b2f36a  ./services/reference-control-plane/test/launcher-portability.test.mjs
 07eab9c44e5382be8cde95e6e059f27bef5849a62dfca7135c306d6a3ba08ba6  ./services/reference-control-plane/test/local-model-ambiguities.test.mjs
 04edf6549f7808cc3212134aafce3bcc881bb392e748c5fa83b9210c1100881b  ./services/reference-control-plane/test/local-model-runtime.test.mjs
-bc2c8ab71d5c7c3e7d1b943edf7513541c51cc3f52e76e6719a4f1b879c3c05e  ./services/reference-control-plane/test/logging.test.mjs
+5b785235aee7bde64c9b45596c2558188f06def0e3571b4053105bd3ecaa203f  ./services/reference-control-plane/test/logging.test.mjs
 ebb79c1ff4068ab86ebbcefcc008b9a2167f5043ff88b9861f862766de9520f7  ./services/reference-control-plane/test/login-malformed-username.test.mjs
+4772901cf3f47bd267d00441ef4868dc7d92da58592d62f5bcccf4eb6b7931a6  ./services/reference-control-plane/test/logs-clear-http.test.mjs
 fd06094a7ce396924aafaa0b3733632ce9dc75ea94cb1303bfd5b9cfc194e1eb  ./services/reference-control-plane/test/manifest-integrity.test.mjs
 2cfa45f58849db1e9bbfbb05a45fd22e89950d8032ada3a8a4c226db44ef1b51  ./services/reference-control-plane/test/markdown-lite.test.mjs
 939f176a6c9cedc6b279007f599761b71e55de0e2156e8564376c7391c058a09  ./services/reference-control-plane/test/memory-compaction.test.mjs

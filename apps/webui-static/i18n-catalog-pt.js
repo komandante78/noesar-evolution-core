@@ -1597,4 +1597,12 @@ export const CATALOG_PT = Object.freeze({
   'your data was taken out first': 'os seus dados foram retirados antes',
   'no data from your documents left': 'nenhum dado dos seus documentos saiu',
   'Permanently delete the active project data?': 'Excluir para sempre os dados do projeto ativo?',
+  'Entries to show': 'Entradas a mostrar',
+  'Logs on this device:': 'Registros neste dispositivo:',
+  'The number only limits what is shown here. The logs stay on the device until you delete them.': 'O número só limita o que é mostrado aqui. Os registros ficam no dispositivo até você excluí-los.',
+  'Delete logs': 'Excluir registros',
+  'Delete all logs?': 'Excluir todos os registros?',
+  'Every log file on this device is removed. The audit record is a different store and is not touched; it will say that you deleted the logs.': 'Cada arquivo de registro neste dispositivo é removido. O registro de auditoria é um armazenamento à parte e não é alterado: ele indicará que você excluiu os registros.',
+  'This cannot be undone.': 'Isto não pode ser desfeito.',
+  'Logs deleted': 'Registros excluídos',
 });

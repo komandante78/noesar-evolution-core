@@ -1597,4 +1597,12 @@ export const CATALOG_DE = Object.freeze({
   'your data was taken out first': 'deine Daten wurden vorher entfernt',
   'no data from your documents left': 'keine Daten aus deinen Dokumenten sind hinausgegangen',
   'Permanently delete the active project data?': 'Die Daten des aktiven Projekts endgültig löschen?',
+  'Entries to show': 'Einträge anzeigen',
+  'Logs on this device:': 'Protokolle auf diesem Gerät:',
+  'The number only limits what is shown here. The logs stay on the device until you delete them.': 'Die Zahl begrenzt nur, was hier angezeigt wird. Die Protokolle bleiben auf dem Gerät, bis du sie löschst.',
+  'Delete logs': 'Protokolle löschen',
+  'Delete all logs?': 'Alle Protokolle löschen?',
+  'Every log file on this device is removed. The audit record is a different store and is not touched; it will say that you deleted the logs.': 'Jede Protokolldatei auf diesem Gerät wird entfernt. Das Audit-Protokoll ist ein eigener Speicher und bleibt unberührt: Es hält fest, dass du die Protokolle gelöscht hast.',
+  'This cannot be undone.': 'Das lässt sich nicht rückgängig machen.',
+  'Logs deleted': 'Protokolle gelöscht',
 });

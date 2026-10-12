@@ -277,6 +277,26 @@ export class Logger {
     }
   }
 
+  /**
+   * The Owner's deletion of the operational logs: every archive and everything in the active file. The audit ledger is a
+   * different store and cannot be reached from here (the constructor refuses a directory under an audit path). It is not
+   * silent: the fresh log opens with one record that says it happened, and whoever calls this writes the ledger.
+   */
+  clear({ actor = 'system' } = {}) {
+    if (!this.dir) return { archivesRemoved: 0, bytesFreed: 0 };
+    const before = this.directoryBytes();
+    let archivesRemoved = 0;
+    for (const name of this.archives()) {
+      try { unlinkSync(join(this.dir, name)); archivesRemoved += 1; } catch { /* removed concurrently */ }
+    }
+    writeFileSync(this.activePath, '', { mode: 0o600 });
+    this.activeDay = utcDay(this.clock());
+    this.sinceQuotaCheck = 0;
+    const bytesFreed = Math.max(0, before - this.directoryBytes());
+    this.info('logs.cleared', { component: 'logging', actor, archivesRemoved, bytesFreed });
+    return { archivesRemoved, bytesFreed };
+  }
+
   /** Owner-facing log search. Newest first. */
   search({ level = null, component = null, correlationId = null, event = null, text = null, since = null, until = null, limit = 200 } = {}) {
     if (!this.dir) return { entries: [], scannedFiles: 0, truncated: false };

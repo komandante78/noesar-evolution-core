@@ -855,6 +855,11 @@ export const RUNTIME_ONLY = Object.freeze([
   'your data was taken out first',
   'no data from your documents left',
   'Permanently delete the active project data?',
+  // Deleting the operational logs (Owner, 2026-10-12): the confirmation and the notice are written by app.js when the button is pressed.
+  'Delete all logs?',
+  'Every log file on this device is removed. The audit record is a different store and is not touched; it will say that you deleted the logs.',
+  'This cannot be undone.',
+  'Logs deleted',
   'Context',
   'Local runtime',
   'Export workspace',
@@ -2708,6 +2713,14 @@ const it = {
   'your data was taken out first': 'i tuoi dati sono stati tolti prima',
   'no data from your documents left': 'nessun dato dei tuoi documenti è uscito',
   'Permanently delete the active project data?': 'Eliminare per sempre i dati del progetto attivo?',
+  'Entries to show': 'Voci da mostrare',
+  'Logs on this device:': 'Registri su questo dispositivo:',
+  'The number only limits what is shown here. The logs stay on the device until you delete them.': 'Il numero limita solo ciò che viene mostrato qui. I registri restano sul dispositivo finché non li elimini.',
+  'Delete logs': 'Elimina i registri',
+  'Delete all logs?': 'Eliminare tutti i registri?',
+  'Every log file on this device is removed. The audit record is a different store and is not touched; it will say that you deleted the logs.': 'Ogni file di registro su questo dispositivo viene rimosso. Il registro di audit è un archivio a parte e non viene toccato: riporterà che hai eliminato i registri.',
+  'This cannot be undone.': 'Non si può annullare.',
+  'Logs deleted': 'Registri eliminati',
 };
 
 export const CATALOGS = Object.freeze({

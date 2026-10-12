@@ -200,3 +200,37 @@ test('redactRecord is pure and does not mutate its input', () => {
   assert.equal(output.password, '[REDACTED]');
   assert.equal(output.keep, 1);
 });
+
+test('clear() removes every archive, empties the active file, says that it did, and logging goes on', () => {
+  const log = logger(join(workspace(), 'logs'), { maxFileBytes: 400, quotaCheckEvery: 1000 });
+  for (let index = 0; index < 40; index += 1) log.info('unit.fill', { msg: 'x'.repeat(60), index });
+  const before = log.stats();
+  assert.ok(before.archiveCount >= 2, `the fixture rotates (${before.archiveCount} archives)`);
+  const result = log.clear({ actor: 'owner-1' });
+  assert.equal(result.archivesRemoved, before.archiveCount);
+  assert.ok(result.bytesFreed > 0);
+  assert.deepEqual(log.archives(), []);
+  const [only, ...rest] = readActive(log);
+  assert.equal(rest.length, 0, 'nothing but the record of the deletion is left');
+  assert.equal(only.event, 'logs.cleared');
+  assert.equal(only.actor, 'owner-1');
+  assert.equal(only.archivesRemoved, result.archivesRemoved);
+  log.info('unit.after', {});
+  assert.deepEqual(log.search({ limit: 50 }).entries.map((record) => record.event).reverse(), ['logs.cleared', 'unit.after']);
+});
+
+test('clear() on a logger with no directory removes nothing and does not throw', () => {
+  const log = new Logger({ dir: null, stdout: false });
+  assert.deepEqual(log.clear({ actor: 'owner-1' }), { archivesRemoved: 0, bytesFreed: 0 });
+});
+
+test('clear() touches nothing outside the log directory', () => {
+  const root = workspace();
+  const log = logger(join(root, 'logs'));
+  log.info('unit.x');
+  log.rotate();
+  const neighbour = join(root, 'audit-ledger.json');
+  writeFileSync(neighbour, '{"keep":true}');
+  log.clear({ actor: 'owner-1' });
+  assert.equal(readFileSync(neighbour, 'utf8'), '{"keep":true}');
+});

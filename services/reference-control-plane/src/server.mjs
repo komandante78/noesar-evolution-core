@@ -5385,7 +5385,7 @@ const requestListener = async (req, res) => {
     // --- operational log search (owner only) --------------------------------
     if (req.method === 'GET' && url.pathname === '/api/v1/logs') {
       const authenticated = requireOwner(req, res, 'audit.read'); if (!authenticated) return;
-      return json(res, 200, logger.search({
+      return json(res, 200, { stats:logger.stats(), ...logger.search({
         level:url.searchParams.get('level'),
         component:url.searchParams.get('component'),
         correlationId:url.searchParams.get('correlationId'),
@@ -5394,7 +5394,18 @@ const requestListener = async (req, res) => {
         since:url.searchParams.get('since'),
         until:url.searchParams.get('until'),
         limit:Math.min(Number(url.searchParams.get('limit') ?? 200), 1000),
-      }));
+      }) });
+    }
+
+    // The Owner deletes the operational logs (Settings > Health and logs). Not the audit ledger: a different store, never
+    // reached from here. The act is recorded twice, because it must not be a way to make something disappear: the first
+    // line of the fresh log says it happened, and the ledger names who did it.
+    if (req.method === 'POST' && url.pathname === '/api/v1/logs/clear') {
+      const authenticated = requireOwner(req, res, 'data.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const result = logger.clear({ actor:authenticated.user.id });
+      ledger.append({ actor:authenticated.user.id, action:'logs.cleared', result:'cleared', details:result });
+      return json(res, 200, result);
     }
 
     // --- watchdog and safe mode ---------------------------------------------
