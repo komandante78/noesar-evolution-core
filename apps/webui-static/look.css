@@ -71,7 +71,14 @@ body[data-level=advanced] .composer-row .level-advanced{display:inline-flex!impo
 .sidebar{display:flex;flex-direction:column;gap:2px;padding:16px 12px 0;background:var(--n-side);border-inline-end:1px solid var(--n-line);overflow:hidden}
 .sidebar nav{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;margin-inline:-4px;padding-inline:4px}
 .sidebar .brand{display:flex;align-items:center;gap:10px;min-width:0;padding:4px 8px 14px;font-weight:700;font-size:1.0625rem;color:var(--n-ink)}
-.sidebar .brand-mark{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--n-ink);color:var(--n-bg);font-size:0.9375rem;box-shadow:none}
+/* the project's own mark (docs/brand), not a letter in a square. Two variants, one shown: Daylight is the one light theme. */
+.brand-mark{display:block;flex:none;width:2.125rem;height:2.125rem;border-radius:0;background:none;box-shadow:none}
+.brand-mark img{width:100%;height:100%}
+.brand-mark .brand-on-dark{display:block}
+.brand-mark .brand-on-light{display:none}
+:root[data-theme="daylight"] .brand-mark .brand-on-light{display:block}
+:root[data-theme="daylight"] .brand-mark .brand-on-dark{display:none}
+.sidebar .brand .brand-sub{font-weight:500;color:var(--n-muted)}
 .sidebar .nav,.sidebar .nav-act{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--n-ink);font:inherit;font-size:0.9688rem;text-align:start;cursor:pointer;box-shadow:none}
 .sidebar .nav:hover,.sidebar .nav-act:hover{background:var(--n-hover);color:var(--n-ink);box-shadow:none}
 .sidebar .nav.active{background:var(--n-card);color:var(--n-ink);font-weight:600;box-shadow:var(--n-shadow)}
@@ -120,7 +127,7 @@ body:not([data-level=advanced]) .sidebar .nav-act kbd{display:none}
 .me-menu button:hover{background:var(--n-hover)}
 /* icons only: `[` from the keyboard */
 .app-shell[data-sidebar=icons] .sidebar{padding-inline:10px}
-.app-shell[data-sidebar=icons] .sidebar .brand strong,.app-shell[data-sidebar=icons] .nav-label,.app-shell[data-sidebar=icons] .nav-projects,
+.app-shell[data-sidebar=icons] .sidebar .brand strong,.app-shell[data-sidebar=icons] .sidebar .brand-sub,.app-shell[data-sidebar=icons] .nav-label,.app-shell[data-sidebar=icons] .nav-projects,
 .app-shell[data-sidebar=icons] .chat-nav,.app-shell[data-sidebar=icons] .me-name,.app-shell[data-sidebar=icons] .nav-act kbd{display:none}
 .app-shell[data-sidebar=icons] .nav span:not(.nav-count),.app-shell[data-sidebar=icons] .nav-act span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .app-shell[data-sidebar=icons] .nav,.app-shell[data-sidebar=icons] .nav-act{justify-content:center;padding:0}

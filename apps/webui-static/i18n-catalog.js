@@ -2331,7 +2331,7 @@ const it = {
   // ——— deliberately unchanged ———
   // Each of these was looked at and kept. An entry that says so is a decision; an ABSENT
   // entry says nothing and cannot be told apart from an oversight.
-  'N': 'N',                                   // avatar initial
+  'Evolution': 'Evolution',
   'NOESAR': 'NOESAR',
   'Auto': 'Auto',
   'English': 'English',                       // a language names itself

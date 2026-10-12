@@ -1241,7 +1241,7 @@ export const CATALOG_ES = Object.freeze({
   'Something went wrong': 'Algo salió mal',
   'Asking the model…': 'Preguntando al modelo…',
   '(understood by the model)': '(entendido por el modelo)',
-  'N': 'N',
+  'Evolution': 'Evolution',
   'NOESAR': 'NOESAR',
   'Auto': 'Auto',
   'English': 'English',
