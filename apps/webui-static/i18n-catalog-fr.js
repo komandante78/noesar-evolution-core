@@ -1597,7 +1597,7 @@ export const CATALOG_FR = Object.freeze({
   'your data was taken out first': 'tes données ont été retirées avant',
   'no data from your documents left': 'aucune donnée de tes documents n’est sortie',
   'Permanently delete the active project data?': 'Supprimer définitivement les données du projet actif ?',
-  'Entries to show': 'Entrées à afficher',
+  'Show up to': 'Afficher jusqu’à',
   'Logs on this device:': 'Journaux sur cet appareil :',
   'The number only limits what is shown here. The logs stay on the device until you delete them.': 'Ce nombre limite seulement ce qui est affiché ici. Les journaux restent sur l’appareil jusqu’à ce que vous les supprimiez.',
   'Delete logs': 'Supprimer les journaux',

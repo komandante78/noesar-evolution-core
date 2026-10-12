@@ -1597,7 +1597,7 @@ export const CATALOG_ES = Object.freeze({
   'your data was taken out first': 'tus datos se quitaron antes',
   'no data from your documents left': 'ningún dato de tus documentos salió',
   'Permanently delete the active project data?': '¿Eliminar para siempre los datos del proyecto activo?',
-  'Entries to show': 'Entradas que mostrar',
+  'Show up to': 'Mostrar hasta',
   'Logs on this device:': 'Registros en este dispositivo:',
   'The number only limits what is shown here. The logs stay on the device until you delete them.': 'El número solo limita lo que se muestra aquí. Los registros permanecen en el dispositivo hasta que los elimines.',
   'Delete logs': 'Eliminar registros',

@@ -2713,7 +2713,7 @@ const it = {
   'your data was taken out first': 'i tuoi dati sono stati tolti prima',
   'no data from your documents left': 'nessun dato dei tuoi documenti è uscito',
   'Permanently delete the active project data?': 'Eliminare per sempre i dati del progetto attivo?',
-  'Entries to show': 'Voci da mostrare',
+  'Show up to': 'Mostra fino a',
   'Logs on this device:': 'Registri su questo dispositivo:',
   'The number only limits what is shown here. The logs stay on the device until you delete them.': 'Il numero limita solo ciò che viene mostrato qui. I registri restano sul dispositivo finché non li elimini.',
   'Delete logs': 'Elimina i registri',

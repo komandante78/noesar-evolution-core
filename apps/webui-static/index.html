@@ -1421,13 +1421,12 @@
             <input id="logCorrelation" placeholder="Correlation ID">
             <input id="logEvent" placeholder="Event">
             <input id="logQuery" placeholder="Text…">
-            <input id="logLimit" type="number" min="1" max="1000" value="200" aria-label="Entries to show" title="Entries to show">
+            <label class="log-limit"><span>Show up to</span><input id="logLimit" type="number" min="1" max="1000" value="200"></label>
             <button class="primary" id="logSearch" type="button">Search</button>
           </div>
-          <p class="hint"><span>Logs on this device:</span> <b id="logDisk" translate="no">—</b></p>
+          <div class="log-disk-row"><p class="hint"><span>Logs on this device:</span> <b id="logDisk" translate="no">—</b></p><button class="danger" id="logsDelete" type="button">Delete logs</button></div>
           <p class="hint">The number only limits what is shown here. The logs stay on the device until you delete them.</p>
           <div id="logResults" class="card-list empty-state">Loading…</div>
-          <div class="inline-form"><button class="danger" id="logsDelete" type="button">Delete logs</button></div>
         </section>
         <section class="panel"><div class="panel-title"><h2>Debug mode</h2><span id="debugBadge" class="badge badge-off">—</span></div><pre id="debugStatus">Loading…</pre><div class="inline-form"><button class="primary" id="debugEnable" type="button">Enable for 30 minutes</button><button id="debugDisable" type="button">Disable</button><button id="debugBundle" type="button">Download diagnostic bundle</button></div><p class="hint">Debug mode raises log verbosity for a bounded time and switches itself off when the window expires.</p></section>
       </section>
