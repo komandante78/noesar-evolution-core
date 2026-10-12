@@ -56,6 +56,13 @@
   --n-bg:var(--surface-root);--n-side:var(--surface-sidebar);--n-card:var(--surface-card);--n-sunken:var(--surface-sunken);--n-field:var(--surface-field);
   --n-bubble:var(--surface-message-own);--n-hover:var(--surface-secondary);--n-ink:var(--text-primary);--n-muted:var(--muted);--n-line:var(--line);--n-edge:var(--line);
 }
+/* The themes that change only the accent (Indigo, Teal, Amber, Violet) are the site's themes too: their accent on the site's navy black. Those surfaces
+   are the interface's own before the one look, the :root of styles.css that noesar.com's themes.css was extracted from. Literal here, because look.css
+   overrides the old tokens it would read them from; theme-surfaces.test.mjs holds them equal to that :root. Midnight stays the grey the drawings drew. */
+:root[data-theme="indigo"],:root[data-theme="teal"],:root[data-theme="amber"],:root[data-theme="violet"]{
+  --n-bg:#060a12;--n-side:rgba(7,12,21,.9);--n-card:#0a121f;--n-sunken:#080e18;--n-field:#080f1b;
+  --n-bubble:#12203a;--n-hover:#101a2b;--n-ink:#eef4ff;--n-muted:#8d9ab0;--n-line:rgba(142,166,210,.18);--n-edge:rgba(142,166,210,.18);
+}
 html{font-size:calc(var(--text-scale,1)*16px)}
 html,body{background:var(--n-bg)}
 body{color:var(--n-ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.5}
