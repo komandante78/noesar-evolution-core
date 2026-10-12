@@ -66,6 +66,10 @@
 /* High contrast sets its accent in --accent-brand and leaves --blue to the mapping above, which is the look's teal. applyAccent() derives the look's
    accent family from --blue, so give it the theme's own: its accent, not a teal button beside a blue link. */
 :root[data-theme="contrast"]{--blue:var(--accent-brand)}
+/* A checkbox, a slider and a radio take the accent (they were the browser's blue, or a white square), and a link with no class of its own is
+   readable on every surface (the "source" link under a model was the browser's dark blue on a dark card). */
+input[type=range],input[type=checkbox],input[type=radio],progress{accent-color:var(--n-accent)}
+a:not([class]){color:var(--n-accent-ink)}
 html{font-size:calc(var(--text-scale,1)*16px)}
 html,body{background:var(--n-bg)}
 body{color:var(--n-ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.5}

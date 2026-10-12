@@ -4,7 +4,7 @@ import { PAGE_HELP, SIMPLE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { readLevel, writeLevel, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, toolActivityTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer } from './simple-mode.js';
+import { safeModeLine, readLevel, writeLevel, inferChatMode, titleFromMessage, setupTokenFromHash, toolActionTitle, toolActivityTitle, describeChange, argumentLines, approvalStrip, friendlyModelName, zoneOffer, readScheme, writeScheme, themeForScheme, friendlyWhen, describeComputer } from './simple-mode.js';
 import { renderMarkdownLite as renderMarkdown } from './markdown-lite.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
@@ -3206,8 +3206,9 @@ async function loadHealth(){
   const watchdogBox=$('#watchdogReport');
   await panel(watchdogBox,'watchdog',async()=>{
     const report=await api('/api/v1/watchdog');
+    const safe=safeModeLine(report.safeMode);
     watchdogBox.textContent=[
-      `safe mode          ${report.safeMode}`,
+      `safe mode          ${safe.text}`,
       `crash loop         ${report.crashLoop}`,
       `restarts in window ${report.restartsInWindow}`,
       `essential failures ${(report.essentialFailures??[]).join(', ')||'none'}`,
@@ -3218,7 +3219,7 @@ async function loadHealth(){
       'recent escalations:',
       ...((report.escalations??[]).slice(-5).map((item)=>`  ${JSON.stringify(item)}`)),
     ].join('\n');
-    $('#leaveSafeMode').classList.toggle('hidden',!report.safeMode);
+    $('#leaveSafeMode').classList.toggle('hidden',!safe.active);
   });
   const database=$('#databaseStatus');
   await panel(database,'data plane',async()=>{
@@ -4274,22 +4275,18 @@ const SEMANTIC_STATES=[
   {key:'critical',word:'Critical',meaning:'stopped or unsafe'},
   {key:'off',word:'Off',meaning:'not configured'},
 ];
-// A theme's real values, read from the stylesheet rule that defines it. A swatch painted
-// from the CURRENT theme would show nine identical cards and tell you nothing.
-function themeTokens(id){
-  const wanted=id==='midnight'?':root':`:root[data-theme="${id}"]`;
-  const found={};
-  for(const sheet of document.styleSheets){
-    let rules;try{rules=sheet.cssRules;}catch{continue;}
-    for(const rule of rules??[]){
-      if(rule.selectorText!==wanted)continue;
-      for(const token of ['surface-root','surface-card','accent-fill-from','text-primary','green','amber','red']){
-        const value=rule.style.getPropertyValue(`--${token}`).trim();
-        if(value)found[token]=value;
-      }
-    }
-  }
-  return found;
+// What each theme PAINTS in the look, read from the page itself: the theme is put on the root for the length of one synchronous read (no frame is
+// drawn in between), its own accent is derived, and both are put back. The cards used to read the old stylesheet rules, so Midnight showed the
+// interface's old navy and a blue button while the look paints a grey and a teal one, and Amber showed #936516 for the gold it paints.
+function themePalette(id){
+  const root=document.documentElement;
+  const was=root.dataset.theme;
+  root.dataset.theme=id;
+  applyAccent('');
+  const palette={bg:tokenValue('n-bg'),card:tokenValue('n-card'),accent:tokenValue('n-accent'),ink:tokenValue('n-ink')};
+  if(was===undefined)delete root.dataset.theme;else root.dataset.theme=was;
+  applyAccent(readAccent());
+  return palette;
 }
 function paintSwatches(root){
   for(const node of (root??document).querySelectorAll('[data-swatch]')){
@@ -4299,11 +4296,10 @@ function paintSwatches(root){
 function renderThemeGrid(){
   const grid=$('#themeGrid');if(!grid)return;
   const current=document.documentElement.dataset.theme??'midnight';
-  const base=themeTokens('midnight');
   grid.innerHTML=THEMES.map((theme)=>{
-    const tokens={...base,...themeTokens(theme.id)};
-    const swatches=['surface-root','surface-card','accent-fill-from','text-primary']
-      .map((token)=>`<span data-swatch="${escapeHtml(tokens[token]??'transparent')}"></span>`).join('');
+    const palette=themePalette(theme.id);
+    const swatches=[palette.bg,palette.card,palette.accent,palette.ink]
+      .map((colour)=>`<span data-swatch="${escapeHtml(colour||'transparent')}"></span>`).join('');
     return `<button class="theme-card" type="button" data-theme-id="${escapeHtml(theme.id)}" aria-pressed="${theme.id===current}">
       <b>${escapeHtml(theme.label)}${theme.id===current?' <span class="state state-ok"></span>':''}</b>
       <div class="theme-swatches">${swatches}</div>
@@ -4347,7 +4343,7 @@ function renderAccentReadout(hex){
 function renderAppearance(){
   renderThemeGrid();
   const stored=readAccent();
-  const active=stored||tokenValue('accent-fill-from')||'#5b8cff';
+  const active=stored||tokenValue('n-accent')||tokenValue('accent-fill-from')||'#5b8cff';
   const picker=$('#accentPicker');const field=$('#accentHex');
   if(picker)picker.value=/^#[0-9a-fA-F]{6}$/.test(active)?active:'#5b8cff';
   if(field)field.value=active;

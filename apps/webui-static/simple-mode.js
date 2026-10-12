@@ -288,3 +288,18 @@ export function describeComputer(report) {
     ['Graphics card', names.length ? names.join(', ') : (cards.length ? 'Yes' : '')],
   ];
 }
+
+/**
+ * The watchdog's safe mode, for the line in Health and logs and for the Leave button. The report holds an OBJECT
+ * ({ active, reason, since, incidentId }): it was printed as one ("[object Object]") and asked "is there one?", which is always yes,
+ * so the button showed while safe mode was off. Only an explicit active:true is on.
+ * @param {{active?: boolean, reason?: string|null, since?: string|null}|null|undefined} safeMode
+ * @returns {{active: boolean, text: string}}
+ */
+export function safeModeLine(safeMode) {
+  const active = safeMode?.active === true;
+  if (!active) return { active: false, text: 'off' };
+  const reason = safeMode.reason ? String(safeMode.reason) : 'no reason recorded';
+  const since = safeMode.since ? `, since ${safeMode.since}` : '';
+  return { active: true, text: `ACTIVE — ${reason}${since}` };
+}

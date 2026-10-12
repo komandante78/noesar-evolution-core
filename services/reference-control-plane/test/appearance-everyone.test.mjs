@@ -95,3 +95,30 @@ describe('appearance: a theme reaches the look, not only the old tokens', () => 
     assert.match(app, /\{id:'amber',label:'Amber',hint:'gold on black'\}/);
   });
 });
+
+describe('appearance: what the page shows is what the look paints', () => {
+  const renderAppearance = app.slice(app.indexOf('function renderAppearance('), app.indexOf('function initAppearance('));
+  const renderThemeGrid = app.slice(app.indexOf('function renderThemeGrid('), app.indexOf('function renderAccentReadout('));
+  const themePalette = app.slice(app.indexOf('function themePalette('), app.indexOf('function paintSwatches('));
+
+  test('the colour box starts from the accent the look paints, not the old fill token (it said #936516 for Amber while the look painted #ffc35b)', () => {
+    assert.ok(renderAppearance.includes("tokenValue('n-accent')"), 'renderAppearance reads the old --accent-fill-from');
+  });
+
+  test('the theme cards show the palette each theme paints in the look (Midnight showed the old navy and a blue button)', () => {
+    assert.ok(renderThemeGrid.includes('themePalette('), 'the cards do not read the look\'s palette');
+    assert.ok(!renderThemeGrid.includes('themeTokens('), 'the cards still read the old stylesheet rules');
+  });
+
+  test('themePalette reads the look\'s own tokens, and puts the theme and the accent back', () => {
+    assert.ok(themePalette.length > 80, 'themePalette is found');
+    for (const token of ["'n-bg'", "'n-card'", "'n-accent'", "'n-ink'"]) assert.ok(themePalette.includes(token), `it does not read ${token}`);
+    assert.ok(themePalette.includes('root.dataset.theme=was') || themePalette.includes('delete root.dataset.theme'), 'it does not put the theme back');
+    assert.ok(themePalette.includes('applyAccent(readAccent())'), 'it does not put the accent back');
+  });
+
+  test('a checkbox, a slider and a radio take the accent, and a link with no class of its own is readable on every surface', () => {
+    assert.match(look, /input\[type=range\],input\[type=checkbox\],input\[type=radio\],progress\{accent-color:var\(--n-accent\)\}/);
+    assert.match(look, /a:not\(\[class\]\)\{color:var\(--n-accent-ink\)\}/);
+  });
+});
