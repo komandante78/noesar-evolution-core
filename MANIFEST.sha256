@@ -353,7 +353,7 @@ d8417c937050566dfd945b1bac1377f9ab49180599eb24226b2b8577c31ae605  ./apps/webui-s
 f1132bcb56098791b3c6b0dbfc2ff96e87fa73e0b14370c450e64bb31b466c46  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 c58bfe58bc7f7baf147c52eaabcf29bff550770bb54890c2c994dd550c655482  ./apps/webui-static/index.html
-e8e11cd61fa31c1fbff2db4534ebf8656eccaea045aa152b80ee7aff081614d3  ./apps/webui-static/look.css
+153f01d15b6f8cd58b3e3a3efaf6c7a7df37039ed302e86b67898fd912b0f691  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
@@ -6501,6 +6501,7 @@ e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/ref
 96aef36e9e09b09b0367f6def0f7e289ae976d37932d8447ef4f0c88ebdad0c9  ./services/reference-control-plane/test/coden-view-model.test.mjs
 ea34124e0b3aaa180dc942e81b56051f302ae17f129a92c098eb397f1a22179d  ./services/reference-control-plane/test/codev-relay.test.mjs
 046be73ee26f5c9f2b9c08d7cfd0f4b921a6f2dccfbd41aeb0c1b0f8cfa86df9  ./services/reference-control-plane/test/compliance-packs.test.mjs
+a01e8ead505c2c9dae9977cdc1ab1a839b42821dbdf71a0d8220644388a3f647  ./services/reference-control-plane/test/composer-context.test.mjs
 054bfb394da16242439ff8bd6531e103634fe60ed2d6b1bae6bde0ec9b395c9f  ./services/reference-control-plane/test/conformance.test.mjs
 3aecfd7780dcb07e89b4fdd526682ea890072d64a25913f10937fc9e39e82b95  ./services/reference-control-plane/test/context-projection.test.mjs
 c6f06674909e5afd4e73ce5c552d1471931c1fae9b95fa97baa7f76b8f7908db  ./services/reference-control-plane/test/data-plane.test.mjs

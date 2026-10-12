@@ -87,6 +87,8 @@ body{color:var(--n-ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"H
 .level-advanced{display:none!important}
 body[data-level=advanced] .level-advanced{display:revert!important}
 body[data-level=advanced] .composer-row .level-advanced{display:inline-flex!important}
+/* The context summary is text that has to end in dots: a flex container clips it in the middle of a word, so it stays a block. */
+body[data-level=advanced] .composer-row .composer-context.level-advanced{display:block!important}
 
 /* ── the frame: one menu, the page beside it ────────────────────────────────────────────────────────────────── */
 .app-shell{--col-side:272px;grid-template-columns:var(--col-side) minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;height:100vh;background:var(--n-bg)}
