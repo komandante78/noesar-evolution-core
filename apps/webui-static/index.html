@@ -1199,8 +1199,13 @@
             <button type="button" data-text-step="4" aria-pressed="false" class="level-advanced">Largest</button>
           </div>
         </section>
-        <!-- For everyone: the accent colour (any hue), zoom and motion. A personal setting is not an Advanced detail (Owner, 2026-10-12).
-             Advanced: the nine themes and the legend of the seven states. -->
+        <!-- For everyone: the nine themes (Amber is the gold-on-black one, the site has it too), the accent colour (any hue), zoom and motion.
+             A personal setting is not an Advanced detail (Owner, 2026-10-12). Advanced: the legend of the seven states. -->
+        <section class="panel setting-box">
+          <div class="panel-title"><h3>Theme</h3><span class="badge badge-off" id="themeCurrent">—</span></div>
+          <p class="hint">A theme is a remapping of the interface's colour tokens, not a second stylesheet. Meaning never moves with it: the seven states below keep their glyph and their word in every theme.</p>
+          <div class="theme-grid" id="themeGrid" role="group" aria-label="Theme"></div>
+        </section>
         <section class="panel setting-box">
           <div class="panel-title"><h3>Accent colour</h3></div>
           <p class="hint">Any hue. A hue that does not carry as text is <b>not refused</b> — it stays as the fill, and a readable relative of it is derived by moving away from the background until it reaches 4.5:1. Both figures are shown below.</p>
@@ -1238,11 +1243,6 @@
         </section>
         <details class="panel setting-more level-advanced">
           <summary>More appearance options</summary>
-        <section class="panel">
-          <div class="panel-title"><h3>Theme</h3><span class="badge badge-off" id="themeCurrent">—</span></div>
-          <p class="hint">A theme is a remapping of the interface's colour tokens, not a second stylesheet. Meaning never moves with it: the seven states below keep their glyph and their word in every theme.</p>
-          <div class="theme-grid" id="themeGrid" role="group" aria-label="Theme"></div>
-        </section>
         <section class="panel">
           <div class="panel-title"><h3>The seven states</h3></div>
           <p class="hint">Each carries a glyph and a word as well as a tint, so it survives a theme change, a colour-blind reader, a monochrome print, and high-contrast mode — where the tint is discarded outright.</p>

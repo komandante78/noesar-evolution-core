@@ -125,7 +125,7 @@ const THEMES=[
   {id:'graphite',label:'Graphite',hint:'warmer neutrals'},
   {id:'indigo',label:'Indigo',hint:'the reference accent'},
   {id:'teal',label:'Teal',hint:'green-blue accent'},
-  {id:'amber',label:'Amber',hint:'warm accent'},
+  {id:'amber',label:'Amber',hint:'gold on black'},
   {id:'violet',label:'Violet',hint:'purple accent'},
   {id:'daylight',label:'Daylight',hint:'light'},
   {id:'contrast',label:'High contrast',hint:'maximum separation'},
@@ -141,6 +141,9 @@ const ACCENT_TOKENS=['accent-fill-from','accent-fill-to','accent-link','accent-b
 // look.css draws with its own family (primary buttons, the avatar, the box's border, the web switch, the "private" line), not with the
 // tokens above. The picker has to move it too, or the colour changes and the new look does not follow it (Owner, 2026-10-12).
 const NEW_LOOK_ACCENT_TOKENS=['n-accent','n-accent-ink','n-accent-soft','n-on-accent'];
+// The two themes look.css draws itself, with its own --n-* values. Every other theme brings its accent in the old tokens only,
+// so applyAccent() hands that accent to the look's family: without it Amber's gold reached nothing the new look is drawn with.
+const NATIVE_LOOK_THEMES=['midnight','daylight'];
 function readTheme(){try{const value=localStorage.getItem(THEME_KEY);return THEMES.some((theme)=>theme.id===value)?value:'';}catch{return '';}}
 function readAccent(){try{const value=localStorage.getItem(ACCENT_KEY);return parseHex(value)?value:'';}catch{return '';}}
 function tokenValue(name){return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();}
@@ -156,6 +159,8 @@ const CODEN_TERMINAL_STATUS={idle:'Not connected.',connecting:'Connecting to the
 function applyTheme(id){
   document.documentElement.dataset.theme=id;
   try{localStorage.setItem(THEME_KEY,id);}catch{}
+  // The look's accent follows the theme, and a theme kept from the last visit is applied after the first applyAccent() of the boot.
+  applyAccent(readAccent());
   // D-0418: the emulator lives in another document and cannot see this attribute change.
   // Told rather than left to guess — a terminal that keeps the old palette after a theme
   // change is the divergence this project spends its parity rules on.
@@ -164,23 +169,29 @@ function applyTheme(id){
 function applyAccent(hex){
   const root=document.documentElement;
   for(const token of [...ACCENT_TOKENS,...NEW_LOOK_ACCENT_TOKENS])root.style.removeProperty(`--${token}`);
-  if(!hex||!parseHex(hex))return;
+  // A theme the look does not draw itself carries its accent in the old tokens. The look's family follows it, derived the way a
+  // chosen colour is, so the gold of Amber reaches the buttons and the avatar and not only the old tokens. A colour chosen by hand wins.
+  const fromTheme=!hex&&!NATIVE_LOOK_THEMES.includes(root.dataset.theme??'midnight')?tokenValue('blue'):'';
+  const accent=hex||fromTheme;
+  if(!accent||!parseHex(accent))return;
   // Measured against the ACTIVE theme's own surface, so the derivation answers the question
   // that matters here rather than one about whichever theme happened to be default.
   const background=tokenValue('surface-card')||'#0a121f';
-  const readable=deriveReadable(hex,background,4.5);
-  root.style.setProperty('--accent-fill-from',hex);
-  root.style.setProperty('--accent-fill-to',hex);
-  root.style.setProperty('--blue',hex);
-  // UI-024: the FILL keeps the chosen hue; everything that has to be READ uses the derived
-  // relative. Refusing the colour outright would tell someone their choice is forbidden,
-  // when what is actually true is that this one pairing is not readable.
-  for(const token of ['accent-link','accent-brand','accent-eyebrow'])root.style.setProperty(`--${token}`,readable?readable.hex:hex);
-  // The look's family: the fill is the chosen hue, the ink is the readable relative, the wash is the hue at low alpha over the card,
+  const readable=deriveReadable(accent,background,4.5);
+  if(hex){
+    root.style.setProperty('--accent-fill-from',hex);
+    root.style.setProperty('--accent-fill-to',hex);
+    root.style.setProperty('--blue',hex);
+    // UI-024: the FILL keeps the chosen hue; everything that has to be READ uses the derived
+    // relative. Refusing the colour outright would tell someone their choice is forbidden,
+    // when what is actually true is that this one pairing is not readable.
+    for(const token of ['accent-link','accent-brand','accent-eyebrow'])root.style.setProperty(`--${token}`,readable?readable.hex:hex);
+  }
+  // The look's family: the fill is the hue, the ink is the readable relative, the wash is the hue at low alpha over the card,
   // and the text on the fill is whichever of white and black reads better on it.
-  const fill=parseHex(hex);
-  root.style.setProperty('--n-accent',hex);
-  root.style.setProperty('--n-accent-ink',readable?readable.hex:hex);
+  const fill=parseHex(accent);
+  root.style.setProperty('--n-accent',accent);
+  root.style.setProperty('--n-accent-ink',readable?readable.hex:accent);
   root.style.setProperty('--n-accent-soft',`rgba(${fill.r},${fill.g},${fill.b},.16)`);
   root.style.setProperty('--n-on-accent',contrast(fill,parseHex('#ffffff'))>=contrast(fill,parseHex('#000000'))?'#ffffff':'#000000');
 }
