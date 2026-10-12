@@ -48,6 +48,14 @@
   --accent-wash:var(--n-accent-soft);--accent-wash-fade:var(--n-accent-soft);--accent-wash-strong:var(--n-accent-soft);
   --text-on-accent-wash:var(--n-accent-ink);--focus-ring:var(--n-accent);
 }
+/* The themes that bring surfaces of their own (Slate, Graphite, High contrast) paint them here: look.css draws with --n-*, and those themes set
+   only the old --surface-* tokens, so each --n-* is read from the theme's own token. Only tokens every one of them defines (theme-surfaces.test.mjs):
+   a token a theme leaves alone is look.css's own var(--n-*), and mapping it back would be a cycle. Midnight and Daylight are drawn above, and the
+   accent-only themes (Indigo, Teal, Amber, Violet) keep Midnight's surfaces. */
+:root[data-theme="slate"],:root[data-theme="graphite"],:root[data-theme="contrast"]{
+  --n-bg:var(--surface-root);--n-side:var(--surface-sidebar);--n-card:var(--surface-card);--n-sunken:var(--surface-sunken);--n-field:var(--surface-field);
+  --n-bubble:var(--surface-message-own);--n-hover:var(--surface-secondary);--n-ink:var(--text-primary);--n-muted:var(--muted);--n-line:var(--line);--n-edge:var(--line);
+}
 html{font-size:calc(var(--text-scale,1)*16px)}
 html,body{background:var(--n-bg)}
 body{color:var(--n-ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.5}
