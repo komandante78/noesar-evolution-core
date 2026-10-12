@@ -688,7 +688,7 @@ d6d9a536fc9b90a226541e7378c0cf165f938f91356418ba2dba98a2d88fbd4e  ./docs/runtime
 2eec58530de8031de8305bbbce2b95130637fcf25d9893fa76cee652fd5b89f3  ./docs/security/CAPABILITY_ASSURANCE.md
 a3f38b28c75bef549f19357c9ad086ccdfd32c0d475f82bf3d73d8ea2e1d7cb0  ./docs/security/INDEPENDENT_PENTEST_SCOPE.md
 698dda130950f4c04466263750ee1bde6f55e11281e9f477f771e6bb93d7cff2  ./docs/security/POSTGRES_ASSURANCE.md
-e0d6143854e221f24990859acc0ec29a1245dbd9ce562d29dc6bf6b6abadeffa  ./eslint.config.mjs
+3c4dba585ca526e9663b239b0a8648c4887bdd3ebcb9580ae307e9aee1e1d24c  ./eslint.config.mjs
 282dcf8cc29012f7ba3f9b07bf5469369214ab9eec525bd86d74d1204784fbe5  ./evidence/LINEAGE.json
 1cbe26087947e9bb2229622bcaa3e065372d27f77e76ac610b9f5ddaa30ae09a  ./evidence/TOOLCHAIN_AVAILABILITY.json
 def63bd4660b563318eefc352492ffc61a8efcf264c056c588582959b18bd960  ./evidence/V050_RELEASE_REFERENCE.md
@@ -6732,6 +6732,7 @@ fcf262e912884b3d345df9d72490c8b9905ed266b11ad07865df6eccd1aea3a0  ./tools/benchm
 ed02e17a5c5f0f00cdb836e425127206af63fe3da8c16633e0df811750de31a2  ./tools/benchmarks/run-bench.mjs
 2aaca90676a9ea0f76ab818274b9291b1a0ba930af303a9f7bafc4e194429cb8  ./tools/browser-e2e.mjs
 9fbce73b5894bbb632d552bff4f989b687c576dfe752e3c8748b65d395598b7f  ./tools/cache-cleanup.sh
+6833fa838405012287747f3791ee66f67828c31d36a5f46b2a952cfa2d49dd07  ./tools/capture-screens.mjs
 565a208458fa387c12020398b80168ed1e66ead5e01f4fa18a0df202566932f7  ./tools/cbom.mjs
 a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-build-reproducibility.mjs
 a1df315d15d1e88dba83d8fd5383929050bfbd78b1d554d5e33d00b87d6ff0fc  ./tools/coden-evolution
@@ -6766,7 +6767,7 @@ afa2747207b77f1395a96c72408998dd979a0ea6b9ce6da409a5a634e862efad  ./tools/measur
 cd382976bc32b31112ce2e9c485a0c1e37a1fb49bea8325f5e4a0eb4a4b8a2be  ./tools/mint-service-token.mjs
 5224ac53a75e4f01fdb7b03880bc07baf978b56a4d10ce5c7b8f2edfab9c8747  ./tools/model-acquisition-e2e.mjs
 220211650b4d979b8fdc285b2d8293e4956c865359e735f1294b98b39778b961  ./tools/model-install.mjs
-314b6d42278673e355f8ff1b8152c1d221cef0165d6accccf735bb9395acec98  ./tools/page-screenshot.mjs
+b95b5989e081a5afa14a4f7ee7163b9498b313846fef3250e8d9d3a4c3eb152b  ./tools/page-screenshot.mjs
 9761fb189bcf64bd263f7ebf6776be24673123b4eecbe0f4697e6cef7849d80e  ./tools/release-signing.mjs
 860e91f7bc240696d1bf60fe659586084877fec9898edf450e40101402e87d7d  ./tools/restart-durability-smoke.mjs
 697a772b770630f8ce304b8d3f24776223529c7e838f386828ad82f7a7d58810  ./tools/run-browser-e2e.sh
@@ -6778,6 +6779,7 @@ e3daababb9273448de1fd256b6adc35b56f6279e860d52bf7e0f1c384fe20ebd  ./tools/sign-c
 1ad3bf8e4cc0f373c3f5bc90a07f6d1eb4d050884c57a1bf8ccb56cd57cb4a0e  ./tools/sign-model-descriptor.mjs
 ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-release-artifact.mjs
 ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-update-artifact.mjs
+f389aab3f99c635d016def804b20b09e5af941884021d4e66b23d6cecf12b8c7  ./tools/split-screenshots.mjs
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh

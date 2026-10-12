@@ -29,7 +29,7 @@ const SETUP_TOKEN = process.env.NOESAR_E2E_SETUP_TOKEN;
 // NOESAR_E2E_BASE_URL/SETUP_TOKEN to the runner container, and adding a third
 // pass-through to a shared script for a one-off list is exactly the coupling
 // CLAUDE10.md's no-overengineering guidance warns against. Edit this array directly.
-const VIEWS = ['#/home'];
+const VIEWS = ['#/chat']; // #/home no longer exists; tools/capture-screens.mjs does every theme and page
 /** route -> selector to click before taking a second shot. Same reason as VIEWS: edited here. */
 const AFTER_CLICK = {};
 const PASSWORD = 'e2e throwaway passphrase for a disposable probe';
