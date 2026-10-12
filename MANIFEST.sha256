@@ -353,7 +353,7 @@ b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-s
 fb2ab8057e64707ff144b019556fb132e596235897c81390bb6dbd139081e6f5  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 0db53e7791e54afe8fee27d0cb4ffe1c601a6a04d8bad9e95a9392ee3d341545  ./apps/webui-static/index.html
-e2a3680e17848e87279b84bb10ff13c7f435f2d11342fff00ba5d8eb133d11dd  ./apps/webui-static/look.css
+34a06b44451aa306d179c45061dc66fd98099cdf9ddd89a7f459a900fae5384b  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
@@ -6629,7 +6629,7 @@ d4f072ae13fa41a7bd0afe7fd3039812c77ca2da683bc66559f12112ae21dd46  ./services/ref
 11dc430c871defba8ae3b6298f19a6754e1e06eab5748976236cfebb91bd0c20  ./services/reference-control-plane/test/stream-failure-containment.test.mjs
 fecd53501d7caefb760b5396b31dd742c808f948aadc82bd17360e4c8debc027  ./services/reference-control-plane/test/support/workspace.mjs
 18f954adcd93a21cec5dfe6fcc73dde98f52c7077a663e0c18af95b235c12bc5  ./services/reference-control-plane/test/technology-radar.test.mjs
-37b9134ebd1d199a5c927dd9c750e47218a6680e0babba8718527bdf65488dbe  ./services/reference-control-plane/test/theme-surfaces.test.mjs
+08a4025a0d43bf34491a0b246eef7d5d4943192346a342a08307f93cb607ee90  ./services/reference-control-plane/test/theme-surfaces.test.mjs
 4fa5c81e816604e00f90b6b58932efc818085aee1206de54a396c3540c996af0  ./services/reference-control-plane/test/timezone.test.mjs
 b47a3c43764bb90c49584e0575259ebe479446ef6cce9e4faeb4fac1dd6c0a1a  ./services/reference-control-plane/test/tls.test.mjs
 db879a08b15938df15319b0345dc19a106cf211b70f02339f74fe7f814d6677f  ./services/reference-control-plane/test/tool-call-stream.test.mjs

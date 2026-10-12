@@ -63,6 +63,9 @@
   --n-bg:#060a12;--n-side:rgba(7,12,21,.9);--n-card:#0a121f;--n-sunken:#080e18;--n-field:#080f1b;
   --n-bubble:#12203a;--n-hover:#101a2b;--n-ink:#eef4ff;--n-muted:#8d9ab0;--n-line:rgba(142,166,210,.18);--n-edge:rgba(142,166,210,.18);
 }
+/* High contrast sets its accent in --accent-brand and leaves --blue to the mapping above, which is the look's teal. applyAccent() derives the look's
+   accent family from --blue, so give it the theme's own: its accent, not a teal button beside a blue link. */
+:root[data-theme="contrast"]{--blue:var(--accent-brand)}
 html{font-size:calc(var(--text-scale,1)*16px)}
 html,body{background:var(--n-bg)}
 body{color:var(--n-ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.5}

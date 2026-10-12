@@ -80,6 +80,18 @@ describe('a theme\'s surfaces reach the new look', () => {
   });
 });
 
+describe('every theme the look does not draw has an accent to hand over', () => {
+  test('its own --blue, or one look.css gives it - not the look\'s default teal (seen on High contrast: teal buttons and a blue link)', () => {
+    assert.ok(themeBlocks.size >= 8, 'the theme blocks of styles.css are read');
+    for (const [id, body] of themeBlocks) {
+      if (NATIVE.includes(id)) continue;
+      const own = /--blue:/.test(body);
+      const given = new RegExp(`:root\\[data-theme="${id}"\\]\\{[^}]*--blue:`).test(look);
+      assert.ok(own || given, `${id} would hand the look the default teal`);
+    }
+  });
+});
+
 describe('the themes that change only the accent wear the site\'s surfaces', () => {
   const PAIRS = [
     ['n-bg', 'surface-root'], ['n-side', 'surface-sidebar'], ['n-card', 'surface-card'], ['n-sunken', 'surface-sunken'],
