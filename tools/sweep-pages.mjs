@@ -29,6 +29,9 @@ const CONFIGS = [
   { name: 'phone-advanced', viewport: PHONE, level: 'advanced', themes: ['midnight', 'daylight', 'amber'] },
   { name: 'tablet-base', viewport: { width: 768, height: 1024 }, level: 'base', themes: ['midnight', 'daylight'] },
   { name: 'desktop-base', viewport: { width: 1440, height: 900 }, level: 'base', themes: ['midnight'] },
+  // the largest text step (1.5) on a phone, and on a desktop with the interface zoomed to 150 %: where a fixed width gives way
+  { name: 'phone-larger-text', viewport: PHONE, level: 'base', themes: ['midnight', 'daylight'], textScale: '1.5' },
+  { name: 'desktop-zoomed', viewport: { width: 1440, height: 900 }, level: 'base', themes: ['midnight', 'daylight'], textScale: '1.5', zoom: '150' },
 ];
 const ROUTES = ['chat', 'tasks', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory', 'research', 'agents', 'workflows', 'models',
   ...['sessions', 'appearance', 'language', 'about', 'privacy', 'people', 'security', 'skills', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules', 'remote-targets', 'sessions/archived', 'sessions/bin'].map((s) => `settings/${s}`),
@@ -126,7 +129,7 @@ try {
   for (const config of CONFIGS) {
     await page.setViewport(config.viewport);
     for (const theme of config.themes) {
-      await page.evaluate((id, lvl) => { try { localStorage.setItem('noesar.theme.chosen', id); localStorage.setItem('noesar.ui.level', lvl); } catch { /* none */ } }, theme, config.level);
+      await page.evaluate((id, lvl, text, zoom) => { try { localStorage.setItem('noesar.theme.chosen', id); localStorage.setItem('noesar.ui.level', lvl); localStorage.setItem('noesar.textScale', text); localStorage.setItem('noesar.uiZoom', zoom); } catch { /* none */ } }, theme, config.level, config.textScale ?? '1', config.zoom ?? '100');
       await page.reload({ waitUntil: 'networkidle2' });
       await page.waitForSelector('#authGate.hidden', { timeout: 20000 });
       let clean = 0;

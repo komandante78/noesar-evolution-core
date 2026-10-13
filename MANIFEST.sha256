@@ -346,11 +346,11 @@ f0746c53941913718783ec519522381004f094b61dd83f6660f82545dcaa9197  ./apps/webui-s
 25853e9b3cbffc96b2c3d17fe4bab6f49fcd554ba91e20275bd4b72beab79886  ./apps/webui-static/coden-terminal.js
 7270a42d516b6dbee1b6f8d0bad8731ec76554e347d005f5cb499ec12c888da0  ./apps/webui-static/coden-view-model.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
-d8417c937050566dfd945b1bac1377f9ab49180599eb24226b2b8577c31ae605  ./apps/webui-static/i18n-catalog-de.js
-05891636457c2f5405e981bda32701e263a65d2c746eeaf5f50c348ce1f44ade  ./apps/webui-static/i18n-catalog-es.js
-4569bc260770f2d5c16231701629dee96b192db159a2889881ec6bd598a776c3  ./apps/webui-static/i18n-catalog-fr.js
-33e041a9f0cc65d1cf2ca7062278dac89f45107b220c3cb7f18d736047f15640  ./apps/webui-static/i18n-catalog-pt.js
-f1132bcb56098791b3c6b0dbfc2ff96e87fa73e0b14370c450e64bb31b466c46  ./apps/webui-static/i18n-catalog.js
+fa6418c19a050e464e69bf241af5c0e1cdc42ffebf3943502cfc3d9b8acf9a64  ./apps/webui-static/i18n-catalog-de.js
+de5979d3e4a272cea58204907565a040bb53ea0880b2d93630422048cbe9334d  ./apps/webui-static/i18n-catalog-es.js
+cb0b74bc5859fbb46bd4dc62c93dc5817adb801dbba4d02bb9d21dcabad956f8  ./apps/webui-static/i18n-catalog-fr.js
+1293f6bb80b1aa107f8027c22c206c10bd884243ec4c8eb3c246fe0d80c904bb  ./apps/webui-static/i18n-catalog-pt.js
+8c2a4eee302aaad1ff0146d3c31432e12909d8fd1bcf8cb00c8b59366b830c75  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 c58bfe58bc7f7baf147c52eaabcf29bff550770bb54890c2c994dd550c655482  ./apps/webui-static/index.html
 671e95b3d4996b59de39600e2648b4e37f1fe2361a6841de53c40ecbd6de1680  ./apps/webui-static/look.css
@@ -6784,7 +6784,7 @@ ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-r
 ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-update-artifact.mjs
 f389aab3f99c635d016def804b20b09e5af941884021d4e66b23d6cecf12b8c7  ./tools/split-screenshots.mjs
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
-832dfcb72622fd7acd6488fa45aa8ac1b8e01b990565281d3ac1de13e653ea01  ./tools/sweep-pages.mjs
+dbe0386fb606653db748628eb75b9cb24ed2cba1e66416e8cb15afd0d7b9e1dd  ./tools/sweep-pages.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
 c539fa144d17d8423d5e1e070576490c5daeaba9228085f28c4e2bec2a52b253  ./tools/test-cross-platform-installers.mjs
