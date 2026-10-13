@@ -261,7 +261,7 @@ export default [
     // The colour snapshot is the third program of this shape: Node on the outside, page
     // code inside page.evaluate(). It is listed here rather than given a blanket exemption,
     // so no-undef keeps working on both halves of it. page-screenshot.mjs is the fourth.
-    files: ['tools/browser-e2e.mjs', 'tools/accessibility-audit.mjs', 'tools/computed-style-snapshot.mjs', 'tools/page-screenshot.mjs', 'tools/capture-screens.mjs'],
+    files: ['tools/browser-e2e.mjs', 'tools/accessibility-audit.mjs', 'tools/computed-style-snapshot.mjs', 'tools/page-screenshot.mjs', 'tools/capture-screens.mjs', 'tools/sweep-pages.mjs'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',

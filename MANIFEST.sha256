@@ -688,7 +688,7 @@ d6d9a536fc9b90a226541e7378c0cf165f938f91356418ba2dba98a2d88fbd4e  ./docs/runtime
 2eec58530de8031de8305bbbce2b95130637fcf25d9893fa76cee652fd5b89f3  ./docs/security/CAPABILITY_ASSURANCE.md
 a3f38b28c75bef549f19357c9ad086ccdfd32c0d475f82bf3d73d8ea2e1d7cb0  ./docs/security/INDEPENDENT_PENTEST_SCOPE.md
 698dda130950f4c04466263750ee1bde6f55e11281e9f477f771e6bb93d7cff2  ./docs/security/POSTGRES_ASSURANCE.md
-3c4dba585ca526e9663b239b0a8648c4887bdd3ebcb9580ae307e9aee1e1d24c  ./eslint.config.mjs
+9ba6ff09bada55f75247db6d79038df05a222f6a29a590bcc8685af0dabb4963  ./eslint.config.mjs
 282dcf8cc29012f7ba3f9b07bf5469369214ab9eec525bd86d74d1204784fbe5  ./evidence/LINEAGE.json
 1cbe26087947e9bb2229622bcaa3e065372d27f77e76ac610b9f5ddaa30ae09a  ./evidence/TOOLCHAIN_AVAILABILITY.json
 def63bd4660b563318eefc352492ffc61a8efcf264c056c588582959b18bd960  ./evidence/V050_RELEASE_REFERENCE.md
@@ -6784,6 +6784,7 @@ ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-r
 ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-update-artifact.mjs
 f389aab3f99c635d016def804b20b09e5af941884021d4e66b23d6cecf12b8c7  ./tools/split-screenshots.mjs
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
+832dfcb72622fd7acd6488fa45aa8ac1b8e01b990565281d3ac1de13e653ea01  ./tools/sweep-pages.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
 c539fa144d17d8423d5e1e070576490c5daeaba9228085f28c4e2bec2a52b253  ./tools/test-cross-platform-installers.mjs
