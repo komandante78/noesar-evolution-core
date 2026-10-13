@@ -353,7 +353,7 @@ d8417c937050566dfd945b1bac1377f9ab49180599eb24226b2b8577c31ae605  ./apps/webui-s
 f1132bcb56098791b3c6b0dbfc2ff96e87fa73e0b14370c450e64bb31b466c46  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 c58bfe58bc7f7baf147c52eaabcf29bff550770bb54890c2c994dd550c655482  ./apps/webui-static/index.html
-dabc082033855169e034a030ab7bf504492a95d0bca3ecbd983f5987a2ebc924  ./apps/webui-static/look.css
+671e95b3d4996b59de39600e2648b4e37f1fe2361a6841de53c40ecbd6de1680  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
@@ -6397,7 +6397,7 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  ./services/reference-control-plane/src/websocket.mjs
 fb0388c345f716ebb95d20231526186f64872492480bc4ce59d95d928b450bfd  ./services/reference-control-plane/src/workspace-actions.mjs
 848a0d73f71be4845ece9b87a6d1156edbe0b30a8d3aa0064447ec183f933d55  ./services/reference-control-plane/src/workspace-files.mjs
-021e509a2b58880a9a62fd1910672f250bbaa8a93bd83b530f3d7a2d5bb74b4c  ./services/reference-control-plane/test/accent-fill.test.mjs
+ebffbc46e12785907b8517e45adb22251f284f387300592c82ee0e9915b29bcf  ./services/reference-control-plane/test/accent-fill.test.mjs
 c87473901e8b15d2be4ae76cbeabfe530b7611c166f04a7b16bc04af48894438  ./services/reference-control-plane/test/acceptance-matrix.test.mjs
 75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  ./services/reference-control-plane/test/account-recovery.test.mjs
 32c15fca693282de225177f79b4166b8fbcd3bcb576524d80a829be8750de045  ./services/reference-control-plane/test/account-security.test.mjs

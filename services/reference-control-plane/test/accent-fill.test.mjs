@@ -40,3 +40,13 @@ describe('every theme fills with the accent it draws with', () => {
     assert.match(override.sel, /^:root:root\[data-theme\]$/, `the selector must be :root:root[data-theme] (0,3,0) against the theme blocks' (0,2,0), got ${override.sel}`);
   });
 });
+
+describe('what sits on an accent fill does not bring a wash of its own', () => {
+  // styles.css gives the count inside the selected model chip --surface-critical-wash (a red-tinted wash for errors): on Daylight's
+  // teal fill it lightened the background under white text to 4.49 : 1, just under the line, and it painted an error colour on a filter.
+  test('the count in the selected model chip is drawn on the fill itself, not on a legacy critical wash', () => {
+    const rule = [...look.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1].trim(), body: m[2].replace(/\s+/g, '') })).find((r) => r.sel === '.model-chip.selected .model-chip-count');
+    assert.ok(rule, 'look.css has no rule for .model-chip.selected .model-chip-count');
+    assert.ok(rule.body.includes('background:transparent'), `the count must sit on the fill: ${rule.body}`);
+  });
+});
