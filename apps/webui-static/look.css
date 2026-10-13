@@ -367,6 +367,8 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 .seg button[aria-pressed=true]{background:var(--n-card);color:var(--n-ink);font-weight:600;box-shadow:var(--n-shadow)}
 /* The selected row of seven legacy controls paired --surface-selected (an old navy) with --text-on-accent. The bridge made that ink the one an accent FILL wears, near-black on Midnight's teal, so the pair read 1.2-2.2:1 in eight themes of nine. They wear the accent's soft wash and its readable ink, as .composer-web does. */
 .mode-switch button.selected,.panel-rank-buttons button[aria-pressed=true],.composer-commands button.active,.bench-terminal-tabs button.active,.search-popover button.active,.agent-menu button.active,.help-button[aria-expanded="true"]{background:var(--n-accent-soft);color:var(--n-accent-ink)}
+/* The nine themes of styles.css each keep a fill gradient of their own (--accent-fill-from/to), a shade darker than their accent, while the ink on it (--n-on-accent) is derived from the accent the page draws with: black on Indigo's #2f52e0 read 3.4:1 on every selected chip and tab. One fill, one ink: every theme fills with its accent. :root:root outweighs the theme blocks, so the order of the two sheets does not decide it. */
+:root:root[data-theme]{--accent-fill-from:var(--n-accent);--accent-fill-to:var(--n-accent)}
 .seg button:hover{color:var(--n-ink)}
 .setting-list{margin:14px 0 0;padding-inline-start:20px;font-size:0.9375rem;line-height:1.7}
 .setting-more{padding:0 20px}
