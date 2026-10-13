@@ -6474,6 +6474,7 @@ e7a8313ae57bc86d1b9245d1b4dd877563ac7d08d2d2caea5b4413aa28e3cde0  ./services/ref
 fda65813149624b9bc176c24510afaad0d2138b0edc3ac21a1c0487fadfa6b9a  ./services/reference-control-plane/test/ce-036-one-menu-filtered-by-permission.test.mjs
 460d3f81a9ada2d82f9eaa5bdd9bad84f3bd6303805c5705ea3a87be3863698b  ./services/reference-control-plane/test/chat-agent-directive.test.mjs
 71693d7bd2dc9a9708876ba53402606c981d1eff1430ee790fffcbf1296c3d13  ./services/reference-control-plane/test/chat-egress-gate.test.mjs
+5653d0a64f85079f6a332ae5fcf663a62e7ee1379f5fa34bd59069d952a0071a  ./services/reference-control-plane/test/chat-input-label.test.mjs
 4842299a8862a9d790d285900ffe89edf2d80a4edf5f612d822b2ce63b6b4bd1  ./services/reference-control-plane/test/chat-send-button-routes-commands.test.mjs
 88416aae6f2182916d70a140303cf57da575810f5a11490bff13404164228810  ./services/reference-control-plane/test/chat-tool-loop.test.mjs
 50157641fdfc1152f263387a874b31488ef3ce72d0e09a1fccbf6c1abe4b0b53  ./services/reference-control-plane/test/chat-tools-narrowed.test.mjs
@@ -6636,6 +6637,7 @@ fecd53501d7caefb760b5396b31dd742c808f948aadc82bd17360e4c8debc027  ./services/ref
 08a4025a0d43bf34491a0b246eef7d5d4943192346a342a08307f93cb607ee90  ./services/reference-control-plane/test/theme-surfaces.test.mjs
 4fa5c81e816604e00f90b6b58932efc818085aee1206de54a396c3540c996af0  ./services/reference-control-plane/test/timezone.test.mjs
 b47a3c43764bb90c49584e0575259ebe479446ef6cce9e4faeb4fac1dd6c0a1a  ./services/reference-control-plane/test/tls.test.mjs
+e2bcddb22fc91aed4869f3495d0eb577e24098235cccc85739e79a5e329fd7c9  ./services/reference-control-plane/test/toast-shapes.test.mjs
 db879a08b15938df15319b0345dc19a106cf211b70f02339f74fe7f814d6677f  ./services/reference-control-plane/test/tool-call-stream.test.mjs
 23e3597e9964125cff77569950194641a4856192cc29592664d5bb1e81352f6e  ./services/reference-control-plane/test/tool-catalog.test.mjs
 2771705a9d5ba2cfc7fa6f50a1b35d68f6d75d48564e5a0fc7844427d28b1544  ./services/reference-control-plane/test/totp-replay.test.mjs

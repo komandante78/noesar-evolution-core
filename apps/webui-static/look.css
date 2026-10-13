@@ -184,6 +184,8 @@ body:not([data-level=advanced]) .sidebar .nav-act kbd{display:none}
 .approval-banner{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 28px 0;padding:10px 16px;border-radius:12px;background:var(--n-warn-bg);color:var(--n-warn-ink);font-size:0.9375rem}
 .approval-banner.hidden{display:none}
 .approval-banner .approval-strip-state{font-weight:600;color:inherit!important}
+/* In high-contrast mode the person's own palette decides: the !important above is for the tint the old stylesheet gave each state, and does not outlive it. */
+@media(forced-colors:active){.approval-banner .approval-strip-state{color:CanvasText}}
 .approval-banner .text-button{margin-inline-start:auto;min-height:36px;padding:0 12px;border:1px solid currentColor;border-radius:10px;background:transparent;color:inherit;font-weight:600}
 
 /* ── the pages share one frame ── */

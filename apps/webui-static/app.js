@@ -244,12 +244,19 @@ function setStatus(message,error=false){$('#statusMessage').textContent=t(messag
 // --- user-visible feedback -------------------------------------------------
 // Every action must end in a visible outcome. A silent failure is indistinguishable
 // from a dead button, which is how a working page gets reported as "nothing happens".
-function toast(message,{kind='info',correlationId=null}={}){
-  const host=$('#toastHost');if(!host)return setStatus(message,kind==='error');
+function toast(message,options={}){
+  // Two shapes are called. A sentence: toast('Workflow created.', {kind}). And a notice {title, body, kind}: Delete logs, a theme, the accent, the sessions
+  // that stayed. The notice used to arrive as the sentence and print "[object Object]", and setStatus() then called .trim() on it: a red error that stays.
+  const notice=message&&typeof message==='object'?message:null;
+  const {kind=notice?.kind??'info',correlationId=null}=options;
+  const sentence=notice?[notice.title,notice.body].filter(Boolean).join(' — '):message;
+  const host=$('#toastHost');if(!host)return setStatus(sentence,kind==='error');
   const node=document.createElement('div');
   node.className=`toast toast-${kind}`;
   node.setAttribute('role',kind==='error'?'alert':'status');
-  node.innerHTML=`<span>${escapeHtml(message)}</span>`;
+  node.innerHTML=notice
+    ?`<span><b>${escapeHtml(notice.title??'')}</b>${notice.body?` <span>${escapeHtml(notice.body)}</span>`:''}</span>`
+    :`<span>${escapeHtml(message)}</span>`;
   if(correlationId){
     const tag=document.createElement('code');
     tag.className='toast-correlation';tag.textContent=correlationId;
@@ -262,7 +269,7 @@ function toast(message,{kind='info',correlationId=null}={}){
   close.addEventListener('click',()=>node.remove());
   node.appendChild(close);
   host.appendChild(node);
-  setStatus(message,kind==='error');
+  setStatus(sentence,kind==='error');
   if(kind!=='error')setTimeout(()=>node.remove(),6000);
 }
 // Errors are reported with their message and correlation ID, never a stack trace.
@@ -4312,7 +4319,7 @@ function renderThemeGrid(){
     // colour it resolved to last time.
     applyAccent(readAccent());
     renderAppearance();
-    toast({title:'Theme changed',body:`${button.querySelector('b').textContent.trim()} is now in use on this device.`,kind:'success'});
+    toast({title:'Theme changed',body:'This theme is now in use on this device.',kind:'success'});
   }));
   paintSwatches(grid);
   const label=$(`#themeCurrent`);
