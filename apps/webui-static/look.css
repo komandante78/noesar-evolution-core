@@ -365,6 +365,8 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 .seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:12px;background:var(--n-sunken)}
 .seg button{min-height:40px;padding:0 18px;border:0;border-radius:9px;background:transparent;color:var(--n-muted);font:inherit;font-size:0.9375rem;cursor:pointer;box-shadow:none}
 .seg button[aria-pressed=true]{background:var(--n-card);color:var(--n-ink);font-weight:600;box-shadow:var(--n-shadow)}
+/* The selected row of seven legacy controls paired --surface-selected (an old navy) with --text-on-accent. The bridge made that ink the one an accent FILL wears, near-black on Midnight's teal, so the pair read 1.2-2.2:1 in eight themes of nine. They wear the accent's soft wash and its readable ink, as .composer-web does. */
+.mode-switch button.selected,.panel-rank-buttons button[aria-pressed=true],.composer-commands button.active,.bench-terminal-tabs button.active,.search-popover button.active,.agent-menu button.active,.help-button[aria-expanded="true"]{background:var(--n-accent-soft);color:var(--n-accent-ink)}
 .seg button:hover{color:var(--n-ink)}
 .setting-list{margin:14px 0 0;padding-inline-start:20px;font-size:0.9375rem;line-height:1.7}
 .setting-more{padding:0 20px}
