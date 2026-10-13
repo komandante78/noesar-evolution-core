@@ -48,7 +48,15 @@ function check(name, ok, detail = '') {
 function note(name, detail) {
   console.log(`NOTE  ${name}  — ${detail}`);
 }
-function at(name) { step = name; }
+let pageRef = null;
+// Each step announces itself with what the page holds at that moment: a toast that stays until it is dismissed, and what the server refused.
+function at(name) {
+  step = name;
+  if (!pageRef) return;
+  pageRef.evaluate(() => document.querySelectorAll('.toast').length)
+    .then((count) => console.log(`STEP  ${name}  — ${count} toasts on screen, refused so far: ${JSON.stringify([...new Set(refused)].slice(-4))}, thrown so far: ${JSON.stringify([...new Set(thrown)].slice(0, 4))}`))
+    .catch(() => { /* the page is between documents: the next step will say */ });
+}
 
 // TOTP, so the audit can sign itself in without a real credential.
 import { createHmac } from 'node:crypto';
@@ -184,6 +192,17 @@ window.__a11y = (() => {
     if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) === 0) return false;
     return element.offsetParent !== null || style.position === 'fixed';
   }
+  // Text kept for screen readers only: an absolutely positioned, overflow-hidden ancestor clipped to nothing. Its children report their own
+  // size, but nothing of them is painted; 1.4.3 is about the visual presentation of text.
+  function unpainted(element) {
+    for (let ancestor = element.parentElement, depth = 0; ancestor && depth < 6; ancestor = ancestor.parentElement, depth += 1) {
+      const style = getComputedStyle(ancestor);
+      if (style.overflow !== 'hidden' || style.position !== 'absolute') continue;
+      const rect = ancestor.getBoundingClientRect();
+      if (rect.width <= 2 || rect.height <= 2 || /rect\\(0px, 0px, 0px, 0px\\)/.test(style.clip)) return true;
+    }
+    return false;
+  }
   // Text this element owns, not text inherited from descendants.
   function ownText(element) {
     return [...element.childNodes]
@@ -202,9 +221,11 @@ window.__a11y = (() => {
       let unresolved = 0;
       let measured = 0;
       let transparent = 0;
+      let clippedAway = 0;
       for (const element of root.querySelectorAll('*')) {
         const text = ownText(element);
         if (!text || !visible(element)) continue;
+        if (unpainted(element)) { clippedAway += 1; continue; }
         const style = getComputedStyle(element);
         const foreground = parseColor(style.color);
         if (!foreground) continue;
@@ -241,7 +262,7 @@ window.__a11y = (() => {
           });
         }
       }
-      return { failing, unresolved, measured, transparent };
+      return { failing, unresolved, measured, transparent, clippedAway };
     },
     // A DISABLED control is not interactive: it is not in the tab order, cannot receive
     // focus and cannot be activated, so 2.4.7 and 2.5.8 do not apply to it. Counting it
@@ -284,6 +305,8 @@ window.__a11y = (() => {
       return [...root.querySelectorAll(INTERACTIVE)]
         .filter(visible)
         .filter((element) => !element.disabled)
+        // aria-hidden removes a control from the accessibility tree: the chat's file input, kept behind the labelled attach button, is the case.
+        .filter((element) => !element.closest('[aria-hidden="true"]'))
         .filter((element) => !this.inClosedDisclosure(element));
     },
     disabledSkipped(rootSelector) {
@@ -302,7 +325,8 @@ window.__a11y = (() => {
     // exception for links inline in a sentence.
     smallTargets(rootSelector) {
       return this.interactiveElements(rootSelector).map((element) => {
-        const rect = element.getBoundingClientRect();
+        let rect;
+        if (element.matches('.skip-link')) { element.focus(); rect = element.getBoundingClientRect(); element.blur(); } else rect = element.getBoundingClientRect();
         const inlineLink = element.tagName === 'A' && getComputedStyle(element).display === 'inline';
         return {
           selector: element.tagName.toLowerCase() + (element.id ? '#' + element.id : ''),
@@ -316,6 +340,12 @@ window.__a11y = (() => {
       const style = getComputedStyle(element);
       return [style.outlineStyle, style.outlineWidth, style.outlineColor, style.boxShadow,
         style.borderColor, style.borderWidth, style.backgroundColor, style.color].join('|');
+    },
+    // The indicator of a field that lives inside a box (the chat composer) is the box's own: its border takes the accent on :focus-within.
+    // Two levels up is counted, no further: a page-wide change on focus is not an indicator of this control.
+    focusSignatureWithin(element) {
+      const up = element.parentElement;
+      return [this.focusSignature(element), up ? this.focusSignature(up) : '', up?.parentElement ? this.focusSignature(up.parentElement) : ''].join('||');
     },
     horizontalOverflow() {
       const doc = document.documentElement;
@@ -388,6 +418,8 @@ window.__a11y = (() => {
       const unlabelled = [];
       for (const element of document.querySelectorAll('input:not([type=hidden]), select, textarea')) {
         if (!visible(element)) continue;
+        // A field the accessibility tree does not hold (aria-hidden, as the chat's file input behind the labelled attach button) has no name to ask for.
+        if (element.closest('[aria-hidden="true"]')) continue;
         const id = element.id;
         const hasLabelFor = id && document.querySelector('label[for="' + id + '"]');
         const wrappingLabel = element.closest('label');
@@ -474,6 +506,14 @@ const browser = await puppeteer.launch({
   defaultViewport: { width: 1440, height: 900 },
 });
 const page = await browser.newPage();
+// What the page asked for and was refused, kept so a failing step can say which request it was (a toast that reads [object Object] is the symptom, the request is the cause).
+const refused = [];
+pageRef = page;
+// Uncaught errors and console errors, with their own words: the toasts say "[object Object]" and "Unexpected interface error", which name nothing.
+const thrown = [];
+page.on('pageerror', (error) => thrown.push(`pageerror: ${String(error.message).slice(0, 160)}`));
+page.on('console', (message) => { if (message.type() === 'error') thrown.push(`console: ${message.text().slice(0, 160)}`); });
+page.on('response', (response) => { if (response.status() >= 400 && !/\/livez|favicon/.test(response.url())) refused.push(`${response.status()} ${response.url().split('?')[0].replace(BASE, '')}`); });
 await page.evaluateOnNewDocument(TOOLKIT);
 
 // Surfaces are audited individually: this is a single-page application, so a check that
@@ -485,12 +525,12 @@ await page.evaluateOnNewDocument(TOOLKIT);
 // thirteen surfaces from focus, target-size and contrast coverage, which is how a
 // restructure turns a green audit into a smaller one.
 const DESTINATIONS = [
-  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
+  'tasks', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
 const SETTINGS_SECTIONS = [
   'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
-  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules',
+  'security', 'skills', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules', 'remote-targets',
 ];
 const SURFACES = [
   ...DESTINATIONS.map((name) => ({ name, hash: `#/${name}`, selector: `#view-${name}`, ready: `#view-${name}.active` })),
@@ -519,7 +559,7 @@ async function openSurface(surface) {
   // surface after `#/coden` was opened. The product is right — a person navigating away sees a
   // socket close — so what is fixed is the assumption that idle is always reachable.
   if (await page.$('#codenTerminalHost iframe')) {
-    await page.evaluate(() => { window.location.hash = '#/home'; });
+    await page.evaluate(() => { window.location.hash = '#/chat'; });
     await page.waitForFunction(
       () => document.querySelectorAll('#codenTerminalHost iframe').length === 0,
       { timeout: 15000 },
@@ -559,7 +599,8 @@ try {
   // gated route resolves to access-denied. Reloading makes it read the session it now has.
   await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
   await page.reload({ waitUntil: 'networkidle2' });
-  await page.waitForSelector('#view-home.active', { timeout: 15000 });
+  // After sign-in the person lands where the interface puts them (the chat, since there is one interface); the gate closing is the fact.
+  await page.waitForSelector('#authGate.hidden', { timeout: 15000 });
   await new Promise((resolve) => setTimeout(resolve, 1500));
   check('the audit signed itself in', await page.evaluate(() => document.querySelector('#authGate')?.classList.contains('hidden') === true));
 
@@ -614,9 +655,9 @@ try {
       for (const selector of scope) {
         skipped += window.__a11y.disabledSkipped(selector) + window.__a11y.collapsedSkipped(selector);
         for (const element of window.__a11y.interactiveElements(selector)) {
-          const before = window.__a11y.focusSignature(element);
+          const before = window.__a11y.focusSignatureWithin(element);
           element.focus();
-          const after = window.__a11y.focusSignature(element);
+          const after = window.__a11y.focusSignatureWithin(element);
           element.blur();
           checked += 1;
           if (before === after) {
@@ -665,6 +706,7 @@ try {
   let contrastMeasured = 0;
   let contrastUnresolved = 0;
   let contrastTransparent = 0;
+  let contrastClipped = 0;
   for (const surface of SURFACES) {
     await openSurface(surface);
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -675,6 +717,7 @@ try {
     contrastMeasured += outcome.measured;
     contrastUnresolved += outcome.unresolved;
     contrastTransparent += outcome.transparent;
+    contrastClipped += outcome.clippedAway;
     // One representative per distinct selector+colour, or the list is unreadable.
     for (const failure of outcome.failing) {
       const key = `${failure.selector}|${failure.color}|${failure.fontSize}`;
@@ -688,6 +731,7 @@ try {
   check('text meets the AA contrast minimum (1.4.3)',
     contrastFailures.length === 0 && shellFailures.length === 0,
     `${contrastFailures.length} distinct in views + ${shellFailures.length} in chrome, over ${contrastMeasured} measured: ${JSON.stringify([...contrastFailures, ...shellFailures].slice(0, 6).map(({ key, ...rest }) => rest))}`);
+  note('contrast, not painted', `${contrastClipped} lines skipped: kept for screen readers only, clipped to nothing by an absolutely positioned ancestor (the CodeN terminal's title bar). Declared, as the transparent ones are.`);
   note('contrast method', `worst-case across every gradient colour stop; ${contrastUnresolved} elements unresolved (raster background-image) and NOT counted as passing; ${contrastTransparent} skipped as fully transparent text (no visual presentation to measure — D-0417)`);
 
   // --- contrast in EVERY theme ---------------------------------------------
@@ -703,18 +747,23 @@ try {
   // renavigating, so this costs five page loads rather than forty-five.
   at('themes');
   const THEME_IDS = ['midnight', 'slate', 'graphite', 'indigo', 'teal', 'amber', 'violet', 'daylight', 'contrast'];
-  const THEME_SURFACES = ['home', 'coden', 'workflows', 'settings/security', 'settings/appearance'];
+  const THEME_SURFACES = ['chat', 'coden', 'workflows', 'settings/security', 'settings/appearance'];
   const themeFailures = [];
   let themeMeasured = 0;
   let themeTransparent = 0;
+  // The themes are changed by pressing their cards, as a person does: the accent family (--n-accent, its ink and its wash) is derived in
+  // the page's own applyTheme(), and writing data-theme alone left every theme but Midnight half dressed. The cards exist once Appearance has been opened.
+  await openSurface(SURFACES.find((entry) => entry.name === 'settings/appearance'));
   for (const name of THEME_SURFACES) {
     const surface = SURFACES.find((entry) => entry.name === name);
     await openSurface(surface);
     await new Promise((resolve) => setTimeout(resolve, 500));
     for (const theme of THEME_IDS) {
       const outcome = await page.evaluate(({ selector, id }) => {
-        document.documentElement.dataset.theme = id;
-        return window.__a11y.contrastFailures(selector);
+        document.querySelector(`[data-theme-id="${id}"]`)?.click();
+        const result = window.__a11y.contrastFailures(selector);
+        if (document.documentElement.dataset.theme !== id) result.failing.push({ selector: `(theme ${id} was not applied by its card)`, ratio: 0, color: '' });
+        return result;
       }, { selector: surface.selector, id: theme });
       const chrome = await page.evaluate(() => ({
         top: window.__a11y.contrastFailures('.topbar'),
@@ -728,7 +777,7 @@ try {
       }
     }
   }
-  await page.evaluate(() => { document.documentElement.dataset.theme = 'midnight'; });
+  await page.evaluate(() => { document.querySelector('[data-theme-id="midnight"]')?.click(); });
   const themesAffected = [...new Set(themeFailures.map((entry) => entry.theme))];
   check('every theme meets the AA contrast minimum (1.4.3, UI-020/UI-021)',
     themeFailures.length === 0,
@@ -836,8 +885,18 @@ try {
   // phase deliberately kept it visible below 850px. Verify that on a real narrow viewport.
   const stripNarrow = await page.evaluate(() => {
     const node = document.querySelector('#approvalStrip');
+    // The interface keeps no empty strip on screen any more: it is hidden while nothing waits for an approval, as it should be. What
+    // the requirement asks is that it survives a narrow screen when it IS shown, so it is shown for the measurement and put back.
+    const wasHidden = Boolean(node?.classList.contains('hidden'));
+    if (node && wasHidden) {
+      node.classList.remove('hidden');
+      const state = node.querySelector('#approvalStripState'); if (state) state.textContent = 'PENDING';
+      const detail = node.querySelector('#approvalStripDetail'); if (detail) detail.textContent = 'A job is waiting for your approval.';
+    }
     const box = node ? node.getBoundingClientRect() : { width: 0, height: 0 };
-    return { onScreen: Boolean(node && node.offsetParent !== null && box.height > 0), height: Math.round(box.height) };
+    const result = { onScreen: Boolean(node && node.offsetParent !== null && box.height > 0 && box.right <= window.innerWidth + 1), height: Math.round(box.height), right: Math.round(box.right), shownForTheMeasurement: wasHidden };
+    if (node && wasHidden) node.classList.add('hidden');
+    return result;
   });
   check('the approval strip survives a 320px viewport', stripNarrow.onScreen, JSON.stringify(stripNarrow));
   await page.setViewport({ width: 1440, height: 900 });
@@ -900,7 +959,10 @@ try {
     const current = await page.evaluate(() => {
       const element = document.activeElement;
       if (!element || element === document.body) return null;
+      // The element itself, not its look: seventeen notices each carry a button that says "×", and they are seventeen controls, not one.
+      if (!element.__auditUid) { window.__auditUidCounter = (window.__auditUidCounter ?? 0) + 1; element.__auditUid = window.__auditUidCounter; }
       return {
+        uid: element.__auditUid,
         tag: element.tagName.toLowerCase(),
         id: element.id || null,
         text: (element.textContent || element.value || element.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 24),
@@ -909,17 +971,18 @@ try {
     visited.push(current);
   }
   const reached = visited.filter(Boolean);
-  const distinct = new Set(reached.map((entry) => `${entry.tag}#${entry.id}|${entry.text}`));
-  check('the keyboard reaches the interface (2.1.1)', distinct.size > 15, `${distinct.size} distinct controls in 90 tabs`);
+  const distinct = new Set(reached.map((entry) => entry.uid));
+  const toastsAtKeyboard = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((node) => node.textContent.replace(/\s+/g, ' ').trim().slice(0, 70)));
+  check('the keyboard reaches the interface (2.1.1)', distinct.size > 15, `${distinct.size} distinct controls in 90 tabs; the first visited: ${JSON.stringify(visited.slice(0, 3))}; ${toastsAtKeyboard.length} toasts on screen: ${JSON.stringify([...new Set(toastsAtKeyboard)].slice(0, 3))}; refused so far: ${JSON.stringify([...new Set(refused)].slice(-6))}`);
   // A trap is when the same element holds focus across many consecutive presses.
   let longestRun = 1;
   let run = 1;
   for (let index = 1; index < visited.length; index += 1) {
-    const same = JSON.stringify(visited[index]) === JSON.stringify(visited[index - 1]) && visited[index] !== null;
+    const same = visited[index] !== null && visited[index - 1] !== null && visited[index].uid === visited[index - 1].uid;
     run = same ? run + 1 : 1;
     longestRun = Math.max(longestRun, run);
   }
-  check('the keyboard is not trapped (2.1.2)', longestRun < 5, `longest run on one element: ${longestRun}`);
+  check('the keyboard is not trapped (2.1.2)', longestRun < 5, `longest run on one element: ${longestRun}${longestRun >= 5 ? ` (${JSON.stringify(visited.find(Boolean))})` : ''}`);
 
   // Every nav destination must be operable from the keyboard alone.
   // Activation is driven by a REAL key press through the browser's input pipeline. An
