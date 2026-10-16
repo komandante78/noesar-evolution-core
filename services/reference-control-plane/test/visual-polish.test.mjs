@@ -66,7 +66,8 @@ describe('a text field is wide enough to type in', () => {
 
   test('the text fields of an inline row have a width to read their placeholder in', () => {
     const field = ruleFor((s) => s.startsWith('.inline-form>label>input:not([type=checkbox])'));
-    assert.match(declared(field?.body ?? '', 'min-width') ?? '', /^min\(\d+rem,100%\)$/);
+    // a percentage here is cyclic (the label is as wide as its field): the field stayed at 174 px; a width taken from the window is not
+    assert.match(declared(field?.body ?? '', 'min-width') ?? '', /^min\(\d+rem,calc\(100vw-6rem\)\)$/);
   });
 
   // not the boxes: a checkbox inside a label of the same row took the same basis and grew to 89 px (seen in the first shot after the fix)
@@ -92,6 +93,20 @@ describe('a header does not leave debris', () => {
   test('the help button stays at the end of the header, with or without the tile before it', () => {
     const help = ruleFor((s) => s === '.section-header>.help-button');
     assert.equal(declared(help?.body ?? '', 'margin-inline-start'), 'auto');
+  });
+
+  test('the main button of a header is at the end of it, and the help mark follows it', () => {
+    const button = ruleFor((s) => s === '.section-header>.primary');
+    assert.equal(declared(button?.body ?? '', 'margin-inline-start'), 'auto');
+    const follow = ruleFor((s) => s === '.section-header>.primary+.help-button');
+    assert.equal(declared(follow?.body ?? '', 'margin-inline-start'), '0');
+  });
+
+  test('the settings block (menu and page) is centred, and still fills a narrow window', () => {
+    const layout = ruleFor((s) => s === '#view-settings .settings-layout');
+    assert.equal(declared(layout?.body ?? '', 'margin-inline'), 'auto');
+    assert.equal(declared(layout?.body ?? '', 'width'), 'fit-content');
+    assert.equal(declared(layout?.body ?? '', 'max-width'), '100%');
   });
 
   test('a badge never breaks over two lines', () => {

@@ -353,7 +353,7 @@ b25a1aae75b710c965424bad86900b0c805faf0005119cee213a5c4a86909636  ./apps/webui-s
 b7ad1f7a13c19d32257dd3398cc475da88aabdd54cd162fd5946f52c4383c1bb  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 e37a3d27cd05d7e9731ac7e6cbfd63d6ce12efbfde4465ec95ab5b2563277788  ./apps/webui-static/index.html
-04766c4d12e0e403468c546c1b4c154f92b4dd5008eeb24fcb39a27e226d0e6a  ./apps/webui-static/look.css
+04bae150e5c4bcca2ba0914b3555d398bf606bd32cbdc50e54bc682980444504  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
@@ -6662,7 +6662,7 @@ a30ca6cb60b8dec0d8fd98501308dbf7a337d206a7c467650df1a3fb95cc60ef  ./services/ref
 2ffd1356297551b6f13bedd10ddbc6605c5d50c8dbdd642d57bcabab29ff14dd  ./services/reference-control-plane/test/verifiability.test.mjs
 39cde063c090493b881877cd3165bd1e45e20d74b520cf53e2a658adb40a0e6c  ./services/reference-control-plane/test/verification.test.mjs
 84f5be2a6713f5471fc41fe6e419f0ad9f0c95f9bff17a6103ec35e30490300b  ./services/reference-control-plane/test/vision-caption.test.mjs
-3fcce7f72035871939c82a274cc6d7834f47cce084fd0f586bfbfe456cb63490  ./services/reference-control-plane/test/visual-polish.test.mjs
+b739964a572385e31feeae176c94810181019c2d9a5bd52ae74dd95064c7ef53  ./services/reference-control-plane/test/visual-polish.test.mjs
 fa81e93c4531acb2f6bbb9c8bca2e81e8e282b7fb9e324bbee34827720abfffd  ./services/reference-control-plane/test/watchdog-report-line.test.mjs
 d55d7ed7041da5e6be291addb047507853abacf6ae2e138388c1f149ff361264  ./services/reference-control-plane/test/watchdog.test.mjs
 768dea298531eba626c1137cc445eecd3cc58797d53ad2492b1bd63921bc0a20  ./services/reference-control-plane/test/webauthn.test.mjs

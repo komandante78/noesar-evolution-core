@@ -356,7 +356,7 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 @media (prefers-reduced-motion:reduce){.nav-folder svg{transition:none}}
 
 /* ── Settings: the menu of sections on the left, one section on the right ── */
-#view-settings .settings-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:28px;align-items:start}
+#view-settings .settings-layout{display:grid;grid-template-columns:240px minmax(0,760px);gap:28px;align-items:start;width:fit-content;max-width:100%;margin-inline:auto}
 #view-settings .settings-menu{position:sticky;top:8px;display:flex;flex-direction:column;gap:2px;padding:0;border:0;background:none}
 #view-settings .settings-group{margin:14px 12px 4px;font-size:0.875rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--n-muted)}
 #view-settings .settings-nav{display:flex;align-items:center;min-height:42px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--n-ink);font:inherit;font-size:0.9375rem;text-align:start;cursor:pointer;box-shadow:none}
@@ -382,7 +382,7 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 .setting-more{padding:0 20px}
 .setting-more>summary{min-height:52px;display:flex;align-items:center;font-weight:600;cursor:pointer}
 .setting-more>.panel{border:0;padding:0 0 16px}
-@media (max-width:900px){#view-settings .settings-layout{grid-template-columns:minmax(0,1fr)}#view-settings .settings-menu{position:static}}
+@media (max-width:900px){#view-settings .settings-layout{grid-template-columns:minmax(0,1fr);width:auto}#view-settings .settings-menu{position:static}}
 
 /* ── one notice at a time, at the top of the page: the hour offered when the server would show UTC ── */
 #zoneBanner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin:12px 28px 0;padding:10px 16px;border-radius:12px;background:var(--n-sunken);color:var(--n-ink);font-size:0.9375rem}
@@ -500,9 +500,11 @@ body:not([data-level=advanced]) #view-coden .bench-agent:has(.coden-work:not(.hi
 .section-header:has(>h1.visually-hidden)>.section-icon{display:none}
 /* the help button is at the end of its header whatever else the header holds (with the icon tile gone it had slid to the start) */
 .section-header>.help-button{margin-inline-start:auto}
+.section-header>.primary{margin-inline-start:auto}
+.section-header>.primary+.help-button{margin-inline-start:0}
 .accent-row+.hint{margin-top:10px}
 /* the text fields of an inline row are wide enough to read what they ask for ("owner/name, or a huggingface.co address" was cut at 174 px) */
-.inline-form>label>input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]){min-width:min(20rem,100%)}
+.inline-form>label>input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]){min-width:min(20rem,calc(100vw - 6rem))}
 /* the info mark of a card title sits beside the title, not in the middle of the row between the title and the badge */
 .panel-title>h2+.icon-info{margin-inline-end:auto}
 /* a row of search fields wraps instead of crushing them: the log filters were 73 px wide on a desktop and 24 px on a phone */
