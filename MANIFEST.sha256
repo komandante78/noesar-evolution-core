@@ -353,7 +353,7 @@ df29f2719c6fd41b99ddd3af586c0b902d3b085f40ab94a6b8068a576efec213  ./apps/webui-s
 d00cd25a8049d49f9766b338b0ed9865a96cf7ceccf2635e65ef14f7ac49f22c  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 304ce98ceabb4b16187b16b50a3428b90d223d0d8a378ebe7eefe91b0209acf7  ./apps/webui-static/index.html
-c62e0eed34a5164d2f4120e82e2ae29d948637c29dd55be45f9b7ede642aaff9  ./apps/webui-static/look.css
+d37e5f70475270a9b47069b5346981ac4043259ae4ee15f3a1393154ad5cf786  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
@@ -6506,6 +6506,7 @@ ea34124e0b3aaa180dc942e81b56051f302ae17f129a92c098eb397f1a22179d  ./services/ref
 a01e8ead505c2c9dae9977cdc1ab1a839b42821dbdf71a0d8220644388a3f647  ./services/reference-control-plane/test/composer-context.test.mjs
 054bfb394da16242439ff8bd6531e103634fe60ed2d6b1bae6bde0ec9b395c9f  ./services/reference-control-plane/test/conformance.test.mjs
 3aecfd7780dcb07e89b4fdd526682ea890072d64a25913f10937fc9e39e82b95  ./services/reference-control-plane/test/context-projection.test.mjs
+7e2b6220c21f30cc25cb44f673c676af1512e7e3e14908460afcada090c703f9  ./services/reference-control-plane/test/controls-on-screen.test.mjs
 c6f06674909e5afd4e73ce5c552d1471931c1fae9b95fa97baa7f76b8f7908db  ./services/reference-control-plane/test/data-plane.test.mjs
 7e0886587380d3ba93765d42e967968b13c8cd298f78947a30f7699d2d3ff418  ./services/reference-control-plane/test/debug-evolution-bridge.test.mjs
 b1dcf916a9b21fbdd5a178b0b8e3d9f76ccf2b961d86306cf018fd57f63c8e35  ./services/reference-control-plane/test/debug-evolution-tools-endpoint-reconcile.test.mjs

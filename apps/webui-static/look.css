@@ -300,7 +300,11 @@ a.source-chip:hover{border-color:var(--n-edge)}
 .file-chip button{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--n-muted);cursor:pointer}
 .file-chip button:hover{background:var(--n-hover);color:var(--n-ink)}
 .composer-commands{bottom:calc(100% + 8px);top:auto}
-.chat-composer .model-picker{bottom:calc(100% + 8px);top:auto;inset-inline-end:0;inset-inline-start:auto;width:min(420px,90vw);border:1px solid var(--n-line);border-radius:14px;background:var(--n-card);box-shadow:var(--n-lift)}
+/* The menu of the models floats above the box: out of the flow (position: absolute), because the old .model-picker rule is position: relative, and a relative box with a bottom offset keeps its place in the box, makes it as tall as the menu, and is then moved up by that height: with a long list its top left the window (measured on the Owner's instance: a box of 132 px, a menu of 528 px, a shift of 650 px, y = -412). The empty chat puts the box at 42 % of the window, so 40vh always fits above it; a longer list scrolls inside. */
+.chat-composer .model-picker{position:absolute;margin:0;bottom:calc(100% + 8px);top:auto;inset-inline-end:0;inset-inline-start:auto;width:min(420px,90vw);max-height:40vh;overflow-y:auto;border:1px solid var(--n-line);border-radius:14px;background:var(--n-card);box-shadow:var(--n-lift)}
+.chat-composer .model-picker .model-picker-list{max-height:none;overflow:visible}
+/* Boxes and radios are targets: 24 px (WCAG 2.5.8), as the sessions list and the model placement choices showed on real rows (20 x 13 and 13 x 13 px). */
+input[type=checkbox],input[type=radio]{width:1.5rem;height:1.5rem;min-width:1.5rem;min-height:1.5rem;flex:none}
 .lockline{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 8px;margin:0 0 12px;padding:0;font-size:0.875rem;color:var(--n-accent-ink);text-align:center;white-space:normal}
 .lockline svg{width:15px;height:15px}
 .lockline strong{font-weight:400}
