@@ -71,6 +71,12 @@ function measure() {
   if (!view) return ['NO VIEW IS SHOWING'];
   const found = [];
   if (document.documentElement.scrollWidth > window.innerWidth + 1) found.push(`scrolls sideways (${document.documentElement.scrollWidth} > ${window.innerWidth})`);
+  // Native controls (boxes, radios, scrollbars, the open list of a select) are drawn in the colour scheme the page declares. `light dark` or nothing
+  // hands them to the operating system: a dark theme on a computer set to light drew white boxes (found in the release shots, 2026-10-16).
+  const scheme = getComputedStyle(document.documentElement).colorScheme;
+  const shell = backgrounds(view);
+  const wanted = shell.every((bg) => lum(bg) < 0.2) ? 'dark' : shell.every((bg) => lum(bg) > 0.5) ? 'light' : null;
+  if (wanted && scheme !== wanted) found.push(`native controls follow the operating system, not the theme: the page is ${wanted}, color-scheme is "${scheme}"`);
   const bleed = [...view.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().right > window.innerWidth + 2 && vis(e) && !e.closest('pre,code,table,.xterm') && !scrolls(e)).slice(0, 3).map(label);
   if (bleed.length) found.push(`leaves the screen: ${bleed.join(', ')}`);
   const controls = [...view.querySelectorAll('button,a[href],input:not([type=hidden]),select,textarea,[role=button],[role=tab],[role=switch]')].filter(vis);

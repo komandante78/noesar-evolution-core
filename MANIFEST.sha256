@@ -359,7 +359,7 @@ d37e5f70475270a9b47069b5346981ac4043259ae4ee15f3a1393154ad5cf786  ./apps/webui-s
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
 08f16592aaa4ac1f8b01a3e4c25b5e42570a41e2a8df60165b68b2162c23a8e0  ./apps/webui-static/simple-mode.js
-e97b7e119bbe24cc04bffa415bdb4bcf2d8d178c315d561af41b61e224e3a811  ./apps/webui-static/styles.css
+9033cd0f49e3a62f2fe489703d0757080eabb397afa30f06e89cb60eaca861c4  ./apps/webui-static/styles.css
 b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd  ./apps/webui-static/vendor/xterm/LICENSE
 70cf8efd07e7e8a60fdcb4ba09f142f7ba8ac53f0f54cd4317bde25fe8730851  ./apps/webui-static/vendor/xterm/PROVENANCE.md
 854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6  ./apps/webui-static/vendor/xterm/xterm.css
@@ -6502,6 +6502,7 @@ e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  ./services/ref
 170021ec6f6f0213aebc62ba624470b1ca2f9ad6db979c21a98ed2298f7f9330  ./services/reference-control-plane/test/coden-terminal-client.test.mjs
 96aef36e9e09b09b0367f6def0f7e289ae976d37932d8447ef4f0c88ebdad0c9  ./services/reference-control-plane/test/coden-view-model.test.mjs
 ea34124e0b3aaa180dc942e81b56051f302ae17f129a92c098eb397f1a22179d  ./services/reference-control-plane/test/codev-relay.test.mjs
+d9a14f47d7289dffe27830a265a1a423d26ea3bd2f54a9fb5f20406a1a80537a  ./services/reference-control-plane/test/color-scheme.test.mjs
 046be73ee26f5c9f2b9c08d7cfd0f4b921a6f2dccfbd41aeb0c1b0f8cfa86df9  ./services/reference-control-plane/test/compliance-packs.test.mjs
 a01e8ead505c2c9dae9977cdc1ab1a839b42821dbdf71a0d8220644388a3f647  ./services/reference-control-plane/test/composer-context.test.mjs
 054bfb394da16242439ff8bd6531e103634fe60ed2d6b1bae6bde0ec9b395c9f  ./services/reference-control-plane/test/conformance.test.mjs
@@ -6761,7 +6762,7 @@ c6b6681f56ad85ca161bbc5ed0a2d1506e39a3a6bb65e1bd9fe93b6bdcf209df  ./tools/genera
 12b6665dfb389381b2d802c7bb36161327da1e45be75704637efca57003ab6f2  ./tools/generate-mlbom.mjs
 9e3b125a22756d2bce098bf1d98981d9a09eb74d41eee9a0d066d00c807d842e  ./tools/generate-permission-surface.mjs
 63590e248016c0032acd1e41459307e390b2919de75917760f5fb512f9b1e547  ./tools/generate-sbom.sh
-9d82726bdafb638454fb4270c23bde11490ac92e1a864778577f68cbe9ad728f  ./tools/generate-themes.mjs
+7400d9abef0f3fc9d5887061251d15f09655d599ceeb0f1dd8c58e23d3499d0f  ./tools/generate-themes.mjs
 0ba5c35dd24340425198dd103ec88fc2da01a450dae6911683e5ff4cba3ff7a6  ./tools/http-smoke.mjs
 83a7bea35f598a7c67e28d27c44ae584dfddfaf482cb7424edcc3a06e2a05d05  ./tools/measure-ask-f1.mjs
 fc85e4c732d3bfb9529df05ef273b724f3f808654943f8d2b8fac0b196db3878  ./tools/measure-ask-judgment.mjs
@@ -6788,7 +6789,7 @@ ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-r
 ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-update-artifact.mjs
 f389aab3f99c635d016def804b20b09e5af941884021d4e66b23d6cecf12b8c7  ./tools/split-screenshots.mjs
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
-e97761920f207e03093d9ba87279c84be00f2fa908c2d1058f55bc6557364cd0  ./tools/sweep-pages.mjs
+6489f5d02b6d966a8e29a303b0149dcb0d0f8ebb7220ec5d3f0d31c96cb85c2d  ./tools/sweep-pages.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
 c539fa144d17d8423d5e1e070576490c5daeaba9228085f28c4e2bec2a52b253  ./tools/test-cross-platform-installers.mjs

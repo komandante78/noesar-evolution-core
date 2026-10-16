@@ -274,9 +274,13 @@ for (const theme of THEMES) {
   blocks.push('}');
 }
 // A theme must also tell the browser which scheme it is, or form controls and scrollbars
-// keep rendering for the old one.
-blocks.push(':root[data-theme="daylight"]{color-scheme:light}');
-blocks.push(':root[data-theme="contrast"]{color-scheme:dark}');
+// keep rendering for the old one — and the old one is the scheme of the OPERATING SYSTEM, because
+// index.html declares `light dark`: on a computer set to light, a dark theme drew white boxes.
+// Every theme says it. The default has no block and no data-theme until a person picks a theme.
+blocks.push(':root:not([data-theme]),:root[data-theme="midnight"]{color-scheme:dark}');
+for (const theme of THEMES) {
+  if (theme.id !== 'midnight') blocks.push(`:root[data-theme="${theme.id}"]{color-scheme:${theme.scheme === 'light' ? 'light' : 'dark'}}`);
+}
 
 const generated = `${BEGIN}\n${blocks.join('\n')}\n${END}`;
 const existing = css.includes(BEGIN)

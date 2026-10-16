@@ -818,6 +818,13 @@ button[data-busy]{opacity:.65;cursor:progress}
   --text-strong:#f8f8f8;
   --text-tile:#f9f9f9;
 }
+:root:not([data-theme]),:root[data-theme="midnight"]{color-scheme:dark}
+:root[data-theme="slate"]{color-scheme:dark}
+:root[data-theme="graphite"]{color-scheme:dark}
+:root[data-theme="indigo"]{color-scheme:dark}
+:root[data-theme="teal"]{color-scheme:dark}
+:root[data-theme="amber"]{color-scheme:dark}
+:root[data-theme="violet"]{color-scheme:dark}
 :root[data-theme="daylight"]{color-scheme:light}
 :root[data-theme="contrast"]{color-scheme:dark}
 /* THEMES:END */
