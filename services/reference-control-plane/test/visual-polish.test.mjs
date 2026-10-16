@@ -76,6 +76,11 @@ describe('a text field is wide enough to type in', () => {
     // the helper strips whitespace, so `2 1 150px` reads as `21150px`: grow 2, shrink 1, a basis in px
     assert.match(declared(input?.body ?? '', 'flex') ?? '', /^21\d+px$/);
     assert.equal(declared(input?.body ?? '', 'min-width'), '0');
+    // and the select beside it has room for "Session only" and its arrow (about 135 px: at 120 the arrow sat on the last letter)
+    const select = ruleFor((s) => s === '.provider-card .inline-form select');
+    // `1 1 140px` with its whitespace stripped is `11140px`: grow 1, shrink 1, then the basis
+    const basis = Number(declared(select?.body ?? '', 'flex')?.match(/^\d\d(\d+)px$/)?.[1]);
+    assert.ok(basis >= 135, `the select of a provider card has a basis of ${basis} px`);
   });
 });
 

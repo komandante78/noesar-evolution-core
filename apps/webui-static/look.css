@@ -492,7 +492,7 @@ body:not([data-level=advanced]) #view-coden .bench-agent:has(.coden-work:not(.hi
 .panel>p+.inline-form,.panel>.hint+.inline-form{margin-top:10px}
 /* the key field of a provider card wraps under the select, instead of being squeezed to 40 px between four neighbours */
 .provider-card .inline-form input:not([type=checkbox]):not([type=radio]){flex:2 1 150px;min-width:0}
-.provider-card .inline-form select{flex:1 1 120px;min-width:0}
+.provider-card .inline-form select{flex:1 1 140px;min-width:0}
 /* the unit of a number sits beside it, not on a row of its own */
 .with-unit{display:flex;align-items:center;gap:8px}
 .with-unit input{flex:0 1 9rem;min-width:0}
