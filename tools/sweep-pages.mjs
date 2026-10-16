@@ -84,6 +84,23 @@ function measure() {
   if (nameless.length) found.push(`control with no name: ${nameless.join(', ')}`);
   const tiny = controls.filter((e) => e.matches('button,input,select,textarea,[role=button],[role=tab],[role=switch]') && !e.closest('.xterm') && (e.getBoundingClientRect().width < 24 || e.getBoundingClientRect().height < 24)).slice(0, 3).map((e) => `${label(e)} ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`);
   if (tiny.length) found.push(`target under 24 px: ${tiny.join(', ')}`);
+  // The look of the forms, as the browser resolved it. Found 2026-10-16 by LOOKING at 45 shots, which no number had caught: a field label is a small
+  // caption wherever the markup puts it; a text field is wide enough to type in; the icon tile of a header whose title is hidden does not stand
+  // alone; a badge does not break over two lines; a side column is never an empty box.
+  const scaleNow = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--text-scale')) || 1;
+  const capSize = (l) => parseFloat(getComputedStyle(l).fontSize) / scaleNow;
+  const bigLabel = [...view.querySelectorAll('label')].filter((l) => vis(l) && !l.classList.contains('visually-hidden') && !l.querySelector('input[type=checkbox],input[type=radio]') && l.querySelector('input:not([type=hidden]),select,textarea') && capSize(l) > 14).slice(0, 3).map((l) => `${(l.firstChild?.textContent ?? '').trim().slice(0, 16)} ${Math.round(capSize(l))}px`);
+  if (bigLabel.length) found.push(`field label larger than a caption: ${bigLabel.join(' | ')}`);
+  const bigCheck = [...view.querySelectorAll('label')].filter((l) => vis(l) && l.querySelector('input[type=checkbox],input[type=radio]') && capSize(l) > 14.5).slice(0, 3).map((l) => `${l.textContent.trim().slice(0, 16)} ${Math.round(capSize(l))}px`);
+  if (bigCheck.length) found.push(`box or radio label larger than a caption: ${bigCheck.join(' | ')}`);
+  const narrow = [...view.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=number]):not([type=file]),textarea')].filter((e) => vis(e) && !e.closest('.xterm') && e.getBoundingClientRect().width < 90).slice(0, 3).map((e) => `${e.placeholder || e.type} ${Math.round(e.getBoundingClientRect().width)}px`);
+  if (narrow.length) found.push(`text field too narrow to type in: ${narrow.join(' | ')}`);
+  const loneTile = [...view.querySelectorAll('.section-icon')].filter((i) => getComputedStyle(i).display !== 'none' && i.getBoundingClientRect().width > 2 && i.parentElement.querySelector('h1.visually-hidden')).length;
+  if (loneTile) found.push(`${loneTile} icon tile(s) standing alone, the title beside it is hidden`);
+  const wrapped = [...view.querySelectorAll('.badge')].filter((b) => vis(b) && b.children.length === 0 && b.textContent.trim()).filter((b) => { const r = document.createRange(); r.selectNodeContents(b); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size > 1; }).slice(0, 3).map((b) => b.textContent.trim().slice(0, 24));
+  if (wrapped.length) found.push(`badge broken over two lines: ${wrapped.join(' | ')}`);
+  const emptyColumn = [...view.querySelectorAll('aside')].filter((a) => vis(a) && !a.innerText.trim() && a.getBoundingClientRect().width > 150).map((a) => a.id || a.className);
+  if (emptyColumn.length) found.push(`empty column on screen: ${emptyColumn.join(', ')}`);
   const texts = [...view.querySelectorAll('*')].filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1) && vis(e)).slice(0, 800);
   const low = []; const cut = [];
   for (const e of texts) {
@@ -102,7 +119,7 @@ function measure() {
   if (under12.length) found.push(`text under 12 px: ${under12.length}, e.g. ${under12.slice(0, 3).map((e) => `${label(e)} ${getComputedStyle(e).fontSize}`).join(' | ')}`);
   if (cut.length) found.push(`text cut without dots: ${cut.join(' | ')}`);
   const text = view.innerText;
-  const broken = [...text.matchAll(/\[object Object\]|\bundefined\b|\bNaN\b|\{\{|\}\}|%s\b/g)].map((m) => text.slice(Math.max(0, m.index - 16), m.index + 20).replace(/\s+/g, ' ')).filter((x) => !/instead of NaN/.test(x));
+  const broken = [...text.matchAll(/\[object Object\]|\bundefined\b|\bNaN\b|\{\{|\}\}|%s\b|\bE(?:NOENT|ACCES|PERM|ISDIR)\b/g)].map((m) => text.slice(Math.max(0, m.index - 16), m.index + 20).replace(/\s+/g, ' ')).filter((x) => !/instead of NaN/.test(x));
   if (broken.length) found.push(`broken text: ${broken.slice(0, 2).join(' | ')}`);
   const images = [...document.images].filter((i) => vis(i) && i.complete && i.naturalWidth === 0).length;
   if (images) found.push(`${images} image(s) did not load`);

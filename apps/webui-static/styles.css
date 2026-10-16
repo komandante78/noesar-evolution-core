@@ -1815,3 +1815,9 @@ button.armed{border-color:var(--red);color:var(--red)}
 .tool-change-files{margin:0;padding-inline-start:18px}
 .tool-change-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px}
 .tool-change-pair pre{margin:0;max-height:220px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:calc(var(--text-scale)*12px)}
+/* Field captions, wherever the markup puts a label (2026-10-16, found by looking at 45 shots). The rule above sizes a label only inside .form-stack, .chat-toolbar,
+   .code-panel and .hardware-grid; the same label in an inline row, the accent row, bare in a card, in a provider card, in a search row or in a <details> kept the 16 px of
+   the page, beside captions of 12 px. One caption everywhere; the sentence beside a box or a radio is 13 px. */
+:is(.inline-form,.accent-row,.panel,details,.entity-card,.search-row)>label:not(.check):not(:has(>input[type=checkbox])):not(:has(>input[type=radio])){display:grid;gap:6px;color:var(--text-label);font-size:calc(var(--text-scale)*12px)}
+/* the sentence beside a box or a radio is read as a sentence: 13 px, not the 16 px of the page */
+label.check,label:has(>input[type=checkbox]),label:has(>input[type=radio]){font-size:calc(var(--text-scale)*13px)}

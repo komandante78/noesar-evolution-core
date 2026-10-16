@@ -5810,7 +5810,8 @@ async function loadInstallableModels(){
     list.replaceChildren();
     if(!files.length){
       list.className='empty-state';
-      list.textContent=reason?`${t('No model files could be read from')} ${directory}: ${reason}`:`${t('No model files are present in')} ${directory}`;
+      // A folder that does not exist yet is "no files here": ENOENT is what a new installation answers, and a person reads it as a fault.
+      list.textContent=reason&&!/ENOENT/.test(reason)?`${t('No model files could be read from')} ${directory}: ${reason}`:`${t('No model files are present in')} ${directory}`;
       return;
     }
     list.className='';

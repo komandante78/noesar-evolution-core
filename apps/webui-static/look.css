@@ -485,3 +485,34 @@ body.coden-terminal-document{background:#16191f}
 /* with a job on screen, the right column is the job (the drawing); the authority panel a bare address opens stays one
    address away (Advanced shows it under the job) */
 body:not([data-level=advanced]) #view-coden .bench-agent:has(.coden-work:not(.hidden)) [data-agent-panel=authority]{display:none}
+/* === Forms, as looked at on 2026-10-16 (45 shots, and what no number had caught) ================================================
+   The legacy stylesheet sizes a field label only inside .form-stack, .chat-toolbar, .code-panel and .hardware-grid. The same labels set in an
+   inline row, in the accent row, bare in a card or in a <details> kept the 16 px of the page, beside captions of 12 px. One caption everywhere. */
+.inline-form:has(>label),.accent-row{align-items:end}
+.panel>p+.inline-form,.panel>.hint+.inline-form{margin-top:10px}
+/* the key field of a provider card wraps under the select, instead of being squeezed to 40 px between four neighbours */
+.provider-card .inline-form input:not([type=checkbox]):not([type=radio]){flex:2 1 150px;min-width:0}
+.provider-card .inline-form select{flex:1 1 120px;min-width:0}
+/* the unit of a number sits beside it, not on a row of its own */
+.with-unit{display:flex;align-items:center;gap:8px}
+.with-unit input{flex:0 1 9rem;min-width:0}
+/* a header whose title is hidden has no use for its icon tile; its badge and its button keep to one line */
+.section-header:has(>h1.visually-hidden)>.section-icon{display:none}
+/* the help button is at the end of its header whatever else the header holds (with the icon tile gone it had slid to the start) */
+.section-header>.help-button{margin-inline-start:auto}
+.accent-row+.hint{margin-top:10px}
+/* the text fields of an inline row are wide enough to read what they ask for ("owner/name, or a huggingface.co address" was cut at 174 px) */
+.inline-form>label>input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]){min-width:min(20rem,100%)}
+/* the info mark of a card title sits beside the title, not in the middle of the row between the title and the badge */
+.panel-title>h2+.icon-info{margin-inline-end:auto}
+/* a row of search fields wraps instead of crushing them: the log filters were 73 px wide on a desktop and 24 px on a phone */
+.search-row{flex-wrap:wrap}
+.search-row>input:not([type=checkbox]):not([type=radio]):not([type=number]):not([type=color]){flex:1 1 9rem;min-width:min(9rem,100%)}
+/* a badge is one word-group: it does not break over two lines */
+.badge{white-space:nowrap}
+.section-header>.badge,.section-header>button{white-space:nowrap;flex:none}
+/* the agent column of CodeN is there when a panel or a job fills it: on a bench address it was an empty box on the right */
+#view-coden.active:not(:has(.bench-agent .agent-panel.active)):not(:has(.bench-agent .coden-work:not(.hidden))){grid-template-columns:minmax(0,1fr)}
+#view-coden.active:not(:has(.bench-agent .agent-panel.active)):not(:has(.bench-agent .coden-work:not(.hidden))) .bench-agent{display:none}
+.bench-panel>p+.form-stack{margin-top:14px}
+.bench-panel .form-stack+.panel-title{margin-top:22px}

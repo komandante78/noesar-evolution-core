@@ -855,7 +855,7 @@
 
       <!-- Tasks: a page of Automations since 2026-10-11 (it used to sit inside the Home, which the chat replaced). -->
       <section class="view" id="view-tasks">
-        <div class="section-header"><div><p class="eyebrow">SCHEDULED WORK</p><h2 class="page-title">Tasks</h2><p>Plan, schedule, assign and track work without hiding agent progress.</p></div></div>
+        <div class="section-header"><h1 class="visually-hidden">Tasks</h1></div>
         <div class="two-col"><form class="panel form-stack" id="taskForm"><h2>New task</h2><label>Project<select id="taskProject"></select></label><label>Title<input id="taskTitle" required></label><label>Description<textarea id="taskDescription"></textarea></label><label>Priority<select id="taskPriority"><option value="low">low</option><option value="normal" selected>normal</option><option value="high">high</option><option value="critical">critical</option></select></label><label>Schedule<input id="taskScheduledAt" type="datetime-local"></label><label>Due<input id="taskDueAt" type="datetime-local"></label><label>Recurrence rule<input id="taskRecurrence" placeholder="Optional RRULE or human-readable policy"></label><p class="hint" id="taskFormZone">—</p><button class="primary">Create task</button></form><section class="panel schedule-board" aria-labelledby="workQueueTitle">
           <div class="panel-title"><h2 id="workQueueTitle">Work queue</h2><span class="badge badge-off" id="taskZoneChip">—</span></div>
           <!-- UI-062 asks for active and scheduled work in ONE place, so the two must
@@ -1366,7 +1366,7 @@
         </section>
         <section class="settings-sub" id="view-hardware">
         <div class="section-header"><div><p class="eyebrow">COMPUTE ORCHESTRATION</p><h2 class="page-title">Compute & Hardware</h2><p>Automatic discovery and explainable runtime selection.</p></div><button class="primary" id="refreshHardware">Refresh probe</button></div>
-        <div class="hardware-grid"><section class="panel"><h2>Detected hardware</h2><pre id="hardwareOutput">Loading…</pre></section><section class="panel"><h2>Runtime recommendation</h2><div class="form-grid"><label>Model size<input id="modelSize" type="number" value="7" min="1"> B</label><label>Quantization<select id="quantBits"><option value="4">4-bit</option><option value="8">8-bit</option><option value="16">16-bit</option></select></label></div><button class="primary" id="recommendRuntime">Recommend</button><pre id="runtimeOutput">No recommendation generated.</pre></section></div>
+        <div class="hardware-grid"><section class="panel"><h2>Detected hardware</h2><pre id="hardwareOutput">Loading…</pre></section><section class="panel"><h2>Runtime recommendation</h2><div class="form-grid"><label>Model size<span class="with-unit"><input id="modelSize" type="number" value="7" min="1"><span translate="no">B</span></span></label><label>Quantization<select id="quantBits"><option value="4">4-bit</option><option value="8">8-bit</option><option value="16">16-bit</option></select></label></div><button class="primary" id="recommendRuntime">Recommend</button><pre id="runtimeOutput">No recommendation generated.</pre></section></div>
       </section>
       </section>
       <section class="settings-section" id="view-backups" data-section="storage">
