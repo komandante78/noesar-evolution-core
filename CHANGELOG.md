@@ -6,6 +6,166 @@ reproduce from the tree is a defect, the same rule `README.md` states for its nu
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-10-16
+
+A minor release, because **the interface is now one interface, and the assistant can search the web
+without a person's documents going out with the search**. Every number below states the conditions
+it was measured in, and every limit is listed beside the thing it limits.
+
+If you are on `0.3.0` or earlier, upgrade, for the reason under **Security**: until `05c28251` a
+signed-in account could read the engine's own credential files.
+
+### How it was measured
+
+On the author's development host, with invented data and the conditions written beside each number.
+
+- **Does a person's data leave with a web search?** A contract is pasted into the chat (invented, with
+  a tax code, an IBAN and a phone number whose check digits are real), then the question asks for a
+  search on the web. 3 different requests × 4 repetitions = 12 conversations per copy, the same local
+  model (Qwen2.5 7B) in both. In place of the internet, a stand-in search engine records every query it
+  receives: exactly what would have gone out.
+
+  | | searches that went out | **searches that carried data of the contract** |
+  |---|---|---|
+  | the build of 8 October (`53216a06`) | 12 of 12 | **8 of 12** |
+  | with the gate (`e7284156`) | 12 of 12 | **0 of 12** |
+
+  One scenario, one model, invented data: this is not a proof that nothing can leave. The harness is
+  not in this repository; the gate (`egress-gate.mjs`) and its tests (`egress-gate.test.mjs`,
+  `chat-egress-gate.test.mjs`) are.
+- **Is it readable?** `npm run test:accessibility`, the WCAG 2.2 AA audit of the repository: **27 of 27**
+  checks, among them the contrast of text in all nine themes (**7 758 measurements, 0 failures**, worst
+  case over every colour stop of a gradient).
+- **Does it fit?** `tools/sweep-pages.mjs`: the 45 addresses at 390, 768 and 1440 px, at both levels, in
+  the themes that matter, with the text at its largest step and the interface zoomed to 150 %:
+  **855 of 855** clean (no sideways scroll, no part off the screen, no control without a name, no
+  control under 24 px, no text under 4.5 : 1, none cut without dots, none under 12 px).
+- **The same on the real thing.** The 45 addresses × 2 levels × 9 themes (810 visits) and 207 clicks over
+  28 pages with every write blocked, in the six languages and at the largest text and zoom, driven in a
+  real browser on the author's own installation, with real models and sessions: no script error, no
+  failed request, no text under 4.5 : 1, no sideways scroll. That run found, and this release fixes, a
+  model menu cut by the top of the window and selection boxes under 24 px, which an empty test
+  installation cannot show.
+- **The browser acceptance harness** (`tools/run-browser-e2e.sh`, a disposable installation and a real
+  headless browser): **523 of 523** (on the tree of the code commit).
+- **The gates, from a clean clone of the code commit (`8db52b4d`)**, which the release commit changes
+  only in version numbers, this file, the README, two pictures and the manifest:
+
+  | | Command | Result |
+  |---|---|---|
+  | Unit suite | `sh BENCH_SWE/suite.sh` (`node:22-bookworm` + openssh, zip, tzdata) | 3865 tests — **3830 pass, 0 fail, 35 skip** (they need `qrencode`, the sandbox binary or the vendored ATOM binary) |
+  | Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **563 files, 0 errors, 0 warnings** |
+  | Verification battery | `sh scripts/test.sh` | **pass=22, fail=0, partial=0, unavailable=1** (`governance`: its hooks are not in a clone) |
+  | Installer parity | `node tools/test-cross-platform-installers.mjs` | **140 checks, 0 failures**; Windows read statically |
+  | Engine surface | the `node -e` line in `README.md` | **38 methods — 24 read, 12 write, 2 destroy**; 36 registered as tools, none destroying |
+  | Repository manifest | `node tools/generate-manifest.mjs --check` | 6 822 files, complete against git |
+  | Secrets | `sh tools/run-secret-scan.sh` | no leaks, 1174 commits |
+
+  The `gates` workflow on GitHub ran green on the same commit (unit suite, manifest, ESLint, secret scan
+  over the whole history): its runner skips a different set of tests, so its counts are its own.
+
+### Security
+
+- **The scan flaw (`05c28251`).** A scan or a search whose path started inside the engine's own folders
+  (`config/`, `audit/`, `state/`, `models/`, `module-credentials/`) was not refused. On a clean
+  installation, a signed-in account holding `workspace.read` (the default account has it) could read the
+  credential key, the first-access token, the audit chain and the engine's state files through
+  `GET /api/v1/repo-map/search`, `POST /api/v1/repo-map/scan` and the chat tool `engine_repoMap_search`;
+  and `documents.check` (`NOESAR_DECIDE=on`) read files at the paths it was given without looking at the
+  exclusions. A scan rooted in those folders now answers `422 ENGINE_STATE`, and `state/` no longer
+  returns the engine's files (`engine-state-exclusions.test.mjs`). If you gave an account to someone you
+  do not fully trust, **rotate the credential key after upgrading**.
+- **The internet comes in, a person's data does not go out (`e7284156`).** When the assistant has private
+  data in front of it and the person asks for the web, the search is written first by a separate call
+  that sees only the request with the data replaced by placeholders (`[DATO1]`); a gate of fixed rules,
+  no model, checks it before it leaves (a tax code, an IBAN, a VAT number or a card with a check digit; a
+  phone number, an email, an address, a date; names and numbers of the turn's private text; copied
+  phrases; encoded strings; web addresses; data split across searches) and lets it out, cleans it, asks,
+  or blocks it. The one who writes the answer sees the documents and has no web search. With an outside
+  AI service anywhere in the chain, no documents and no file reach it, and earlier answers that used them
+  are held back.
+- **The session proof is signed (`8379d1fe`, `b09810c9`).** An in-toto statement in a DSSE envelope,
+  Ed25519, on one page that verifies itself. Before, it ended with a 64-bit rolling hash that two
+  different proofs could share (`Aa` and `BB` do) and nothing was signed.
+
+### Added
+
+- **One interface for everyone.** One menu; the chat with the web search in its box (a switch that is
+  spent by sending the message); Settings with a Base and an Advanced level; CodeN on a page of its own,
+  the terminal in the middle and the job in progress on the right, with «Approve and apply» and the
+  receipt. The Home is gone, and nothing it held is lost: the tasks are a tab of Automations, the
+  inventory of services and the measure of review time are in Settings › Health and logs. Nine colour
+  themes and a free accent colour at every level, text size and zoom, and the project's own mark.
+- **Six languages**: English, and Italian, Spanish, French, German and Portuguese. The four new ones are a
+  first translation, not yet read by a native speaker. Choosing a language repaints what the code drew, in
+  both directions; the static markup is covered 949 of 949 strings in each.
+- **The assistant reads a person's files** (`53216a06`): a listing, one file as text, and the file a
+  question is about, read before the answer.
+- **Typed decisions for a local model, all off by default** (`NOESAR_DECIDE=on`): choosing the tool
+  families a message needs, judging each sentence of a document against its sources (`documents.check`)
+  and each web source, weighing the questions a model names before they stop CodeN, finding candidates by
+  words, and the proof of the bug run in the shadow copy. Off, they change nothing.
+- **Logs**: the Owner can delete the operational logs (the audit record is a different store and says
+  that it was done), and the box that said 200 now says what it is.
+- `tools/sweep-pages.mjs`, a measurement of every address at the widths a person uses; the WCAG audit
+  follows the interface of today.
+
+### Fixed
+
+- The selected row of seven controls was 1.2 to 2.2 : 1 in eight themes of nine; the chips and tabs in
+  seven themes were 3.4 to 4.1 : 1.
+- Every theme change and every «Delete logs» raised «[object Object]» and a red error (`toast()` called
+  with an object, in five places).
+- The chat box had no label.
+- 57 sentences written by the code were in English in the five other languages.
+- The model menu of the chat could leave the window; boxes and radios were under 24 px; the old pages set
+  their text from 9 to 11 px (now 12 at the least, still scaled by the text-size setting).
+- **Looked at, not measured.** Every address of the interface was shot and each shot was looked at; it
+  showed what no contrast number or overflow check had: field labels at 16 px beside captions of 12 px; the
+  API key field of a provider card squeezed to 41 px, and the log filters to 24 px on a phone; an icon tile
+  standing alone beside a hidden title; badges broken over two lines on a phone; an empty box on the right
+  of every CodeN bench address; the Tasks tab with the header of an older design; Settings standing against
+  the left edge of a wide window, with 600 px of nothing on its right; and, on the Models page of
+  a fresh installation, a system error (`ENOENT … scandir`) shown as the page's own words. Each has a test
+  written first and seen failing, and `tools/sweep-pages.mjs` now measures them on every address.
+- **Looked at again, with data in the pages.** A lab instance (a made-up model and search engine, two projects, conversations, a plan; no graphics card),
+  five pages in the nine themes, both levels, a phone and a tablet, found what an empty installation cannot show and one regression of the first fix: a field
+  set inside a label had taken the 12 px of the caption while the fields outside one kept 16 px (a page held both); the divergence profile of CodeN and the runs of a
+  chat's Work column had no style at all (their words ran together, drawn over the status bar); the button of a plan file and the Run of the bench terminal were
+  alone under a full-width field; on a phone the project name in a chat's header was printed over the title of the conversation; and placeholders were cut in the
+  middle of a word ("…huggingface.co ad"); cards stacked in a page touched each other (0 px between the boxes of Automations, Research, Models, Memory and Health and
+  logs); a page opened where the page before it had been scrolled to (Models opened 1800 px down, and on a phone the first line of a settings page was under the menu
+  button), because nothing put the scrolling element back at the top when the address changed; and on a phone the title of a session ran out of its row. The sweep now
+  measures what a browser can see on every address: the fields of one page at one size, a button alone under the only field of its row, a placeholder that does not
+  fit, two cards that touch, text under the menu button, an ellipsis on an element that cannot clip. The contrast of the divergence levels is 6.0 : 1 or more in all
+  nine themes.
+- On a dark theme, the native boxes, radios and scrollbars were drawn **white** when the computer was set to
+  light: the page leaves them to the operating system (`<meta name="color-scheme" content="light dark">`) and
+  only two of the nine themes said which scheme they were. Every theme now does (`4b3aa1b7`), and the sweep
+  compares the scheme the page resolved with the colour it paints.
+- A `docker build` from the sources failed on a retired pgvector pin (now `0.8.7-1.pgdg12+1`, `4c18a198`).
+
+Every one has a test written first and seen failing.
+
+### Not done yet
+
+- **The four new languages are a first translation**, not read by a native speaker. Names (`Midnight`,
+  `CodeN`, `NOESAR`) and codes (`PENDING_APPROVAL`) stay as they are.
+- **Library and Automations keep their older pages inside** their new tabs: there was no drawing for them.
+- **The gate does not make a web search private by itself.** The subject of a search goes out: that is
+  what a search is. A question that needs the data itself («which bank is this IBAN?») finds no answer on
+  the web, because the data does not leave. Inside a turn that has private data, a search is made only
+  when the person asks for the internet (the switch, or the words). The `/web` command typed in the
+  terminal does not go through the gate: it is text the person writes.
+- **The typed decisions are experimental and off.** Their measurements are in the commits, not here.
+- **CodeN's measure still does not run the bug's tests by default**: the reproduction in the shadow copy
+  exists and is off.
+- **No model was loaded for the last round of checks of this release**: the accessibility and layout
+  measurements above run on pages, not on a conversation with a model.
+- **macOS has never been executed**, and Windows is checked statically by the installer gate.
+- **`docs/LICENSE_STRATEGY.md` is still a proposal.** `LICENSE` (AGPL-3.0) governs this release.
+- **`production_ready` is `false`**: the independent security audit that holds it there has not been run.
+
 ## [0.3.0] — 2026-09-27
 
 A minor release, because **CodeN now does something different with a bug report**: it finds the
@@ -446,6 +606,8 @@ should be different.
   header on every source file are what governs this release; that document records an intended
   direction and has not been reviewed by counsel.
 
+[0.4.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.4.0
+[0.3.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.3.0
 [0.2.0]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.2.0
 [0.1.2]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.2
 [0.1.1]: https://github.com/komandante78/noesar-evolution-core/releases/tag/v0.1.1

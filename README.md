@@ -18,9 +18,9 @@
 [![offline](https://img.shields.io/badge/OFFLINE-NO%20API%20KEY-12C8EC?style=for-the-badge&labelColor=0F1B33)](#offline-by-default)
 [![no proprietary component](https://img.shields.io/badge/CORE%20RUNS-WITH%20NOTHING%20PROPRIETARY-F2318C?style=for-the-badge&labelColor=0F1B33)](docs/ATOM_ABSENT_ACCEPTANCE.md)
 
-[![tests](https://img.shields.io/badge/tests-3372%20passing%20%7C%2030%20skipped%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
-[![eslint](https://img.shields.io/badge/eslint-515%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
-[![engine methods](https://img.shields.io/badge/engine%20methods-35-1E3A6E?style=flat-square)](#what-the-model-may-do)
+[![tests](https://img.shields.io/badge/tests-3830%20passing%20%7C%2035%20skipped%20%7C%200%20failing-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![eslint](https://img.shields.io/badge/eslint-563%20files%20%7C%200%20errors-2EA043?style=flat-square)](#every-badge-above-has-a-command-behind-it)
+[![engine methods](https://img.shields.io/badge/engine%20methods-38-1E3A6E?style=flat-square)](#what-the-model-may-do)
 [![mutative](https://img.shields.io/badge/mutative%20tools-12%20%7C%20approval%20gated-DB8B00?style=flat-square)](#what-the-model-may-do)
 [![destroy](https://img.shields.io/badge/destroying%20tools-0%20shipped-2EA043?style=flat-square)](#what-the-model-may-do)
 
@@ -64,13 +64,13 @@ files today, not network or processes, and every receipt says so. Needs Node 22 
 
 ## What it looks like
 
-Both shots are a real installation, not a mock-up: Windows 11, release `0.1.0`, installed from a
-clean clone on 2026-09-18 and photographed on its first run. The orange strip is the product
-enforcing its own rule — the first sign-in uses a password every installation starts with, and it
-says so until you change it.
+Both shots are release `0.4.0` on a fresh installation with no model loaded, made on 2026-10-16 by the
+browser harness that tests it (`tools/capture-screens.mjs`, cut down to these two pages, a headless
+browser at 1440 × 900). Nothing on them was drawn by hand, and the installation is the empty one the harness starts: the first one
+says what a new installation lacks, and offers to look for it on this computer.
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="The home page of a fresh installation: Ask, Create, Act, and a Start here panel that names what this build can and cannot do" width="900">
+  <img src="docs/screenshots/chat.png" alt="The chat of a fresh installation: a greeting, a message box with a web-search switch, and a notice that says NOESAR needs an AI to answer, with a button to find one on this computer" width="900">
 </p>
 
 The one below is the claim this project is built around, in the interface rather than in a
@@ -78,7 +78,7 @@ document: every tool the engine exposes is labelled, and a step that uses one ma
 **· mutative** stops and waits for a person.
 
 <p align="center">
-  <img src="docs/screenshots/agents.png" alt="The Agents page: the tool list marks each tool mutative or not, and the text states that a mutative step always stops for approval" width="900">
+  <img src="docs/screenshots/agents.png" alt="The Automations page, Assistants tab: the tool list marks each tool mutative or not, and the text states that a mutative step always stops for approval" width="900">
 </p>
 
 ## The problem
@@ -114,7 +114,7 @@ derived from it rather than hand-kept beside it.
 
 | Effect | Methods | Registered as tools |
 |---|---:|---|
-| `read` | 21 | yes |
+| `read` | 24 | yes |
 | `write` | 12 | yes — **every call waits for a human approval mid-turn** |
 | `destroy` | 2 | **no. They do not ship as tools at all.** |
 
@@ -189,18 +189,18 @@ macOS ones, which nobody has ever executed, and it says so there too.
 
 ## Every badge above has a command behind it
 
-Measured on **2026-09-27**, for `0.3.0`, on the development host, from a clean clone of this repository, except
+Measured on **2026-10-16**, for `0.4.0`, on the development host, from a clean clone of this repository, except
 where a row says otherwise:
 
 | Claim | Command | Result |
 |---|---|---|
-| Unit suite | `npm test`, in CI (the `gates` workflow) | 3402 tests — **3372 pass, 0 fail, 30 skip**: the skipped ones need `qrencode`, the vendored ATOM binary or the sandbox binary, which the runner does not have |
-| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **515 files, 0 errors, 0 warnings** |
+| Unit suite | `npm test` — here in `node:22-bookworm` with `openssh`, `zip` and `tzdata` added, which several tests start for real | 3865 tests — **3830 pass, 0 fail, 35 skip**: the skipped ones need `qrencode`, the vendored ATOM binary or the sandbox binary, which a clone does not carry. The `gates` workflow ran green on the same commit; its counts are on its own page |
+| Static analysis | `bash tools/run-eslint.sh` | ESLint 9.39.5 — **563 files, 0 errors, 0 warnings** |
 | Verification battery | `sh scripts/test.sh` | **pass=22, fail=0, partial=0, unavailable=1**: the one is `governance`, whose hooks git does not carry (`.claude/` is ignored), so a clone cannot run it |
 | Installer parity | `node tools/test-cross-platform-installers.mjs` | **140 checks, 0 failures** — Linux and macOS executed, Windows read statically |
-| Engine surface | the `node -e` line under [What the model may do](#what-the-model-may-do) | **35 methods — 21 read, 12 write, 2 destroy**; 33 registered as tools, 0 of them destroying |
+| Engine surface | the `node -e` line under [What the model may do](#what-the-model-may-do) | **38 methods — 24 read, 12 write, 2 destroy**; 36 registered as tools, 0 of them destroying |
 | Rust workspace | `cargo test --workspace --offline` | vendored, no network — **last measured 2026-09-01**, in `rust:1-bookworm`, and not re-run since |
-| Repository manifest | `node tools/generate-manifest.mjs` | 6 771 files |
+| Repository manifest | `node tools/generate-manifest.mjs` | 6 822 files |
 
 A number in this README that a reader cannot reproduce is a defect. If one of the commands above
 disagrees with the badge, the badge is wrong — open an issue.
