@@ -91,6 +91,9 @@ function measure() {
     if (e.scrollWidth > e.clientWidth + 2 && /hidden|clip/.test(s.overflowX) && s.textOverflow !== 'ellipsis' && e.clientWidth > 0 && !/^(pre|code)$/i.test(e.tagName) && cut.length < 3) cut.push(`${label(e)} "${e.textContent.trim().slice(0, 18)}"`);
   }
   if (low.length) found.push(`contrast: ${low.join(' | ')}`);
+  // The floor of the old stylesheet (text-floor.test.mjs holds the source; this is what the browser resolved): nothing a person reads is under 12 px
+  const under12 = texts.filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12 && !e.closest('kbd,small,.verified'));
+  if (under12.length) found.push(`text under 12 px: ${under12.length}, e.g. ${under12.slice(0, 3).map((e) => `${label(e)} ${getComputedStyle(e).fontSize}`).join(' | ')}`);
   if (cut.length) found.push(`text cut without dots: ${cut.join(' | ')}`);
   const text = view.innerText;
   const broken = [...text.matchAll(/\[object Object\]|\bundefined\b|\bNaN\b|\{\{|\}\}|%s\b/g)].map((m) => text.slice(Math.max(0, m.index - 16), m.index + 20).replace(/\s+/g, ' ')).filter((x) => !/instead of NaN/.test(x));

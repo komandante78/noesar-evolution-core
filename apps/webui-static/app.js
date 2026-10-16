@@ -4164,9 +4164,10 @@ if(workflowForm)workflowForm.addEventListener('submit',async(event)=>{
 });
 
 // --- the approval queue and the bottom strip -------------------------------
-// The strip is permanent and states the count even at zero: a strip that only appears
-// when something is pending gives an operator no way to distinguish "nothing waiting"
-// from "this stopped working".
+// The strip speaks only while something waits: rule 5 of the one interface (PROJECT of the unified look: "the system speaks only when there is something
+// to decide, no fixed status bars"). It used to be permanent and state the count even at zero, so that an operator could tell "nothing waiting" from
+// "this stopped working". The distinction is kept the other way round: a queue that cannot be read is said loudly (refreshApprovals), because
+// "cannot tell" is not "nothing waiting".
 function approvalCard(item){
   const effects=item.effects?.length?` · ${item.effects.map((effect)=>escapeHtml(effect)).join(', ')}`:'';
   const owner=item.ownerOnly?' · Owner only':'';

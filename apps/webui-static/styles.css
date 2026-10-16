@@ -119,7 +119,7 @@
    it was `min-height`, which lets the grid grow past the viewport so the PAGE scrolls and the
    column never has to. An exact viewport height is the whole change; the sidebar and the panel
    then scroll inside themselves when their own content is taller than the screen. */
-.app-shell{display:grid;grid-template:72px minmax(0,1fr) 42px/230px minmax(0,1fr) 285px;height:100vh;overflow:hidden}.topbar{grid-column:1/4;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--surface-topbar);position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:7px;min-width:205px}.brand span:last-child{color:var(--accent-brand)}.brand-mark{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,var(--accent-fill-from),var(--accent-fill-to));box-shadow:0 0 28px var(--glow-brand)}.command{position:relative;flex:1;min-width:160px;max-width:650px;display:flex;align-items:center;gap:10px;padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:var(--surface-command);color:var(--text-placeholder)}.command input{flex:1;border:0;background:transparent;color:var(--text-primary)}.command kbd{padding:3px 7px;border:1px solid var(--line);border-radius:6px}.search-popover{position:absolute;top:50px;inset-inline:0;max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface-popover);box-shadow:0 24px 80px var(--shadow-overlay);padding:8px;z-index:40}.search-popover button{display:grid;grid-template-columns:80px 1fr auto;gap:10px;width:100%;padding:10px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text-popover);text-align:start}.search-popover span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.top-actions{margin-inline-start:auto;display:flex;align-items:center;gap:8px;font-size:calc(var(--text-scale)*11px)}.chip{padding:8px 10px;border:1px solid var(--line);border-radius:9px;color:var(--text-chip);background:transparent}.status-good,.green{color:var(--green)!important}.amber{color:var(--amber)!important}.error,.danger{color:var(--red)!important}.avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,var(--surface-avatar-from),var(--surface-avatar-to))}.sidebar{grid-row:2;grid-column:1;overflow-y:auto;padding:18px 12px;border-inline-end:1px solid var(--line);background:var(--surface-sidebar)}nav{display:grid;gap:4px}.nav{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;border:0;border-radius:10px;background:transparent;color:var(--text-nav);text-align:start;cursor:pointer}.nav:hover,.nav.active{background:linear-gradient(90deg,var(--accent-wash-strong),var(--accent-wash-fade));color:var(--text-on-accent-wash);box-shadow:inset 2px 0 var(--blue)}.main{grid-row:2;grid-column:2;padding:22px 24px 80px;overflow:auto;min-width:0}.rightbar{grid-row:2;grid-column:3;overflow-y:auto;padding:20px 14px;border-inline-start:1px solid var(--line);background:var(--surface-rightbar)}.footer-privacy{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.footer-privacy strong{font-weight:600}.footer-privacy small{color:var(--muted)}.footer-privacy .verified{padding:1px 7px;border-radius:6px;border:1px solid var(--border-good-soft);font-size:calc(var(--text-scale)*10px);letter-spacing:.07em;color:var(--green)}.footer-privacy.external .verified{color:var(--amber);border-color:var(--border-warn)}.chat-disclaimer{text-align:center}.agent-activity h4{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px);color:var(--text-label)}.agent-activity h4:first-of-type{margin-top:8px;padding-top:0;border-top:0}.agent-activity .declared-empty,.agent-activity .empty-state{padding:0;text-align:start}.agent-panel{display:none}.agent-panel.active{display:block}.hero{text-align:center;padding:25px 0}.hero h1,.section-header h1{margin:4px 0 9px;font-size:calc(var(--text-scale)*38px);letter-spacing:-.04em}.hero p,.section-header p{color:var(--muted);max-width:780px;margin-inline-start:auto;margin-inline-end:auto}.eyebrow{font-size:calc(var(--text-scale)*11px)!important;letter-spacing:.16em;color:var(--accent-eyebrow)!important}
+.app-shell{display:grid;grid-template:72px minmax(0,1fr) 42px/230px minmax(0,1fr) 285px;height:100vh;overflow:hidden}.topbar{grid-column:1/4;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--surface-topbar);position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:7px;min-width:205px}.brand span:last-child{color:var(--accent-brand)}.brand-mark{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,var(--accent-fill-from),var(--accent-fill-to));box-shadow:0 0 28px var(--glow-brand)}.command{position:relative;flex:1;min-width:160px;max-width:650px;display:flex;align-items:center;gap:10px;padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:var(--surface-command);color:var(--text-placeholder)}.command input{flex:1;border:0;background:transparent;color:var(--text-primary)}.command kbd{padding:3px 7px;border:1px solid var(--line);border-radius:6px}.search-popover{position:absolute;top:50px;inset-inline:0;max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface-popover);box-shadow:0 24px 80px var(--shadow-overlay);padding:8px;z-index:40}.search-popover button{display:grid;grid-template-columns:80px 1fr auto;gap:10px;width:100%;padding:10px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text-popover);text-align:start}.search-popover span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.top-actions{margin-inline-start:auto;display:flex;align-items:center;gap:8px;font-size:max(12px,calc(var(--text-scale)*11px))}.chip{padding:8px 10px;border:1px solid var(--line);border-radius:9px;color:var(--text-chip);background:transparent}.status-good,.green{color:var(--green)!important}.amber{color:var(--amber)!important}.error,.danger{color:var(--red)!important}.avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,var(--surface-avatar-from),var(--surface-avatar-to))}.sidebar{grid-row:2;grid-column:1;overflow-y:auto;padding:18px 12px;border-inline-end:1px solid var(--line);background:var(--surface-sidebar)}nav{display:grid;gap:4px}.nav{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;border:0;border-radius:10px;background:transparent;color:var(--text-nav);text-align:start;cursor:pointer}.nav:hover,.nav.active{background:linear-gradient(90deg,var(--accent-wash-strong),var(--accent-wash-fade));color:var(--text-on-accent-wash);box-shadow:inset 2px 0 var(--blue)}.main{grid-row:2;grid-column:2;padding:22px 24px 80px;overflow:auto;min-width:0}.rightbar{grid-row:2;grid-column:3;overflow-y:auto;padding:20px 14px;border-inline-start:1px solid var(--line);background:var(--surface-rightbar)}.footer-privacy{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.footer-privacy strong{font-weight:600}.footer-privacy small{color:var(--muted)}.footer-privacy .verified{padding:1px 7px;border-radius:6px;border:1px solid var(--border-good-soft);font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.07em;color:var(--green)}.footer-privacy.external .verified{color:var(--amber);border-color:var(--border-warn)}.chat-disclaimer{text-align:center}.agent-activity h4{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px);color:var(--text-label)}.agent-activity h4:first-of-type{margin-top:8px;padding-top:0;border-top:0}.agent-activity .declared-empty,.agent-activity .empty-state{padding:0;text-align:start}.agent-panel{display:none}.agent-panel.active{display:block}.hero{text-align:center;padding:25px 0}.hero h1,.section-header h1{margin:4px 0 9px;font-size:calc(var(--text-scale)*38px);letter-spacing:-.04em}.hero p,.section-header p{color:var(--muted);max-width:780px;margin-inline-start:auto;margin-inline-end:auto}.eyebrow{font-size:max(12px,calc(var(--text-scale)*11px))!important;letter-spacing:.16em;color:var(--accent-eyebrow)!important}
 /* Echoes a page's own nav glyph at hero size, so a page that shares every other page's
    generic panel/form template still reads as itself at a glance — cheap, targeted
    visual identity rather than a bespoke layout per page. */
@@ -132,13 +132,13 @@
    somebody must remember to add: the block headers that still have their text (Tasks, Notes,
    Sessions) match neither and are untouched. */
 .section-header:has(>.help-button):not(:has(>:not(.help-button):not(.visually-hidden))){display:flex;justify-content:flex-end;align-items:center;margin:0 0 10px}
-.section-header:not(:has(>:not(.visually-hidden))){margin:0}.section-header.compact{align-items:flex-end}.dashboard-grid,.two-col,.coden-layout,.hardware-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}.list article{display:flex;align-items:center;padding:12px 4px;border-top:1px solid var(--line)}.list small{display:block;margin-top:4px;color:var(--muted)}.form-stack{display:grid;gap:12px;align-content:start}.form-stack h2{margin:0 0 5px}.form-stack label,.chat-toolbar label,.code-panel label,.hardware-grid label{display:grid;gap:6px;color:var(--text-label);font-size:calc(var(--text-scale)*12px)}input,select,textarea{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-field);color:var(--text-field);font:inherit}textarea{min-height:90px;resize:vertical}.large-text{min-height:260px}.primary,.secondary,button{border:1px solid var(--line);border-radius:9px;padding:9px 13px;background:var(--surface-button);color:var(--text-button);cursor:pointer}.primary{border:0;background:linear-gradient(135deg,var(--accent-fill-from),var(--accent-fill-to));color:var(--text-on-accent)}.secondary{background:var(--surface-secondary)}.danger{background:var(--surface-critical-wash-strong);border-color:var(--border-critical)}.text-button{border:0;background:transparent;color:var(--accent-link);padding:2px}.wide-button{display:block;width:100%;margin-top:8px}.chat-toolbar{position:relative;z-index:5;flex-wrap:wrap;margin-bottom:12px}.chat-toolbar label{min-width:130px;flex:1}.chat-toolbar input,.chat-toolbar select{padding:8px}.mode-switch{display:flex;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised)}.mode-switch button{border:0;background:transparent}.mode-switch button.selected{background:var(--surface-selected);color:var(--text-on-accent)}.chat-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px}.chat-panel{display:flex;flex-direction:column;min-height:0}.messages{flex:1;min-height:0;overflow:auto;padding:4px}.message{max-width:88%;margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-card)}.message.user{margin-inline-start:auto;background:var(--surface-message-own)}.message.assistant{margin-inline-end:auto}.message.system{max-width:100%;background:var(--surface-message-system)}.message-head small{color:var(--muted)}.message-body{line-height:1.65;word-break:break-word}.message-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.message-actions button{padding:5px 8px;font-size:calc(var(--text-scale)*11px)}.citations{margin-top:9px;padding:8px;border-inline-start:2px solid var(--cyan);color:var(--state-info-text);font-size:calc(var(--text-scale)*11px)}
+.section-header:not(:has(>:not(.visually-hidden))){margin:0}.section-header.compact{align-items:flex-end}.dashboard-grid,.two-col,.coden-layout,.hardware-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}.list article{display:flex;align-items:center;padding:12px 4px;border-top:1px solid var(--line)}.list small{display:block;margin-top:4px;color:var(--muted)}.form-stack{display:grid;gap:12px;align-content:start}.form-stack h2{margin:0 0 5px}.form-stack label,.chat-toolbar label,.code-panel label,.hardware-grid label{display:grid;gap:6px;color:var(--text-label);font-size:calc(var(--text-scale)*12px)}input,select,textarea{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-field);color:var(--text-field);font:inherit}textarea{min-height:90px;resize:vertical}.large-text{min-height:260px}.primary,.secondary,button{border:1px solid var(--line);border-radius:9px;padding:9px 13px;background:var(--surface-button);color:var(--text-button);cursor:pointer}.primary{border:0;background:linear-gradient(135deg,var(--accent-fill-from),var(--accent-fill-to));color:var(--text-on-accent)}.secondary{background:var(--surface-secondary)}.danger{background:var(--surface-critical-wash-strong);border-color:var(--border-critical)}.text-button{border:0;background:transparent;color:var(--accent-link);padding:2px}.wide-button{display:block;width:100%;margin-top:8px}.chat-toolbar{position:relative;z-index:5;flex-wrap:wrap;margin-bottom:12px}.chat-toolbar label{min-width:130px;flex:1}.chat-toolbar input,.chat-toolbar select{padding:8px}.mode-switch{display:flex;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised)}.mode-switch button{border:0;background:transparent}.mode-switch button.selected{background:var(--surface-selected);color:var(--text-on-accent)}.chat-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px}.chat-panel{display:flex;flex-direction:column;min-height:0}.messages{flex:1;min-height:0;overflow:auto;padding:4px}.message{max-width:88%;margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-card)}.message.user{margin-inline-start:auto;background:var(--surface-message-own)}.message.assistant{margin-inline-end:auto}.message.system{max-width:100%;background:var(--surface-message-system)}.message-head small{color:var(--muted)}.message-body{line-height:1.65;word-break:break-word}.message-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.message-actions button{padding:5px 8px;font-size:max(12px,calc(var(--text-scale)*11px))}.citations{margin-top:9px;padding:8px;border-inline-start:2px solid var(--cyan);color:var(--state-info-text);font-size:max(12px,calc(var(--text-scale)*11px))}
 /* A tool running, and how it ended. Above the answer body because it happens BEFORE the answer:
    a person watching a stalled stream needs to see the reason it is stalled, not learn afterwards.
    The outcome is carried by the word in `.tool-activity-state` as well as by the border and the
    glyph, so it survives a screen reader and a reader who cannot separate the two colours. */
 .tool-activity{display:grid;gap:5px;margin:0 0 10px;padding:0;list-style:none}
-.tool-activity-row{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--line);border-inline-start-width:3px;border-radius:9px;background:var(--surface-raised);font-size:calc(var(--text-scale)*11px)}
+.tool-activity-row{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--line);border-inline-start-width:3px;border-radius:9px;background:var(--surface-raised);font-size:max(12px,calc(var(--text-scale)*11px))}
 .tool-activity-row.running{border-inline-start-color:var(--state-waiting)}
 .tool-activity-row.ok{border-inline-start-color:var(--border-good-strong)}
 .tool-activity-row.failed{border-inline-start-color:var(--border-critical)}
@@ -157,27 +157,27 @@
    ponytail: `field-sizing` is Chromium-only today. Where it is unsupported the box stays at
    min-height and scrolls inside itself, which is the old behaviour at a smaller size — worse
    than here, never broken. The upgrade, if a Firefox user ever needs it, is the script. */
-.composer{margin-top:10px;padding:10px 12px;border:1px solid var(--border-composer);border-radius:16px;background:var(--surface-composer)}.composer textarea{border:0;background:transparent;field-sizing:content;min-height:44px;max-height:30vh;font-size:calc(var(--text-scale)*16px)}.composer-row{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:calc(var(--text-scale)*11px)}#chatContextSummary{flex:1}
+.composer{margin-top:10px;padding:10px 12px;border:1px solid var(--border-composer);border-radius:16px;background:var(--surface-composer)}.composer textarea{border:0;background:transparent;field-sizing:content;min-height:44px;max-height:30vh;font-size:calc(var(--text-scale)*16px)}.composer-row{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}#chatContextSummary{flex:1}
 /* Icons only, per the Owner: the row used to spell out "Context / Undo / Stop / Send" in
    full words. Each control keeps its accessible name through `aria-label`. */
 .composer-row .icon-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:34px;height:34px;min-width:24px;min-height:24px;padding:0;font-size:calc(var(--text-scale)*16px);line-height:1}
-.context-panel pre{max-height:min(580px,38vh)}.result,pre{white-space:pre-wrap;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-code);color:var(--text-code);font-size:calc(var(--text-scale)*12px);line-height:1.5}.card-list{display:grid;gap:10px}.entity-card{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-card)}.entity-card h3{margin:0 0 8px}.entity-card p{color:var(--text-card);line-height:1.5}.entity-card small{display:block;color:var(--muted);margin-bottom:10px}.entity-card button{margin-inline-end:7px}.entity-card pre{max-height:180px}.card-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px}.card-actions small{margin:0;color:var(--muted)}.entity-card progress{width:100%;height:7px;margin:4px 0;accent-color:var(--blue)}#modelEgressRow{flex-wrap:wrap;margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--surface-raised)}#modelEgressRow span:not(.badge){flex:1;min-width:220px;color:var(--muted);font-size:calc(var(--text-scale)*12px)}.provider-card .inline-form{margin-top:10px;align-items:end}.provider-card .inline-form input{flex:2}.provider-card .inline-form select{flex:1}.check{display:flex!important;align-items:center;gap:8px!important}.check input{width:auto}.step{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-top:8px;padding:8px;border-top:1px solid var(--line)}.research-answer{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:0 0 12px;font-size:calc(var(--text-scale)*15px);color:var(--text-card)}#view-research[data-report-open] .panel:not(#researchOutcomePanel){display:none}#view-research[data-report-open] .section-header{display:none}#view-research[data-report-open] #researchOutcomePanel{border:0;background:none;padding:0;max-width:860px;margin:0 auto}.research-page h1{margin:8px 0 2px;line-height:1.2}.research-page .research-meta{color:var(--muted);margin:0 0 16px}.research-figures{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 18px}.research-figures figure{margin:0;width:190px}.research-figures img{display:block;width:100%;height:132px;object-fit:cover;border:1px solid var(--line);border-radius:10px}.research-figures figcaption{margin-top:4px;color:var(--muted);font-size:calc(var(--text-scale)*11px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.research-entry{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface-card);text-decoration:none}.research-entry small{color:var(--muted);white-space:nowrap}.research-sources{margin-top:20px;padding-top:12px;border-top:1px solid var(--line)}.research-sources summary{cursor:pointer;color:var(--muted);margin-bottom:12px}.empty-state{color:var(--muted);padding:20px;text-align:center}.search-row input{flex:1}
+.context-panel pre{max-height:min(580px,38vh)}.result,pre{white-space:pre-wrap;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-code);color:var(--text-code);font-size:calc(var(--text-scale)*12px);line-height:1.5}.card-list{display:grid;gap:10px}.entity-card{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-card)}.entity-card h3{margin:0 0 8px}.entity-card p{color:var(--text-card);line-height:1.5}.entity-card small{display:block;color:var(--muted);margin-bottom:10px}.entity-card button{margin-inline-end:7px}.entity-card pre{max-height:180px}.card-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px}.card-actions small{margin:0;color:var(--muted)}.entity-card progress{width:100%;height:7px;margin:4px 0;accent-color:var(--blue)}#modelEgressRow{flex-wrap:wrap;margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--surface-raised)}#modelEgressRow span:not(.badge){flex:1;min-width:220px;color:var(--muted);font-size:calc(var(--text-scale)*12px)}.provider-card .inline-form{margin-top:10px;align-items:end}.provider-card .inline-form input{flex:2}.provider-card .inline-form select{flex:1}.check{display:flex!important;align-items:center;gap:8px!important}.check input{width:auto}.step{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-top:8px;padding:8px;border-top:1px solid var(--line)}.research-answer{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:0 0 12px;font-size:calc(var(--text-scale)*15px);color:var(--text-card)}#view-research[data-report-open] .panel:not(#researchOutcomePanel){display:none}#view-research[data-report-open] .section-header{display:none}#view-research[data-report-open] #researchOutcomePanel{border:0;background:none;padding:0;max-width:860px;margin:0 auto}.research-page h1{margin:8px 0 2px;line-height:1.2}.research-page .research-meta{color:var(--muted);margin:0 0 16px}.research-figures{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 18px}.research-figures figure{margin:0;width:190px}.research-figures img{display:block;width:100%;height:132px;object-fit:cover;border:1px solid var(--line);border-radius:10px}.research-figures figcaption{margin-top:4px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px));overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.research-entry{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface-card);text-decoration:none}.research-entry small{color:var(--muted);white-space:nowrap}.research-sources{margin-top:20px;padding-top:12px;border-top:1px solid var(--line)}.research-sources summary{cursor:pointer;color:var(--muted);margin-bottom:12px}.empty-state{color:var(--muted);padding:20px;text-align:center}.search-row input{flex:1}
 /* A <select> sibling's generic width:100% (see input,select,textarea above) becomes a
    competing flex-basis and starves the input's flex:1 down to ~24px — reproduced on
    #/memory, whose search row has a topic <select> the #/knowledge one does not. */
-.search-row select{flex:0 0 auto;width:auto}.mini-panel p{color:var(--muted);line-height:1.5;font-size:calc(var(--text-scale)*12px)}.metric{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px)}.invariants{line-height:2;color:var(--text-list)}.invariants li{text-transform:capitalize}.invariant-status{margin-inline-start:8px;padding:2px 7px;border-radius:6px;font-size:calc(var(--text-scale)*10px);letter-spacing:.05em;text-transform:none;border:1px solid var(--line)}.invariant-status.on{color:var(--green);border-color:var(--border-good-soft)}.invariant-status.off{color:var(--muted)}.notice{padding:12px;border:1px solid var(--border-warn);border-radius:9px;background:var(--surface-warn-wash);color:var(--state-warn-text);font-size:calc(var(--text-scale)*12px)}.statusbar{grid-row:3;grid-column:1/4;display:flex;align-items:center;gap:22px;padding:0 18px;border-top:1px solid var(--line);background:var(--surface-statusbar);color:var(--text-statusbar);font-size:calc(var(--text-scale)*11px)}.statusbar span:last-child{margin-inline-start:auto}.auth-gate{position:fixed;inset:0;z-index:1000;background:var(--scrim);display:grid;place-items:center;padding:24px}.auth-gate.hidden,.hidden{display:none!important}.auth-card{width:min(480px,100%);background:var(--surface-auth);border:1px solid var(--line-auth);border-radius:18px;padding:28px}.auth-brand{display:flex;align-items:center;gap:10px;margin-bottom:24px}.auth-form{display:grid;gap:14px;margin-top:22px}.auth-card code{display:block;margin-top:8px;padding:10px;background:var(--surface-inset);border-radius:8px;word-break:break-all}.auth-error{min-height:20px;color:var(--red)}hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.search-row select{flex:0 0 auto;width:auto}.mini-panel p{color:var(--muted);line-height:1.5;font-size:calc(var(--text-scale)*12px)}.metric{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px)}.invariants{line-height:2;color:var(--text-list)}.invariants li{text-transform:capitalize}.invariant-status{margin-inline-start:8px;padding:2px 7px;border-radius:6px;font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.05em;text-transform:none;border:1px solid var(--line)}.invariant-status.on{color:var(--green);border-color:var(--border-good-soft)}.invariant-status.off{color:var(--muted)}.notice{padding:12px;border:1px solid var(--border-warn);border-radius:9px;background:var(--surface-warn-wash);color:var(--state-warn-text);font-size:calc(var(--text-scale)*12px)}.statusbar{grid-row:3;grid-column:1/4;display:flex;align-items:center;gap:22px;padding:0 18px;border-top:1px solid var(--line);background:var(--surface-statusbar);color:var(--text-statusbar);font-size:max(12px,calc(var(--text-scale)*11px))}.statusbar span:last-child{margin-inline-start:auto}.auth-gate{position:fixed;inset:0;z-index:1000;background:var(--scrim);display:grid;place-items:center;padding:24px}.auth-gate.hidden,.hidden{display:none!important}.auth-card{width:min(480px,100%);background:var(--surface-auth);border:1px solid var(--line-auth);border-radius:18px;padding:28px}.auth-brand{display:flex;align-items:center;gap:10px;margin-bottom:24px}.auth-form{display:grid;gap:14px;margin-top:22px}.auth-card code{display:block;margin-top:8px;padding:10px;background:var(--surface-inset);border-radius:8px;word-break:break-all}.auth-error{min-height:20px;color:var(--red)}hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 @media(max-width:1250px){.rightbar{display:none}.app-shell{grid-template-columns:210px minmax(0,1fr)}.topbar,.statusbar{grid-column:1/3}.main{grid-column:2}.chat-grid{grid-template-columns:1fr}.context-panel{order:-1}.top-actions .chip{display:none}}
 @media(max-width:850px){.app-shell{display:block;height:auto;overflow:visible}.topbar{position:sticky;height:auto;flex-wrap:wrap;padding:10px}.brand{min-width:auto}.command{order:3;flex-basis:100%}.sidebar{position:sticky;top:112px;z-index:10;overflow:auto;padding:6px}.sidebar nav{display:flex}.nav span:not(.nav-count){position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}.main{padding:14px}.rightbar,.statusbar{display:none}.mode-cards,.dashboard-grid,.two-col,.three-col,.coden-layout,.hardware-grid{grid-template-columns:1fr}.chat-toolbar label{min-width:45%}.hero h1,.section-header h1{font-size:calc(var(--text-scale)*30px)}}
-.language-picker{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:calc(var(--text-scale)*11px)}.language-picker select{width:auto;padding:6px}.inline-form{flex-wrap:wrap}
+.language-picker{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}.language-picker select{width:auto;padding:6px}.inline-form{flex-wrap:wrap}
 /* --- remediation: routing, feedback, security and MFA surfaces --- */
-.nav-group{margin:16px 0 4px;padding:0 12px;font-size:calc(var(--text-scale)*10px);letter-spacing:.14em;color:var(--muted)}
+.nav-group{margin:16px 0 4px;padding:0 12px;font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.14em;color:var(--muted)}
 .visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .toast-host{position:fixed;inset-inline-end:18px;bottom:56px;z-index:900;display:grid;gap:8px;max-width:min(420px,90vw)}
 .toast{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--surface-elevated);box-shadow:0 18px 50px var(--shadow-popover);color:var(--text-strong);font-size:calc(var(--text-scale)*13px);line-height:1.45}
 .toast-error{border-color:var(--border-critical-stronger);background:var(--surface-critical-soft)}
 .toast-success{border-color:var(--border-good-strong);background:var(--surface-good-soft)}
 .toast span{flex:1}
-.toast-correlation{padding:2px 6px;border-radius:5px;background:var(--surface-code);color:var(--text-faint);font-size:calc(var(--text-scale)*10px)}
+.toast-correlation{padding:2px 6px;border-radius:5px;background:var(--surface-code);color:var(--text-faint);font-size:max(12px,calc(var(--text-scale)*10px))}
 .toast-close{border:0;background:transparent;color:var(--muted);font-size:calc(var(--text-scale)*17px);line-height:1;padding:0 2px;cursor:pointer}
 button[data-busy]{opacity:.65;cursor:progress}
 .hint{margin:8px 0 0;color:var(--muted);font-size:calc(var(--text-scale)*12px);line-height:1.55}
@@ -187,7 +187,7 @@ button[data-busy]{opacity:.65;cursor:progress}
 .manual-key{display:block;margin-top:6px;padding:10px;border-radius:8px;background:var(--surface-inset);color:var(--text-bright-soft);word-break:break-all;letter-spacing:.09em;font-size:calc(var(--text-scale)*13px)}
 .recovery-codes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
 .recovery-codes code{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-code);color:var(--text-bright);letter-spacing:.08em;text-align:center}
-.badge{padding:2px 8px;border-radius:20px;font-size:calc(var(--text-scale)*10px);letter-spacing:.07em;border:1px solid var(--line)}dialog.app-dialog{border:1px solid var(--line);border-radius:15px;background:linear-gradient(145deg,var(--panel),var(--panel2));box-shadow:0 16px 50px var(--shadow-panel);color:var(--text-primary);padding:20px;width:min(440px,90vw)}dialog.app-dialog::backdrop{background:var(--scrim)}dialog.app-dialog p{margin:0 0 12px;line-height:1.5;white-space:pre-line}dialog.app-dialog menu{display:flex;justify-content:flex-end;gap:8px;margin:14px 0 0;padding:0}
+.badge{padding:2px 8px;border-radius:20px;font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.07em;border:1px solid var(--line)}dialog.app-dialog{border:1px solid var(--line);border-radius:15px;background:linear-gradient(145deg,var(--panel),var(--panel2));box-shadow:0 16px 50px var(--shadow-panel);color:var(--text-primary);padding:20px;width:min(440px,90vw)}dialog.app-dialog::backdrop{background:var(--scrim)}dialog.app-dialog p{margin:0 0 12px;line-height:1.5;white-space:pre-line}dialog.app-dialog menu{display:flex;justify-content:flex-end;gap:8px;margin:14px 0 0;padding:0}
 .badge-on{color:var(--green);border-color:var(--border-good-strong)}
 .badge-off{color:var(--muted)}
 .badge-warn{color:var(--amber);border-color:var(--border-warn-strong)}
@@ -196,14 +196,14 @@ button[data-busy]{opacity:.65;cursor:progress}
 /* --- sections: settings, security, users, health, updates, logs, backups, about --- */
 .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:6px}
 .metric-grid .metric{display:flex;flex-direction:column;gap:4px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--surface-sunken)}
-.metric-grid .metric span{color:var(--muted);font-size:calc(var(--text-scale)*11px);letter-spacing:.04em}
+.metric-grid .metric span{color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px));letter-spacing:.04em}
 .metric-grid .metric b{font-size:calc(var(--text-scale)*14px);font-weight:600;word-break:break-word}
 .chip-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
-.chip-list span{padding:5px 10px;border:1px solid var(--line);border-radius:20px;background:var(--surface-sunken);color:var(--text-soft);font-size:calc(var(--text-scale)*11px)}
+.chip-list span{padding:5px 10px;border:1px solid var(--line);border-radius:20px;background:var(--surface-sunken);color:var(--text-soft);font-size:max(12px,calc(var(--text-scale)*11px))}
 .log-row{display:grid;grid-template-columns:150px 72px minmax(0,1fr);gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface-sunken);font-size:calc(var(--text-scale)*12px);align-items:baseline}
 .log-row time{color:var(--muted);font-variant-numeric:tabular-nums}
 .log-row .log-msg{word-break:break-word}
-.log-row code{color:var(--text-faint);font-size:calc(var(--text-scale)*10px)}
+.log-row code{color:var(--text-faint);font-size:max(12px,calc(var(--text-scale)*10px))}
 .level-ERROR{color:var(--red)}.level-WARN{color:var(--amber)}.level-INFO{color:var(--green)}.level-DEBUG{color:var(--muted)}
 .token-reveal{margin-top:12px;padding:12px;border:1px solid var(--border-warn-stronger);border-radius:10px;background:var(--surface-warn-soft)}
 .token-reveal code{display:block;margin-top:7px;padding:10px;border-radius:8px;background:var(--surface-code);color:var(--state-warn-bright);word-break:break-all;letter-spacing:.06em}
@@ -219,7 +219,7 @@ button[data-busy]{opacity:.65;cursor:progress}
 .approval-strip{gap:14px}
 .approval-strip-state{padding:2px 9px;border:1px solid var(--line);border-radius:7px;letter-spacing:.04em;white-space:nowrap}
 .approval-strip-detail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw;color:var(--muted)}
-.nav-count{margin-inline-start:auto;min-width:20px;padding:1px 6px;border-radius:9px;background:var(--surface-warn-wash-soft);border:1px solid var(--border-warn-strong);color:var(--amber);font-size:calc(var(--text-scale)*10px);text-align:center}
+.nav-count{margin-inline-start:auto;min-width:20px;padding:1px 6px;border-radius:9px;background:var(--surface-warn-wash-soft);border:1px solid var(--border-warn-strong);color:var(--amber);font-size:max(12px,calc(var(--text-scale)*10px));text-align:center}
 /* The status bar is hidden below 850px, but the approval strip must not be: an approval
    nobody is shown is an approval that waits forever, and 01_PRODUCT/11 asks for responsive
    density rather than removal. It becomes compact instead of disappearing. */
@@ -343,7 +343,7 @@ button[data-busy]{opacity:.65;cursor:progress}
 .app-shell[data-sidebar=icons] .nav{justify-content:center;gap:0;padding-inline:0}
 .app-shell[data-sidebar=icons] .nav-flag{display:none}
 .rank-control{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.nav-flag{margin-inline-start:auto;padding:2px 6px;border:1px solid var(--line);border-radius:20px;font-size:calc(var(--text-scale)*9px);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.nav-flag{margin-inline-start:auto;padding:2px 6px;border:1px solid var(--line);border-radius:20px;font-size:max(12px,calc(var(--text-scale)*9px));letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 /* --- the chat is a frame the height of the screen, and ONE thing inside it scrolls ---------
    Owner, 2026-08-28, second pass, looking at the deployed page: «l'area interna della chat deve
    scorrere, la barra sotto deve essere fissa e portata più su, l'area a destra deve stare
@@ -371,16 +371,16 @@ button[data-busy]{opacity:.65;cursor:progress}
 .app-shell[data-panel=hidden] .rightbar{display:none}
 .app-shell[data-panel=floating] .rightbar{position:fixed;inset-block-start:88px;inset-inline-end:18px;width:min(300px,90vw);max-height:calc(100vh - 150px);overflow:auto;z-index:30;border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 80px var(--shadow-float)}
 .panel-rank-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.panel-rank-title{font-size:calc(var(--text-scale)*11px);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.app-shell[data-panel=floating] .panel-rank-title{cursor:grab;touch-action:none}.app-shell[data-panel=floating] .panel-rank-title.dragging{cursor:grabbing}
+.panel-rank-title{font-size:max(12px,calc(var(--text-scale)*11px));letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.app-shell[data-panel=floating] .panel-rank-title{cursor:grab;touch-action:none}.app-shell[data-panel=floating] .panel-rank-title.dragging{cursor:grabbing}
 .panel-rank-buttons{display:flex;gap:4px;margin-inline-start:auto}
-.panel-rank-buttons button{padding:4px 8px;font-size:calc(var(--text-scale)*11px)}
+.panel-rank-buttons button{padding:4px 8px;font-size:max(12px,calc(var(--text-scale)*11px))}
 .panel-rank-buttons button[aria-pressed=true]{background:var(--surface-selected);color:var(--text-on-accent);border-color:var(--blue)}
-.panel-rank-hint{margin:0 0 12px;color:var(--muted);font-size:calc(var(--text-scale)*11px);line-height:1.5}
+.panel-rank-hint{margin:0 0 12px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px));line-height:1.5}
 
 /* --- Settings: menu inside the menu --- */
 .settings-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;align-items:start}
 .settings-menu{display:grid;gap:3px;padding:12px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,var(--panel),var(--panel2));position:sticky;top:12px}
-.settings-group{margin:14px 0 4px;padding-inline:10px;font-size:calc(var(--text-scale)*10px);letter-spacing:.14em;color:var(--muted)}
+.settings-group{margin:14px 0 4px;padding-inline:10px;font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.14em;color:var(--muted)}
 .settings-group:first-child{margin-top:0}
 .settings-nav{display:block;width:100%;padding:9px 11px;border:0;border-radius:9px;background:transparent;color:var(--text-chip);text-align:start;cursor:pointer;font-size:calc(var(--text-scale)*13px)}
 .settings-nav:hover{background:var(--accent-wash);color:var(--text-on-accent)}
@@ -829,7 +829,7 @@ button[data-busy]{opacity:.65;cursor:progress}
    typed into every call site, because a signal that depends on remembering to add it is a
    signal that will be missing somewhere. */
 .state{display:inline-flex;align-items:center;gap:6px}
-.state::before{font-size:calc(var(--text-scale)*11px);line-height:1}
+.state::before{font-size:max(12px,calc(var(--text-scale)*11px));line-height:1}
 .state-ok,.status-good,.badge-on,.invariant-status.on{color:var(--green)}
 .state-ok::before,.status-good::before,.badge-on::before{content:"✓"}
 .state-warning,.status-warn,.badge-warn{color:var(--amber)}
@@ -903,9 +903,9 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .session-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-card)}
 .session-row:focus-visible,.session-row.focused{outline:2px solid var(--focus-ring);outline-offset:2px}
 .session-row .session-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.session-row small{display:block;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.session-row small{display:block;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}
 .session-row .session-actions{display:flex;gap:6px}
-.session-row .session-actions button{padding:5px 9px;font-size:calc(var(--text-scale)*11px)}
+.session-row .session-actions button{padding:5px 9px;font-size:max(12px,calc(var(--text-scale)*11px))}
 .session-overflow{margin-top:14px}
 .session-scroller{max-height:320px;overflow:auto;padding:4px;border:1px solid var(--line);border-radius:11px}
 .sessions-selection{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px)}
@@ -949,7 +949,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    there is no second column left for it to sit in. */
 .bench{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 .bench-agent{display:grid;gap:10px;align-content:start}
-.bench-nav-group h3{margin:0 0 4px;font-size:calc(var(--text-scale)*11px);letter-spacing:.09em;text-transform:uppercase;color:var(--accent-eyebrow)}
+.bench-nav-group h3{margin:0 0 4px;font-size:max(12px,calc(var(--text-scale)*11px));letter-spacing:.09em;text-transform:uppercase;color:var(--accent-eyebrow)}
 .bench-nav-list{padding:0;font-size:calc(var(--text-scale)*12px);color:var(--text-list)}
 .bench-nav-list.empty-state{padding:4px 0;text-align:start}
 .bench-nav-list button{display:block;width:100%;text-align:start;border:0;background:transparent;color:var(--text-nav);padding:5px 6px;border-radius:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -973,7 +973,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .composer-commands button.active b{color:inherit}
 .composer-commands button span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .composer-commands button.active span,.composer-commands button.active small{color:inherit}
-.composer-commands button small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:calc(var(--text-scale)*10px)}
+.composer-commands button small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:max(12px,calc(var(--text-scale)*10px))}
 .composer-commands p{margin:0;padding:10px;color:var(--muted)}
 @media(forced-colors:active){.composer-commands button.active{border:2px solid CanvasText}}
 
@@ -1000,7 +1000,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
  * exactly one row on any viewport: the chips scroll sideways instead of stacking, the same
  * trade a real terminal's status line already makes. */
 .coden-bar .chip-list{margin:0;flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
-.coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap;padding:3px 8px;font-size:calc(var(--text-scale)*10px)}
+.coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap;padding:3px 8px;font-size:max(12px,calc(var(--text-scale)*10px))}
 .coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto;padding:1px}
 /* WCAG 2.5.8 Target Size (Minimum), found in the debug pass that followed `D-0440`: shrinking
  * the button to match the chips visually (padding 2px 8px, 10px font) took it to ~16px tall —
@@ -1008,10 +1008,10 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
  * button gives it the target size without the visual size growing to match — the padding and
  * font stay as small as D-0440 asked for, `min-height` just refuses to let the box shrink
  * past what a pointer needs to hit reliably. */
-.coden-bar .mode-switch button{padding:2px 8px;font-size:calc(var(--text-scale)*10px);min-height:24px;display:inline-flex;align-items:center}
+.coden-bar .mode-switch button{padding:2px 8px;font-size:max(12px,calc(var(--text-scale)*10px));min-height:24px;display:inline-flex;align-items:center}
 .bench-where{margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bench-where b{color:var(--text-primary);font-weight:600}
-.bench-where-hint{color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.bench-where-hint{color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}
 .bench-where-hint kbd{padding:1px 5px;border:1px solid var(--line);border-radius:5px;color:var(--accent-brand)}
 .bench-panels{border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,var(--panel),var(--panel2));padding:16px;min-height:260px}
 .bench-panel{display:none}
@@ -1028,11 +1028,11 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* 2.5.8 target size, new in WCAG 2.2. The audit measured these at 71x22: eleven-pixel
    type with four pixels of padding lands two pixels short of the 24px floor, which is
    exactly the kind of miss that reading the CSS does not catch. */
-.bench-terminal-tabs button{padding:4px 9px;min-height:24px;font-size:calc(var(--text-scale)*11px)}
+.bench-terminal-tabs button{padding:4px 9px;min-height:24px;font-size:max(12px,calc(var(--text-scale)*11px))}
 .bench-terminal-tabs button.active{background:var(--surface-selected);color:var(--text-on-accent);border-color:transparent}
 .bench-terminal-body{padding:12px;min-height:110px;color:var(--text-code);font-size:calc(var(--text-scale)*12px);line-height:1.6}
 .bench-terminal.collapsed .bench-terminal-body{display:none}
-.bench-status{display:flex;flex-wrap:wrap;gap:6px 16px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar);color:var(--text-statusbar);font-size:calc(var(--text-scale)*11px)}
+.bench-status{display:flex;flex-wrap:wrap;gap:6px 16px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar);color:var(--text-statusbar);font-size:max(12px,calc(var(--text-scale)*11px))}
 .bench-status b{color:var(--text-primary);font-weight:600}
 .bench-status-honesty{margin-inline-start:auto;color:var(--muted)}
 
@@ -1049,18 +1049,18 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    defect: the interface grows around the label that stayed behind. */
 .schedule-board .schedule-group{margin-top:14px}
 .schedule-board h3{margin:0 0 8px;font-size:calc(var(--text-scale)*13px);letter-spacing:.04em;color:var(--text-label)}
-.group-count{display:inline-block;min-width:22px;padding:1px 7px;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.group-count{display:inline-block;min-width:22px;padding:1px 7px;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}
 .schedule-rule{margin:8px 0 10px;color:var(--text-card);font-size:calc(var(--text-scale)*12px)}
-.rule-label{color:var(--muted);letter-spacing:.08em;font-size:calc(var(--text-scale)*10px)}
+.rule-label{color:var(--muted);letter-spacing:.08em;font-size:max(12px,calc(var(--text-scale)*10px))}
 .zoneless{color:var(--amber)}
 .home-inventory{margin-top:16px}
 .service-list,.provenance-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
 .service-list li,.provenance-list li{padding-bottom:9px;border-bottom:1px solid var(--line);font-size:calc(var(--text-scale)*13px)}
-.service-list small,.provenance-list small,.runtime-line small{display:block;margin-top:3px;color:var(--muted);font-size:calc(var(--text-scale)*11px);line-height:1.5}
+.service-list small,.provenance-list small,.runtime-line small{display:block;margin-top:3px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px));line-height:1.5}
 .dot{display:inline-block;width:8px;height:8px;margin-inline-end:7px;border-radius:50%}
 .dot.ok{background:var(--green)}
 .dot.bad{background:var(--red)}
-.tag{display:inline-block;margin-inline-start:6px;padding:1px 7px;border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:calc(var(--text-scale)*10px);letter-spacing:.04em}
+.tag{display:inline-block;margin-inline-start:6px;padding:1px 7px;border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.04em}
 .tag-warn{color:var(--amber);border-color:var(--border-warn)}
 .runtime-line{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*13px)}
 .withheld{border-inline-start:3px solid var(--amber);padding-inline-start:10px}
@@ -1075,7 +1075,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .module-icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:11px;font-size:calc(var(--text-scale)*16px);font-weight:700;color:var(--text-on-accent);background:linear-gradient(145deg,var(--accent-fill-from),var(--accent-fill-to));box-shadow:0 0 22px var(--glow-brand)}
 .module-head-text{flex:1;min-width:0}
 .module-head-text h3{margin:0 0 4px;font-size:calc(var(--text-scale)*16px)}
-.module-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.module-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}
 .module-status{flex:none;margin-top:2px}
 .trust-official{color:var(--accent-eyebrow);border-color:var(--border-accent-hover);letter-spacing:.08em;text-transform:uppercase}
 .module-card p{margin:0 0 10px}
@@ -1105,9 +1105,9 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    widgets sharing a panel, which is the whole point of putting both in one box. The
    highlighted row is styled here rather than through :focus, because focus never leaves the
    input: moving it would take the caret along and the next keystroke would be lost. */
-.palette-group{margin:6px 4px 2px;color:var(--muted);font-size:calc(var(--text-scale)*10px);letter-spacing:.12em;text-transform:uppercase}
+.palette-group{margin:6px 4px 2px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.12em;text-transform:uppercase}
 .search-popover button.active{background:var(--surface-selected);color:var(--text-on-accent);border-radius:8px}
-.search-popover button b{color:var(--muted);font-weight:600;font-size:calc(var(--text-scale)*10px);letter-spacing:.06em;text-transform:uppercase}
+.search-popover button b{color:var(--muted);font-weight:600;font-size:max(12px,calc(var(--text-scale)*10px));letter-spacing:.06em;text-transform:uppercase}
 .search-popover button.active b,.search-popover button.active small{color:inherit}
 .search-popover button small{color:var(--muted);font-variant-numeric:tabular-nums}
 .search-popover button[disabled]{opacity:.55;cursor:default}
@@ -1125,7 +1125,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .search-popover{border-color:var(--accent-brand);box-shadow:0 24px 80px var(--shadow-overlay),0 0 0 1px var(--accent-wash)}
 .coden-conversation-turn{margin:0;padding:7px 0;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px);color:var(--text-list)}
 .coden-conversation-turn:first-child{border-top:0}
-.coden-conversation-turn b{display:block;color:var(--text-primary);font-size:calc(var(--text-scale)*10px);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.coden-conversation-turn b{display:block;color:var(--text-primary);font-size:max(12px,calc(var(--text-scale)*10px));text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
 
 /* --- the agent shell · phase 3a (`16` §4b.2) ------------------------------------------------
    The terminal's four regions, rendered as elements instead of character rows. "La grafica del
@@ -1168,7 +1168,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    geometry does not shift when it appears. */
 .agent-prompt textarea:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-2px;border-radius:4px}
 .agent-prompt:focus-within{box-shadow:inset 0 0 0 2px var(--focus-ring)}
-.agent-hint{margin:0;padding:0 14px 9px;background:var(--surface-composer);color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
+.agent-hint{margin:0;padding:0 14px 9px;background:var(--surface-composer);color:var(--text-faint);font-size:max(12px,calc(var(--text-scale)*11px))}
 /* The `/` in the hint is a control, styled as the key it already looked like. It is the
    mouse's way to the one menu, since the breadcrumb and the address bar left in phase 3c. */
 /* It is a real button, and it measured 21x17 — under the 24x24 of WCAG 2.5.8. inline-flex with
@@ -1186,8 +1186,8 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .agent-menu button b{color:var(--accent-brand);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .agent-menu button.active b,.agent-menu button.active span,.agent-menu button.active small{color:inherit}
 .agent-menu button span{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.agent-menu button small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:calc(var(--text-scale)*10px)}
-.agent-menu-note{margin:6px 0 2px;padding-inline:14px;color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
+.agent-menu button small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:max(12px,calc(var(--text-scale)*10px))}
+.agent-menu-note{margin:6px 0 2px;padding-inline:14px;color:var(--text-faint);font-size:max(12px,calc(var(--text-scale)*11px))}
 @media(forced-colors:active){.agent-menu button.active{border:2px solid CanvasText}}
 
 /* ── POINT 2a OF THE OWNER'S LIST · the shell takes the FORM of a terminal ──────────────────
@@ -1229,9 +1229,9 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    sit under the Chat destination without competing with it: the rows are quieter than a
    .nav, because the destination is the heading and these are its contents. */
 .chat-nav{margin:2px 0 6px;padding-inline-start:6px}
-.chat-nav-toggle{display:flex;align-items:center;gap:6px;width:100%;padding:6px 8px;border:0;background:transparent;color:var(--muted);text-align:start;font-size:calc(var(--text-scale)*11px);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.chat-nav-toggle{display:flex;align-items:center;gap:6px;width:100%;padding:6px 8px;border:0;background:transparent;color:var(--muted);text-align:start;font-size:max(12px,calc(var(--text-scale)*11px));letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .chat-nav-toggle:hover{color:var(--text-nav)}
-.chat-nav-caret{font-size:calc(var(--text-scale)*10px)}
+.chat-nav-caret{font-size:max(12px,calc(var(--text-scale)*10px))}
 .chat-nav-count{margin-inline-start:auto;color:var(--muted)}
 .chat-nav-list{display:grid;gap:1px}
 .chat-nav-row{display:flex;align-items:center;gap:2px;border-radius:8px}
@@ -1239,21 +1239,21 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .chat-nav-row.current{background:linear-gradient(90deg,var(--accent-wash-strong),var(--accent-wash-fade));box-shadow:inset 2px 0 var(--blue)}
 .chat-nav-open{flex:1;min-width:0;display:grid;gap:1px;padding:7px 8px;border:0;background:transparent;color:var(--text-nav);text-align:start;cursor:pointer}
 .chat-nav-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(var(--text-scale)*12px)}
-.chat-nav-open small{color:var(--muted);font-size:calc(var(--text-scale)*10px)}
+.chat-nav-open small{color:var(--muted);font-size:max(12px,calc(var(--text-scale)*10px))}
 /* The row actions stay out of the way until the row is under the pointer or the keyboard,
    so a list of chats reads as a list of chats. They remain reachable by tab: hiding them
    from the keyboard would put archive and delete behind a mouse. */
 .chat-nav-actions{display:flex;gap:2px;opacity:0;padding-inline-end:4px}
 .chat-nav-row:hover .chat-nav-actions,.chat-nav-row:focus-within .chat-nav-actions{opacity:1}
-.chat-nav-actions button{padding:4px 6px;border:0;background:transparent;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.chat-nav-actions button{padding:4px 6px;border:0;background:transparent;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}
 .chat-nav-actions button:hover{color:var(--text-nav)}
 .chat-nav-actions button.danger{background:transparent;border:0}
 .chat-nav-actions button.danger:hover{color:var(--red)}
-.chat-nav-more{margin:6px 0 3px;padding-inline-start:8px;color:var(--muted);font-size:calc(var(--text-scale)*10px)}
+.chat-nav-more{margin:6px 0 3px;padding-inline-start:8px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*10px))}
 /* UI-002: a bounded scroller, so the sidebar cannot grow without limit as chats pile up. */
 .chat-nav-scroller{max-height:190px;overflow-y:auto}
-.chat-nav-empty{margin:4px 0;padding-inline-start:8px;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
-.chat-nav-archive{width:calc(100% - 8px);margin:6px 4px 0;padding:6px 8px;border:0;background:transparent;color:var(--accent-link);text-align:start;font-size:calc(var(--text-scale)*11px)}
+.chat-nav-empty{margin:4px 0;padding-inline-start:8px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*11px))}
+.chat-nav-archive{width:calc(100% - 8px);margin:6px 4px 0;padding:6px 8px;border:0;background:transparent;color:var(--accent-link);text-align:start;font-size:max(12px,calc(var(--text-scale)*11px))}
 .chat-nav-archive:hover{background:var(--accent-wash-fade)}
 .chat-nav-open:focus-visible,.chat-nav-toggle:focus-visible,.chat-nav-archive:focus-visible,.chat-nav-actions button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:-3px}
 /* A sidebar collapsed to icons has no room for titles, and one narrowed to nothing has no
@@ -1269,7 +1269,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .work-sources{display:grid;gap:8px}
 .work-source{padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--surface-card)}
 .work-source-id{display:block;overflow-wrap:anywhere;font-size:calc(var(--text-scale)*12px)}
-.work-source small{display:block;margin-top:3px;color:var(--muted);font-size:calc(var(--text-scale)*10px)}
+.work-source small{display:block;margin-top:3px;color:var(--muted);font-size:max(12px,calc(var(--text-scale)*10px))}
 .context-panel pre{margin:0}
 
 /* Terminal attach code (D-0337). The code is meant to be read off this screen and typed at
@@ -1354,7 +1354,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .help-panel h3{margin:0 0 6px;font-size:calc(var(--text-scale)*12px);letter-spacing:.06em;
   text-transform:uppercase;color:var(--text-faint)}
 .help-panel h3+p{margin:0 0 14px;line-height:1.55}
-.help-panel .hint{margin:0;color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
+.help-panel .hint{margin:0;color:var(--text-faint);font-size:max(12px,calc(var(--text-scale)*11px))}
 .help-panel:focus{outline:none;box-shadow:0 0 0 2px var(--focus-ring),0 24px 80px var(--shadow-overlay)}
 @media(max-width:850px){.help-panel{inset-inline:14px;width:auto}}
 @media(forced-colors:active){.help-button[aria-expanded="true"]{border:2px solid CanvasText}}
@@ -1460,7 +1460,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    come CONTROLLO accanto all'interruttore di modo — che e la regola che questa barra dichiara
    gia per se stessa — e sta in fondo alla barra perche `.model-picker` si apre allineato a
    destra sotto il controllo che l'ha aperto. */
-.coden-bar .coden-model-open{margin-inline-start:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;min-height:24px;font-size:calc(var(--text-scale)*10px);border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--text-chip);cursor:pointer}
+.coden-bar .coden-model-open{margin-inline-start:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;min-height:24px;font-size:max(12px,calc(var(--text-scale)*10px));border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--text-chip);cursor:pointer}
 .coden-bar .coden-model-open:hover{background:var(--surface-selected)}
 .coden-bar .coden-model-open+.mode-switch{margin-inline-start:0}
 
@@ -1494,7 +1494,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .model-hf-file button{margin-inline-start:auto}
 /* The reason a file is not offered takes the whole second line: it is prose, not a chip, and
    squeezing it beside the name is how it stops being read. */
-.model-hf-file .hint{flex-basis:100%;margin:0;color:var(--muted);font-size:calc(var(--text-scale) * 11px)}
+.model-hf-file .hint{flex-basis:100%;margin:0;color:var(--muted);font-size:max(12px,calc(var(--text-scale) * 11px))}
 .model-catalog-help{padding:11px;margin:4px 0 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-raised)}
 .model-catalog-help p{margin:0 0 6px;color:var(--text-card);line-height:1.5;font-size:calc(var(--text-scale) * 12px)}
 .model-catalog-help p:last-child{margin-bottom:0;color:var(--muted)}
@@ -1526,7 +1526,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    competes with the conversation. */
 .chat-toolbar{align-items:center;flex-wrap:wrap;gap:10px}
 .toolbar-group{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-card)}
-.toolbar-group-label{flex-basis:100%;color:var(--text-label);font-size:calc(var(--text-scale) * 11px);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.toolbar-group-label{flex-basis:100%;color:var(--text-label);font-size:max(12px,calc(var(--text-scale) * 11px));font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
 .chat-crumb{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 320px}
 .chat-crumb label{display:block;min-width:0;flex:0 1 auto}
 .chat-crumb select{width:auto;max-width:min(46vw,320px);padding:6px 8px;border-color:transparent;background:transparent;color:var(--text-field);font-weight:600;font-size:calc(var(--text-scale)*14px);text-overflow:ellipsis}
@@ -1556,13 +1556,13 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .chat-more-menu.hidden{display:none}
 .chat-more-menu>button{width:100%;text-align:start;background:transparent;border-color:transparent}
 .chat-more-menu>button:hover,.chat-more-menu>button:focus-visible{border-color:var(--line);background:var(--surface-secondary)}
-.chat-more-heading{margin:6px 0 0;color:var(--text-label);font-size:calc(var(--text-scale)*11px);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.chat-more-field{display:grid;gap:4px;color:var(--text-label);font-size:calc(var(--text-scale)*11px)}
+.chat-more-heading{margin:6px 0 0;color:var(--text-label);font-size:max(12px,calc(var(--text-scale)*11px));font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.chat-more-field{display:grid;gap:4px;color:var(--text-label);font-size:max(12px,calc(var(--text-scale)*11px))}
 .chat-more-field input{padding:7px 8px}
 .model-picker-head { display: flex; align-items: center; gap: 10px; }
 .model-picker-head h3 { margin: 0; font-size: calc(var(--text-scale) * 14px); }
 .model-picker-head .text-button { margin-inline-start: auto; }
-.model-picker .hint { margin: 6px 0 10px; color: var(--muted); font-size: calc(var(--text-scale) * 11px); }
+.model-picker .hint { margin: 6px 0 10px; color: var(--muted); font-size: max(12px,calc(var(--text-scale) * 11px)); }
 .model-picker-list { display: grid; gap: 8px; max-height: min(46vh, 380px); overflow-y: auto; }
 .model-picker-list .empty-state { padding: 12px; text-align: start; }
 .model-row {
@@ -1574,20 +1574,20 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    above it deliberately — it is a statement about the same set of models, and a line placed
    outside would scroll away from what it describes. */
 .model-picker-chat { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
-.model-picker-chat small { color: var(--muted); font-size: calc(var(--text-scale) * 11px); }
+.model-picker-chat small { color: var(--muted); font-size: max(12px,calc(var(--text-scale) * 11px)); }
 .model-row b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
-.model-row small { display: block; margin-top: 3px; color: var(--muted); font-size: calc(var(--text-scale) * 11px); }
+.model-row small { display: block; margin-top: 3px; color: var(--muted); font-size: max(12px,calc(var(--text-scale) * 11px)); }
 /* The confirmation replaces the row's own actions instead of opening a second layer: the thing
    being confirmed stays on screen and in place, which a modal over a modal does not give. */
 .model-row-confirm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.model-row-confirm span { flex: 1 1 200px; color: var(--state-warn-text); font-size: calc(var(--text-scale) * 11px); }
-.model-row-note { grid-column: 1 / -1; color: var(--state-warn-text); font-size: calc(var(--text-scale) * 11px); }
+.model-row-confirm span { flex: 1 1 200px; color: var(--state-warn-text); font-size: max(12px,calc(var(--text-scale) * 11px)); }
+.model-row-note { grid-column: 1 / -1; color: var(--state-warn-text); font-size: max(12px,calc(var(--text-scale) * 11px)); }
 .model-picker-foot { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
 /* WCAG 2.5.8 (AA, new in 2.2): the target is at least 24x24 CSS px. Measured at 14x11 by
    tools/accessibility-audit.mjs — the glyph was the whole target. The GLYPH stays small; what
    grows is the area that receives the press, which is what the criterion is about. */
 .chip-list .chip #codenModelPickerOpen {
-  font-size: calc(var(--text-scale) * 11px);
+  font-size: max(12px,calc(var(--text-scale) * 11px));
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 24px; min-height: 24px; padding: 0; line-height: 1;
 }
@@ -1657,7 +1657,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   padding: 2px 7px;
   border: 1px solid var(--border-good-soft);
   border-radius: 999px;
-  font-size: calc(var(--text-scale) * 10px);
+  font-size: max(12px,calc(var(--text-scale) * 10px));
   letter-spacing: .04em;
   color: var(--green);
   white-space: nowrap;
@@ -1676,12 +1676,12 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    cards spends two lines saying nothing about a model the person already chose. The sentence
    stays in the catalogue lanes, where a publisher COULD have declared one and did not. */
 .model-lane-installed .model-tile .model-description.hint { display: none; }
-.model-lane-installed .model-facts { font-size: calc(var(--text-scale) * 11px); }
+.model-lane-installed .model-facts { font-size: max(12px,calc(var(--text-scale) * 11px)); }
 .model-lane-installed .model-tile { min-height: 0; }
 .model-facts {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px; margin: calc(var(--text-scale) * 6px) 0 0;
-  font-size: calc(var(--text-scale) * 11px);
+  font-size: max(12px,calc(var(--text-scale) * 11px));
 }
 .model-facts dt { color: var(--muted); letter-spacing: .05em; }
 .model-facts dd { margin: 2px 0 0; color: var(--text-card); overflow-wrap: anywhere; }
@@ -1689,7 +1689,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    di altezza diversa sono la differenza fra scorrere e cercare. */
 .model-tile-foot { margin-top: auto; padding-top: calc(var(--text-scale) * 8px); }
 .model-tile-foot .card-actions { margin-top: 0; }
-.model-source { margin: 6px 0 0; font-size: calc(var(--text-scale) * 11px); }
+.model-source { margin: 6px 0 0; font-size: max(12px,calc(var(--text-scale) * 11px)); }
 
 /* I chip di categoria. */
 .model-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
@@ -1705,7 +1705,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .model-chip-count {
   padding: 0 6px; border-radius: 999px;
   background: var(--surface-inset); color: var(--muted);
-  font-size: calc(var(--text-scale) * 10px);
+  font-size: max(12px,calc(var(--text-scale) * 10px));
 }
 .model-chip.selected .model-chip-count { background: var(--surface-critical-wash); color: inherit; }
 
@@ -1729,10 +1729,10 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .model-suggested { border-inline-start: 1px solid var(--line); padding-inline-start: 16px; }
 @media (max-width: 1100px) { .model-suggested { border-inline-start: 0; padding-inline-start: 0; border-top: 1px solid var(--line); padding-top: 12px; } }
 .model-suggested h3 { margin: 0 0 4px; font-size: calc(var(--text-scale) * 14px); }
-.model-suggested h4 { margin: 12px 0 6px; font-size: calc(var(--text-scale) * 11px); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.model-suggested h4 { margin: 12px 0 6px; font-size: max(12px,calc(var(--text-scale) * 11px)); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .model-suggested-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
 .model-suggested-row b { font-size: calc(var(--text-scale) * 12px); overflow-wrap: anywhere; }
-.model-suggested-row small { color: var(--muted); white-space: nowrap; font-size: calc(var(--text-scale) * 11px); }
+.model-suggested-row small { color: var(--muted); white-space: nowrap; font-size: max(12px,calc(var(--text-scale) * 11px)); }
 .model-suggested-fit-gpu { color: var(--green); }
 .model-suggested-fit-cpu { color: var(--amber); }
 
