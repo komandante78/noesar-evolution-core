@@ -85,17 +85,20 @@ function renderDivergence(divergence){
   if(!lines.length){host.textContent='';host.classList.add('hidden');return;}
   host.classList.remove('hidden');
   host.textContent='';
-  const head=document.createElement('div');
-  head.className='divergence-head';
-  head.textContent=`divergence — ${divergenceSummary(divergence)}`;
-  host.append(head);
+  // unavailable is one line that already says so: a heading over it would only repeat it
+  if(divergence?.available){
+    const head=document.createElement('div');
+    head.className='divergence-head';
+    head.textContent=`divergence — ${divergenceSummary(divergence)}`;
+    host.append(head);
+  }
   for(const line of lines){
     const row=document.createElement('div');
     row.className=`divergence-signal level-${line.level}`;
     const id=document.createElement('span');id.className='divergence-id';id.textContent=line.id;
     const level=document.createElement('span');level.className='divergence-level';level.textContent=line.level;
     const note=document.createElement('span');note.className='divergence-note';note.textContent=line.note;
-    row.append(id,level,note);
+    row.append(id,' ',level,' ',note);
     host.append(row);
   }
 }

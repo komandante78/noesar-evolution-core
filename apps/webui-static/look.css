@@ -197,7 +197,7 @@ body:not([data-level=advanced]) .sidebar .nav-act kbd{display:none}
 .chat-head{display:flex;align-items:center;gap:8px;min-height:60px;padding:0 28px;flex:none}
 .chat-crumb{display:flex;align-items:center;gap:6px;min-width:0;font-size:0.9375rem}
 .chat-crumb label{min-width:0}
-#view-chat .chat-crumb select{max-width:30ch;min-height:36px;padding:0 6px;border:0;border-radius:8px;background:transparent;color:var(--n-ink);font:inherit;font-size:0.9375rem;appearance:none;-webkit-appearance:none;text-overflow:ellipsis;cursor:pointer}
+#view-chat .chat-crumb select{max-width:min(30ch,100%);min-height:36px;padding:0 6px;border:0;border-radius:8px;background:transparent;color:var(--n-ink);font:inherit;font-size:0.9375rem;appearance:none;-webkit-appearance:none;text-overflow:ellipsis;cursor:pointer}
 #view-chat .chat-crumb label:first-child select{color:var(--n-muted)}
 #view-chat .chat-crumb label:last-child select{font-weight:600}
 #view-chat .chat-crumb select:hover{background:var(--n-hover)}
@@ -427,7 +427,7 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 #view-settings>.section-header{display:none}
 
 /* ── CodeN Evolution: the terminal in the middle, the job in progress on the right (the drawing) ── */
-#view-coden.active{display:grid;grid-template-columns:minmax(0,1fr) 400px;grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:"head work" "tabs work" "bar work" "main work";align-items:start;flex:1;min-height:0;height:100%;padding:0}
+#view-coden.active{display:grid;grid-template-columns:minmax(0,1fr) 400px;grid-template-rows:auto auto auto auto minmax(0,1fr);grid-template-areas:"head work" "tabs work" "divergence work" "bar work" "main work";align-items:start;flex:1;min-height:0;height:100%;padding:0}
 #view-coden>.section-header{display:none}
 .coden-head{grid-area:head;display:flex;align-items:center;gap:12px;min-height:60px;padding:0 28px}
 .coden-head h1{margin:0;font-size:0.9375rem;font-weight:600}
@@ -438,7 +438,17 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 .coden-tab:hover{background:var(--n-hover);color:var(--n-ink)}
 .coden-tab.active{background:var(--n-card);color:var(--n-ink);font-weight:600;box-shadow:var(--n-shadow)}
 #view-coden .coden-bar{grid-area:bar;margin:0 28px 12px;border-radius:12px}
-#view-coden #codenDivergence{grid-area:bar}
+/* the divergence profile (`CE-010`) above the terminal: four signals and the level of each, never a number. A card in a row of its own: in the row of the
+   status bar it was a loose paragraph on top of it, its three words run together */
+#view-coden #codenDivergence{grid-area:divergence;margin:0 28px 12px;padding:12px 16px;border:1px solid var(--n-line);border-radius:12px;background:var(--n-card);font-size:0.875rem;line-height:1.5}
+.divergence-head{margin:0 0 6px;font-weight:600}
+.divergence-signal{display:grid;grid-template-columns:7rem 6rem minmax(0,1fr);gap:2px 12px;align-items:baseline;padding:4px 0}
+.divergence-id{font-weight:600}
+.divergence-level{font-weight:600;color:var(--n-muted)}
+.divergence-signal.level-none .divergence-level{color:var(--n-ok)}
+.divergence-signal.level-medium .divergence-level{color:var(--n-warn-ink)}
+.divergence-signal.level-high .divergence-level{color:var(--n-bad)}
+.divergence-note{min-width:0;color:var(--n-muted);overflow-wrap:anywhere}
 #view-coden .coden-terminal-region{grid-area:main;align-self:stretch;height:auto;min-height:24rem;margin:0 28px 20px;border:0;border-radius:16px;background:var(--n-term);overflow:hidden}
 #view-coden .coden-terminal-bar{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #view-coden .coden-terminal-host{padding:14px 16px}
@@ -478,10 +488,10 @@ body[data-level=advanced] .lockline .verified{display:inline;padding:0 6px;borde
 :root:has(body.coden-terminal-document){--surface-code:#16191f;--text-code:#d7dde6;--surface-root:#16191f;--muted:#8a93a1;--text-primary:#ffffff;--green:#7fd3a1;--accent-brand:#5fc4b8;--cyan:#5fc4b8;--blue:#7aa7ff;--amber:#ffc264;--red:#ff8a93;--accent-wash-strong:rgba(95,196,184,.28)}
 body.coden-terminal-document{background:#16191f}
 @media (max-width:1100px){
-  #view-coden.active{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "tabs" "bar" "main" "work"}
+  #view-coden.active{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "tabs" "divergence" "bar" "main" "work"}
   #view-coden .bench-agent{border-inline-start:0;border-top:1px solid var(--n-line)}
 }
-@media (max-width:900px){.coden-head{padding:0 16px 0 60px}.coden-tabs{padding:0 16px 12px}#view-coden .coden-terminal-region,#view-coden .bench-main{margin:0 16px 16px}}
+@media (max-width:900px){.coden-head{padding:0 16px 0 60px}.coden-tabs{padding:0 16px 12px}#view-coden .coden-terminal-region,#view-coden .bench-main{margin:0 16px 16px}#view-coden #codenDivergence{margin:0 16px 12px}.divergence-signal{grid-template-columns:7rem minmax(0,1fr)}.divergence-note{grid-column:1/-1}}
 /* with a job on screen, the right column is the job (the drawing); the authority panel a bare address opens stays one
    address away (Advanced shows it under the job) */
 body:not([data-level=advanced]) #view-coden .bench-agent:has(.coden-work:not(.hidden)) [data-agent-panel=authority]{display:none}
@@ -504,7 +514,9 @@ body:not([data-level=advanced]) #view-coden .bench-agent:has(.coden-work:not(.hi
 .section-header>.primary+.help-button{margin-inline-start:0}
 .accent-row+.hint{margin-top:10px}
 /* the text fields of an inline row are wide enough to read what they ask for ("owner/name, or a huggingface.co address" was cut at 174 px) */
-.inline-form>label>input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]){min-width:min(20rem,calc(100vw - 6rem))}
+.inline-form>label>input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]){min-width:min(26rem,calc(100vw - 6rem))}
+/* a placeholder longer than its field ends in dots (a phone is narrower than some of the things a field asks for) */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]){text-overflow:ellipsis}
 /* the info mark of a card title sits beside the title, not in the middle of the row between the title and the badge */
 .panel-title>h2+.icon-info{margin-inline-end:auto}
 /* a row of search fields wraps instead of crushing them: the log filters were 73 px wide on a desktop and 24 px on a phone */
@@ -518,3 +530,17 @@ body:not([data-level=advanced]) #view-coden .bench-agent:has(.coden-work:not(.hi
 #view-coden.active:not(:has(.bench-agent .agent-panel.active)):not(:has(.bench-agent .coden-work:not(.hidden))) .bench-agent{display:none}
 .bench-panel>p+.form-stack{margin-top:14px}
 .bench-panel .form-stack+.panel-title{margin-top:22px}
+/* what a person types is one size in every form. A field takes its size from the label around it (font:inherit) and the caption is 12 px: Knowledge had a search
+   at 16 px over a note form at 12, the plan form a goal at 12 over a path and contents at 16. A field is 1rem, whatever caption it sits under. */
+label:not(.chat-more-field)>:is(input,select,textarea),.inline-form>:is(input,select,textarea),.search-row>:is(input,select,textarea),.accent-row>:is(input,select,textarea),.plan-file-row>:is(input,select,textarea){font-size:1rem}
+/* a field and its button on one line: a file of the plan form and the command line of the bench terminal (the button was alone on a row under a full-width field) */
+.plan-file-row .inline-form,#terminalCommandForm{flex-wrap:nowrap}
+.plan-file-row .plan-file-path,#terminalCommandInput{flex:1 1 0;min-width:0}
+.plan-file-row .plan-file-remove,#terminalCommandForm>button{flex:none;white-space:nowrap}
+/* a run in a list (the Work column of a chat, the runs no chat owns): its status, its goal and its files each on a line, in a card. They were three loose spans. */
+.work-run{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--n-line);border-radius:12px;background:var(--n-card);font-size:0.9375rem}
+.work-run+.work-run{margin-top:8px}
+.work-run-status{font-size:0.875rem;font-weight:600;color:var(--n-muted)}
+.work-run-goal{font-weight:600}
+.work-run small{font-size:0.875rem;color:var(--n-muted)}
+.work-run-status,.work-run-goal,.work-run small{overflow-wrap:anywhere}

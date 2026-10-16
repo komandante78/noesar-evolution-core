@@ -67,7 +67,15 @@ describe('a text field is wide enough to type in', () => {
   test('the text fields of an inline row have a width to read their placeholder in', () => {
     const field = ruleFor((s) => s.startsWith('.inline-form>label>input:not([type=checkbox])'));
     // a percentage here is cyclic (the label is as wide as its field): the field stayed at 174 px; a width taken from the window is not
-    assert.match(declared(field?.body ?? '', 'min-width') ?? '', /^min\(\d+rem,calc\(100vw-6rem\)\)$/);
+    const width = /^min\((\d+)rem,calc\(100vw-6rem\)\)$/.exec(declared(field?.body ?? '', 'min-width') ?? '');
+    assert.ok(width, 'the minimum width is not min(Nrem, calc(100vw - 6rem))');
+    // at the 16 px of a field, 20rem cut "owner/name, or a huggingface.co ad" and "Model, publisher or declared workloa"
+    assert.ok(Number(width[1]) >= 26, `${width[1]}rem is not room for the longest placeholder of an inline row`);
+  });
+
+  test('a placeholder that does not fit ends in dots, not in the middle of a word', () => {
+    const dots = rules.find((r) => r.selector.startsWith('input:not([type=checkbox])') && declared(r.body, 'text-overflow') === 'ellipsis');
+    assert.ok(dots, 'no text-overflow:ellipsis for the text fields');
   });
 
   // not the boxes: a checkbox inside a label of the same row took the same basis and grew to 89 px (seen in the first shot after the fix)
@@ -187,5 +195,94 @@ describe('a model folder that does not exist yet is not a fault', () => {
   test('any other reason is still told, because it is a fault', async () => {
     const text = await shown({ files: [], directory: '/workspace/models', reason: 'EACCES: permission denied' });
     assert.equal(text, 'No model files could be read from /workspace/models: EACCES: permission denied');
+  });
+});
+
+// Owner, 2026-10-16 (second look, with data in the pages: a lab instance, a made-up model, no graphics card): the caption fix above made every field set
+// inside a label type at 12 px — a field takes its size from the label around it (`font:inherit`) — while the fields that are not in a label kept 16 px.
+// Knowledge had a search at 16 over a note form at 12; the plan form a goal at 12 over a path and contents at 16.
+describe('what a person types is one size in every form', () => {
+  const field = ruleFor((s) => s.startsWith('label:not(.chat-more-field)>:is(input,select,textarea)'));
+
+  test('one rule sizes the field of a label, of an inline row, of a search row, of the accent row and of a file of the plan form', () => {
+    assert.ok(field, 'no rule that sets the size of a field in look.css');
+    for (const parent of ['.inline-form>', '.search-row>', '.accent-row>', '.plan-file-row>']) assert.ok(field.selector.includes(parent), `${parent} is not covered`);
+  });
+
+  test('the size is 1rem, set on the field itself, not left to the caption around it', () => {
+    assert.equal(declared(field?.body ?? '', 'font-size'), '1rem');
+  });
+
+  test('the small menu fields of a chat keep the size they were drawn with', () => {
+    assert.match(field?.selector ?? '', /:not\(\.chat-more-field\)/);
+    assert.equal(declared(ruleFor((s) => s === '.chat-more-field select,.chat-more-field input')?.body ?? '', 'font-size'), '0.9375rem');
+  });
+});
+
+describe('a field and its button are on one line: a file of the plan form, the command line of the bench terminal', () => {
+  test('the row does not wrap: the button was alone under a full-width field', () => {
+    assert.equal(declared(ruleFor((s) => s === '.plan-file-row .inline-form,#terminalCommandForm')?.body ?? '', 'flex-wrap'), 'nowrap');
+  });
+
+  test('the field takes what the button leaves, and can shrink to it', () => {
+    const path = ruleFor((s) => s === '.plan-file-row .plan-file-path,#terminalCommandInput');
+    assert.equal(declared(path?.body ?? '', 'flex'), '110'); // the parser strips spaces: 1 1 0
+    assert.equal(declared(path?.body ?? '', 'min-width'), '0');
+  });
+});
+
+describe('the divergence profile is a card in a row of its own', () => {
+  const layouts = rules.filter((r) => /^#view-coden\.active$/.test(r.selector) && declared(r.body, 'grid-template-areas'));
+
+  test('the grid of CodeN names a row for it, above the status bar, in every layout', () => {
+    assert.ok(layouts.length >= 2, 'expected the desktop and the narrow layout of CodeN');
+    for (const layout of layouts) {
+      const areas = declared(layout.body, 'grid-template-areas');
+      assert.ok(areas.includes('"divergence'), `no divergence row in ${areas}`);
+      assert.ok(areas.indexOf('"divergence') < areas.indexOf('"bar'), `the strip is not above the bar in ${areas}`);
+    }
+  });
+
+  test('the strip sits in that row — not in the one of the status bar, where it was drawn over it', () => {
+    assert.equal(declared(ruleFor((s) => s === '#view-coden #codenDivergence')?.body ?? '', 'grid-area'), 'divergence');
+  });
+
+  test('it is a card like the others: a border, a radius, the card background, room inside', () => {
+    const body = ruleFor((s) => s === '#view-coden #codenDivergence')?.body ?? '';
+    for (const property of ['border', 'border-radius', 'background', 'padding']) assert.ok(declared(body, property), `no ${property}`);
+    assert.equal(declared(body, 'background'), 'var(--n-card)');
+  });
+
+  test('a signal is its name, its level and its note, in columns; the level has a colour of its own for each answer, and says the word as well', () => {
+    assert.equal(declared(ruleFor((s) => s === '.divergence-signal')?.body ?? '', 'display'), 'grid');
+    for (const level of ['none', 'medium', 'high']) assert.ok(ruleFor((s) => s === `.divergence-signal.level-${level} .divergence-level`), `no colour for ${level}`);
+  });
+
+  test('the three words of a signal are separated by spaces in the text, and an answer that says "unavailable" has no heading repeating it', () => {
+    assert.match(app, /row\.append\(id,' ',level,' ',note\)/);
+    assert.match(app, /if\(divergence\?\.available\)\{\s*const head/);
+  });
+});
+
+describe('a run in a list is a card, not three loose spans', () => {
+  // workRunRows() draws it for the Work column of a chat and for the runs no chat owns; neither had a rule, so the status word, the goal and the files
+  // ran together on one line in the type of the page.
+  test('the run is a card with its status, its goal and its files one under the other', () => {
+    const body = ruleFor((s) => s === '.work-run')?.body ?? '';
+    assert.equal(declared(body, 'display'), 'grid');
+    for (const property of ['border', 'border-radius', 'background', 'padding']) assert.ok(declared(body, property), `no ${property}`);
+  });
+
+  test('the status is the quiet word and the goal the heavy one, and a long path breaks instead of leaving the card', () => {
+    assert.equal(declared(ruleFor((s) => s === '.work-run-status')?.body ?? '', 'color'), 'var(--n-muted)');
+    assert.equal(declared(ruleFor((s) => s === '.work-run-goal')?.body ?? '', 'font-weight'), '600');
+    assert.equal(declared(ruleFor((s) => s === '.work-run-status,.work-run-goal,.work-run small')?.body ?? '', 'overflow-wrap'), 'anywhere');
+  });
+});
+
+describe('the crumb of a chat header keeps its selects inside their labels', () => {
+  test('a select is never wider than its label: on a phone the project name was printed over the title of the conversation', () => {
+    const select = ruleFor((s) => s === '#view-chat .chat-crumb select');
+    assert.match(declared(select?.body ?? '', 'max-width') ?? '', /100%/);
   });
 });

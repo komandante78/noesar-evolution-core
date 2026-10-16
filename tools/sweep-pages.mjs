@@ -95,6 +95,33 @@ function measure() {
   if (bigCheck.length) found.push(`box or radio label larger than a caption: ${bigCheck.join(' | ')}`);
   const narrow = [...view.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=number]):not([type=file]),textarea')].filter((e) => vis(e) && !e.closest('.xterm') && e.getBoundingClientRect().width < 90).slice(0, 3).map((e) => `${e.placeholder || e.type} ${Math.round(e.getBoundingClientRect().width)}px`);
   if (narrow.length) found.push(`text field too narrow to type in: ${narrow.join(' | ')}`);
+  // What a person types is one size on a page. A field takes its size from the label around it (font:inherit) and the caption is 12 px: after the caption
+  // fix a page held fields at 12 px and at 16 px side by side (second look, with data, 2026-10-16). Menus, the composer and the terminal have their own.
+  const typed = [...view.querySelectorAll('label>input,label>select,label>textarea,.inline-form>input,.inline-form>select,.inline-form>textarea,.search-row>input,.search-row>select,.plan-file-row>textarea,.accent-row>input')]
+    .filter((e) => vis(e) && !e.matches('[type=checkbox],[type=radio],[type=range],[type=color],[type=file]') && !e.closest('.xterm,.chat-more-field,.chat-crumb,.chat-chip,.composer,.agent-prompt,.search-dialog,.model-picker'));
+  const typedSizes = new Map();
+  for (const e of typed) { const px = Math.round(parseFloat(getComputedStyle(e).fontSize) * 10) / 10; typedSizes.set(px, [...(typedSizes.get(px) ?? []), e]); }
+  if (typedSizes.size > 1) found.push(`fields typed at different sizes on one page: ${[...typedSizes].map(([px, list]) => `${px}px ${label(list[0])}`).join(' | ')}`);
+  // A button that belongs to the only field of its row sits beside it: "Remove" was alone on a line under a full-width path.
+  const strayButton = [...view.querySelectorAll('.inline-form')].filter((f) => {
+    if (!vis(f)) return false;
+    const kids = [...f.children].filter(vis);
+    const fields = kids.filter((k) => k.matches('input:not([type=checkbox]):not([type=radio]),select,textarea'));
+    const buttons = kids.filter((k) => k.matches('button'));
+    return kids.length === 2 && fields.length === 1 && buttons.length === 1 && buttons[0].getBoundingClientRect().top >= fields[0].getBoundingClientRect().bottom - 1;
+  }).slice(0, 3).map((f) => label(f.querySelector('button')));
+  if (strayButton.length) found.push(`button alone under the only field of its row: ${strayButton.join(', ')}`);
+  // The placeholder of a field is what the field asks for. Cut at "…huggingface.co ad" it asks nothing. On a desktop or a tablet it fits whole; on a phone
+  // it may be longer than the screen (or than a field when the text is enlarged), and then it ends in dots rather than in the middle of a word.
+  const measuring = document.createElement('canvas').getContext('2d');
+  const cutHolders = [...view.querySelectorAll('input[placeholder]:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=color]):not([type=range]):not([type=file])')]
+    .filter((e) => vis(e) && !e.value && e.placeholder && !e.closest('.xterm')).filter((e) => {
+      const s = getComputedStyle(e);
+      measuring.font = `${s.fontStyle} ${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
+      const room = e.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
+      return measuring.measureText(e.placeholder).width > room + 1 && ((window.innerWidth >= 768 && scaleNow <= 1) || s.textOverflow !== 'ellipsis');
+    }).slice(0, 3).map((e) => `${label(e)} "${e.placeholder.slice(0, 24)}" in ${Math.round(e.clientWidth)}px`);
+  if (cutHolders.length) found.push(`placeholder cut: ${cutHolders.join(' | ')}`);
   const loneTile = [...view.querySelectorAll('.section-icon')].filter((i) => getComputedStyle(i).display !== 'none' && i.getBoundingClientRect().width > 2 && i.parentElement.querySelector('h1.visually-hidden')).length;
   if (loneTile) found.push(`${loneTile} icon tile(s) standing alone, the title beside it is hidden`);
   const wrapped = [...view.querySelectorAll('.badge')].filter((b) => vis(b) && b.children.length === 0 && b.textContent.trim()).filter((b) => { const r = document.createRange(); r.selectNodeContents(b); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size > 1; }).slice(0, 3).map((b) => b.textContent.trim().slice(0, 24));
