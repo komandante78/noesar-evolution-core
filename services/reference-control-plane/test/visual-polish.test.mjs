@@ -286,3 +286,48 @@ describe('the crumb of a chat header keeps its selects inside their labels', () 
     assert.match(declared(select?.body ?? '', 'max-width') ?? '', /100%/);
   });
 });
+
+describe('cards stacked in a page are a line apart', () => {
+  // the view and a settings page are blocks, and a panel has no margin of its own: on Automations, Research, Models and Health and logs the boxes touched
+  const stack = rules.find((r) => r.selector.startsWith(':is(.view,.settings-sub)>:is(.panel,.two-col,.dashboard-grid)+'));
+
+  test('a card, or a row of two, that follows another card in a view or a settings page has a margin above it', () => {
+    assert.ok(stack, 'no rule for stacked cards in a view or a settings page');
+    assert.equal(declared(stack.body, 'margin-top'), '16px');
+  });
+
+  test('the same 16 px as the gap of the grids it stands beside, so a stack and a grid have one rhythm', () => {
+    const grid = sheetRuleFor((s) => s.includes('.two-col') && s.includes('.dashboard-grid'));
+    assert.equal(declared(grid?.body ?? '', 'gap'), '16px');
+  });
+});
+
+describe('on a phone, nothing is printed under the menu button or out of its row', () => {
+  test('a settings page scrolled to by its address stops below the menu button', () => {
+    const section = ruleFor((s) => s === '.settings-section');
+    const margin = /^(\d+(?:\.\d+)?)rem$/.exec(declared(section?.body ?? '', 'scroll-margin-top') ?? '');
+    assert.ok(margin, 'no scroll-margin-top in rem for .settings-section');
+    // the menu button ends 51 px from the top and a section may start with a card (Skills), not with a heading: 3.5rem (56 px) is the least that clears it
+    assert.ok(Number(margin[1]) >= 3.5, `${margin[1]}rem: the first line of the page is under the menu button`);
+  });
+
+  test('the title of a session is a block, so that its ellipsis clips: on an inline span it does nothing', () => {
+    assert.equal(declared(ruleFor((s) => s === '.session-row .session-title')?.body ?? '', 'display'), 'block');
+  });
+});
+
+describe('a session row on a phone gives the title the whole width', () => {
+  test('two columns, the box and the text; the buttons go on the line under the title', () => {
+    assert.equal(declared(ruleFor((s) => s === '.session-row')?.body ?? '', 'grid-template-columns'), 'autominmax(0,1fr)');
+    assert.equal(declared(ruleFor((s) => s === '.session-row .session-actions')?.body ?? '', 'grid-column'), '2');
+  });
+});
+
+describe('a page opens at its top', () => {
+  // #mainContent is the element that scrolls (on a phone and on a desktop); nothing reset it when the address changed
+  test('activate() puts the scroller back at the top when the page or the settings section changes, and only then', () => {
+    assert.ok(app.includes("let lastOpenedAt='';"));
+    assert.ok(app.includes('const openedAt=`${target}/${activeSection}`;'));
+    assert.ok(app.includes("if(openedAt!==lastOpenedAt){lastOpenedAt=openedAt;const scroller=$('#mainContent');if(scroller)scroller.scrollTop=0;}"));
+  });
+});

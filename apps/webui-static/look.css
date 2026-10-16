@@ -544,3 +544,15 @@ label:not(.chat-more-field)>:is(input,select,textarea),.inline-form>:is(input,se
 .work-run-goal{font-weight:600}
 .work-run small{font-size:0.875rem;color:var(--n-muted)}
 .work-run-status,.work-run-goal,.work-run small{overflow-wrap:anywhere}
+/* cards stacked in a page are a line apart (the view and a settings page are blocks, and a panel has no margin of its own: the boxes of Automations, Research, Models
+   and Health and logs touched). The grids have their own gap of 16 px. */
+:is(.view,.settings-sub)>:is(.panel,.two-col,.dashboard-grid)+:is(.panel,.two-col,.dashboard-grid){margin-top:16px}
+/* a settings page reached by its address is scrolled to the top of the window; on a phone the menu button is fixed there and was printed over its first line */
+.settings-section{scroll-margin-top:4rem}
+/* the title of a session clips with dots: overflow and text-overflow do nothing on an inline span, and the title ran out of its row on a phone */
+.session-row .session-title{display:block}
+@media (max-width:600px){
+  /* a session's title had 94 px between its box and its two buttons ("Cerca su…"): the buttons go under it */
+  .session-row{grid-template-columns:auto minmax(0,1fr)}
+  .session-row .session-actions{grid-column:2}
+}

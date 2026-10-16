@@ -338,7 +338,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 fae9dd0022a500c5ed9b6f2d8a7d3cd3024733218a33048eb3d7ab0eaa6ba612  ./apps/shared/coden/tui-screen.mjs
-7c7684dab8c9c66693a6091be17d50b4de4510c51ea09a90c08da98106a1c5a9  ./apps/webui-static/app.js
+90d933638e268eef6701fcc5741f18b7f007a3e3fb1ddc3d7fdf42552184abd5  ./apps/webui-static/app.js
 d1c6798b5aaa1a7d1a6f1f3a61a7cb381cfec3394d86761c74f80afe0cd942a6  ./apps/webui-static/brand/noesar-mark-on-dark.svg
 45cec7dbc363c17d8521992ac7b8c72f556b209dcb5059773d04a77feed5518f  ./apps/webui-static/brand/noesar-mark-on-light.svg
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
@@ -353,7 +353,7 @@ b25a1aae75b710c965424bad86900b0c805faf0005119cee213a5c4a86909636  ./apps/webui-s
 b7ad1f7a13c19d32257dd3398cc475da88aabdd54cd162fd5946f52c4383c1bb  ./apps/webui-static/i18n-catalog.js
 a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  ./apps/webui-static/i18n.js
 e37a3d27cd05d7e9731ac7e6cbfd63d6ce12efbfde4465ec95ab5b2563277788  ./apps/webui-static/index.html
-95044366312127fc6f40b337b672f69de9b4c03bfb6922a51cafc92aa9bfe76b  ./apps/webui-static/look.css
+df993050c21d3207b939c304ce6b87c59ef06943cebb1221cb579666fe7d7f6f  ./apps/webui-static/look.css
 6091ca382205fe15bddae46fba30c548f3dbdbaff63101b30b992b08211691b5  ./apps/webui-static/markdown-lite.js
 48a153ce97b30c3c0b8e0f4fcae70843d7ec01d968eb811a1cc2bb936ca070fd  ./apps/webui-static/page-help.js
 1e8f604738ccfb41c58376a941b490dadaa780c00015171f83feae75e695cc2c  ./apps/webui-static/qr.js
@@ -6662,7 +6662,7 @@ a30ca6cb60b8dec0d8fd98501308dbf7a337d206a7c467650df1a3fb95cc60ef  ./services/ref
 2ffd1356297551b6f13bedd10ddbc6605c5d50c8dbdd642d57bcabab29ff14dd  ./services/reference-control-plane/test/verifiability.test.mjs
 39cde063c090493b881877cd3165bd1e45e20d74b520cf53e2a658adb40a0e6c  ./services/reference-control-plane/test/verification.test.mjs
 84f5be2a6713f5471fc41fe6e419f0ad9f0c95f9bff17a6103ec35e30490300b  ./services/reference-control-plane/test/vision-caption.test.mjs
-0c62b96124b575ac975fa7b54e45f7ed2c043cc962adf7f1e25e406c9a828a9e  ./services/reference-control-plane/test/visual-polish.test.mjs
+d30add1292037462701cc1eb905764ac60dd6534735234d3016e6a8f89e6c72e  ./services/reference-control-plane/test/visual-polish.test.mjs
 fa81e93c4531acb2f6bbb9c8bca2e81e8e282b7fb9e324bbee34827720abfffd  ./services/reference-control-plane/test/watchdog-report-line.test.mjs
 d55d7ed7041da5e6be291addb047507853abacf6ae2e138388c1f149ff361264  ./services/reference-control-plane/test/watchdog.test.mjs
 768dea298531eba626c1137cc445eecd3cc58797d53ad2492b1bd63921bc0a20  ./services/reference-control-plane/test/webauthn.test.mjs
@@ -6790,7 +6790,7 @@ ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-r
 ac6c92a03a238ce0be28e4812dfd7e7acd549f39c4b80ece9fcb95f648e107be  ./tools/sign-update-artifact.mjs
 f389aab3f99c635d016def804b20b09e5af941884021d4e66b23d6cecf12b8c7  ./tools/split-screenshots.mjs
 7d3016820d9aacd1652ba5f8fdc69578a044de2eeadf47eb72c6e135bba228b7  ./tools/summarise-eslint.mjs
-1f80310a2df48e3433caca544456be169ff7738a3600020597df7f45b0d28e42  ./tools/sweep-pages.mjs
+d095a902ba2a092db702b8ec75a426efa6c5ae57e63819361e33afdf1c736429  ./tools/sweep-pages.mjs
 c71324ad993b0831ac5b26ee032f3b150921974437502dc26694d942cfaf310d  ./tools/terminal-credential.mjs
 882a04576524985c8e2d1ed76cbb81323682d61892e901a0a48608ca308d50e4  ./tools/test-cache-cleanup.sh
 c539fa144d17d8423d5e1e070576490c5daeaba9228085f28c4e2bec2a52b253  ./tools/test-cross-platform-installers.mjs

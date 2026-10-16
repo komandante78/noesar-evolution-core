@@ -506,6 +506,7 @@ function sessionPlaceFromHash(){
   const {place}=routeFromHash();
   return ['archived','bin'].includes(place)?place:'active';
 }
+let lastOpenedAt='';
 function activate(view,{updateHash=true,section='',place=''}={}){
   const known=ROUTES.has(view)&&document.querySelector(`#view-${view}`);
   // A page the account may not reach is shown as access-denied, not as a panel that
@@ -540,6 +541,10 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // Sections belong to Settings alone. Leaving the destination clears them, otherwise a
   // section would still be marked active behind a page that no longer contains it.
   else $$('.settings-section').forEach((node)=>node.classList.remove('active'));
+  // A page opens at its top. The scroll offset belongs to the page that was left: reached by an address (a bookmark, the palette, a link), Models opened 1800 px down,
+  // and on a phone the first line of a settings page was under the menu button. Re-activating the same page (a handler that navigates and then reports) keeps the place.
+  const openedAt=`${target}/${activeSection}`;
+  if(openedAt!==lastOpenedAt){lastOpenedAt=openedAt;const scroller=$('#mainContent');if(scroller)scroller.scrollTop=0;}
   // CodeN reads the same two segments Settings reads: the second names the region, the
   // third the panel inside it. A bare `#/coden` names no region and moves nothing — the
   // panels keep whatever they were showing, which is what makes the sidebar entry a way

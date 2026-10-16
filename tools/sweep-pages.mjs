@@ -122,6 +122,36 @@ function measure() {
       return measuring.measureText(e.placeholder).width > room + 1 && ((window.innerWidth >= 768 && scaleNow <= 1) || s.textOverflow !== 'ellipsis');
     }).slice(0, 3).map((e) => `${label(e)} "${e.placeholder.slice(0, 24)}" in ${Math.round(e.clientWidth)}px`);
   if (cutHolders.length) found.push(`placeholder cut: ${cutHolders.join(' | ')}`);
+  // Two cards of a page never touch: Automations, Research, Models and Health and logs stacked their boxes with 0 px between them (seen in the pictures of the README).
+  const cards = [...view.querySelectorAll('.panel,.mini-panel,.entity-card,.provider-card')].filter((e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return vis(e) && r.width > 150 && r.height > 20 && (parseFloat(s.borderTopWidth) > 0 || s.backgroundColor !== 'rgba(0, 0, 0, 0)') && !e.parentElement.closest('.panel,.mini-panel,.entity-card,.provider-card'); });
+  const touching = [];
+  for (const a of cards) for (const b of cards) {
+    if (a === b) continue;
+    const ra = a.getBoundingClientRect(); const rb = b.getBoundingClientRect();
+    const gap = rb.top - ra.bottom;
+    if (Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left) > 100 && gap > -2 && gap < 6) touching.push(`${(a.querySelector('h2,h3')?.textContent ?? a.id ?? '').trim().slice(0, 20)} / ${(b.querySelector('h2,h3')?.textContent ?? b.id ?? '').trim().slice(0, 20)}`);
+  }
+  if (touching.length) found.push(`cards touching: ${[...new Set(touching)].slice(0, 3).join(' | ')}`);
+  // On a phone the menu button is fixed at the top left: nothing of the page is printed under it (the first line of Sessions and of About, scrolled to the top of the
+  // window by their address, was). The skip link is off the screen on purpose.
+  const menuButton = [...document.querySelectorAll('button')].find((b) => { const s = getComputedStyle(b); const r = b.getBoundingClientRect(); return s.position === 'fixed' && r.left < 40 && r.top < 40 && r.width > 20 && r.width < 80 && r.height > 20 && vis(b); });
+  if (menuButton) {
+    const box = menuButton.getBoundingClientRect();
+    const under = [];
+    // the text of the section the address names; what is above it is the end of the section before, scrolled out of the way as on any scrolled page
+    const target = document.querySelector(`.settings-section[data-section="${location.hash.split('?')[0].split('/')[2] ?? ''}"]`);
+    const walker = document.createTreeWalker(target ?? view, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n && under.length < 3; n = walker.nextNode()) {
+      const p = n.parentElement;
+      if (!n.textContent.trim() || menuButton.contains(n) || p.closest('.visually-hidden,.sr-only,.skip,.skip-link,[hidden]') || getComputedStyle(p).visibility === 'hidden') continue;
+      const range = document.createRange(); range.selectNodeContents(n);
+      if ([...range.getClientRects()].some((q) => q.width > 1 && q.height > 1 && q.left < box.right - 1 && q.right > box.left + 1 && q.top < box.bottom - 1 && q.bottom > box.top + 1)) under.push(`"${n.textContent.trim().slice(0, 18)}"`);
+    }
+    if (under.length) found.push(`text under the menu button: ${under.join(', ')}`);
+  }
+  // An ellipsis on an inline element clips nothing: the text runs on. (The title of a session, in a list the empty installation does not have; any element, here.)
+  const mute = [...view.querySelectorAll('*')].filter((e) => { const s = getComputedStyle(e); return s.display === 'inline' && s.textOverflow === 'ellipsis' && /hidden|clip/.test(s.overflowX) && vis(e); }).slice(0, 3).map(label);
+  if (mute.length) found.push(`ellipsis on an inline element, which clips nothing: ${mute.join(', ')}`);
   const loneTile = [...view.querySelectorAll('.section-icon')].filter((i) => getComputedStyle(i).display !== 'none' && i.getBoundingClientRect().width > 2 && i.parentElement.querySelector('h1.visually-hidden')).length;
   if (loneTile) found.push(`${loneTile} icon tile(s) standing alone, the title beside it is hidden`);
   const wrapped = [...view.querySelectorAll('.badge')].filter((b) => vis(b) && b.children.length === 0 && b.textContent.trim()).filter((b) => { const r = document.createRange(); r.selectNodeContents(b); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size > 1; }).slice(0, 3).map((b) => b.textContent.trim().slice(0, 24));
